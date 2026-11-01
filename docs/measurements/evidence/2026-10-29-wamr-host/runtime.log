@@ -1,0 +1,3 @@
+Wasm linear memory range=0..1114112 bytes
+WAMR pool total=4193888 free=4172096 highmark=21792 bytes
+WAMR classic interpreter Rust app and bounds: ok

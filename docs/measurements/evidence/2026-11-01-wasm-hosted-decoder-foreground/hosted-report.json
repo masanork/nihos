@@ -1,0 +1,140 @@
+{
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "candidate": {
+    "nihos-native-image.elf": "12bae0b20a20bd7b87eb4b9358185b91725de24eac5e7d3ae403d86e61cad5b8",
+    "nihos-native-flash.bin": "53d06ed70ec25eb839e60936df086aa1737560cb1c20f95fd99b04134757d491"
+  },
+  "events": [
+    {
+      "round": 1,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    },
+    {
+      "round": 2,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 2,
+      "state": 4,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    }
+  ],
+  "foreground": [
+    {
+      "round": 1,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 7,
+      "max_gap_us": 20054
+    },
+    {
+      "round": 2,
+      "opening": 1,
+      "cancelling": 110,
+      "active": 0,
+      "max_gap_us": 20002
+    },
+    {
+      "round": 3,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 7,
+      "max_gap_us": 20000
+    }
+  ],
+  "mock_work": [
+    {
+      "round": 1,
+      "items": 116,
+      "digest": 2293735557,
+      "sensor": 903232
+    },
+    {
+      "round": 2,
+      "items": 111,
+      "digest": 3097764037,
+      "sensor": 863320
+    },
+    {
+      "round": 3,
+      "items": 116,
+      "digest": 2783091973,
+      "sensor": 908224
+    }
+  ],
+  "hosted_decoder": [
+    {
+      "round": 1,
+      "accepted": 29,
+      "rejected": 29,
+      "errors": 0,
+      "active_events": 4
+    },
+    {
+      "round": 2,
+      "accepted": 28,
+      "rejected": 27,
+      "errors": 0,
+      "active_events": 0
+    },
+    {
+      "round": 3,
+      "accepted": 29,
+      "rejected": 29,
+      "errors": 0,
+      "active_events": 4
+    }
+  ],
+  "request_latency": [
+    {
+      "round": 1,
+      "render_us": 820,
+      "close_us": 1446
+    },
+    {
+      "round": 2,
+      "render_us": 0,
+      "close_us": 0
+    },
+    {
+      "round": 3,
+      "render_us": 821,
+      "close_us": 1448
+    }
+  ]
+}

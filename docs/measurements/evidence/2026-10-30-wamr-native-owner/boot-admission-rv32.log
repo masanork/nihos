@@ -1,0 +1,17 @@
+/private/tmp/nihos-rust-app-sdk/build/boot-admission-rv32/boot-admission.o  :
+section              size   addr
+.text               73480      0
+.rodata              4000      0
+.rodata.cst8            8      0
+.rodata.cst32          32      0
+.rodata.str1.1         36      0
+.riscv.attributes      99      0
+.eh_frame            1952      0
+.note.GNU-stack         0      0
+Total               79607
+
+
+         U __lshrdi3
+         U memcpy
+         U memset
+Boot admission RV32 compile closure: ok

@@ -1,0 +1,11 @@
+[package]
+name = "nihos-app"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+native-task = []
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,12 @@
+/private/tmp/nihos-rust-app-sdk/build/package-ed25519-rv32/verifier.o  :
+section              size   addr
+.text               67548      0
+.rodata              3728      0
+.rodata.str1.1          9      0
+.rodata.cst32          32      0
+.riscv.attributes      99      0
+.eh_frame            1416      0
+.note.GNU-stack         0      0
+Total               72832
+
+

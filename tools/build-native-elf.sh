@@ -6,7 +6,7 @@ profile=${1:-device}
 case "$profile" in
     device) rev3=0 ;;
     emulator) rev3=1 ;;
-    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite]" >&2; exit 1 ;;
+    *) echo "usage: $0 [device|emulator] [output-directory] [integer|floating|compiled|sqlite|wasm]" >&2; exit 1 ;;
 esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
@@ -60,6 +60,69 @@ sqlite=false
 sqlite_cpp=0
 graphics=false
 graphics_cpp=0
+wasm=false
+wasm_cpp=0
+wasm_task=${NIHOS_NATIVE_WASM_TASK:-0}
+case "$wasm_task" in
+    0) wasm_task=false; wasm_task_define= ;;
+    1) wasm_task=true; wasm_task_define=-DNIHOS_WAMR_TASK=1 ;;
+    *) echo "NIHOS_NATIVE_WASM_TASK must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$wasm_task" = true ] && { [ "$profile" != emulator ] || [ "$mode" != wasm ] || [ "${NIHOS_NATIVE_BOOT_TEST:-0}" != 1 ]; }; then
+    echo "WASM_TASK requires emulator wasm mode with headless BOOT_TEST=1" >&2; exit 1
+fi
+normal_mode=false
+wasm_session_test=${NIHOS_NATIVE_WASM_SESSION_TEST:-0}
+case "$wasm_session_test" in
+    0) wasm_session_test=false ; wasm_session_define= ;;
+    1) wasm_session_test=true ; wasm_session_define=-DNIHOS_WAMR_SESSION=1 ;;
+    *) echo "NIHOS_NATIVE_WASM_SESSION_TEST must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$wasm_session_test" = true ] && [ "$wasm_task" != true ]; then
+    echo "WASM_SESSION_TEST requires the headless emulator WASM_TASK profile" >&2; exit 1
+fi
+wasm_align_san=${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}
+case "$wasm_align_san" in 0) wasm_align_san=false; wamr_compile_dir="$repo_root/build/wamr-rv32-compile" ;; 1) wasm_align_san=true; wamr_compile_dir="$repo_root/build/wamr-rv32-align-compile" ;; *) echo "WASM_ALIGN_SAN must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_align_san" = true ] && [ "$wasm_session_test" != true ]; then echo "WASM_ALIGN_SAN requires headless WASM_SESSION_TEST" >&2; exit 1; fi
+wasm_align_negative=${NIHOS_NATIVE_WASM_ALIGN_NEGATIVE:-0}
+case "$wasm_align_negative" in 0) wasm_align_negative=false ;; 1) wasm_align_negative=true ;; *) echo "WASM_ALIGN_NEGATIVE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_align_negative" = true ] && [ "$wasm_align_san" != true ]; then echo "WASM_ALIGN_NEGATIVE requires WASM_ALIGN_SAN" >&2; exit 1; fi
+wasm_align_corpus=${NIHOS_NATIVE_WASM_ALIGN_CORPUS:-0}
+case "$wasm_align_corpus" in
+    0) wasm_align_corpus=false; wasm_corpus_define=; wasm_corpus_features= ;;
+    1) wasm_align_corpus=true; wasm_corpus_define=-DNIHOS_WAMR_ALIGNMENT_CORPUS=1; wasm_corpus_features=alignment-corpus ;;
+    *) echo "WASM_ALIGN_CORPUS must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$wasm_align_corpus" = true ] && [ "$wasm_session_test" != true ]; then echo "WASM_ALIGN_CORPUS requires headless WASM_SESSION_TEST" >&2; exit 1; fi
+wasm_corpus_uncompressed=${NIHOS_NATIVE_WASM_ALIGN_CORPUS_UNCOMPRESSED:-0}
+case "$wasm_corpus_uncompressed" in 0) wasm_corpus_uncompressed=false ;; 1) wasm_corpus_uncompressed=true ;; *) echo "WASM_ALIGN_CORPUS_UNCOMPRESSED must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_corpus_uncompressed" = true ] && [ "$wasm_align_corpus" != true ]; then echo "WASM_ALIGN_CORPUS_UNCOMPRESSED requires WASM_ALIGN_CORPUS" >&2; exit 1; fi
+wasm_table_fix=${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}
+case "$wasm_table_fix" in 0) wasm_table_fix=false ;; 1) wasm_table_fix=true ;; *) echo "WASM_ALIGN_TABLE_FIX must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_table_fix" = true ] && [ "$wasm_align_corpus" != true ]; then echo "WASM_ALIGN_TABLE_FIX requires headless WASM_ALIGN_CORPUS" >&2; exit 1; fi
+wasm_stack_fix=${NIHOS_NATIVE_WASM_ALIGN_STACK_FIX:-0}
+case "$wasm_stack_fix" in 0) wasm_stack_fix=false ;; 1) wasm_stack_fix=true ;; *) echo "WASM_ALIGN_STACK_FIX must be 0 or 1" >&2; exit 1 ;; esac
+wasm_fixes=${NIHOS_NATIVE_WASM_ALIGN_FIXES:-0}
+case "$wasm_fixes" in 0) wasm_fixes=false ;; 1) wasm_fixes=true ;; *) echo "WASM_ALIGN_FIXES must be 0 or 1" >&2; exit 1 ;; esac
+
+if [ "$wasm_fixes" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-fixes-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-fixes-compile"; fi
+elif [ "$wasm_stack_fix" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-stack-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-stack-compile"; fi
+elif [ "$wasm_table_fix" = true ]; then
+    if [ "$wasm_align_san" = true ]; then wamr_compile_dir="$repo_root/build/wamr-rv32-align-table-compile"; else wamr_compile_dir="$repo_root/build/wamr-rv32-table-compile"; fi
+fi
+wasm_interactive=${NIHOS_NATIVE_WASM_INTERACTIVE:-0}
+case "$wasm_interactive" in 0) wasm_interactive=false ;; 1) wasm_interactive=true ;; *) echo "WASM_INTERACTIVE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_interactive" = true ] && [ "$wasm_session_test" != true ]; then
+    echo "WASM_INTERACTIVE requires the headless WASM_SESSION_TEST profile" >&2; exit 1
+fi
+wasm_repeat=${NIHOS_NATIVE_WASM_INTERACTIVE_REPEAT:-0}
+case "$wasm_repeat" in 0) wasm_repeat=false ;; 1) wasm_repeat=true ;; *) echo "WASM_INTERACTIVE_REPEAT must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_repeat" = true ] && [ "$wasm_interactive" != true ]; then
+    echo "WASM_INTERACTIVE_REPEAT requires WASM_INTERACTIVE=1" >&2; exit 1
+fi
+if [ "$mode" = integer ] || [ "$wasm_task" = true ]; then normal_mode=true; fi
 abi=ilp32
 qualification=${NIHOS_NATIVE_QUALIFICATION:-0}
 case "$qualification" in
@@ -70,11 +133,16 @@ esac
 case "$mode" in
     integer) floating=false; fp_asm=0 ;;
     sqlite) floating=false; fp_asm=0; sqlite=true; sqlite_cpp=1 ;;
+    wasm) floating=false; fp_asm=0; wasm=true; wasm_cpp=1 ;;
     graphics) floating=false; fp_asm=0; graphics=true; graphics_cpp=1 ;;
     floating) floating=true; fp_asm=1 ;;
     compiled) floating=true; fp_asm=1; compiled=true; cpu=generic_rv32+m+a+c+f+zicsr+zifencei; abi=ilp32f ;;
-    *) echo "mode must be integer, floating, compiled, sqlite or graphics" >&2; exit 1 ;;
+    *) echo "mode must be integer, floating, compiled, sqlite, graphics or wasm" >&2; exit 1 ;;
 esac
+if [ "$wasm" = true ] && [ "$profile" != emulator ]; then
+    echo "WAMR fixture is emulator-only until physical qualification is requested" >&2
+    exit 1
+fi
 usb=${NIHOS_NATIVE_USB:-0}
 usb_cpp=0
 case "$usb" in
@@ -226,13 +294,13 @@ fi
 # 3=missing ready, 4=missing IPI reply, 5=missing CPU1 timer.
 boot_test=${NIHOS_NATIVE_BOOT_TEST:-0}
 case "$boot_test" in 0|1|2|3|4|5) ;; *) echo "NIHOS_NATIVE_BOOT_TEST must be 0..5" >&2; exit 1 ;; esac
-if [ "$boot_test" != 0 ] && { [ "$profile" != emulator ] || [ "$mode" != integer ] || [ "$qualification" != false ] || [ "$console_live" != false ] || [ "$display" != false ] || [ "$sdmmc" != false ]; }; then
+if [ "$boot_test" != 0 ] && { [ "$profile" != emulator ] || [ "$normal_mode" != true ] || [ "$qualification" != false ] || [ "$console_live" != false ] || [ "$display" != false ] || [ "$sdmmc" != false ]; }; then
     echo "Boot test requires headless emulator integer profile, without qualification/SDMMC" >&2; exit 1
 fi
 # Interactive integer console boots normally; other profiles remain fixtures.
 boot_fast=${NIHOS_NATIVE_BOOT_FAST:-auto}
 if [ "$boot_fast" = auto ]; then
-    if { [ "$console_live" = true ] || [ "$boot_test" != 0 ]; } && [ "$mode" = integer ] && [ "$qualification" = false ]; then boot_fast=1; else boot_fast=0; fi
+    if { [ "$console_live" = true ] || [ "$boot_test" != 0 ]; } && [ "$normal_mode" = true ] && [ "$qualification" = false ]; then boot_fast=1; else boot_fast=0; fi
 fi
 case "$boot_fast" in
     0) boot_fast=false ;;
@@ -258,7 +326,7 @@ if [ "$pmp_probe" = false ] && [ "$pmp_case" != all ]; then
 fi
 pmp_user_object=
 if [ "$pmp_probe" = true ]; then pmp_user_object="$repo_root/src/arch/riscv32/pmp_user.S"; fi
-if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$mode" != integer ] || [ "$qualification" = true ]; }; then
+if [ "$boot_fast" = true ] && { { [ "$console_live" != true ] && [ "$boot_test" = 0 ]; } || [ "$normal_mode" != true ] || [ "$qualification" = true ]; }; then
     echo "Normal boot requires live integer console and QUALIFICATION=0" >&2; exit 1
 fi
 if [ "$network" = true ] && { [ "$profile" != device ] || [ "$boot_fast" != true ] || [ "$sdmmc" != false ]; }; then
@@ -442,7 +510,45 @@ if [ "$sqld" = true ] && { [ "$normal_storage" != true ] || [ "$xy_workspace" !=
 if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
     echo "NORMAL_STORAGE requires ordinary integer device live-console boot; qualification/finite probes remain separate" >&2; exit 1
 fi
-zig="$repo_root/.tools/zig-0.17.0/zig"
+rust_display=${NIHOS_NATIVE_RUST_DISPLAY:-0}
+case "$rust_display" in
+    0) rust_display=false ;;
+    1) rust_display=true ;;
+    *) echo "NIHOS_NATIVE_RUST_DISPLAY must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_display" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$psram_200" != true ] || [ "$network" = true ] || [ "$devices" = true ] || [ "$normal_storage" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ] || [ "$sdmmc" = true ] || [ "$usb" = true ] || [ "$qualification" = true ] || [ "$boot_test" != 0 ] || [ "$console_fault" = true ]; }; then
+    echo "RUST_DISPLAY requires the isolated live display device profile without optional services" >&2; exit 1
+fi
+rust_session_test=${NIHOS_NATIVE_RUST_SESSION_TEST:-0}
+case "$rust_session_test" in
+    0) rust_session_test=false; rust_session_test_cpp=0 ;;
+    1) rust_session_test=true; rust_session_test_cpp=1 ;;
+    *) echo "NIHOS_NATIVE_RUST_SESSION_TEST must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_session_test" = true ] && { [ "$profile" != emulator ] || [ "$mode" != integer ] || [ "$boot_test" != 1 ] || [ "$console_live" = true ]; }; then
+    echo "RUST_SESSION_TEST requires the emulator headless normal boot test 1" >&2; exit 1
+fi
+rust_session=${NIHOS_NATIVE_RUST_SESSION:-0}
+if [ "$rust_session_test" = true ]; then rust_session=1; fi
+case "$rust_session" in
+    0) rust_session=false ;;
+    1) rust_session=true ;;
+    *) echo "NIHOS_NATIVE_RUST_SESSION must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_session" = true ] && [ "$rust_session_test" != true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$rust_display" = true ]; }; then
+    echo "RUST_SESSION requires the normal integer device live-console profile" >&2; exit 1
+fi
+rust_probe=${NIHOS_NATIVE_RUST_PROBE:-0}
+if [ "$rust_display" = true ]; then rust_probe=1; fi
+case "$rust_probe" in
+    0) rust_probe=false ;;
+    1) rust_probe=true ;;
+    *) echo "NIHOS_NATIVE_RUST_PROBE must be 0 or 1" >&2; exit 1 ;;
+esac
+if [ "$rust_probe" = true ] && [ "$mode" != integer ]; then
+    echo "RUST_PROBE requires the integer ilp32 ABI" >&2; exit 1
+fi
+zig=${NIHOS_ZIG:-"$repo_root/.tools/zig-0.17.0/zig"}
 if [ ! -x "$zig" ]; then sh "$repo_root/tools/bootstrap-zig.sh" >/dev/null; fi
 if [ "$devices" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$console_live" != true ] || [ "$boot_fast" != true ] || [ "${NIHOS_NATIVE_DISPLAY:-0}" != 2 ] || [ "$psram_200" != true ] || [ "$boot_test" != 0 ] || [ "$sdmmc" = true ]; }; then
     echo "DEVICES requires the normal integer live-console device profile" >&2; exit 1
@@ -491,13 +597,24 @@ if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$
     echo "xy runtime requires the ordinary integer workspace/interactive emulator profile" >&2
     exit 1
 fi
-"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
 {
     printf 'pub const sqld = %s;\n' "$sqld"
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
+    printf 'pub const rust_probe = %s;\n' "$rust_probe"
+    printf 'pub const rust_display = %s;\n' "$rust_display"
+    printf 'pub const rust_session = %s;\n' "$rust_session"
+    printf 'pub const rust_session_test = %s;\n' "$rust_session_test"
+    printf 'pub const wasm_probe = %s;\n' "$wasm"
+    printf 'pub const wasm_task = %s;\n' "$wasm_task"
+    printf 'pub const wasm_session_test = %s;\n' "$wasm_session_test"
+    printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
+    printf 'pub const wasm_interactive_repeat = %s;\n' "$wasm_repeat"
+    printf 'pub const wasm_alignment_negative = %s;\n' "$wasm_align_negative"
+    printf 'pub const wasm_alignment_corpus = %s;\n' "$wasm_align_corpus"
     printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
     printf 'pub const xy_trace = %s;\n' "$xy_trace"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
@@ -576,6 +693,135 @@ if [ "$high_sram" != true ]; then
         -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -DNIH_NATIVE_CARD_READ="$card_read_cpp" \
         -o "$build_dir/base_sram.o" "$repo_root/src/platform/native/base_sram.c"
     set -- "$@" "$build_dir/base_sram.o"
+fi
+if [ "$rust_probe" = true ] || [ "$rust_session" = true ]; then
+    CARGO_TARGET_DIR="$build_dir/rust-target" cargo build --locked --release \
+        --target riscv32imac-unknown-none-elf --features native-task --manifest-path "$repo_root/probes/rust-app/Cargo.toml"
+    if [ "$rust_probe" = true ]; then
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -femit-bin="$build_dir/rust-fixture.o" "$repo_root/src/graphics/rust_app_native_fixture.zig"
+        set -- "$@" "$build_dir/rust-fixture.o"
+    else
+        "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+            -femit-bin="$build_dir/rust-session-adapter.o" "$repo_root/src/graphics/rust_app_probe.zig"
+        set -- "$@" "$build_dir/rust-session-adapter.o"
+    fi
+    set -- "$@" "$build_dir/rust-target/riscv32imac-unknown-none-elf/release/libnihos_rust_app_probe.a"
+fi
+if [ "$wasm" = true ]; then
+    wamr="$repo_root/build/wamr-2.4.5"
+    [ -d "$wamr/.git" ] || { echo "Run probes/wamr-host/run.sh first" >&2; exit 1; }
+    [ "$(git -C "$wamr" rev-parse HEAD)" = 25bd7eb63e828e4bd242cc9b38d260b4b31c6605 ] || { echo "WAMR revision mismatch" >&2; exit 1; }
+    [ -z "$(git -C "$wamr" status --porcelain)" ] || { echo "WAMR source modified" >&2; exit 1; }
+    mkdir -p "$build_dir/licenses"
+    cp "$wamr/LICENSE" "$build_dir/licenses/WAMR.txt"
+    riscv_cc=${NIHOS_RISCV_CC:-riscv32-esp-elf-gcc}
+    riscv_cc_path=$(command -v "$riscv_cc") || { echo "Set NIHOS_RISCV_CC" >&2; exit 1; }
+    riscv_prefix=${riscv_cc_path%gcc}
+    for tool in ld objcopy; do [ -x "$riscv_prefix$tool" ] || { echo "Missing matching $tool" >&2; exit 1; }; done
+    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" NIHOS_WAMR_RV32_TABLE_FIX="${NIHOS_NATIVE_WASM_ALIGN_TABLE_FIX:-0}" NIHOS_WAMR_RV32_STACK_FIX="${NIHOS_NATIVE_WASM_ALIGN_STACK_FIX:-0}" NIHOS_WAMR_RV32_FIXES="${NIHOS_NATIVE_WASM_ALIGN_FIXES:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
+    NIHOS_ZIG="$zig" sh "$repo_root/probes/wamr-arena/run-rv32.sh"
+    "$riscv_prefix"ld -m elf32lriscv -r --whole-archive \
+        "$wamr_compile_dir/libwamr-rv32-compile.a" --no-whole-archive \
+        -o "$build_dir/wamr-combined.o"
+    cp "$repo_root/build/wamr-arena-rv32/arena.o" "$build_dir/wamr_arena.o"
+    if [ "$wasm_align_san" = true ]; then
+        python3 "$repo_root/probes/wamr-rv32/readonly-ubsan.py" "$riscv_prefix"objdump "$riscv_prefix"objcopy "$build_dir/wamr-combined.o"
+        "$riscv_cc_path" -c -Os -ffreestanding -fno-builtin -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+            "$repo_root/probes/wamr-rv32/ubsan_alignment.c" -o "$build_dir/wamr_align_handler.o"
+        set -- "$@" "$build_dir/wamr_align_handler.o"
+        if [ "$wasm_align_negative" = true ]; then
+            "$riscv_cc_path" -c -Os -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+                -fsanitize=alignment -fno-sanitize-recover=alignment "$repo_root/probes/wamr-rv32/ubsan_alignment_negative.c" -o "$build_dir/wamr_c_align_negative.o"
+            python3 "$repo_root/probes/wamr-rv32/readonly-ubsan.py" "$riscv_prefix"objdump "$riscv_prefix"objcopy "$build_dir/wamr_c_align_negative.o"
+            set -- "$@" "$build_dir/wamr_c_align_negative.o"
+        fi
+    fi
+    wasm_rustflags='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C link-arg=--max-memory=65536'
+    if [ "$wasm_align_corpus" = true ] && [ "$wasm_corpus_uncompressed" = false ]; then
+        wasm_rustflags="$wasm_rustflags -C link-arg=--compress-relocations"
+    fi
+    RUSTFLAGS="$wasm_rustflags" CARGO_TARGET_DIR="$build_dir/rust-wasm-target" cargo build --locked --release \
+        --target wasm32-unknown-unknown --features "$wasm_corpus_features" --manifest-path "$repo_root/probes/rust-wasm/Cargo.toml"
+    cp "$build_dir/rust-wasm-target/wasm32-unknown-unknown/release/nihos_rust_wasm_probe.wasm" "$build_dir/app.wasm"
+    "$zig" build-exe -O ReleaseSmall -femit-bin="$build_dir/package-ed25519-pack" \
+        --dep app_package --dep package_ed25519 --dep app_policy \
+        -Mroot="$repo_root/probes/wamr-native/package-ed25519-pack.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig"
+    "$build_dir/package-ed25519-pack" "$build_dir/app.wasm" "$build_dir/app-test-ed25519.nihpkg"
+    "$build_dir/package-ed25519-pack" "$build_dir/app.wasm" "$build_dir/app-update-ed25519.nihpkg" 2
+    "$zig" build-exe -O ReleaseSmall -femit-bin="$build_dir/boot-media-pack" \
+        --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mroot="$repo_root/probes/wamr-native/boot-media-pack.zig" \
+        --dep app_package --dep app_policy -Mapp_install="$repo_root/src/app/package_install.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_package -Mtrust_snapshot="$repo_root/src/app/trust_snapshot.zig" \
+        --dep app_package --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_store \
+        -Mtrust_snapshot_ed25519="$repo_root/src/app/trust_snapshot_ed25519.zig" \
+        -Mtrust_snapshot_store="$repo_root/src/app/trust_snapshot_store.zig"
+    "$build_dir/boot-media-pack" "$build_dir/app-test-ed25519.nihpkg" \
+        "$build_dir/boot_trust.bin" "$build_dir/boot_package.bin" \
+        "$build_dir/boot_counter.bin" "$build_dir/boot_root.pub"
+    rm -f "$build_dir/package_blob.o"
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_trust.bin -o boot_trust.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_package.bin -o boot_package.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_counter.bin -o boot_counter.o)
+    (cd "$build_dir" && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_root.pub -o boot_root.o)
+    (cd "$build_dir" && cp app-update-ed25519.nihpkg boot_update.bin && "$riscv_prefix"ld -m elf32lriscv -r -b binary boot_update.bin -o boot_update.o)
+    "$riscv_prefix"objcopy --rename-section .data=.flash.trust.journal,alloc,load,readonly,data,contents "$build_dir/boot_trust.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.package.journal,alloc,load,readonly,data,contents "$build_dir/boot_package.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.counter.fixture,alloc,load,readonly,data,contents "$build_dir/boot_counter.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.root.fixture,alloc,load,readonly,data,contents "$build_dir/boot_root.o"
+    "$riscv_prefix"objcopy --rename-section .data=.flash.package.update,alloc,load,readonly,data,contents "$build_dir/boot_update.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/package_ed25519.o" \
+        --dep package_ed25519 --dep app_package --dep app_policy \
+        -Mroot="$repo_root/probes/wamr-native/ed25519-rv32.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/boot_media.o" \
+        --dep app_boot --dep app_install --dep app_package --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mroot="$repo_root/probes/wamr-native/boot-media-rv32.zig" \
+        --dep app_install --dep app_policy --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_ed25519 --dep trust_snapshot_store \
+        -Mapp_boot="$repo_root/src/app/boot_admission.zig" \
+        --dep app_package --dep app_policy -Mapp_install="$repo_root/src/app/package_install.zig" \
+        --dep app_policy -Mapp_package="$repo_root/src/app/package.zig" \
+        -Mapp_policy="$repo_root/src/app/module_policy.zig" \
+        --dep app_package -Mpackage_ed25519="$repo_root/src/app/package_ed25519.zig" \
+        --dep app_package -Mtrust_snapshot="$repo_root/src/app/trust_snapshot.zig" \
+        --dep app_package --dep package_ed25519 --dep trust_snapshot --dep trust_snapshot_store \
+        -Mtrust_snapshot_ed25519="$repo_root/src/app/trust_snapshot_ed25519.zig" \
+        -Mtrust_snapshot_store="$repo_root/src/app/trust_snapshot_store.zig"
+    "$riscv_cc_path" -c -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+        "$repo_root/probes/wamr-native/stack.S" -o "$build_dir/wamr_stack.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+        -ffunction-sections -fdata-sections -femit-bin="$build_dir/wamr_surface.o" \
+        "$repo_root/src/graphics/rust_app_probe.zig"
+    "$riscv_cc_path" -c -Os -std=c11 -Wall -Wextra -Wconversion -Werror \
+        -ffreestanding -fno-builtin -fno-unwind-tables \
+        -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections \
+        $wasm_task_define $wasm_session_define $wasm_corpus_define -I "$wamr/core/iwasm/include" "$repo_root/probes/wamr-native/runner.c" \
+        -o "$build_dir/wamr_runner.o"
+    set -- "$@" "$build_dir/wamr-combined.o" "$build_dir/wamr_arena.o" \
+        "$build_dir/boot_trust.o" "$build_dir/boot_package.o" \
+        "$build_dir/boot_counter.o" "$build_dir/boot_root.o" "$build_dir/boot_update.o" \
+        "$build_dir/package_ed25519.o" "$build_dir/boot_media.o" \
+        "$build_dir/wamr_stack.o" "$build_dir/wamr_runner.o" "$build_dir/wamr_surface.o"
+    for source in c_sort c_format c_strings; do
+        extra=
+        if [ "$source" = c_strings ]; then extra=-DNIH_C_NO_FABS; fi
+        "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
+            -Oz -std=c11 -ffreestanding -fno-builtin -fno-unwind-tables -fno-asynchronous-unwind-tables \
+            -ffunction-sections -fdata-sections -I "$repo_root/include" $extra \
+            "$repo_root/src/compat/$source.c" -o "$build_dir/wamr_c_$source.o"
+        set -- "$@" "$build_dir/wamr_c_$source.o"
+    done
 fi
 if [ "$display" = true ] || [ "$psram_200" = true ]; then
     idf_path=${NIHOS_IDF_PATH:-${IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}}
@@ -904,8 +1150,15 @@ fi
     -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_FLOATING="$fp_asm" -DNIH_NATIVE_DISPLAY_SCANOUT="$display_boot_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" --gc-sections \
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
+    --dep frame_mailbox --dep async_start --dep wasm_ui_controller --dep hosted_station --dep dhcp_fixture \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring --dep suspend -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep app_session --dep app_presenter --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring --dep suspend -Mroot="$repo_root/src/platform/native/main.zig" \
+    -Mdhcp_fixture="$repo_root/src/net/fixtures/wasm_fixture.zig" \
+    -Mframe_mailbox="$repo_root/src/app/frame_mailbox.zig" \
+    -Masync_start="$repo_root/src/app/async_start.zig" \
+    -Mwasm_ui_controller="$repo_root/src/app/wasm_ui_controller.zig" \
+    -Mapp_session="$repo_root/src/app/session.zig" \
+    -Mapp_presenter="$repo_root/src/graphics/app_presenter.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mstorage_control="$repo_root/src/storage/control.zig" \
@@ -937,7 +1190,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input --dep suspend \
+    --dep wasm_ui_controller --dep app_session --dep app_presenter --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input --dep suspend \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Msuspend="$repo_root/src/soc/esp32p4/suspend.zig" \

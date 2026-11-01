@@ -1,0 +1,7 @@
+    Finished `release` profile [optimized] target(s) in 0.00s
+Same Rust app, Wasm imports and range checks: ok
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=4193888 free=4171920 highmark=21968 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok

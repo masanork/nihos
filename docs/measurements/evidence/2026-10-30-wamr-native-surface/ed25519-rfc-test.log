@@ -1,0 +1,3 @@
+1/2 package_ed25519.test.RFC 8032 Ed25519 test vector 1 verifies strictly...OK
+2/2 package_ed25519.test.trust snapshots reject ambiguous and invalid records...OK
+All 2 tests passed.

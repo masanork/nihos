@@ -1,0 +1,30 @@
+{
+  "wasm_source_commit": "7443b4d2ab46121f922775a565c25c248d5ab81c",
+  "device_source_commit": "90beb5e556f24d68b3deb4a262a97c0de9e30d5a",
+  "reconciled_main": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "qualification": "headless emulator and static device image audits; no physical execution",
+  "wasm_candidate": {
+    "nihos-native-image.elf": "a40efedbc7745c9c330c5c89e7d27b0765b47b663cb44e107faad3626abf8e0c",
+    "nihos-native-flash.bin": "086c04314acb58f4985e7dd750ad1c21faffed85520f39c9073aaef4cec06c64"
+  },
+  "evidence_sha256": {
+    "cancel.log": "e7b21a7b940c7d5998f0d4d2aae2e598d185e9b4519ff7acae44f46af7d9233e",
+    "device-off-audit.json": "d8bb340ce6df394a9a7f9317b7c65ee0a43ea58255374ed27d550711415b0f49",
+    "device-off.log": "daaebf7ef27b3d1a32ccb485c990b7aea2c553d696d22889a59d8a9572b5ed2b",
+    "device-on-audit.json": "c41453ed9d8aa0fc8fd5bdf10d94a8505d9b5ee4ec1117196c127f3cae44a31e",
+    "device-on.log": "b77f4bd08bf032340c74bba45454a92d7dacc7268027499bf7a2338685b21f5b",
+    "early-quit.log": "7c39b038d3ce69f01a62f4f1e095e0213d6b8c8ad54f1cb81b61fa471b0441b4",
+    "image-audit-wamr.json": "bb4202507111f93ce516f011a355d804900cae200005ffff27fee703a5d84013",
+    "image-tests.log": "fa46ef6b882033d6e1526ce6459b51a7d629724b687fbd6a147a1a7bc0b4391f",
+    "matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32",
+    "metered-trap.log": "a90282059caaa3a20c5e41d14502e14c643c6837c225ca76ac8828dc70749402",
+    "noinput.log": "910dfb8d55f98b457329388c0dd447994b3c7e22d46b0c29f9490cf60323e59f",
+    "normal.log": "3506f084b873e974432d39654c57e3ccbc77a0cb7282f0c946964edf83b62b4c",
+    "present-failure.log": "84e2f60924ceb30d8f03fc61172b11ecc22a58a928eb76fe3f0ed0309c75cebd",
+    "python.log": "8c49e1c3b79248a7b5a36bddbdcd35c3aa70dd1135ce886f0d4615831e99c2fe",
+    "report.json": "cd46627774dafea58b7c236cb20916e292b148e4d5303a18b5790012c1f12f9d",
+    "safe.log": "4bee6b0b32c9ca5b33fb05380e63e9fbcf8e64db4b3f8e5afd78cbcc08ed5489",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "unit.log": "e5c5b6bc3a9b0b77a10290c276a9d23a16163fb59e0cb111ffc50a7a4a93e2c8"
+  }
+}

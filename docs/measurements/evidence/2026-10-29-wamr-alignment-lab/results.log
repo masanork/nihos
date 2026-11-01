@@ -1,0 +1,3 @@
+Stock classic: expected WASMBranchBlock UBSan failure reproduced
+Patched classic + split access: ASan/UBSan fixture passed
+Patched ASan/UBSan allocation failures: 74/74 tracked allocations reclaimed

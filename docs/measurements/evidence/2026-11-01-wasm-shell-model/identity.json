@@ -1,0 +1,23 @@
+{
+  "source_commit": "f5b87240d2c64926ccf3f728e2ce353b727219d4",
+  "reconciled_main": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "scope": "synthetic launcher model and real RV32 Wasm worker; no actual UI or physical run",
+  "candidate": {
+    "nihos-native-image.elf": "12b6c527103deff4f29ff483e8530877d2c1bbe11a284b1fbc1b30ec0bcfcb63",
+    "nihos-native-flash.bin": "7e68d4f126936e6329916d2b01c355fa5eb01bc5770dedba7d5b8ad3961f46d0"
+  },
+  "evidence_sha256": {
+    "cancel.log": "d0a947163a1831ee4cab627c0bb50b7803eae7ef253be39362ab8c05e7fb9e99",
+    "early-quit.log": "07df500336471d24a778eadbce551bf3b60de25d39ee77904623a5ae8b39b10c",
+    "image-audit-wamr.json": "7c0e98cd7bd19c0cf4a74fb07917385760291d224b6af4bb112b78679bfb12f7",
+    "metered-trap.log": "8b1d37e0833c85bdb581ee71393a224420228e53e045071b9c7890cf0ef30c0e",
+    "noinput.log": "f40351f5b967bd0366739888de5323d3cc666cbbb8eda0072f4ad7aeb1266dfa",
+    "normal.log": "c35ae34f94b527080f6e955de44f042ce04c2b9c71ca15030976d7e3fbdd238f",
+    "present-failure.log": "acbcfb0959bb3e6280613f2e4885ac45e3185977c4b2d6b49a7cc930b6001958",
+    "report.json": "53751fb2a7a53970f6307b040ceab3938351a39f7d7b7a8a6c8be03b09721c45",
+    "safe.log": "fb73b94e9cb83aa8d67d623d0ae82e525513a6619870569cb363be3265bfbfa2",
+    "static.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "unit.log": "e4460545bf4d39b46d565b159e484ec5cd7e8d69e26ab8d6dda9b80cd21d0dd5",
+    "wasm.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32"
+  }
+}

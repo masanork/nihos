@@ -1,0 +1,120 @@
+name: Experimental Rust SDK
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUSTUP_TOOLCHAIN: '1.98.1'
+
+concurrency:
+  group: rust-sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host:
+    name: Rust SDK and signed Wasm host contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install Rust targets
+        run: rustup toolchain install 1.98.1 --profile minimal --target wasm32-unknown-unknown,riscv32imac-unknown-none-elf
+      - name: Install pinned Zig
+        run: sh tools/bootstrap-zig.sh
+      - name: SDK, arenas, admission and process recovery
+        run: |
+          mkdir -p build
+          sh tools/run-rust-sdk-host.sh > build/rust-sdk-host.log 2>&1 || {
+            cat build/rust-sdk-host.log
+            exit 1
+          }
+          cat build/rust-sdk-host.log
+      - name: Retain host evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: rust-sdk-host-evidence
+          path: |
+            build/rust-sdk-host.log
+            build/package-process/*.log
+            build/package-process/*.txt
+            build/journal-wamr-host/*.log
+            build/rust-session-host/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  native:
+    name: Opt-in RV32 Rust and WAMR emulator
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: espressif/install-esp-idf-action@8fc05d1470d5591417e7a3707a1f2bec178db4ae
+        with:
+          version: v5.4.4
+      - name: Install Rust targets
+        run: rustup toolchain install 1.98.1 --profile minimal --target wasm32-unknown-unknown,riscv32imac-unknown-none-elf
+      - name: Native FFI task lifecycle
+        run: sh probes/rust-app/run-emulator.sh
+      - name: Normal-profile Rust session and cleanup
+        run: sh probes/rust-session/run-emulator.sh
+      - name: Link and audit the normal device Rust session (no physical run)
+        env:
+          NIHOS_NATIVE_RUST_SESSION: '1'
+        run: sh tools/build-native.sh device integer
+      - name: Fetch pinned WAMR and run host bounds fixture
+        run: sh probes/wamr-host/run.sh
+      - name: Signed Wasm and UART cleanup matrix
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-emulator.sh
+      - name: Scheduled Wasm task, wait, reap and same-boot restart
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-task-emulator.sh
+      - name: Common session frame requests and Wasm task cleanup
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null
+          NIHOS_IDF_PYTHON="$(command -v python)" sh probes/wamr-native/run-session-emulator.sh
+      - name: Retain emulator evidence
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: rust-sdk-emulator-evidence
+          path: |
+            build/native-emulator/psram-0/
+            build/rust-session-emulator/*.log
+            build/rust-session-emulator/*.json
+            build/rust-session-emulator/*.elf
+            build/rust-session-emulator/*.bin
+            build/native-emulator-wasm/*.log
+            build/native-emulator-wasm/*.json
+            build/native-emulator-wasm/*.txt
+            build/native-emulator-wasm/*.elf
+            build/native-emulator-wasm/*.bin
+            build/native-emulator-wasm/licenses/
+            build/wamr-task-emulator/*.log
+            build/wamr-task-emulator/*.json
+            build/wamr-task-emulator/*.txt
+            build/wamr-task-emulator/*.elf
+            build/wamr-task-emulator/*.bin
+            build/wamr-task-emulator/licenses/
+            build/wasm-session-emulator/*.log
+            build/wasm-session-emulator/*.json
+            build/wasm-session-emulator/*.txt
+            build/wasm-session-emulator/*.elf
+            build/wasm-session-emulator/*.bin
+            build/wasm-session-emulator/licenses/
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,7 @@
+4b226889e627af9ce64ee0b5529d1418cd60afc80944d315ed2b64026dde1710  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/app.wasm
+5958b4dac8881c0ffd7cc3d820072d66afe0b99bb9ed6c535ccb6a1df7be2801  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/app.nihpkg
+1d2367acea955b129c2ff7744d2ff37d7ab60e8860e1fa0b33daeaf612d901d7  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/trust.bin
+763c50869bff5e386b0ed3755e73b0f25e1f7a78644e28ae2428b56de8c8d240  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/package.bin
+7c9fa136d4413fa6173637e883b6998d32e1d675f88cddff9dcbcf331820f4b8  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/counter.bin
+24aa2a5589edcb57fea0be3552f065de6d3a837feaccf60f8bde018fa4926b6a  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/root.pub
+4b226889e627af9ce64ee0b5529d1418cd60afc80944d315ed2b64026dde1710  /private/tmp/nihos-rust-app-sdk/build/journal-wamr-host/admitted.wasm

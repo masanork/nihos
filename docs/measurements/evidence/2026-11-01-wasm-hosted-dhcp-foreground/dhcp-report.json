@@ -1,0 +1,175 @@
+{
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "candidate": {
+    "nihos-native-image.elf": "ccb911bb44f41aa557e11e3d0b12bd914e51f505fa1fced7cdc72b3c6d8b77e3",
+    "nihos-native-flash.bin": "371425cedf6d356ab65ad1eb25d8e85a8e02336e8c7c0de96b8ad2bdce0d9e1a"
+  },
+  "events": [
+    {
+      "round": 1,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    },
+    {
+      "round": 2,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 2,
+      "state": 4,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    }
+  ],
+  "foreground": [
+    {
+      "round": 1,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 27,
+      "max_gap_us": 20054
+    },
+    {
+      "round": 2,
+      "opening": 1,
+      "cancelling": 110,
+      "active": 0,
+      "max_gap_us": 20000
+    },
+    {
+      "round": 3,
+      "opening": 109,
+      "cancelling": 0,
+      "active": 27,
+      "max_gap_us": 20002
+    }
+  ],
+  "mock_work": [
+    {
+      "round": 1,
+      "items": 136,
+      "digest": 2383064389,
+      "sensor": 1089920
+    },
+    {
+      "round": 2,
+      "items": 111,
+      "digest": 3097764037,
+      "sensor": 863320
+    },
+    {
+      "round": 3,
+      "items": 136,
+      "digest": 4271999685,
+      "sensor": 1090688
+    }
+  ],
+  "hosted_decoder": [
+    {
+      "round": 1,
+      "accepted": 34,
+      "rejected": 34,
+      "errors": 0,
+      "active_events": 14
+    },
+    {
+      "round": 2,
+      "accepted": 28,
+      "rejected": 27,
+      "errors": 0,
+      "active_events": 0
+    },
+    {
+      "round": 3,
+      "accepted": 34,
+      "rejected": 34,
+      "errors": 0,
+      "active_events": 14
+    }
+  ],
+  "request_latency": [
+    {
+      "round": 1,
+      "render_us": 820,
+      "close_us": 1445
+    },
+    {
+      "round": 2,
+      "render_us": 0,
+      "close_us": 0
+    },
+    {
+      "round": 3,
+      "render_us": 818,
+      "close_us": 1447
+    }
+  ],
+  "hosted_station": [
+    {
+      "round": 1,
+      "completed": 8,
+      "stale": 8,
+      "errors": 0,
+      "offers": 8,
+      "corrupt": 8,
+      "opening": 6,
+      "cancelling": 0,
+      "active": 2
+    },
+    {
+      "round": 2,
+      "completed": 6,
+      "stale": 7,
+      "errors": 0,
+      "offers": 6,
+      "corrupt": 6,
+      "opening": 0,
+      "cancelling": 6,
+      "active": 0
+    },
+    {
+      "round": 3,
+      "completed": 8,
+      "stale": 8,
+      "errors": 0,
+      "offers": 8,
+      "corrupt": 8,
+      "opening": 6,
+      "cancelling": 0,
+      "active": 2
+    }
+  ]
+}

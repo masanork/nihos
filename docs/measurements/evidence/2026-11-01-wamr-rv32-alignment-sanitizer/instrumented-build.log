@@ -1,0 +1,59 @@
+WAMR single-owner platform model: ok
+nihos C sort/format compatibility subset: ok
+-- WAMR version: 2.4.5
+-- Build Configurations:
+     Build as target RISCV32_ILP32
+     Build for platform nihos_compile_only
+     CMAKE_BUILD_TYPE Release
+     BUILD_SHARED_LIBS 
+     WAMR Interpreter enabled
+     Fast interpreter disabled
+     WAMR AOT disabled
+     WAMR Fast JIT disabled
+     WAMR LLVM ORC JIT disabled
+     Libc builtin disabled
+     Libc WASI disabled
+     Multiple modules disabled
+     Hardware boundary check disabled
+     Wakeup of blocking operations enabled
+     GC performance profiling disabled
+     Shrunk memory enabled
+     Instruction metering enabled
+     Extended constant expression disabled
+-- About Wasm Proposals:
+     Always-on:
+       "Multi-value"
+       "Non-trapping float-to-int conversions"
+       "Sign-extension operators"
+       "WebAssembly C and C++ API"
+     Configurable. 0 is OFF. 1 is ON:
+       "Bulk Memory Operation" via WAMR_BUILD_BULK_MEMORY: 1
+       "Extended Constant Expressions" via WAMR_BUILD_EXTENDED_CONST_EXPR: 0
+       "Fixed-width SIMD" via WAMR_BUILD_SIMD: 
+       "Garbage collection" via WAMR_BUILD_GC: 0
+       "Legacy Exception handling" via WAMR_BUILD_EXCE_HANDLING: 0
+       "Memory64" via WAMR_BUILD_MEMORY64: 0
+       "Multiple memories" via WAMR_BUILD_MULTI_MEMORY: 0
+       "Reference Types" via WAMR_BUILD_REF_TYPES: 
+       "Reference-Typed Strings" via WAMR_BUILD_STRINGREF: 0
+       "Tail call" via WAMR_BUILD_TAIL_CALL: 0
+       "Threads" via WAMR_BUILD_SHARED_MEMORY: 0
+       "Typed Function References" via WAMR_BUILD_GC: 0
+     Unsupported (>= Phase4):
+       "Branch Hinting"
+       "Custom Annotation Syntax in the Text Format"
+       "Exception handling"
+       "Import/Export of Mutable Globals"
+       "JS String Builtins"
+       "Relaxed SIMD"
+
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-rv32-align-compile
+[100%] Built target wamr-rv32-compile
+   text	   data	    bss	    dec	    hex	filename
+ 243177	  61227	     72	 304476	  4a55c	/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-rv32-align-compile/wamr-combined.o
+Compile-only RV32 object; unresolved imports: /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-rv32-align-compile/undefined.txt
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-arena-rv32/arena.o: ELF 32-bit LSB relocatable, UCB RISC-V, RVC, soft-float ABI, version 1 (SYSV), not stripped
+Placed 962 GCC UBSan metadata sections in test Flash rodata
+    Finished `release` profile [optimized] target(s) in 0.04s
