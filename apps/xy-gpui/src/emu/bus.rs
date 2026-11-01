@@ -2,11 +2,12 @@
 //!
 //! Address Map:
 //!   0x4000_0000..0x4100_0000 : Flash MMIO (16 MiB)
-//!   0x4800_0000..0x4a00_0000 : PSRAM (32 MiB) [0x4800_0000 = Framebuffer 1280x720 RGB565]
+//!   0x4800_0000..0x4a00_0000 : PSRAM (32 MiB) [0x4803_0000 = Framebuffer 1280x720 RGB565]
 //!   0x4fc0_0000..0x4fc1_0000 : Boot ROM (64 KiB)
 //!   0x4ff0_0000..0x5000_0000 : SRAM (1 MiB) [0x4ff2_0000 = Text, 0x4ff6_0000 = Stack]
 //!   0x5000_0000..0x6000_0000 : MMIO Peripherals (MSPI, Timer, UART, PMU, LCD, etc.)
 
+use super::tab5_i2c::Tab5I2c;
 use std::collections::HashMap;
 
 pub const FLASH_BASE: u32 = 0x4000_0000;
@@ -20,6 +21,7 @@ pub const SRAM_SIZE: usize = 1024 * 1024;
 
 pub const FB_WIDTH: usize = 1280;
 pub const FB_HEIGHT: usize = 720;
+pub const FB_BASE: u32 = 0x4803_0000;
 pub const FB_SIZE: usize = FB_WIDTH * FB_HEIGHT * 2; // RGB565LE
 
 pub struct Bus {
@@ -32,6 +34,20 @@ pub struct Bus {
 
     // Simulated peripheral registers / state
     pub timer_ticks: u64,
+    pub cpu1_entry: Option<u32>,
+    analog_regs: [u8; 256],
+    i2c: Tab5I2c,
+    gpio_enable: u32,
+    gpio_enable1: u32,
+    pub scanout: Option<Vec<u8>>,
+    pub scanout_frames: u64,
+    dma_irq: u32,
+    dma_primed: bool,
+    dma_ready_at: u64,
+    pub active_hart: usize,
+    clic: [Vec<u8>; 2],
+    timer_epoch: [u64; 2],
+    timer_irq: u32,
     pub keyboard_fifo: Vec<u8>,
     pub console_output: Vec<u8>,
 }
@@ -57,6 +73,20 @@ impl Bus {
             mmu_table,
             mmu_index: 0,
             timer_ticks: 0,
+            cpu1_entry: None,
+            analog_regs: [0; 256],
+            i2c: Tab5I2c::default(),
+            gpio_enable: 0,
+            gpio_enable1: 0,
+            scanout: None,
+            scanout_frames: 0,
+            dma_irq: 0,
+            dma_primed: false,
+            dma_ready_at: 0,
+            active_hart: 0,
+            clic: [vec![0; 8192], vec![0; 8192]],
+            timer_epoch: [0; 2],
+            timer_irq: 0,
             keyboard_fifo: Vec::with_capacity(256),
             console_output: Vec::with_capacity(4096),
         };
@@ -71,8 +101,9 @@ impl Bus {
         bus
     }
 
-    pub fn framebuffer(&self) -> &[u8] {
-        &self.psram[..FB_SIZE]
+    pub fn framebuffer_byte(&self, offset: usize) -> u8 {
+        assert!(offset < FB_SIZE);
+        self.psram[self.translate_psram(FB_BASE + offset as u32)]
     }
 
     pub fn translate_psram(&self, vaddr: u32) -> usize {
@@ -85,6 +116,7 @@ impl Bus {
 
     pub fn read_u8(&mut self, addr: u32) -> u8 {
         match addr {
+            0x2080_0000..=0x2080_1fff => self.clic[self.active_hart][(addr - 0x2080_0000) as usize],
             FLASH_BASE..=0x40ff_ffff => {
                 let off = (addr - FLASH_BASE) as usize;
                 if off < self.flash.len() {
@@ -134,6 +166,9 @@ impl Bus {
 
     pub fn write_u8(&mut self, addr: u32, val: u8) {
         match addr {
+            0x2080_0000..=0x2080_1fff => {
+                self.clic[self.active_hart][(addr - 0x2080_0000) as usize] = val
+            }
             FLASH_BASE..=0x40ff_ffff => {
                 let off = (addr - FLASH_BASE) as usize;
                 if off < self.flash.len() {
@@ -178,8 +213,155 @@ impl Bus {
         self.write_u8(addr.wrapping_add(3), (val >> 24) as u8);
     }
 
+    // A bounded, single-descriptor transfer to the DSI FIFO. Unsupported
+    // descriptors do not publish pixels or a completion interrupt.
+    fn start_display_dma(&mut self) {
+        self.dma_irq = 0;
+        self.dma_primed = false;
+        let head = self.mmio.get(&0x5008_1128).copied().unwrap_or(0) & !63;
+        if !(SRAM_BASE..=SRAM_BASE + SRAM_SIZE as u32 - 64).contains(&head) {
+            return;
+        }
+        let src = self.read_u32(head);
+        let dst = self.read_u32(head + 8);
+        let count = (self.read_u32(head + 16) & 0x3f_ffff) as usize + 1;
+        let next = self.read_u32(head + 24) & !63;
+        let ctrl = self.read_u32(head + 32);
+        let markers = self.read_u32(head + 36);
+        let width = 1usize << ((ctrl >> 8) & 7);
+        let fixed = ctrl & (1 << 4) != 0;
+        if dst != 0x5010_5000
+            || next != 0
+            || markers & 0xc000_0000 != 0xc000_0000
+            || count.checked_mul(width) != Some(FB_SIZE)
+            || width != 8
+            || src < PSRAM_BASE
+            || src
+                .checked_add(if fixed { width as u32 } else { FB_SIZE as u32 })
+                .is_none_or(|end| end > PSRAM_BASE + PSRAM_SIZE as u32)
+        {
+            return;
+        }
+        let mut pixels = vec![0; FB_SIZE];
+        if fixed {
+            for chunk in pixels.chunks_exact_mut(width) {
+                for (i, pixel) in chunk.iter_mut().enumerate() {
+                    *pixel = self.psram[self.translate_psram(src + i as u32)];
+                }
+            }
+        } else {
+            let mut offset = 0;
+            while offset < FB_SIZE {
+                let address = src + offset as u32;
+                let physical = self.translate_psram(address);
+                let page_remaining = 65536 - (address as usize & 65535);
+                let count = page_remaining
+                    .min(FB_SIZE - offset)
+                    .min(PSRAM_SIZE - physical);
+                pixels[offset..offset + count]
+                    .copy_from_slice(&self.psram[physical..physical + count]);
+                offset += count;
+            }
+        }
+        self.scanout = Some(pixels);
+        self.dma_primed = true;
+        self.scanout_frames += 1;
+        self.dma_irq |= 2;
+        self.dma_ready_at = self.timer_ticks + 1_000_000;
+    }
+
+    fn timer_counter(&self, channel: usize) -> u64 {
+        self.timer_ticks.saturating_sub(self.timer_epoch[channel]) / 360
+    }
+
+    pub fn pending_irq(&mut self, hart: usize) -> Option<u32> {
+        if hart >= 2 {
+            return None;
+        }
+        for channel in 0..2 {
+            let base = 0x500c_2000 + channel as u32 * 0x24;
+            let cfg = self.mmio.get(&base).copied().unwrap_or(0);
+            let alarm = self.mmio.get(&(base + 0x10)).copied().unwrap_or(0) as u64
+                | ((self.mmio.get(&(base + 0x14)).copied().unwrap_or(0) as u64) << 32);
+            if cfg & (1 << 31 | 1 << 10) == (1 << 31 | 1 << 10)
+                && self.timer_counter(channel) >= alarm
+            {
+                self.timer_irq |= 1 << channel;
+                self.mmio.insert(base, cfg & !(1 << 10));
+            }
+        }
+        let enabled = |line: usize| self.clic[hart][0x1000 + line * 4 + 1] & 1 != 0;
+        let matrix = 0x500d_6000 + hart as u32 * 0x800;
+        let routed =
+            |source: u32, line: u32| self.mmio.get(&(matrix + source * 4)).copied() == Some(line);
+        if enabled(17)
+            && routed(79 + hart as u32, 17)
+            && self
+                .mmio
+                .get(&(0x500e_5010 + hart as u32 * 4))
+                .copied()
+                .unwrap_or(0)
+                & 1
+                != 0
+        {
+            return Some(17);
+        }
+        if enabled(16)
+            && routed(46 + hart as u32, 16)
+            && self.timer_irq & (1 << hart) != 0
+            && self.mmio.get(&0x500c_2070).copied().unwrap_or(0) & (1 << hart) != 0
+        {
+            return Some(16);
+        }
+        if hart == 0
+            && enabled(18)
+            && self.dma_irq != 0
+            && self.timer_ticks >= self.dma_ready_at
+            && self.mmio.get(&0x5008_1190).copied().unwrap_or(0) & 2 != 0
+        {
+            return Some(18);
+        }
+        None
+    }
+
     pub fn read_mmio_u32(&mut self, addr: u32) -> u32 {
         match addr {
+            // Functional DSI model: immediate PLL lock and drained command FIFOs.
+            0x500a_00b0 => 0x95,
+            0x500a_0814 => {
+                if self.dma_primed {
+                    1024
+                } else {
+                    0
+                }
+            }
+            0x5008_1188 => {
+                if self.timer_ticks >= self.dma_ready_at {
+                    self.dma_irq
+                } else {
+                    0
+                }
+            }
+            0x5008_1018 => 0,
+            0x500a_0074 => 0x0005_0015,
+            0x500e_0020 => self.gpio_enable,
+            0x500e_002c => self.gpio_enable1,
+            0x500e_003c => {
+                if self.i2c.data_high() {
+                    1 << 31
+                } else {
+                    0
+                }
+            }
+            0x500e_0040 => u32::from(self.i2c.clock_high()),
+            0x500d_2000 => {
+                if self.keyboard_fifo.is_empty() {
+                    0
+                } else {
+                    self.keyboard_fifo.remove(0) as u32
+                }
+            }
+            0x500d_2004 => 2 | if self.keyboard_fifo.is_empty() { 0 } else { 4 },
             // UART / USB Serial JTAG RX FIFO
             0x5008_4000 => {
                 if !self.keyboard_fifo.is_empty() {
@@ -197,20 +379,65 @@ impl Bus {
                 }
             }
             // Timer Group 0 Counter Low/High (Base: 0x500c_2000)
-            0x500c_2004 => (self.timer_ticks & 0xffff_ffff) as u32,
-            0x500c_2008 => ((self.timer_ticks >> 32) & 0x003f_ffff) as u32,
+            0x500c_2004 => self.timer_counter(0) as u32,
+            0x500c_2008 => (self.timer_counter(0) >> 32) as u32,
+            0x500c_2028 => self.timer_counter(1) as u32,
+            0x500c_202c => (self.timer_counter(1) >> 32) as u32,
+            0x500c_3004 => (self.timer_ticks / 360) as u32,
+            0x500c_3008 => ((self.timer_ticks / 360) >> 32) as u32,
+            0x500c_2078 => self.timer_irq,
             _ => self.mmio.get(&addr).copied().unwrap_or(0),
         }
     }
 
     pub fn write_mmio_u32(&mut self, addr: u32, val: u32) {
         match addr {
-            // UART TX: print character to console output
-            0x5008_4000 => {
+            0x500c_2020 | 0x500c_2044 => {
+                let channel = usize::from(addr == 0x500c_2044);
+                self.timer_epoch[channel] = self.timer_ticks;
+                self.mmio.insert(addr, val);
+            }
+            0x500c_207c => self.timer_irq &= !val,
+            0x5008_1018 => {
+                if val & 0x101 == 0x101 {
+                    self.start_display_dma();
+                }
+            }
+            0x5008_1198 => {
+                self.dma_irq &= !val;
+            }
+            0x500e_0020 | 0x500e_0024 | 0x500e_0028 | 0x500e_002c | 0x500e_0030 | 0x500e_0034 => {
+                match addr {
+                    0x500e_0020 => self.gpio_enable = val,
+                    0x500e_0024 => self.gpio_enable |= val,
+                    0x500e_0028 => self.gpio_enable &= !val,
+                    0x500e_002c => self.gpio_enable1 = val,
+                    0x500e_0030 => self.gpio_enable1 |= val,
+                    _ => self.gpio_enable1 &= !val,
+                }
+                self.i2c.set_lines(
+                    self.gpio_enable1 & 1 == 0,
+                    self.gpio_enable & (1 << 31) == 0,
+                );
+            }
+            // USB Serial/JTAG and legacy UART TX.
+            0x500d_2000 | 0x5008_4000 => {
                 let ch = (val & 0xff) as u8;
                 if ch != 0 {
                     self.console_output.push(ch);
                 }
+            }
+            // MPLL analog register transactions and calibration completion.
+            0x5012_4000 => {
+                let index = ((val >> 8) & 0xff) as usize;
+                if val & (1 << 24) != 0 {
+                    self.analog_regs[index] = (val >> 16) as u8;
+                    if index == 2 {
+                        *self.mmio.entry(0x500e_60bc).or_default() |= 1 << 8;
+                    }
+                }
+                self.mmio
+                    .insert(addr, (self.analog_regs[index] as u32) << 16);
             }
             // MSPI3 PSRAM Controller (0x5008_f000)
             0x5008_f000 => {
@@ -283,7 +510,7 @@ impl Bus {
                 self.mmio.insert(addr, val);
             }
             // Timer Group 0 update latch (Channel 0: 0x500c_200c, Channel 1: 0x500c_2030)
-            0x500c_200c | 0x500c_2030 => {
+            0x500c_200c | 0x500c_2030 | 0x500c_300c => {
                 // Advance timer ticks to simulate time passing for settle / timeouts
                 self.timer_ticks = self.timer_ticks.wrapping_add(150);
                 self.mmio.insert(addr, 0); // Writing 1 auto-clears to 0 immediately

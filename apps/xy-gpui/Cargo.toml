@@ -11,3 +11,8 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 
 [profile.dev]
 debug = 0
+
+# Keep GPUI dependencies debuggable while the instruction interpreter runs with
+# useful speed in the normal development app. Runtime remains bounds checked.
+[profile.dev.package.nihos-xy-gpui]
+opt-level = 2
