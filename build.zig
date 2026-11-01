@@ -59,6 +59,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_tests })).step);
     const hosted_ota_pump_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_pump_test.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_pump_tests })).step);
+    const hosted_ota_session_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_ota_session_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_ota_session_tests })).step);
     const hosted_diagnostics_tests = b.createModule(.{ .root_source_file = b.path("src/net/hosted_diagnostics_test.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_diagnostics_tests })).step);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = protected_fault })).step);
