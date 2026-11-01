@@ -3,6 +3,7 @@
 const std = @import("std");
 fn timeSection() []const u8 {
     const root = @import("root");
+    if (@hasDecl(root, "HostedStationSection")) return root.HostedStationSection;
     if (@hasDecl(root, "C6TimeFlash") and root.C6TimeFlash) return ".flash.text.time";
     return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 }

@@ -48,3 +48,21 @@ Thus this is an existing default-profile constraint, with this branch increasing
 the reported Flash overflow; neither build is a usable image. No default-profile
 image was written to Tab5. The separately tested network/device/RTC profile
 above linked and passed its image audit.
+
+### Flash placement follow-up
+
+The preceding failures were measured before the foreground-placement change.
+An isolated diagnostic link measured the standard (time offload disabled)
+heap at 48,960 bytes on base main and 48,832 bytes on this branch, both below
+the unchanged 49,152-byte minimum. Network start/retry and stop processing
+were then placed in the already mapped XY Flash window when XY is enabled.
+The Hosted station and foreground IPv6 routines use that window in the full
+XY/C6-offload profile, freeing the boot Flash page as well. The image audit
+explicitly checks allowed functions and requires the entire Hosted station
+set to reside in one approved window.
+
+With these changes, both the standard default profile and the default profile
+with C6 time offload and IPv6 disabled built and passed the native image audit.
+Each reported a 49,728-byte primary heap. These are build/audit results: the
+full default profile has not been run on hardware, and the diagnostic link
+with a temporarily relaxed heap assertion was never a product candidate.
