@@ -7,7 +7,7 @@ const Fake = struct {
     zero_once: bool = false,
     partial: bool = false,
     drop_next: bool = false,
-    bytes: [512]u8 = undefined,
+    bytes: [512]u8 = @splat(0),
     used: usize = 0,
     pub fn send(self: *@This(), frame: []const u8) !usize {
         if (self.zero_once) {
@@ -102,7 +102,7 @@ const VerifyingPeer = struct {
     expected: []const u8,
     offset: usize = 0,
     writes: usize = 0,
-    response: [128]u8 = undefined,
+    response: [128]u8 = @splat(0),
     used: usize = 0,
     pub fn send(self: *@This(), frame: []const u8) !usize {
         var reader: wire.Reader = .{ .bytes = frame[24..] };

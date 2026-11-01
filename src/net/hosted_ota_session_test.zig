@@ -3,7 +3,7 @@ const wire = @import("hosted.zig");
 const session = @import("hosted_ota_session.zig");
 const Fake = struct {
     sent: usize = 0,
-    response: [128]u8 = undefined,
+    response: [128]u8 = @splat(0),
     used: usize = 0,
     pub fn send(self: *@This(), frame: []const u8) !usize {
         self.sent += 1;

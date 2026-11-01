@@ -33,7 +33,7 @@ pub const Exchange = struct {
     acknowledged: bool = false,
     got_result: bool = false,
     sample: ?clock.Sample = null,
-    service_output: [128]u8 = undefined,
+    service_output: [128]u8 = @splat(0),
     pending_len: usize = 0,
     owner: enum { none, station, address, service } = .none,
 

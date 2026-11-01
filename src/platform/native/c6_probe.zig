@@ -708,8 +708,11 @@ pub fn runOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) Ota
 /// Explicit single-use updater for the standalone P4 fixture. Never called by
 /// normal network boot. The guard will not send Begin before the serial token.
 pub const OtaUpdate = struct { status: u32 = 0, stage: u32 = 0, error_code: u32 = 0, acknowledged_bytes: u32 = 0 };
+// SAFETY: the OTA entry points initialize the guard before use.
 var ota_update_guard: hosted.ota_guard.Guard = undefined;
+// SAFETY: the simulation path initializes this before use.
 var ota_fake: hosted.ota_fake.Fake = undefined;
+// SAFETY: the simulation path initializes this before use.
 var ota_safe: hosted.ota_fake.NoOtaStream(@TypeOf(hosted_stream)) = undefined;
 var ota_update_stage: u32 = 0;
 fn printOtaHex(value: u32) void {

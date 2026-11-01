@@ -4,7 +4,7 @@ const guard = @import("hosted_ota_guard.zig");
 const Fake = struct {
     sends: usize = 0,
     last_id: u32 = 0,
-    response: [128]u8 = undefined,
+    response: [128]u8 = @splat(0),
     used: usize = 0,
     pub fn send(self: *@This(), bytes: []const u8) !usize {
         self.sends += 1;

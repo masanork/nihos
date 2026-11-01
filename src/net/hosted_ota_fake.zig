@@ -5,7 +5,7 @@ const wire = @import("hosted.zig");
 const ota = @import("hosted_ota.zig");
 pub const Fake = struct {
     image: []const u8,
-    response: [128]u8 = undefined,
+    response: [128]u8 = @splat(0),
     used: usize = 0,
     offset: usize = 0,
     last_uid: u32 = 0,
