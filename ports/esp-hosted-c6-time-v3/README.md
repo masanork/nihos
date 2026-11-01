@@ -131,6 +131,19 @@ limit; the clean build uses separate diagnostics and does not silently widen
 the memory map. A later clean rebuild was [run only to the pre-token gate](../../docs/measurements/2026-11-02-hosted3-updater-preflight.md)
 on Tab5; no OTA was started and P4 flash was restored and verified.
 
+`tools/build-c6-ota-hosted3-recovery-probe.sh` builds a separate conditional
+3.0.10 -> 2.13.1 recovery fixture, pinned to the previously deployed C6 app
+digest `7f036e616df4d4782015caf30f185f7859af115438f394463600d0f8d69995be`.
+It requires a 3.0.10 origin and an explicit start token, uses 3.x's explicit
+OTA Activate, and checks for a subsequent 2.13.1 version response. This is a
+build-only recovery *candidate*: it has not been tested against a 3.x C6, and
+can work only while the 3.x application boots and serves Hosted OTA over SDIO.
+It is not recovery from a C6 that fails to boot or communicate, and the known
+2.13.1 candidate is not a readback of the device's currently installed bytes.
+`test-recovery-candidate.sh` checks the exact 2.13.1 binary against the host
+in-memory responder; `tools/c6_hosted3_recovery_evidence.py` rejects simulated
+or incomplete captures if a future physical recovery is attempted.
+
 The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
 ran a byte-identified P4 image against the previously installed C6 application;
 it did not independently read back the C6 version or test the 3.x firmware.
