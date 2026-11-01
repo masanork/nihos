@@ -107,6 +107,20 @@ responder and a successful post-simulation 2.13.1 handshake.
 separately hashes and transfers the exact candidate through the P4's OTA
 state machine and in-memory 2.13.1 responder on the host.
 
+`tools/build-c6-ota-hosted3-upgrade-probe.sh` separately builds an actual
+update fixture for that same pinned digest. **Unlike the simulation, this
+fixture can write the C6 after its one-shot token.** It checks the mapped
+candidate digest, requires a 2.13.1 origin, and reports a 3.0.10 version after
+activation. It is build-only and has not been run; it does not independently
+establish the C6 partition layout, bootloader behavior, or a recovery route.
+Do not install it until those gates have been addressed. The application
+descriptor preflight is a separate diagnostic and is not enforced inside this
+update image. A future runner must keep exclusive device ownership across both
+checks, verify exact bytes, and restore the P4; an uncertain activation must
+not be blindly replayed. `tools/c6_hosted3_upgrade_evidence.py` checks a future
+capture and explicitly rejects simulation markers; its passing output would
+still be a P4-reported version and transfer, not C6 flash readback.
+
 The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
 ran a byte-identified P4 image against the previously installed C6 application;
 it did not independently read back the C6 version or test the 3.x firmware.
