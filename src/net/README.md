@@ -6,6 +6,12 @@ fragments; it does not provide a TCP connection, retransmission, socket API,
 native service integration, or a working SSH transport. The normal hosted
 network service does not yet call it.
 
+`tcp_connect.zig` adds a host-tested bounded active-open state machine using
+that codec. It handles SYN retransmission, tuple/ACK validation and a final
+ACK; its result is only the handoff state for a future data-plane TCP client.
+It has no ARP/routing adapter, socket service, data transfer, close handling,
+or physical/real-network qualification and is not connected to SSH.
+
 `esp_at.zig` decodes the bounded passive-socket/BLE receive profile.
 `at_commands.zig` encodes a closed set of typed commands, escaping quoted
 strings and rejecting control-character injection. `at_controller.zig`
