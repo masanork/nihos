@@ -395,6 +395,7 @@ pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.t
         };
         if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
     }
+    if (xy_workspace) scratch.setPhysicalKeyboard(hardware_ready);
     const values: extern struct { status: u32, firmware: u32, mode: u32, transactions: u32, error_code: u32, sources: u32 } = .{
         .status = if (hardware_ready) 1 else 2,
         .firmware = keyboard.report.firmware,
