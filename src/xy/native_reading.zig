@@ -170,6 +170,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
         .reading => {
             const entry = try pack.chapter(nav.book, nav.chapter);
             nav.text_length = @intCast(entry.text.len);
+            // SAFETY: prepareViewport initializes all fields and used prefixes before access.
             var page: Page = undefined;
             try prepareViewport(instance, pack, entry, nav.offset, request.config.*, &page, nav.chapter, 720, 1208);
             var status: [256]u8 = undefined;
