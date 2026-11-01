@@ -107,7 +107,7 @@ names = [
     'src/net/c6_sdio.zig', 'src/net/esp_at.zig', 'src/net/at_commands.zig',
     'src/net/at_controller.zig', 'tools/build-c6-sdio-probe.sh',
     'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
-    'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/dhcp.zig',
+    'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/hosted_diagnostics.zig', 'src/net/dhcp.zig',
     'src/net/ipv6.zig',
     'probes/hosted-long-send/boot-bus.zig', 'src/net/hosted_dma_bus.zig',
     'src/net/hosted_long_dma.zig', 'src/platform/native/hosted_long_cache.zig',

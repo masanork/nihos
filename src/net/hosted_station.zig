@@ -2,6 +2,7 @@
 //! volatile, correlates RPC UID + ID, and requires an actual DHCP ACK.
 const std = @import("std");
 pub const wire = @import("hosted.zig");
+pub const diagnostics = @import("hosted_diagnostics.zig");
 pub const ble = @import("ble_hci.zig");
 pub const dhcp = @import("dhcp.zig");
 pub const sntp = @import("sntp.zig");
@@ -61,6 +62,7 @@ pub const Client = struct {
     disconnect_reason: u32 = 0,
     version: [3]u32 = @splat(0),
     version_known: bool = false,
+    c6_diagnostics: ?diagnostics.Diagnostics = null,
     ignored_rpcs: u32 = 0,
     rpc_status: u32 = 0,
     last_response: u32 = 0,
@@ -181,6 +183,8 @@ pub const Client = struct {
                         if (self.rpc_status == 0) {
                             for (&self.version, 2..) |*value, field| value.* = try wire.integer(response.body, @intCast(field));
                             self.version_known = true;
+                            // Optional extension must never block factory Hosted startup.
+                            self.c6_diagnostics = diagnostics.parse(response.body) catch null;
                         }
                         self.afterVersion(now);
                     },
