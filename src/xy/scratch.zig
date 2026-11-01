@@ -81,6 +81,7 @@ pub const Model = struct {
     touch_start_x: u32,
     touch_start_y: u32,
     touch_tracking: bool,
+    touch_moved: bool,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -267,11 +268,12 @@ pub const Model = struct {
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
     }
-    /// Input contexts that accept text: the document in edit or command
-    /// mode, and the learning exercise screen. Zero is "no context".
+    /// The document and portrait learning exercise accept soft-key input.
+    /// Zero indicates a screen with no soft-keyboard input context.
     fn softKeyboardContext(self: *const Model) u8 {
-        // The learning screens keep their own touch layout for now; the
-        // keyboard serves the document screen first.
+        if (self.nav.screen == .exercise and self.portrait_touch and self.learning != null) {
+            return if (self.learning.?.editing_notes) 4 else 3;
+        }
         if (self.nav.screen != .document) return 0;
         return switch (self.mode) {
             .edit => 1,
@@ -301,6 +303,20 @@ pub const Model = struct {
         self.touch_start_x = x;
         self.touch_start_y = y;
         self.touch_tracking = true;
+        self.touch_moved = false;
+    }
+
+    /// A drag may be a show/hide gesture, but must not become a key or card tap
+    /// if it leaves the contact tolerance and returns before release.
+    pub fn touchMove(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (!self.touch_tracking) return;
+        const dx = @max(x, self.touch_start_x) - @min(x, self.touch_start_x);
+        const dy = @max(y, self.touch_start_y) - @min(y, self.touch_start_y);
+        if (dx > 24 or dy > 24) self.touch_moved = true;
+    }
+
+    pub fn touchCancel(self: *Model) linksection(scheme.code_section) void {
+        self.touch_tracking = false;
     }
 
     /// Applies a recognized edge gesture, returning true when it consumed
@@ -332,6 +348,7 @@ pub const Model = struct {
         const start_x = self.touch_start_x;
         const start_y = self.touch_start_y;
         if (self.touchGesture(x, y)) return;
+        if (tracked and self.touch_moved) return;
         if (self.softKeyboardVisible()) {
             if (tracked) {
                 const start = soft_keyboard.keyAtIn(start_x, start_y, self.soft_keyboard_state, self.touchOrientation());
@@ -371,7 +388,9 @@ pub const Model = struct {
             if (soft_keyboard.containsIn(x, y, self.touchOrientation())) return; // Gaps between keys.
         }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
-            if (self.learning) |l| l.touch(&self.nav, x, y);
+            if (self.learning) |l| {
+                if (self.portrait_touch) l.touchPortrait(&self.nav, x, y, self.softKeyboardVisible()) else l.touch(&self.nav, x, y);
+            }
         } else if (self.portrait_touch) {
             self.nav.touchPortrait(x, y, &self.vm.view);
         } else self.nav.touch(x, y, &self.vm.view);
@@ -1198,4 +1217,52 @@ test "portrait home touch opens document and preserves portrait key input" {
     model.touchDown(10, g.top() + 10);
     model.touch(10, g.top() + 10);
     try std.testing.expectEqualStrings("q", model.doc.slice());
+}
+
+test "portrait exercise routes soft keys to lesson code and keeps toolbar reachable" {
+    var model: Model = undefined;
+    model.initInPlace();
+    const lesson = try std.testing.allocator.create(LearningSession);
+    defer std.testing.allocator.destroy(lesson);
+    lesson.initInPlace();
+    lesson.active_slot = 0;
+    lesson.slots[0].used = true;
+    lesson.slots[0].code.revision = 1;
+    lesson.slots[0].code.next_group_id = 1;
+    lesson.slots[0].notes.revision = 1;
+    lesson.slots[0].notes.next_group_id = 1;
+    model.learning = lesson;
+    model.nav.screen = .exercise;
+    model.portrait_touch = true;
+    try std.testing.expect(model.softKeyboardVisible());
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", lesson.slots[0].code.slice());
+    // The portrait toolbar sits immediately above the keyboard; Notes switches
+    // the active input context without touching or running code.
+    model.touchDown(650, 910);
+    model.touch(650, 910);
+    try std.testing.expect(lesson.editing_notes);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", lesson.slots[0].notes.slice());
+    try std.testing.expectEqualStrings("q", lesson.slots[0].code.slice());
+}
+
+test "a drag out and back cannot type but a bottom-edge flick still works" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.portrait_touch = true;
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touchMove(200, g.top() + 10);
+    model.touchMove(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    model.touchDown(360, g.top() + 10);
+    model.touchMove(360, g.top() + 110);
+    model.touch(360, g.top() + 110);
+    try std.testing.expect(!model.softKeyboardVisible());
 }

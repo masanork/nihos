@@ -208,3 +208,32 @@ test "portrait home paints the same cards that touch navigation selects" {
     try std.testing.expectError(error.UnsupportedOrientation, reading.renderPortraitHome(instance, &request));
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
+
+test "portrait card scene renders synthetic data and returns on touch" {
+    const std = @import("std");
+    const navmod = @import("navigation.zig");
+    const instance = try std.testing.allocator.create(reading.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    var raw: [100]u8 = @splat(0);
+    @memcpy(raw[0..8], "XYREAD01");
+    for ([_]struct { at: usize, value: u32 }{ .{ .at = 8, .value = 1 }, .{ .at = 12, .value = raw.len }, .{ .at = 16, .value = 1 }, .{ .at = 20, .value = 64 } }) |item| std.mem.writeInt(u32, raw[item.at..][0..4], item.value, .little);
+    const pack = try catalog.Pack.init(&raw);
+    const pixels = try std.testing.allocator.alloc(u8, 720 * 1280 * 2 + 16);
+    defer std.testing.allocator.free(pixels);
+    @memset(pixels, 0xa5);
+    var nav = navmod.State{};
+    nav.screen = .card_view;
+    nav.return_screen = .home;
+    nav.card.valid = true;
+    @memcpy(nav.card.name[0..4], "Test");
+    nav.card.name_len = 4;
+    var config = @import("view_config").Config{};
+    const request = protocol.Request{ .workspace = instance, .navigation = &nav, .frame = pixels.ptr, .frame_length = pixels.len - 16, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0, .portrait = 1 };
+    try reading.renderPortrait(instance, &request, pack);
+    const index = 50 * 1440 + 30 * 2;
+    try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, pixels[index..][0..2], .little));
+    nav.touchPortrait(100, 400, &config);
+    try std.testing.expectEqual(navmod.Screen.home, nav.screen);
+    try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
+}

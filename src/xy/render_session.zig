@@ -60,7 +60,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             try self.renderInto(request, target);
             try self.renderKeyboard(request, target);
         }
-        fn renderKeyboard(self: *@This(), request: *const protocol.Request, target: anytype) !void {
+        pub fn renderKeyboard(self: *@This(), request: *const protocol.Request, target: anytype) !void {
             if (request.keyboard == 0) return;
             const state = keyboard.State{ .symbols = request.keyboard >= 3, .shift = request.keyboard == 2 or request.keyboard == 4 };
             const orientation: keyboard.Orientation = if (target.width == 720 and target.height == 1280) .portrait else .landscape;

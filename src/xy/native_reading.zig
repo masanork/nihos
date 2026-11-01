@@ -132,8 +132,7 @@ fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !vo
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
 }
 
-/// Portrait navigation renders into the panel's native surface. Learning and
-/// card views remain unsupported until their input and layout are adapted.
+/// Portrait navigation renders into the panel's native surface.
 pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
     const nav = request.navigation orelse return error.Range;
     if (nav.screen == .home) return renderPortraitHome(instance, request);
@@ -141,6 +140,10 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
     nav.chapter_count = try pack.counts();
     _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
     switch (nav.screen) {
+        .examples, .exercise => {
+            const lessons = request.learning orelse return error.Range;
+            return @import("learning_view.zig").renderPortrait(instance, request, lessons, nav.screen == .examples);
+        },
         .settings => {
             try label(instance, target, 36, 40, "自分に合った読み心地に", 32, 0x2147);
             var number: [64]u8 = undefined;
@@ -201,6 +204,24 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
                     nav.can_try = false;
                 }
             } else nav.can_try = nav.book == 2 and page.code_count > 0;
+        },
+        .card_view => {
+            _ = target.fillRect(24, 24, 672, 1060, 0xffff);
+            _ = target.fillRect(24, 24, 672, 8, 0x2147);
+            try label(instance, target, 48, 56, "マイナンバーカード 券面情報", 28, 0x2147);
+            const data = &nav.card;
+            if (data.valid) {
+                try label(instance, target, 48, 140, "氏名", 20, 0x528a);
+                try label(instance, target, 48, 178, if (data.name_len > 0) data.nameSlice() else "—", 30, 0x2147);
+                try label(instance, target, 48, 260, "生年月日 / 性別", 20, 0x528a);
+                var info: [48]u8 = undefined;
+                const gender = if (std.mem.eql(u8, data.genderSlice(), "1")) "男" else if (std.mem.eql(u8, data.genderSlice(), "2")) "女" else data.genderSlice();
+                const text = if (data.birth_len > 0) std.fmt.bufPrint(&info, "{s} / {s}", .{ data.birthSlice(), gender }) catch data.birthSlice() else "—";
+                try label(instance, target, 48, 298, text, 26, 0x2147);
+                try label(instance, target, 48, 390, "住所", 20, 0x528a);
+                try label(instance, target, 48, 428, if (data.address_len > 0) data.addressSlice() else "—", 24, 0x2147);
+            } else try label(instance, target, 48, 160, "カードデータがありません", 24, 0x528a);
+            try label(instance, target, 48, 1060, "タップ / Esc: 戻る", 22, 0x528a);
         },
         .credits => {
             const entry = try pack.chapter(nav.book, nav.chapter);

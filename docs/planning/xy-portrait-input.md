@@ -1,35 +1,33 @@
-# xy portrait document: integration boundary
+# xy portrait workspace: integration boundary
 
-The portrait Home, document, reader, chapter list and settings geometry and
-host rendering/input tests are prepared,
-but the native workspace still displays and consumes touch in landscape. No
-automatic orientation switch is enabled by this change.
+Home, document, reader, chapter list, settings, card, and SICP lesson scenes
+have portrait rendering and input paths. The ordinary native workspace still
+uses landscape; the explicit `NIHOS_NATIVE_XY_PORTRAIT=1` fixture selects
+portrait across the xy session. This fixture requires `NIHOS_NATIVE_XY_WORKSPACE=1`
+and `NIHOS_NATIVE_KEYBOARD_I2C=0`, and is not a physical keyboard probe or an
+automatic orientation policy.
 
-The Tab5 panel's physical RGB565 surface is 720 × 1280. The existing touch
-service publishes landscape coordinates `(1279 - raw_y, raw_x)`. A portrait
-consumer must invert this mapping to `(landscape_y, 1279 - landscape_x)` and
-must use the same selected orientation for drawing, layout, hit testing and
-gesture recognition. The prepared keyboard geometry is 720 × 1280, with four
-80 px rows at the bottom. The document renderer reserves that dock above its
-status line; hiding the keyboard restores that space. The landscape geometry
-and routing stay as before.
+The Tab5 panel's physical RGB565 surface is 720 × 1280. The touch service
+publishes landscape coordinates `(1279 - raw_y, raw_x)`; the portrait fixture
+inverts them to `(landscape_y, 1279 - landscape_x)` before dispatch. Drawing,
+layout, keyboard hit testing and gestures use the portrait geometry. The
+four-row keyboard reserves the bottom 320 px, and lesson controls move above
+it. Cancels clear the model's armed touch. The landscape route remains the
+default.
 
-Before enabling selection based on a physical keyboard probe, the foreground
-owner must propagate a single orientation through display and input, cancel an
-active touch when it changes, invalidate the retained frame, and ensure the
-screen's renderer and hit testing use the same geometry. The portrait Home prototype shares card geometry with hit testing and can open
-the portrait document in the host model; its renderer request is not selected
-by the native session. Learning, card, system views, diagnostic controls and some transitions still
-rely on landscape coordinates. They must be
-adapted and tested before a session-wide
-portrait default is enabled. A keyboard I2C failure is not proof of a clean
-physical detach; define unknown/fault and any retry policy separately rather
-than silently rotating on an error.
+Host tests exercise Home-to-document, all Home destinations, portrait reading
+with contiguous UTF-8 and intact ruby across page boundaries in both text
+axes, settings, contents, SICP example selection, lesson controls and model
+input to code and notes. The device fixture requires physical validation;
+host pixel equality and a successful image audit do not establish panel pixels,
+physical touch operation, or usability.
 
-Acceptance includes both orientations' corner and key hit testing, drag/cancel
-and hide/show gestures, document and minibuffer entry with a visible cursor,
-Home-to-document and back, reader/settings navigation, physical keyboard
-startup and failure paths, redraw on orientation transitions, native image and
-memory audits, and physical Tab5 optical/touch checks on the exact candidate.
-Host pixel equality and layout tests do not establish panel scanout, touch
-controller behavior or usability on the device.
+Before enabling automatic selection based on the physical keyboard probe, use
+one session orientation for every screen and input source; define how and when
+orientation may change, cancel any active contact, invalidate the retained
+frame, and preserve the reader position across reflow. Distinguish a verified
+address NACK from I2C failure or an unsupported keyboard. Decide whether and
+how to retry attachment without treating an error as a clean removal. The
+ordinary boot, diagnostic controls, camera overlays, and transitions must be
+checked alongside xy. Physical optical/touch checks on the exact candidate,
+including both keyboard-present and confirmed-absent boots, remain required.

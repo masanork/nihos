@@ -20,6 +20,7 @@ class DeviceReader(unittest.TestCase):
         v.xy_tab5_render.argtypes=[c.c_void_p,c.c_uint32];v.xy_tab5_render.restype=c.c_bool
         v.xy_tab5_key.argtypes=[c.c_uint8];v.xy_tab5_touch.argtypes=[c.c_uint32,c.c_uint32]
         v.xy_tab5_set_portrait.argtypes=[c.c_bool]
+        v.xy_tab5_set_portrait_keyboard.argtypes=[c.c_bool]
         v.xy_tab5_state.argtypes=[c.c_uint32];v.xy_tab5_state.restype=c.c_uint32
         cls.entries=[]
         for i in range(struct.unpack_from('<I',cls.data,16)[0]):
@@ -117,6 +118,22 @@ class DeviceReader(unittest.TestCase):
                 if end==len(body):break
                 self.vm.xy_tab5_touch(250,1240);self.render();self.assertLess(pages,500)
             self.assertEqual(b''.join(chunks),body)
+
+    def test_portrait_sicp_try_and_lesson_controls(self):
+        self.vm.xy_tab5_set_portrait(True)
+        self.key('3');self.key('c');self.key(129);self.key(13);self.render()
+        for _ in range(30):
+            if self.state(10): break
+            if self.state(4) >= self.state(9): self.fail('SICP example not found')
+            self.key(131);self.render()
+        self.assertTrue(self.state(10))
+        self.vm.xy_tab5_touch(370,1240);self.assertEqual(self.state(0),6);self.render()
+        self.vm.xy_tab5_touch(40,140);self.assertEqual(self.state(0),7);self.render()
+        self.key('x');without_keyboard=self.render()
+        self.vm.xy_tab5_set_portrait_keyboard(True);self.assertNotEqual(without_keyboard,self.render())
+        self.vm.xy_tab5_touch(650,910);self.render()  # notes, above dock
+        self.key('y');self.render()
+        self.vm.xy_tab5_touch(40,910);self.assertEqual(self.state(0),3);self.render()
 
     def test_all_chapter_starts_render_in_both_directions(self):
         for axis in range(2):
