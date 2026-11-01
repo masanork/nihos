@@ -367,6 +367,45 @@ mod tests {
         );
     }
 
+    // Also exercises a guest built with PR #125's forced-portrait fixture.
+    #[test]
+    #[ignore = "requires a portrait and touch-enabled NIHOS_EMU_TEST_ELF"]
+    fn portrait_touch_opens_document_and_types() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(!emu.paused, "guest CPU fault: {:?}", emu.fault());
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if output.lines().any(|line| {
+                line.starts_with("NIHOS_NATIVE_XY_READY ") && line.contains("portrait=00000001")
+            }) && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
+            {
+                emu.step_frame(30_000_000);
+                let home = emu.bus.scanout.clone().expect("home frame");
+                emu.bus.touch(Some((200, 220)));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                let document = emu.bus.scanout.clone().expect("document frame");
+                assert!(home != document, "portrait tap did not open document");
+                // q is in the first row of the portrait software keyboard.
+                emu.bus.touch(Some((36, 1000)));
+                emu.bus.touch(None);
+                emu.step_frame(90_000_000);
+                assert!(
+                    document != *emu.bus.scanout.as_ref().unwrap(),
+                    "soft key did not repaint document"
+                );
+                return;
+            }
+        }
+        panic!(
+            "portrait touch not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
+    }
+
     #[test]
     #[ignore = "requires NIHOS_EMU_TEST_ELF and an extended boot run"]
     fn firmware_reaches_xy_ready() {
