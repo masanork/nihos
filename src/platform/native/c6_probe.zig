@@ -550,7 +550,10 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
     const config = @import("root").SplitUdpConfig;
     report.stage = 1;
     nih_c6_pads_init();
-    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    if (nih_c6_power_enable() != 1) {
+        report.power_failure = nih_c6_power_failure_detail();
+        return error.PowerEnable;
+    }
     host.io.delay(20_000);
     nih_c6_reset(1);
     host.io.delay(2_000_000);
@@ -618,6 +621,9 @@ pub fn runHostedSplitUdp(clock: timers.Timer, join: hosted.Join) Report {
     var report: Report = .{};
     exerciseHostedSplitUdp(clock, &report, join) catch |err| {
         report.error_code = @intFromError(err);
+        for ("NIHOS_C6_SPLIT_UDP_ERROR name=") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
         hosted_stream.invalidate();
     };
     report.fw_known = @intFromBool(hosted_time.station.version_known);
