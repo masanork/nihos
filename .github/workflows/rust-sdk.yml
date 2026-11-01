@@ -54,6 +54,8 @@ jobs:
   native:
     name: Opt-in RV32 Rust and WAMR emulator
     if: github.event_name == 'workflow_dispatch'
+    env:
+      NIHOS_NATIVE_WASM_ALIGN_FIXES: '1'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
