@@ -79,11 +79,11 @@ fn queueTime(exchange: *service.Exchange) !void {
     try std.testing.expectEqual(service.Phase.queued, exchange.phase);
     try exchange.sent(frame.len, 60);
 }
-fn event(exchange: *service.Exchange, known: bool, now: u64) !void {
+fn eventWithId(exchange: *service.Exchange, id: u32, known: bool, now: u64) !void {
     var result: [32]u8 = @splat(0);
     result[0] = 1;
     result[1] = @intFromBool(known);
-    std.mem.writeInt(u32, result[4..8], 1, .little);
+    std.mem.writeInt(u32, result[4..8], id, .little);
     std.mem.writeInt(u64, result[8..16], 101, .little);
     if (known) {
         std.mem.writeInt(u64, result[16..24], 1760000000, .little);
@@ -94,6 +94,9 @@ fn event(exchange: *service.Exchange, known: bool, now: u64) !void {
     try body.uint(2, 0x4e545152);
     try body.data(3, &result);
     try rpc(exchange, 3, 788, 1, body.slice(), now);
+}
+fn event(exchange: *service.Exchange, known: bool, now: u64) !void {
+    try eventWithId(exchange, 1, known, now);
 }
 test "station and split snapshot precede C6 time; event can precede ack" {
     var e = service.Exchange{};
@@ -285,4 +288,24 @@ test "zero-address response waits for a complete DHCP event" {
     try std.testing.expectEqual(service.Phase.address, e.phase);
     try address(&e, 12);
     try std.testing.expectEqual(service.Phase.ready, e.phase);
+}
+
+test "next time snapshot after the resync interval uses a fresh request" {
+    var e = service.Exchange{};
+    try connect(&e, 2);
+    try queueTime(&e);
+    try rpc(&e, 2, 644, e.uid, &.{}, 61);
+    try event(&e, true, 62);
+    try e.nextSnapshot(63);
+    const due = 63 + @import("sntp.zig").resync;
+    // The native owner extends the exchange deadline across the idle interval.
+    e.deadline = due + 100_000_000;
+    const frame = try e.tx(due);
+    try std.testing.expectEqual(@as(u32, 2), e.clock.outstanding.?);
+    try e.sent(frame.len, due);
+    try rpc(&e, 2, 644, e.uid, &.{}, due + 1);
+    try eventWithId(&e, 2, true, due + 2);
+    try std.testing.expectEqual(service.Phase.done, e.phase);
+    try std.testing.expect(e.addresses.current(e.clock.generation) != null);
+    try std.testing.expectEqual(@as(u64, 1760000000), e.sample.?.seconds);
 }
