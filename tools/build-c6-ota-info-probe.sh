@@ -71,7 +71,8 @@ root, build = map(Path, sys.argv[1:])
 names = [
     'probes/c6-sdio/ota-info-main.zig', 'probes/c6-sdio/start.S', 'probes/c6-sdio/pads.c',
     'probes/c6-sdio/esp32p4.ld', 'src/platform/native/c6_probe.zig',
-    'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/hosted_c6_ota_info.zig', 'src/net/hosted_c6_ota_info_exchange.zig',
+    'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/hosted_c6_app_desc.zig',
+    'src/net/hosted_c6_ota_info.zig', 'src/net/hosted_c6_ota_info_exchange.zig',
     'src/net/hosted_c6_time_exchange.zig', 'src/net/hosted_network_split.zig',
     'src/net/c6_sdio.zig', 'src/soc/esp32p4/sdio.zig', 'src/soc/esp32p4/timer_group.zig',
     'tools/build-c6-ota-info-probe.sh', 'tools/check-c6-sdio-image.py',

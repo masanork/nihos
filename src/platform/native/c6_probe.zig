@@ -658,6 +658,7 @@ pub const OtaInfoReport = struct {
     major: u32 = 0,
     minor: u32 = 0,
     patch: u32 = 0,
+    desc_known: u32 = 0,
     ack_known: u32 = 0,
     ack_status: u32 = 0,
     result_known: u32 = 0,
@@ -680,6 +681,13 @@ fn traceOtaInfo(stage: u8) void {
     _ = nih_rom_putc(stage);
     _ = nih_rom_putc('\r');
     _ = nih_rom_putc('\n');
+}
+fn printOtaInfoBytes(bytes: []const u8) void {
+    const digits = "0123456789abcdef";
+    for (bytes) |b| {
+        _ = nih_rom_putc(digits[b >> 4]);
+        _ = nih_rom_putc(digits[b & 15]);
+    }
 }
 noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
     report.stage = 1;
@@ -745,6 +753,18 @@ pub fn runOtaInfo(clock: timers.Timer) OtaInfoReport {
     report.patch = peer.version[2];
     report.ack_known = @intFromBool(ota_info_exchange.ack_status != null);
     report.ack_status = ota_info_exchange.ack_status orelse 0;
+    if (ota_info_exchange.description) |value| {
+        report.desc_known = 1;
+        for ("NIHOS_C6_APP_DESC version=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.version.slice());
+        for (" project=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.project.slice());
+        for (" idf=") |b| _ = nih_rom_putc(b);
+        printOtaInfoBytes(value.idf.slice());
+        for (" elf_sha256=") |b| _ = nih_rom_putc(b);
+        if (value.elf_sha256) |digest| printOtaInfoBytes(&digest) else _ = nih_rom_putc('-');
+        for ("\r\n") |b| _ = nih_rom_putc(b);
+    }
     if (ota_info_exchange.state == .complete) if (ota_info_exchange.query.result) |value| {
         report.result_known = 1;
         report.flash_size = value.flash_size;

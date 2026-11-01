@@ -43,6 +43,14 @@ const Fake = struct {
         var bytes: [100]u8 = undefined;
         var w: wire.Writer = .{ .out = &bytes };
         switch (id) {
+            267 => {
+                var nested_bytes: [80]u8 = undefined;
+                var nested: wire.Writer = .{ .out = &nested_bytes };
+                try nested.data(4, "2.13.1\x00");
+                try nested.data(5, "network_adapter\x00");
+                try nested.data(8, "v5.5.2\x00");
+                try w.data(2, nested.slice());
+            },
             350 => {
                 try w.uint(2, self.version[0]);
                 try w.uint(3, self.version[1]);
@@ -88,6 +96,7 @@ test "handshake and query complete on 3.0.10 with a no-credit retry" {
     var t: u64 = 1;
     while (x.state != .complete and t < 90) : (t += 1) try x.step(&guarded, t);
     try std.testing.expectEqual(exchange.State.complete, x.state);
+    try std.testing.expectEqualStrings("network_adapter", x.description.?.project.slice());
     try std.testing.expectEqual(@as(u32, 1), f.custom_count);
     try std.testing.expectEqual(@as(u32, 0x190000), x.query.result.?.next.offset);
 }
@@ -118,6 +127,12 @@ test "read-only physical stream rejects every OTA and other custom RPC" {
     try std.testing.expectError(error.Forbidden, guarded.send(try wire.frame(&frame, 3, 0, rpc)));
     try std.testing.expectError(error.Forbidden, guarded.send(try wire.frame(&frame, 5, 0, &.{ 0x22, 3, 0x21, 1, 2 })));
     try std.testing.expectEqual(@as(usize, 0), sink.sent);
+    const app_read = try wire.request(&payload, 267, 1, &.{});
+    _ = try guarded.send(try wire.frame(&frame, 3, 0, app_read));
+    try std.testing.expectEqual(@as(usize, 1), sink.sent);
+    const bad_app_read = try wire.request(&payload, 267, 2, &.{ 8, 1 });
+    try std.testing.expectError(error.Malformed, guarded.send(try wire.frame(&frame, 3, 0, bad_app_read)));
+    try std.testing.expectEqual(@as(usize, 1), sink.sent);
 }
 test "2.13.1 missing service rejects and never reports a snapshot" {
     var f: Fake = .{ .version = .{ 2, 13, 1 }, .reject = true };
