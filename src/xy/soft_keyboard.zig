@@ -128,6 +128,24 @@ pub fn visible(physical_keyboard: bool, input_context: bool, dismissed: bool) bo
     return !physical_keyboard and input_context and !dismissed;
 }
 
+/// Bottom-edge band a show swipe must start in, and the minimum travel
+/// for a flick to count as a gesture instead of a tap.
+pub const edge_band: u32 = 24;
+pub const swipe_min: u32 = 48;
+
+pub const Gesture = enum { none, show, hide };
+
+/// Recognizes the manual override gestures from a touch's start and end
+/// points: flick up from the bottom edge to summon the keyboard, flick
+/// down across the keyboard to dismiss it. Anything else is a tap.
+pub fn edgeGesture(start_x: u32, start_y: u32, end_x: u32, end_y: u32) Gesture {
+    _ = start_x;
+    _ = end_x;
+    if (start_y >= space_height - edge_band and start_y >= end_y + swipe_min) return .show;
+    if (start_y >= top and end_y >= start_y + swipe_min) return .hide;
+    return .none;
+}
+
 pub const Orientation = enum { portrait, landscape };
 
 /// Default orientation for a session: the keyboard accessory holds the
@@ -159,6 +177,14 @@ test "keyAt maps touches to the same bytes a HID keyboard sends" {
     try std.testing.expect(keyAt(space_width, top + 10) == null);
     try std.testing.expect(contains(0, top));
     try std.testing.expect(!contains(0, top - 1));
+}
+
+test "edge gestures summon and dismiss, taps do not" {
+    try std.testing.expectEqual(Gesture.show, edgeGesture(640, space_height - 4, 640, space_height - 120));
+    try std.testing.expectEqual(Gesture.hide, edgeGesture(640, top + 20, 640, top + 140));
+    try std.testing.expectEqual(Gesture.none, edgeGesture(640, space_height - 4, 640, space_height - 20));
+    try std.testing.expectEqual(Gesture.none, edgeGesture(640, 300, 640, 420));
+    try std.testing.expectEqual(Gesture.none, edgeGesture(640, top + 20, 640, top + 30));
 }
 
 test "policy: show only without a physical keyboard, in context, undismissed" {
