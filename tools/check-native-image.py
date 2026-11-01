@@ -218,7 +218,7 @@ XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
-              'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
+              'numericCall', 'safeNumericExpr', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
 XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
