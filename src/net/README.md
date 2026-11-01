@@ -6,6 +6,11 @@ fragments; it does not provide a TCP connection, retransmission, socket API,
 native service integration, or a working SSH transport. The normal hosted
 network service does not yet call it.
 
+`arp_resolver.zig` resolves one IPv4 next hop from a caller-supplied lease,
+validates replies, retries under a deadline and invalidates on an epoch change.
+It is exercised through libslirp in the host SSH probe but is not yet owned by
+the normal network service or connected to its DHCP lease lifecycle.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.

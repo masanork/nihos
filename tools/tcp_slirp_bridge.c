@@ -7,6 +7,10 @@ static struct context bridge_ctx;
 static Slirp *bridge_slirp;
 static bool bridge_failed;
 static SlirpCb bridge_callbacks;
+extern bool tcp_link_begin(uint16_t);
+extern size_t tcp_link_next(uint64_t, uint8_t *, size_t);
+extern bool tcp_link_sent(uint64_t);
+extern bool tcp_link_receive(const uint8_t *, size_t, uint64_t);
 
 bool bridge_open(uint16_t port) {
     epoch_ns = clock_ns();
@@ -16,18 +20,16 @@ bool bridge_open(uint16_t port) {
     inet_pton(AF_INET,"10.0.2.0",&cfg.vnetwork); inet_pton(AF_INET,"255.255.255.0",&cfg.vnetmask);
     inet_pton(AF_INET,"10.0.2.2",&cfg.vhost); inet_pton(AF_INET,"10.0.2.15",&cfg.vdhcp_start); inet_pton(AF_INET,"10.0.2.3",&cfg.vnameserver);
     bridge_slirp=slirp_new(&cfg,&bridge_callbacks,&bridge_ctx);
-    if (!bridge_slirp || !tcp_probe_begin(port)) return false;
-    arp_request(bridge_slirp);
+    if (!bridge_slirp || !tcp_link_begin(port)) return false;
     return true;
 }
 bool bridge_poll(void) {
     if (!bridge_slirp || bridge_failed) return false;
-    uint8_t ip[1600], frame[1614]; uint64_t now=elapsed();
-    size_t n=tcp_probe_next(now,ip,sizeof(ip));
+    uint8_t frame[1614]; uint64_t now=elapsed();
+    size_t n=tcp_link_next(now,frame,sizeof(frame));
     if (n) {
-        memcpy(frame,gateway_mac,6); memcpy(frame+6,guest_mac,6); frame[12]=0x08; frame[13]=0x00; memcpy(frame+14,ip,n);
-        if (!tcp_probe_sent(now)) return false;
-        slirp_input(bridge_slirp,frame,(int)(n+14));
+        if (!tcp_link_sent(now)) return false;
+        slirp_input(bridge_slirp,frame,(int)n);
     }
     bridge_ctx.nfds=0; uint32_t timeout=0;
     slirp_pollfds_fill(bridge_slirp,&timeout,add_fd,&bridge_ctx);
@@ -36,7 +38,7 @@ bool bridge_poll(void) {
     while (bridge_ctx.count) {
         struct frame f=bridge_ctx.frames[0]; memmove(bridge_ctx.frames,bridge_ctx.frames+1,(--bridge_ctx.count)*sizeof(bridge_ctx.frames[0]));
         if (f.len>=42 && f.data[12]==8 && f.data[13]==6 && f.data[21]==1 && !memcmp(f.data+38,(uint8_t[]){10,0,2,15},4)) { arp_reply(bridge_slirp,f.data); continue; }
-        if (f.len >= 54 && f.data[12]==8 && f.data[13]==0 && f.data[23]==6 && !tcp_probe_receive(f.data+14,f.len-14,elapsed())) bridge_failed=true;
+        if (f.len >= 42 && !tcp_link_receive(f.data,f.len,elapsed())) bridge_failed=true;
     }
     return !bridge_failed && !bridge_ctx.overflow;
 }

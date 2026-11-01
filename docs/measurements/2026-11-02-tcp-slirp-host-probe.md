@@ -23,6 +23,11 @@ The probe starts TIME_WAIT but does not wait its full duration. It does not
 demonstrate native network integration, device entropy, secure key storage,
 Wi-Fi/SDIO or Tab5 behavior.
 
+A later run resolves the next-hop MAC via the Zig ARP resolver before opening
+TCP instead of using a fixed destination MAC. The host fixture still provides
+the test lease and responds to ARP requests from libslirp; this is not native
+lease ownership, reconnect handling, or physical Ethernet/SDIO qualification.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 
