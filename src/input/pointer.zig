@@ -19,6 +19,12 @@ pub fn landscape(raw_x: u16, raw_y: u16) ?Point {
     if (raw_x >= 720 or raw_y >= 1280) return null;
     return .{ .x = 1279 - @as(u32, raw_y), .y = raw_x };
 }
+/// Undo the service's landscape mapping when a consumer owns an unrotated
+/// 720x1280 portrait surface. The stream itself stays in landscape coordinates.
+pub fn portraitFromLandscape(x: u32, y: u32) ?Point {
+    if (x >= 1280 or y >= 720) return null;
+    return .{ .x = y, .y = 1279 - x };
+}
 pub const Stream = struct {
     mode: enum { idle, pressed, blocked } = .idle,
     point: Point = .{ .x = 0, .y = 0 },
@@ -165,4 +171,13 @@ test "queue overflow forces cancel and producer quarantine until explicit releas
     try std.testing.expect(stream.fresh(1, 48, 87, 11) == null);
     _ = stream.fresh(0, 0, 0, 12);
     try std.testing.expectEqual(Kind.down, stream.fresh(1, 48, 87, 13).?.kind);
+}
+
+test "portrait conversion inverts the touch service mapping at corners and interior" {
+    for ([_]Point{ .{ .x = 0, .y = 0 }, .{ .x = 719, .y = 1279 }, .{ .x = 0, .y = 1279 }, .{ .x = 719, .y = 0 }, .{ .x = 237, .y = 901 } }) |raw| {
+        const mapped = landscape(@intCast(raw.x), @intCast(raw.y)).?;
+        try std.testing.expectEqual(raw, portraitFromLandscape(mapped.x, mapped.y).?);
+    }
+    try std.testing.expect(portraitFromLandscape(1280, 0) == null);
+    try std.testing.expect(portraitFromLandscape(0, 720) == null);
 }

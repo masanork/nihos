@@ -1,0 +1,8 @@
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=00006e50 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_STATE revision=00000001 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=00000078 input_bytes=00000000 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5 tx_dropped=00000000
+NIHOS_NATIVE_XY_RENDER frames=00000001 stack_used=0000b610 failed=00000000 font=00000000 size=00000020 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_READER screen=00000001 book=00000000 chapter=00000000 offset=00000000 end=00000000 total=00000000 error_code=00000000
+NIHOS_NATIVE_XY_STATE revision=00000002 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=00000089 input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5 tx_dropped=00000000
+NIHOS_NATIVE_XY_RENDER frames=00000002 stack_used=00010130 failed=00000000 font=00000000 size=00000020 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_READER screen=00000000 book=00000000 chapter=00000000 offset=00000000 end=00000000 total=00000000 error_code=00000000

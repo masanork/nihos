@@ -76,10 +76,13 @@ pub const Model = struct {
     /// so it expires by itself when the context changes.
     soft_keyboard_dismissed: bool,
     soft_keyboard_context: u8,
+    soft_keyboard_state: soft_keyboard.State,
+    portrait_touch: bool,
     /// Start point of the current touch, for edge-gesture recognition.
     touch_start_x: u32,
     touch_start_y: u32,
     touch_tracking: bool,
+    touch_moved: bool,
     /// SKK composition state for the document screen. Starts in direct
     /// (ASCII) mode so existing editing is unchanged; the minibuffer
     /// command `ime` toggles Japanese input.
@@ -318,11 +321,12 @@ pub const Model = struct {
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
     }
-    /// Input contexts that accept text: the document in edit or command
-    /// mode, and the learning exercise screen. Zero is "no context".
+    /// The document and portrait learning exercise accept soft-key input.
+    /// Zero indicates a screen with no soft-keyboard input context.
     fn softKeyboardContext(self: *const Model) u8 {
-        // The learning screens keep their own touch layout for now; the
-        // keyboard serves the document screen first.
+        if (self.nav.screen == .exercise and self.portrait_touch and self.learning != null) {
+            return if (self.learning.?.editing_notes) 4 else 3;
+        }
         if (self.nav.screen != .document) return 0;
         return switch (self.mode) {
             .edit => 1,
@@ -338,16 +342,51 @@ pub const Model = struct {
         self.changed();
     }
 
+    /// Defer an orientation switch until the active contact and VM work end.
+    /// A reflow preserves the current reading offset but discards old page
+    /// boundaries, which were fitted to the previous viewport.
+    pub fn applyKeyboardPresence(self: *Model, present: bool) linksection(scheme.code_section) bool {
+        const portrait = !present;
+        if (self.physical_keyboard == present and self.portrait_touch == portrait) return true;
+        if (self.touch_tracking or self.vm.running) return false;
+        self.setPhysicalKeyboard(present);
+        if (self.portrait_touch != portrait) {
+            self.portrait_touch = portrait;
+            self.nav.end = 0;
+            self.nav.previous_count = 0;
+            self.changed();
+        }
+        return true;
+    }
+
     pub fn softKeyboardVisible(self: *const Model) bool {
         const context = self.softKeyboardContext();
         const dismissed = self.soft_keyboard_dismissed and self.soft_keyboard_context == context;
         return soft_keyboard.visible(self.physical_keyboard, context != 0, dismissed);
     }
 
+    pub fn touchOrientation(self: *const Model) soft_keyboard.Orientation {
+        return if (self.portrait_touch) .portrait else .landscape;
+    }
+
     pub fn touchDown(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
         self.touch_start_x = x;
         self.touch_start_y = y;
         self.touch_tracking = true;
+        self.touch_moved = false;
+    }
+
+    /// A drag may be a show/hide gesture, but must not become a key or card tap
+    /// if it leaves the contact tolerance and returns before release.
+    pub fn touchMove(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (!self.touch_tracking) return;
+        const dx = @max(x, self.touch_start_x) - @min(x, self.touch_start_x);
+        const dy = @max(y, self.touch_start_y) - @min(y, self.touch_start_y);
+        if (dx > 24 or dy > 24) self.touch_moved = true;
+    }
+
+    pub fn touchCancel(self: *Model) linksection(scheme.code_section) void {
+        self.touch_tracking = false;
     }
 
     /// Applies a recognized edge gesture, returning true when it consumed
@@ -356,7 +395,7 @@ pub const Model = struct {
     fn touchGesture(self: *Model, x: u32, y: u32) bool {
         if (!self.touch_tracking) return false;
         self.touch_tracking = false;
-        switch (soft_keyboard.edgeGesture(self.touch_start_x, self.touch_start_y, x, y)) {
+        switch (soft_keyboard.edgeGestureIn(self.touch_start_x, self.touch_start_y, x, y, self.touchOrientation())) {
             .none => return false,
             .show => {
                 if (self.physical_keyboard or self.softKeyboardContext() == 0) return false;
@@ -375,11 +414,36 @@ pub const Model = struct {
     }
 
     pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        const tracked = self.touch_tracking;
+        const start_x = self.touch_start_x;
+        const start_y = self.touch_start_y;
         if (self.touchGesture(x, y)) return;
+        if (tracked and self.touch_moved) return;
         if (self.softKeyboardVisible()) {
-            if (soft_keyboard.keyAt(x, y)) |action| {
+            if (tracked) {
+                const start = soft_keyboard.keyAtIn(start_x, start_y, self.soft_keyboard_state, self.touchOrientation());
+                const end = soft_keyboard.keyAtIn(x, y, self.soft_keyboard_state, self.touchOrientation());
+                if (start != null or end != null or soft_keyboard.containsIn(start_x, start_y, self.touchOrientation())) {
+                    if (start == null or end == null or !std.meta.eql(start.?, end.?)) return;
+                }
+            }
+            if (soft_keyboard.keyAtIn(x, y, self.soft_keyboard_state, self.touchOrientation())) |action| {
                 switch (action) {
-                    .char => |byte| self.handle(.{ .text = byte }),
+                    .char => |byte| {
+                        self.handle(.{ .text = byte });
+                        if (!self.soft_keyboard_state.symbols) self.soft_keyboard_state.shift = false;
+                    },
+                    .shift => {
+                        self.soft_keyboard_state.shift = !self.soft_keyboard_state.shift;
+                        self.changed();
+                    },
+                    .symbols => {
+                        self.soft_keyboard_state.symbols = !self.soft_keyboard_state.symbols;
+                        self.soft_keyboard_state.shift = false;
+                        self.changed();
+                    },
+                    .left => self.handle(.left),
+                    .right => self.handle(.right),
                     .enter => self.handle(.enter),
                     .backspace => self.handle(.backspace),
                     .escape => self.handle(.escape),
@@ -391,10 +455,14 @@ pub const Model = struct {
                 }
                 return;
             }
-            if (soft_keyboard.contains(x, y)) return; // Gaps between keys.
+            if (soft_keyboard.containsIn(x, y, self.touchOrientation())) return; // Gaps between keys.
         }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
-            if (self.learning) |l| l.touch(&self.nav, x, y);
+            if (self.learning) |l| {
+                if (self.portrait_touch) l.touchPortrait(&self.nav, x, y, self.softKeyboardVisible()) else l.touch(&self.nav, x, y);
+            }
+        } else if (self.portrait_touch) {
+            self.nav.touchPortrait(x, y, &self.vm.view);
         } else self.nav.touch(x, y, &self.vm.view);
         self.changed();
     }
@@ -1150,6 +1218,125 @@ test "scheme can read card, inspect info, show declarative card view, and insert
     try std.testing.expect(!test_mock_card.active);
 }
 
+test "soft keyboard enters shifted text, symbols and moves the caret" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    tapSoftKey(&model, soft_keyboard.label_shift);
+    tapSoftKey(&model, 'q');
+    try std.testing.expectEqualStrings("Q", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_symbols);
+    // Hit a symbol key using the same active layout used by the renderer.
+    var keys: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    for (soft_keyboard.layoutState(&keys, model.soft_keyboard_state)) |key| {
+        if (key.label == '(') {
+            model.touch(key.x + key.w / 2, key.y + key.h / 2);
+            break;
+        }
+    }
+    try std.testing.expectEqualStrings("Q(", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_left);
+    tapSoftKey(&model, soft_keyboard.label_backspace);
+    try std.testing.expectEqualStrings("(", model.doc.slice());
+}
+
+test "soft keyboard ignores a drag across different keys" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.touchDown(10, soft_keyboard.top + 10);
+    model.touch(150, soft_keyboard.top + 10);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    model.touchDown(10, soft_keyboard.top + 10);
+    model.touch(10, soft_keyboard.top + 10);
+    try std.testing.expectEqualStrings("q", model.doc.slice());
+}
+
+test "portrait keyboard touches type and dismiss in document mode" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.portrait_touch = true;
+    var keys: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    for (soft_keyboard.layoutIn(&keys, model.soft_keyboard_state, .portrait)) |key| {
+        if (key.label == 'q') {
+            model.touchDown(key.x + key.w / 2, key.y + key.h / 2);
+            model.touch(key.x + key.w / 2, key.y + key.h / 2);
+            break;
+        }
+    }
+    try std.testing.expectEqualStrings("q", model.doc.slice());
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(g.width / 2, g.top() + 10);
+    model.touch(g.width / 2, g.top() + 110);
+    try std.testing.expect(!model.softKeyboardVisible());
+    model.touchDown(g.width / 2, g.height - 4);
+    model.touch(g.width / 2, g.height - 110);
+    try std.testing.expect(model.softKeyboardVisible());
+}
+
+test "portrait home touch opens document and preserves portrait key input" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.home();
+    model.portrait_touch = true;
+    model.touchDown(navigation.State.portrait_home_x + 10, navigation.State.portrait_home_top + 10);
+    model.touch(navigation.State.portrait_home_x + 10, navigation.State.portrait_home_top + 10);
+    try std.testing.expectEqual(navigation.Screen.document, model.nav.screen);
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", model.doc.slice());
+}
+
+test "portrait exercise routes soft keys to lesson code and keeps toolbar reachable" {
+    var model: Model = undefined;
+    model.initInPlace();
+    const lesson = try std.testing.allocator.create(LearningSession);
+    defer std.testing.allocator.destroy(lesson);
+    lesson.initInPlace();
+    lesson.active_slot = 0;
+    lesson.slots[0].used = true;
+    lesson.slots[0].code.revision = 1;
+    lesson.slots[0].code.next_group_id = 1;
+    lesson.slots[0].notes.revision = 1;
+    lesson.slots[0].notes.next_group_id = 1;
+    model.learning = lesson;
+    model.nav.screen = .exercise;
+    model.portrait_touch = true;
+    try std.testing.expect(model.softKeyboardVisible());
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", lesson.slots[0].code.slice());
+    // The portrait toolbar sits immediately above the keyboard; Notes switches
+    // the active input context without touching or running code.
+    model.touchDown(650, 910);
+    model.touch(650, 910);
+    try std.testing.expect(lesson.editing_notes);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", lesson.slots[0].notes.slice());
+    try std.testing.expectEqualStrings("q", lesson.slots[0].code.slice());
+}
+
+test "a drag out and back cannot type but a bottom-edge flick still works" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.portrait_touch = true;
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touchMove(200, g.top() + 10);
+    model.touchMove(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    model.touchDown(360, g.top() + 10);
+    model.touchMove(360, g.top() + 110);
+    model.touch(360, g.top() + 110);
+    try std.testing.expect(!model.softKeyboardVisible());
+}
+
 const ImeMock = struct {
     learned: bool = false,
     fn query(_: *anyopaque, kind: ime_omni.PrefixKind, _: u8, key: []const u8, out: *ime_omni.CandidateList) void {
@@ -1238,4 +1425,44 @@ test "SKK conversion powered by NfstDict seamlessly converts and commits" {
     model.handle(.enter); // Commits "行く"
     try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
     try std.testing.expectEqualStrings("行く", model.doc.slice());
+}
+
+test "soft keyboard drives SKK composition and commits a candidate" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    var mock = ImeMock{};
+    model.ime_provider = .{ .ctx = &mock, .queryFn = ImeMock.query, .learnFn = ImeMock.learn };
+    runMinibuffer(&model, "ime");
+    tapSoftKey(&model, soft_keyboard.label_shift);
+    for ("kanji") |key| tapSoftKey(&model, key);
+    try std.testing.expectEqual(ime_omni.OmniPhase.reading, model.ime.phase);
+    tapSoftKey(&model, soft_keyboard.label_space);
+    try std.testing.expectEqual(ime_omni.OmniPhase.selecting, model.ime.phase);
+    tapSoftKey(&model, soft_keyboard.label_enter);
+    try std.testing.expectEqualStrings("漢字", model.doc.slice());
+    try std.testing.expect(mock.learned);
+}
+
+test "keyboard orientation switch waits for release and preserves the reading location" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .reading;
+    model.nav.offset = 123;
+    model.nav.end = 456;
+    model.nav.previous_count = 1;
+    model.portrait_touch = true;
+    model.touchDown(100, 100);
+    try std.testing.expect(!model.applyKeyboardPresence(true));
+    try std.testing.expect(model.portrait_touch);
+    model.touchCancel();
+    const rev = model.revision;
+    try std.testing.expect(model.applyKeyboardPresence(true));
+    try std.testing.expect(!model.portrait_touch and model.physical_keyboard);
+    try std.testing.expectEqual(@as(u32, 123), model.nav.offset);
+    try std.testing.expectEqual(@as(u32, 0), model.nav.end);
+    try std.testing.expectEqual(@as(u16, 0), model.nav.previous_count);
+    try std.testing.expect(model.revision != rev);
+    try std.testing.expect(model.applyKeyboardPresence(false));
+    try std.testing.expect(model.portrait_touch and !model.physical_keyboard);
 }

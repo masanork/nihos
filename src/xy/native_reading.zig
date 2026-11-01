@@ -22,6 +22,10 @@ pub const Page = struct {
 };
 
 pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page, chapter: u32) !void {
+    return prepareViewport(instance, pack, entry, offset, config, page, chapter, 1280, 648);
+}
+pub fn prepareViewport(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, offset: u32, config: protocol.Config, page: *Page, chapter: u32, width: u16, content_height: u16) !void {
+    if (content_height <= @as(u16, config.style.body_px) + 2 * @as(u16, config.appearance.status_padding)) return error.ViewportTooSmall;
     if (offset >= entry.text.len or !@import("document.zig").isClusterBoundary(entry.text, offset)) return error.Range;
     var end: usize = offset;
     var clusters: usize = 0;
@@ -46,8 +50,8 @@ pub fn prepare(instance: *Session, pack: catalog.Pack, entry: catalog.Entry, off
         ruby_bytes += n;
     }
     var style = config.style;
-    style.viewport_width_px = 1280;
-    style.viewport_height_px = 648 - @as(u16, style.body_px) - 2 * @as(u16, config.appearance.status_padding);
+    style.viewport_width_px = width;
+    style.viewport_height_px = content_height - @as(u16, style.body_px) - 2 * @as(u16, config.appearance.status_padding);
     const normal_faces = [_]layout.ttf.Face{ instance.faces[0], instance.faces[1 + @as(usize, style.style_id)] };
     const book_faces = [_]layout.ttf.Face{ instance.book_face, normal_faces[1] };
     const learning = if (try pack.learningBytes()) |bytes| try @import("learning_catalog.zig").Pack.init(bytes) else null;
@@ -126,6 +130,145 @@ fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !vo
         try label(instance, target, 792, 670, "目次", 24, 0xffff);
         try label(instance, target, 1060, 670, "設定", 24, 0xffff);
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
+}
+
+/// Portrait navigation renders into the panel's native surface.
+pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
+    const nav = request.navigation orelse return error.Range;
+    if (nav.screen == .home) return renderPortraitHome(instance, request);
+    const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
+    nav.chapter_count = try pack.counts();
+    _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
+    switch (nav.screen) {
+        .examples, .exercise => {
+            const lessons = request.learning orelse return error.Range;
+            return @import("learning_view.zig").renderPortrait(instance, request, lessons, nav.screen == .examples);
+        },
+        .settings => {
+            try label(instance, target, 36, 40, "自分に合った読み心地に", 32, 0x2147);
+            var number: [64]u8 = undefined;
+            const line = try std.fmt.bufPrint(&number, "-          {d} px          +", .{request.config.style.body_px});
+            try label(instance, target, 80, 178, line, 28, 0x2147);
+            try label(instance, target, 80, 278, if (request.config.style.axis == 0) "横書き / 縦書き" else "縦書き / 横書き", 28, 0x2147);
+            try label(instance, target, 80, 378, if (request.config.style.style_id == 0) "明朝 / ゴシック" else "ゴシック / 明朝", 28, 0x2147);
+            try label(instance, target, 80, 478, "明るい紙面 / 暗い紙面", 28, 0x2147);
+            try label(instance, target, 80, 578, "設定を反映して戻る", 28, 0x2147);
+        },
+        .chapters => {
+            const titles = [_][]const u8{ "xyを使ってみる", "草枕 / 夏目漱石", "SICP / Scheme", "小さなOSを育てる" };
+            try label(instance, target, 36, 32, titles[nav.book], 32, 0x2147);
+            try label(instance, target, 36, 88, "目次 / 読みたい章を選んでください", 24, 0x528a);
+            const top = (nav.selected_chapter / 8) * 8;
+            var i: u16 = top;
+            while (i < @min(top + 8, nav.chapter_count[nav.book])) : (i += 1) {
+                const entry = try pack.chapter(nav.book, i);
+                const y: i32 = 132 + @as(i32, i - top) * 110;
+                if (i == nav.selected_chapter) _ = target.fillRect(24, y, 672, 90, 0x2147);
+                try label(instance, target, 36, y + 30, entry.title, 24, if (i == nav.selected_chapter) 0xffff else 0x2147);
+            }
+        },
+        .reading => {
+            const entry = try pack.chapter(nav.book, nav.chapter);
+            nav.text_length = @intCast(entry.text.len);
+            // SAFETY: prepareViewport initializes all fields and used prefixes before access.
+            var page: Page = undefined;
+            try prepareViewport(instance, pack, entry, nav.offset, request.config.*, &page, nav.chapter, 720, 1208);
+            var status: [256]u8 = undefined;
+            const percent = @as(u64, nav.offset) * 100 / @max(1, entry.text.len);
+            const line = try std.fmt.bufPrint(&status, "{s} / {d}%", .{ entry.title, percent });
+            var req = request.*;
+            req.navigation = null;
+            req.reserved_bottom_px = 72;
+            req.keyboard = 0;
+            req.text = page.text.ptr;
+            req.text_length = page.text.len;
+            req.cursor = 0;
+            req.show_cursor = 0;
+            req.page_mode = 1;
+            req.book_prose = @intFromBool(page.book_prose);
+            req.code_spans = &page.codes;
+            req.code_count = page.code_count;
+            req.status = line.ptr;
+            req.status_length = line.len;
+            req.ruby_text = &page.readings;
+            req.ruby_text_length = page.reading_len;
+            req.ruby_spans = &page.spans;
+            req.ruby_count = page.count;
+            try instance.renderPortrait(&req);
+            nav.end = nav.offset + @as(u32, @intCast(page.text.len));
+            if (request.learning) |l| {
+                if (nav.book == 2) {
+                    try l.setPage(nav.chapter, nav.offset, nav.end);
+                    nav.can_try = (try l.count()) > 0;
+                } else {
+                    l.page_valid = false;
+                    nav.can_try = false;
+                }
+            } else nav.can_try = nav.book == 2 and page.code_count > 0;
+        },
+        .card_view => {
+            _ = target.fillRect(24, 24, 672, 1060, 0xffff);
+            _ = target.fillRect(24, 24, 672, 8, 0x2147);
+            try label(instance, target, 48, 56, "マイナンバーカード 券面情報", 28, 0x2147);
+            const data = &nav.card;
+            if (data.valid) {
+                try label(instance, target, 48, 140, "氏名", 20, 0x528a);
+                try label(instance, target, 48, 178, if (data.name_len > 0) data.nameSlice() else "—", 30, 0x2147);
+                try label(instance, target, 48, 260, "生年月日 / 性別", 20, 0x528a);
+                var info: [48]u8 = undefined;
+                const gender = if (std.mem.eql(u8, data.genderSlice(), "1")) "男" else if (std.mem.eql(u8, data.genderSlice(), "2")) "女" else data.genderSlice();
+                const text = if (data.birth_len > 0) std.fmt.bufPrint(&info, "{s} / {s}", .{ data.birthSlice(), gender }) catch data.birthSlice() else "—";
+                try label(instance, target, 48, 298, text, 26, 0x2147);
+                try label(instance, target, 48, 390, "住所", 20, 0x528a);
+                try label(instance, target, 48, 428, if (data.address_len > 0) data.addressSlice() else "—", 24, 0x2147);
+            } else try label(instance, target, 48, 160, "カードデータがありません", 24, 0x528a);
+            try label(instance, target, 48, 1060, "タップ / Esc: 戻る", 22, 0x528a);
+        },
+        .credits => {
+            const entry = try pack.chapter(nav.book, nav.chapter);
+            var req = request.*;
+            req.navigation = null;
+            req.keyboard = 0;
+            req.reserved_bottom_px = 0;
+            req.text = entry.credits.ptr;
+            req.text_length = @min(4096, entry.credits.len);
+            req.cursor = 0;
+            req.show_cursor = 0;
+            req.page_mode = 0;
+            return instance.renderPortrait(&req);
+        },
+        else => return error.UnsupportedOrientation,
+    }
+    _ = target.fillRect(0, 1208, 720, 72, 0x2147);
+    if (nav.screen == .reading) {
+        for ([_]struct { x: i32, text: []const u8 }{ .{ .x = 8, .text = "Home" }, .{ .x = 128, .text = "前" }, .{ .x = 248, .text = "次" }, .{ .x = 368, .text = if (nav.can_try) "Try" else "" }, .{ .x = 488, .text = "目次" }, .{ .x = 608, .text = "設定" } }) |button| try label(instance, target, button.x, 1232, button.text, 20, 0xffff);
+    } else if (nav.screen == .chapters) {
+        try label(instance, target, 8, 1232, "Home", 20, 0xffff);
+        try label(instance, target, 128, 1232, "前の一覧", 20, 0xffff);
+        try label(instance, target, 368, 1232, "次の一覧", 20, 0xffff);
+    } else try label(instance, target, 8, 1232, "Home", 20, 0xffff);
+}
+
+/// Portrait Home uses the panel's physical coordinates and shared card geometry.
+/// Other navigation scenes remain landscape until explicitly adapted.
+pub fn renderPortraitHome(instance: *Session, request: *const protocol.Request) !void {
+    const nav = request.navigation orelse return error.Range;
+    if (nav.screen != .home) return error.UnsupportedOrientation;
+    const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
+    const N = @import("navigation.zig").State;
+    _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
+    try label(instance, target, 36, 36, "xy", 48, 0x2147);
+    try label(instance, target, 155, 54, "読む。書く。試す。", 28, 0x2147);
+    try label(instance, target, 36, 112, "本を選んで、考えを広げる。", 24, 0x528a);
+    const titles = [_][]const u8{ "n  文書を書く・再開", "1  xyを使ってみる", "2  草枕", "3  SICP", "4  小さなOSを育てる", "s  表示設定" };
+    for (titles, 0..) |title, i| {
+        const y: u32 = N.portrait_home_top + @as(u32, @intCast(i)) * N.portrait_home_pitch;
+        _ = target.fillRect(@intCast(N.portrait_home_x), @intCast(y), N.portrait_home_width, N.portrait_home_card_height, if (nav.home_selection == i) 0x2147 else 0xffff);
+        try label(instance, target, @intCast(N.portrait_home_x + 24), @intCast(y + 49), title, 28, if (nav.home_selection == i) 0xffff else 0x2147);
+    }
+    try label(instance, target, 36, 1130, "本はオフラインで読めます。", 24, 0x528a);
+    _ = target.fillRect(0, 1208, 720, 72, 0x2147);
+    try label(instance, target, 36, 1230, "タッチで選択 / 矢印・Enter", 24, 0xffff);
 }
 
 pub fn render(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {

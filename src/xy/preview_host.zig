@@ -12,9 +12,13 @@ var lessons: @import("learning_session.zig").Session = undefined;
 var nav: navigation.State = .{};
 var config: protocol.Config = .{};
 var ready = false;
+var portrait = false;
+var portrait_keyboard = false;
 var last_error: u32 = 0;
 pub export fn xy_tab5_init(data: [*]const u8, len: u32) callconv(.c) bool {
     ready = false;
+    portrait = false;
+    portrait_keyboard = false;
     pack = catalog.Pack.init(data[0..len]) catch return false;
     instance.initSlices(pack.font(0) catch return false, pack.font(1) catch return false) catch return false;
     lessons.initInPlace();
@@ -46,9 +50,17 @@ pub export fn xy_tab5_key(key: u8) callconv(.c) void {
     };
     if (nav.screen == .examples or nav.screen == .exercise) lessons.handle(&nav, event) else nav.handle(event, &config);
 }
+pub export fn xy_tab5_set_portrait_keyboard(value: bool) callconv(.c) void {
+    portrait_keyboard = value;
+}
+pub export fn xy_tab5_set_portrait(value: bool) callconv(.c) void {
+    portrait = value;
+}
 pub export fn xy_tab5_touch(x: u32, y: u32) callconv(.c) void {
     if (!ready) return;
-    if (nav.screen == .examples or nav.screen == .exercise) lessons.touch(&nav, x, y) else nav.touch(x, y, &config);
+    if (nav.screen == .examples or nav.screen == .exercise) {
+        if (portrait) lessons.touchPortrait(&nav, x, y, portrait_keyboard) else lessons.touch(&nav, x, y);
+    } else if (portrait) nav.touchPortrait(x, y, &config) else nav.touch(x, y, &config);
 }
 pub export fn xy_tab5_state(field: u32) callconv(.c) u32 {
     return switch (field) {
@@ -68,8 +80,8 @@ pub export fn xy_tab5_state(field: u32) callconv(.c) u32 {
 }
 pub export fn xy_tab5_render(pixels: [*]u8, len: u32) callconv(.c) bool {
     if (!ready or len != 720 * 1280 * 2) return false;
-    const req = protocol.Request{ .learning = &lessons, .workspace = &instance, .navigation = &nav, .frame = pixels, .frame_length = len, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0 };
-    reading.render(&instance, &req, pack) catch |err| {
+    const req = protocol.Request{ .learning = &lessons, .workspace = &instance, .navigation = &nav, .frame = pixels, .frame_length = len, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0, .keyboard = if (portrait and portrait_keyboard and nav.screen == .exercise) 1 else 0 };
+    (if (portrait) reading.renderPortrait(&instance, &req, pack) else reading.render(&instance, &req, pack)) catch |err| {
         last_error = @intFromError(err);
         return false;
     };
