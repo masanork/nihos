@@ -121,3 +121,5 @@ CMake、C++17 compiler、Python 3、curlを使う。固定したsourceとfontを
 RV32のstack比較は、固定toolchainと命令実行環境を使う追加実験で、手順は[probeの資料](git:9e784cf9cde6bd19abb1cf205528ff3b086faaf5:probes/graphics/README.md)と同じ版の`tools/run-graphics-rv32-probe.sh`を読む。先に保存済みの結果で、guardに止められた実行と完了した実行を区別してみよう。
 
 日本語を描く予算は、font fileのサイズだけでは決まらない。共有状態、利用者ごとの寿命、断片化、管理枠、stack、hintingの方針を揃えると、nativeへ持ち込む前に確かめることが見えてくる。
+
+後続の{{ch:editing-environment}}では、独自のページング式フォント実装と、文書・入力・組版の共通コアを追う。この章のライブラリ実験がそのまま実機の編集環境へ組み込まれた意味ではなく、別の実装経路と予算を比較する材料になる。

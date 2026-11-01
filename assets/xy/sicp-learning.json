@@ -1056,7 +1056,7 @@
       "execution_status": "unqualified"
     }
   ],
-  "library_sha256": "e72156a79eb1122997c3d1a1fa736be78144fa92fa1d5142e6a62006b2011780",
+  "library_sha256": "4b1321b807d96b425dc9133154db2968a3c64b0aea628e9cd69e34671f030128",
   "sections": [
     {
       "id": "sicp.elements",
