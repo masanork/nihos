@@ -2904,14 +2904,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-01",
-    "measuredAt": "2026-11-01T05:21:20.444760+00:00",
+    "measuredAt": "2026-11-01T06:36:50.123609+00:00",
     "project": "nihos",
-    "commit": "f39879d492114f2e2cd598e5800abb8e59e5faa3",
+    "commit": "f336117f1bec70adcbcdf6e6c1111194881e3059",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "53cf151677827387a76b6531fb03cd9a6d43c35be9d62d848fa36ea497ca00eb",
+    "sourceTreeSha256": "39319baf75d2d6a7bf55d21bddbc28a6931e599a3ad5b22dfeb49c29f4c211af",
     "code": {
-      "implementation": 64919,
-      "tests": 33179,
+      "implementation": 64940,
+      "tests": 33233,
       "tooling": 21611,
       "probes": 9473,
       "vendored": 723,
@@ -2919,8 +2919,8 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 57552,
-        "tests": 23992,
+        "implementation": 57573,
+        "tests": 23996,
         "tooling": 1198,
         "probes": 1502,
         "vendored": 0,
@@ -2952,7 +2952,7 @@
       },
       "Python": {
         "implementation": 0,
-        "tests": 9028,
+        "tests": 9078,
         "tooling": 16762,
         "probes": 1798,
         "vendored": 0,
@@ -3017,8 +3017,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 63060,
-        "tests": 24118,
+        "implementation": 63081,
+        "tests": 24122,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -3034,7 +3034,7 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 9061,
+        "tests": 9111,
         "tooling": 21441,
         "probes": 0,
         "vendored": 0,
@@ -3443,12 +3443,12 @@
         "src/xy/learning_session.zig": "3d8be7e6ba063f73ab57ba5dd1737b4b8795486e08addcd8b0902354f65c04fe",
         "src/xy/learning_view.zig": "e3f30fce27d15fccfbedf3b46abfde3fe038e740190c4581c5dbf6002f0c59f2",
         "src/xy/live_workspace.zig": "f1cf48e080fb3e01df5f259e1276b54abccd0ce9de8c7d5c5dc4788ea6de340d",
-        "src/xy/native_reading.zig": "99f1b0fbe56a4d4633f8d9abf8fcad49479021a0cdbcfa00f4b1a6574bd5e19e",
+        "src/xy/native_reading.zig": "9294728b800103ae445660bbdac67bb6c438e75cfeed838fa7fc64127b0ee7fb",
         "src/xy/native_render_entry.zig": "f6459e7beee2ead5d81481dd77cfd4de5e823bfd8ca763ed2265c76d8eedd011",
-        "src/xy/navigation.zig": "797e8208984b67c8d13129112a6771fb8924b34c24e5df7c46387d8b048860ed",
+        "src/xy/navigation.zig": "56c413e15a97d41e76c8b576b7e30708b731d178e6f18caa956a0c800c561b14",
         "src/xy/plot_config.zig": "a0390b078127139a6bf7b94ee726116ed42a6f7926442e97a2399fda9d66bbce",
         "src/xy/presentation.zig": "bb8ee97b794e3fbf3083ee39a907654b12c5716872270eda3778ad41f1efa268",
-        "src/xy/preview_host.zig": "c7da109aedfbaca4c1e74ea80ca6b26f2cccd05f5588daa9cf2df6acdcc8a11d",
+        "src/xy/preview_host.zig": "43daa646bf236303ff95ee6d5fa4aeeeefce20c01e4d62510f257e2833c122d6",
         "src/xy/reader.zig": "8733f2c6babd51db8c77a186183f9e13f5caea3e235b57ac2bff972b198ff210",
         "src/xy/render_adapter.zig": "651ce747bc4383a376513e2565758c9aeb611bd185b8841b5c6c40395a34efeb",
         "src/xy/render_protocol.zig": "b0bdce254ea1796f2cd827c0d09aa80ec7cc0f8cdc50c07460abacbe3e181a73",
@@ -3463,9 +3463,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 13540,
-        "count": 14345,
-        "percent": 94.38828860230045
+        "covered": 13544,
+        "count": 14355,
+        "percent": 94.3504005572971
       },
       "files": {
         "src/app/animation.zig": {
@@ -4081,8 +4081,8 @@
           "count": 140
         },
         "src/xy/navigation.zig": {
-          "covered": 97,
-          "count": 146
+          "covered": 101,
+          "count": 156
         },
         "src/xy/presentation.zig": {
           "covered": 14,
