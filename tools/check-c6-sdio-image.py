@@ -8,7 +8,7 @@ import sys
 
 def main():
     if len(sys.argv) not in (4, 5):
-        raise SystemExit("usage: check-c6-sdio-image.py ELF BIN|--elf-only REPORT.json [at|hosted|hosted-time|hosted-info]")
+        raise SystemExit("usage: check-c6-sdio-image.py ELF BIN|--elf-only REPORT.json [at|hosted|hosted-time|hosted-info|hosted-split-udp]")
     protocol = sys.argv[4] if len(sys.argv) == 5 else 'at'
     if protocol not in ('at', 'hosted', 'hosted-time', 'hosted-info', 'hosted-split-udp'):
         raise SystemExit('unknown C6 protocol')
