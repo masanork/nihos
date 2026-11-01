@@ -10,6 +10,7 @@ pub const document = @import("document.zig");
 pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
+pub const soft_keyboard = @import("soft_keyboard.zig");
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
@@ -65,6 +66,17 @@ pub const Model = struct {
     utf8: [4]u8,
     utf8_length: u3,
     utf8_needed: u3,
+    /// Set by the session layer from the Tab5 keyboard probe (or a host
+    /// that knows better). While true the soft keyboard stays hidden.
+    physical_keyboard: bool,
+    /// Dismissal is recorded against the input context that was active,
+    /// so it expires by itself when the context changes.
+    soft_keyboard_dismissed: bool,
+    soft_keyboard_context: u8,
+    /// Start point of the current touch, for edge-gesture recognition.
+    touch_start_x: u32,
+    touch_start_y: u32,
+    touch_tracking: bool,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -240,7 +252,81 @@ pub const Model = struct {
         @memcpy(self.command[self.command_length..][0..bytes.len], bytes);
         self.command_length += bytes.len;
     }
+    /// Input contexts that accept text: the document in edit or command
+    /// mode, and the learning exercise screen. Zero is "no context".
+    fn softKeyboardContext(self: *const Model) u8 {
+        // The learning screens keep their own touch layout for now; the
+        // keyboard serves the document screen first.
+        if (self.nav.screen != .document) return 0;
+        return switch (self.mode) {
+            .edit => 1,
+            .command => 2,
+            else => 0,
+        };
+    }
+
+    pub fn setPhysicalKeyboard(self: *Model, present: bool) linksection(scheme.code_section) void {
+        if (self.physical_keyboard == present) return;
+        self.physical_keyboard = present;
+        if (!present) self.soft_keyboard_dismissed = false;
+        self.changed();
+    }
+
+    pub fn softKeyboardVisible(self: *const Model) bool {
+        const context = self.softKeyboardContext();
+        const dismissed = self.soft_keyboard_dismissed and self.soft_keyboard_context == context;
+        return soft_keyboard.visible(self.physical_keyboard, context != 0, dismissed);
+    }
+
+    pub fn touchDown(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        self.touch_start_x = x;
+        self.touch_start_y = y;
+        self.touch_tracking = true;
+    }
+
+    /// Applies a recognized edge gesture, returning true when it consumed
+    /// the touch: flick up from the bottom edge summons the keyboard
+    /// (clearing a dismissal), flick down across it dismisses it.
+    fn touchGesture(self: *Model, x: u32, y: u32) bool {
+        if (!self.touch_tracking) return false;
+        self.touch_tracking = false;
+        switch (soft_keyboard.edgeGesture(self.touch_start_x, self.touch_start_y, x, y)) {
+            .none => return false,
+            .show => {
+                if (self.physical_keyboard or self.softKeyboardContext() == 0) return false;
+                self.soft_keyboard_dismissed = false;
+                self.changed();
+                return true;
+            },
+            .hide => {
+                if (!self.softKeyboardVisible()) return false;
+                self.soft_keyboard_dismissed = true;
+                self.soft_keyboard_context = self.softKeyboardContext();
+                self.changed();
+                return true;
+            },
+        }
+    }
+
     pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.touchGesture(x, y)) return;
+        if (self.softKeyboardVisible()) {
+            if (soft_keyboard.keyAt(x, y)) |action| {
+                switch (action) {
+                    .char => |byte| self.handle(.{ .text = byte }),
+                    .enter => self.handle(.enter),
+                    .backspace => self.handle(.backspace),
+                    .escape => self.handle(.escape),
+                    .dismiss => {
+                        self.soft_keyboard_dismissed = true;
+                        self.soft_keyboard_context = self.softKeyboardContext();
+                        self.changed();
+                    },
+                }
+                return;
+            }
+            if (soft_keyboard.contains(x, y)) return; // Gaps between keys.
+        }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| l.touch(&self.nav, x, y);
         } else self.nav.touch(x, y, &self.vm.view);
@@ -803,4 +889,91 @@ test "storage wait preserves the delayed ESC that opens a queued Scheme command"
     try std.testing.expectEqual(Status.scheme_result, model.status);
     try std.testing.expectEqualStrings("3", model.reply[0..model.reply_length]);
     try std.testing.expectEqualStrings("", model.doc.slice());
+}
+
+fn tapSoftKey(model: *Model, label: u8) void {
+    var rects: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    for (soft_keyboard.layout(&rects)) |rect| {
+        if (rect.label == label) {
+            model.touch(rect.x + rect.w / 2, rect.y + rect.h / 2);
+            return;
+        }
+    }
+    unreachable;
+}
+
+test "soft keyboard types, edits and runs a minibuffer command without a physical keyboard" {
+    var model: Model = undefined;
+    model.initInPlace();
+    try std.testing.expect(model.softKeyboardVisible());
+    tapSoftKey(&model, 'h');
+    tapSoftKey(&model, 'i');
+    try std.testing.expectEqualStrings("hi", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_backspace);
+    try std.testing.expectEqualStrings("h", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_enter);
+    try std.testing.expectEqualStrings("h\n", model.doc.slice());
+    // Escape from the keyboard opens the minibuffer; typing there is a
+    // command context, so the keyboard stays available.
+    tapSoftKey(&model, soft_keyboard.label_escape);
+    try std.testing.expectEqual(Mode.command, model.mode);
+    try std.testing.expect(model.softKeyboardVisible());
+    tapSoftKey(&model, 'h');
+    tapSoftKey(&model, 'e');
+    tapSoftKey(&model, 'l');
+    tapSoftKey(&model, 'p');
+    tapSoftKey(&model, soft_keyboard.label_enter);
+    try std.testing.expectEqual(Mode.help, model.mode);
+}
+
+test "a physical keyboard hides the soft keyboard and touches fall through" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.setPhysicalKeyboard(true);
+    try std.testing.expect(!model.softKeyboardVisible());
+    // With no keyboard on screen, the same tap is workspace navigation
+    // (a document-screen touch goes home) and types nothing.
+    tapSoftKey(&model, 'x');
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqual(navigation.Screen.home, model.nav.screen);
+
+    var detached: Model = undefined;
+    detached.initInPlace();
+    detached.setPhysicalKeyboard(true);
+    detached.setPhysicalKeyboard(false);
+    try std.testing.expect(detached.softKeyboardVisible());
+    tapSoftKey(&detached, 'x');
+    try std.testing.expectEqualStrings("x", detached.doc.slice());
+}
+
+test "dismissing the soft keyboard lasts only for the current input context" {
+    var model: Model = undefined;
+    model.initInPlace();
+    tapSoftKey(&model, soft_keyboard.label_dismiss);
+    try std.testing.expect(!model.softKeyboardVisible());
+    // Moving to the minibuffer is a new context: the keyboard returns.
+    model.handle(.escape);
+    try std.testing.expectEqual(Mode.command, model.mode);
+    try std.testing.expect(model.softKeyboardVisible());
+}
+
+test "bottom-edge flicks summon and dismiss the soft keyboard" {
+    var model: Model = undefined;
+    model.initInPlace();
+    // Dismiss, then flick up from the bottom edge: the keyboard returns
+    // without waiting for a context change.
+    tapSoftKey(&model, soft_keyboard.label_dismiss);
+    try std.testing.expect(!model.softKeyboardVisible());
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.touch(640, soft_keyboard.space_height - 160);
+    try std.testing.expect(model.softKeyboardVisible());
+    // A flick down across the keyboard dismisses it again.
+    model.touchDown(640, soft_keyboard.top + 30);
+    model.touch(640, soft_keyboard.top + 190);
+    try std.testing.expect(!model.softKeyboardVisible());
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    // A short drag is not a gesture: the tap underneath still applies.
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.touch(640, soft_keyboard.space_height - 30);
+    try std.testing.expect(!model.softKeyboardVisible());
 }
