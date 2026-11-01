@@ -1,5 +1,4 @@
 //! Hosted AppGetDesc reports application metadata, not flash identity.
-const std = @import("std");
 const wire = @import("hosted.zig");
 pub const request_id: u32 = 267;
 pub const response_id: u32 = 523;

@@ -35,3 +35,16 @@ private artifacts are in `/private/tmp/nihos-hosted3-main-native-20261102/`.
 
 This short test does not qualify power-loss retention, reconnect, prolonged
 operation, the full default XY/storage profile, QUIC, iroh, or C6 recovery.
+
+## Full default profile build comparison
+
+With the public default device profile (XY, normal storage, SQLD, camera and
+devices enabled) plus `NIHOS_C6_TIME_OFFLOAD=1` and IPv6 disabled, the
+link failed: `.flash.time` exceeded the boot Flash region by 3,826 bytes,
+`.flash.pmp` by 6,558 bytes, and the SRAM heap was below the 48 KiB minimum.
+The same build on unmodified base main `1a3310ea` also failed: the respective
+Flash overflows were 3,544 and 6,270 bytes and the same SRAM minimum failed.
+Thus this is an existing default-profile constraint, with this branch increasing
+the reported Flash overflow; neither build is a usable image. No default-profile
+image was written to Tab5. The separately tested network/device/RTC profile
+above linked and passed its image audit.

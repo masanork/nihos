@@ -674,7 +674,9 @@ pub const OtaInfoReport = struct {
     secure_boot: u32 = 0,
     flash_encrypted: u32 = 0,
 };
+// SAFETY: runOtaInfo initializes the exchange before any read or diagnostic step.
 var ota_info_exchange: hosted.c6_ota_info_exchange.Exchange = undefined;
+// SAFETY: runOtaInfo initializes the stream guard before exerciseOtaInfo uses it.
 var ota_info_guard: hosted.c6_ota_info_exchange.ReadOnlyStream(@TypeOf(hosted_stream)) = undefined;
 fn traceOtaInfo(stage: u8) void {
     for ("NIHOS_C6_OTA_INFO_STAGE ") |byte| _ = nih_rom_putc(byte);
@@ -738,9 +740,12 @@ pub fn runOtaInfo(clock: timers.Timer) OtaInfoReport {
     hosted_stream = .{ .host = &host };
     ota_info_guard = .{ .inner = &hosted_stream };
     clock_failed = false;
-    // Safe default even if power or transport setup fails before init().
-    ota_info_exchange = hosted.c6_ota_info_exchange.Exchange.init(1, 0, 1) catch unreachable;
     var report: OtaInfoReport = .{};
+    // Safe default even if power or transport setup fails before init().
+    ota_info_exchange = hosted.c6_ota_info_exchange.Exchange.init(1, 0, 1) catch |err| {
+        report.error_code = @intFromError(err);
+        return report;
+    };
     exerciseOtaInfo(clock, &report) catch |err| {
         report.error_code = @intFromError(err);
         hosted_stream.invalidate();
