@@ -1,0 +1,21 @@
+integer-add: 486 (steps=10)
+division: ERROR Unbound (steps=7)
+recovery: 3
+decimal: ERROR Overflow (steps=3)
+recovery: 3
+comparison: ERROR Unbound (steps=7)
+recovery: 3
+conditional: ERROR Unbound (steps=14)
+recovery: 3
+flattened-code-with-stale-output: 486 (steps=13)
+loop: ERROR Depth (steps=56)
+recovery: 3
+factorial-1: 1 (steps=39)
+factorial-2: 2 (steps=58)
+factorial-3: 6 (steps=77)
+factorial-4: 24 (steps=96)
+factorial-5: 120 (steps=115)
+factorial-6: ERROR Depth (steps=123)
+recovery: 3
+iterative-original: ERROR Unbound (steps=58)
+recovery: 3
