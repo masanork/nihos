@@ -13,9 +13,7 @@
 //!   without one, landscape with one. This module only records the
 //!   decision; renderers may override it per screen.
 //!
-//! Rendering is deliberately left to callers: `layout` exposes every key
-//! rectangle and label so a renderer can paint the keyboard without
-//! duplicating geometry.
+//! Rendering and hit testing share the same layout and state.
 
 const std = @import("std");
 
@@ -36,6 +34,10 @@ pub const Action = union(enum) {
     escape,
     /// Hide the keyboard until the input context changes.
     dismiss,
+    shift,
+    symbols,
+    left,
+    right,
 };
 
 pub const KeyRect = struct {
@@ -54,11 +56,20 @@ pub const label_enter: u8 = 0x0d;
 pub const label_escape: u8 = 0x1b;
 pub const label_dismiss: u8 = 0x19; // Down-arrow: lower the keyboard.
 pub const label_space: u8 = ' ';
+pub const label_shift: u8 = 1;
+pub const label_symbols: u8 = 2;
+pub const label_left: u8 = 3;
+pub const label_right: u8 = 4;
+pub const State = struct { symbols: bool = false, shift: bool = false };
 
 const row_letters = [3][]const u8{ "qwertyuiop", "asdfghjkl", "zxcvbnm" };
 
 /// Every key, in paint order. Returns the slice of `buffer` that was used.
 pub fn layout(buffer: []KeyRect) []KeyRect {
+    return layoutState(buffer, .{});
+}
+
+pub fn layoutState(buffer: []KeyRect, state: State) []KeyRect {
     var count: usize = 0;
     const push = struct {
         fn add(out: []KeyRect, n: *usize, rect: KeyRect) void {
@@ -67,13 +78,17 @@ pub fn layout(buffer: []KeyRect) []KeyRect {
             n.* += 1;
         }
     }.add;
-    for (row_letters, 0..) |letters, row| {
+    const symbol_rows = [3][]const u8{ "1234567890", "-/:;()$&@\"", ".,?!'[]{}#" };
+    const symbol_shift_rows = [3][]const u8{ "~`|^\\%+=_*", "<>\\\"'@#$&%", ".,?!:;{}[]" };
+    const selected = if (state.symbols) (if (state.shift) symbol_shift_rows else symbol_rows) else row_letters;
+    for (selected, 0..) |letters, row| {
         const y = top + @as(u32, @intCast(row)) * row_height;
         // Half-key indent on the home row, like a physical keyboard.
         const indent: u32 = if (row == 1) space_width / 20 else 0;
         const usable = space_width - indent;
         const key_width = usable / @as(u32, @intCast(letters.len + (if (row == 2) @as(usize, 1) else 0)));
-        for (letters, 0..) |letter, i| {
+        for (letters, 0..) |raw_letter, i| {
+            const letter = if (!state.symbols and state.shift) std.ascii.toUpper(raw_letter) else raw_letter;
             push(buffer, &count, .{
                 .x = indent + @as(u32, @intCast(i)) * key_width,
                 .y = y,
@@ -94,13 +109,17 @@ pub fn layout(buffer: []KeyRect) []KeyRect {
             });
         }
     }
-    // Bottom row: escape, space, enter, dismiss.
+    // Shared geometry is used for painting and hit testing.
     const y = top + 3 * row_height;
-    const unit = space_width / 8;
+    const unit = space_width / 10;
     push(buffer, &count, .{ .x = 0, .y = y, .w = unit, .h = row_height, .action = .escape, .label = label_escape });
-    push(buffer, &count, .{ .x = unit, .y = y, .w = unit * 5, .h = row_height, .action = .{ .char = ' ' }, .label = label_space });
-    push(buffer, &count, .{ .x = unit * 6, .y = y, .w = unit, .h = row_height, .action = .enter, .label = label_enter });
-    push(buffer, &count, .{ .x = unit * 7, .y = y, .w = unit, .h = row_height, .action = .dismiss, .label = label_dismiss });
+    push(buffer, &count, .{ .x = unit, .y = y, .w = unit, .h = row_height, .action = .shift, .label = label_shift });
+    push(buffer, &count, .{ .x = unit * 2, .y = y, .w = unit, .h = row_height, .action = .symbols, .label = label_symbols });
+    push(buffer, &count, .{ .x = unit * 3, .y = y, .w = unit * 3, .h = row_height, .action = .{ .char = ' ' }, .label = label_space });
+    push(buffer, &count, .{ .x = unit * 6, .y = y, .w = unit, .h = row_height, .action = .left, .label = label_left });
+    push(buffer, &count, .{ .x = unit * 7, .y = y, .w = unit, .h = row_height, .action = .right, .label = label_right });
+    push(buffer, &count, .{ .x = unit * 8, .y = y, .w = unit, .h = row_height, .action = .enter, .label = label_enter });
+    push(buffer, &count, .{ .x = unit * 9, .y = y, .w = unit, .h = row_height, .action = .dismiss, .label = label_dismiss });
     return buffer[0..count];
 }
 
@@ -109,9 +128,13 @@ pub const max_keys = 40;
 /// The action for a touch point, or null when the point is outside the
 /// docked keyboard or lands on no key.
 pub fn keyAt(x: u32, y: u32) ?Action {
+    return keyAtState(x, y, .{});
+}
+
+pub fn keyAtState(x: u32, y: u32, state: State) ?Action {
     if (x >= space_width or y < top or y >= space_height) return null;
     var rects: [max_keys]KeyRect = undefined;
-    for (layout(&rects)) |rect| {
+    for (layoutState(&rects, state)) |rect| {
         if (x >= rect.x and x < rect.x + rect.w and y >= rect.y and y < rect.y + rect.h) return rect.action;
     }
     return null;
@@ -157,7 +180,7 @@ pub fn defaultOrientation(physical_keyboard: bool) Orientation {
 test "layout covers the dock with letter rows and a bottom row" {
     var rects: [max_keys]KeyRect = undefined;
     const keys = layout(&rects);
-    try std.testing.expectEqual(@as(usize, 10 + 9 + 7 + 1 + 4), keys.len);
+    try std.testing.expectEqual(@as(usize, 10 + 9 + 7 + 1 + 8), keys.len);
     try std.testing.expectEqual(@as(u8, 'q'), keys[0].label);
     try std.testing.expectEqual(@as(u32, top), keys[0].y);
     // Every key stays inside the docked area.
@@ -171,7 +194,7 @@ test "keyAt maps touches to the same bytes a HID keyboard sends" {
     try std.testing.expectEqual(Action{ .char = 'q' }, keyAt(10, top + 10).?);
     try std.testing.expectEqual(Action{ .char = ' ' }, keyAt(space_width / 2, top + 3 * row_height + 10).?);
     try std.testing.expectEqual(Action.backspace, keyAt(space_width - 10, top + 2 * row_height + 10).?);
-    try std.testing.expectEqual(Action.enter, keyAt(space_width / 8 * 6 + 10, top + 3 * row_height + 10).?);
+    try std.testing.expectEqual(Action.enter, keyAt(space_width / 10 * 8 + 10, top + 3 * row_height + 10).?);
     try std.testing.expectEqual(Action.dismiss, keyAt(space_width - 10, top + 3 * row_height + 10).?);
     try std.testing.expect(keyAt(10, top - 1) == null);
     try std.testing.expect(keyAt(space_width, top + 10) == null);
@@ -194,4 +217,18 @@ test "policy: show only without a physical keyboard, in context, undismissed" {
     try std.testing.expect(!visible(false, true, true));
     try std.testing.expectEqual(Orientation.portrait, defaultOrientation(false));
     try std.testing.expectEqual(Orientation.landscape, defaultOrientation(true));
+}
+
+test "every printable ASCII character is reachable in the keyboard layouts" {
+    var found: [128]bool = @splat(false);
+    var rects: [max_keys]KeyRect = undefined;
+    for ([_]State{ .{}, .{ .shift = true }, .{ .symbols = true }, .{ .symbols = true, .shift = true } }) |state| {
+        for (layoutState(&rects, state)) |rect| {
+            if (rect.action == .char) {
+                found[rect.action.char] = true;
+                try std.testing.expectEqual(rect.action, keyAtState(rect.x + rect.w / 2, rect.y + rect.h / 2, state).?);
+            }
+        }
+    }
+    for (32..127) |c| try std.testing.expect(found[c]);
 }

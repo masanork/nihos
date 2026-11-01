@@ -136,6 +136,8 @@ test "native rotated scanout and desktop logical presentation match every pixel"
     const status = "xy / *scratch*  Source Code Pro";
     const ruby_spans = [_]protocol.RubySpan{.{ .base_start = 29, .base_end = 38, .ruby_start = 0, .ruby_end = "にほんご".len }};
     var request = protocol.Request{ .workspace = instance, .frame = native.ptr, .frame_length = byte_count, .config = &config, .text = text.ptr, .text_length = text.len, .cursor = text.len, .status = status.ptr, .status_length = status.len, .show_cursor = 1, .ruby_text = "にほんご", .ruby_text_length = "にほんご".len, .ruby_spans = &ruby_spans, .ruby_count = 1 };
+    request.keyboard = 1;
+    request.reserved_bottom_px = @import("soft_keyboard.zig").height;
     for (0..2) |axis| {
         config.style.axis = @intCast(axis);
         request.frame = native.ptr;

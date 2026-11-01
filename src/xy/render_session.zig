@@ -5,6 +5,7 @@ const adapter = @import("render_adapter.zig");
 const rotated = @import("rotated_surface");
 pub const protocol = @import("render_protocol.zig");
 const document = @import("document.zig");
+const keyboard = @import("soft_keyboard.zig");
 pub const Cache = layout.ttf.TwoTierCache(24, 1024, 48, 128 * 128);
 pub const Session = SizedSession(256);
 
@@ -46,10 +47,51 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             const physical = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
             const target = rotated.Rotated.init(physical);
             try self.renderInto(request, target);
+            try self.renderKeyboard(request, target);
         }
         pub fn renderLogical(self: *@This(), request: *const protocol.Request, width: u32, height: u32, stride: u32) !void {
             const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], width, height, stride) orelse return error.Geometry;
             try self.renderInto(request, target);
+            try self.renderKeyboard(request, target);
+        }
+        fn renderKeyboard(self: *@This(), request: *const protocol.Request, target: anytype) !void {
+            if (request.keyboard == 0) return;
+            const state = keyboard.State{ .symbols = request.keyboard >= 3, .shift = request.keyboard == 2 or request.keyboard == 4 };
+            _ = target.fillRect(0, keyboard.top, keyboard.space_width, keyboard.height, 0xce79);
+            var rects: [keyboard.max_keys]keyboard.KeyRect = undefined;
+            const family = layout.ttf.Family{ .faces = self.faces[0..1] };
+            for (keyboard.layoutState(&rects, state)) |rect| {
+                const special = rect.label < 32 or rect.label == ' ';
+                const active = rect.label == keyboard.label_shift and state.shift;
+                _ = target.fillRect(@intCast(rect.x + 3), @intCast(rect.y + 3), rect.w - 6, rect.h - 6, if (active) 0x8d1f else if (special) 0xa534 else 0xffff);
+                var one = [1]u8{rect.label};
+                const text: []const u8 = switch (rect.label) {
+                    keyboard.label_backspace => "Bksp",
+                    keyboard.label_enter => "Enter",
+                    keyboard.label_escape => "Esc",
+                    keyboard.label_dismiss => "Hide",
+                    keyboard.label_shift => "Shift",
+                    keyboard.label_symbols => if (state.symbols) "ABC" else "123",
+                    keyboard.label_left => "<",
+                    keyboard.label_right => ">",
+                    keyboard.label_space => "Space",
+                    else => &one,
+                };
+                const size: u8 = if (text.len > 1) 20 else 28;
+                var width: i32 = 0;
+                for (text) |c| {
+                    const glyph = try self.cache.getOrRender(family, 0, c, 0, size, false, &self.scratch);
+                    width += @divTrunc(glyph.metrics.x_advance_26_6 + 32, 64);
+                }
+                var pen: i32 = @as(i32, @intCast(rect.x)) + @divTrunc(@as(i32, @intCast(rect.w)) - width, 2);
+                const baseline: i32 = @as(i32, @intCast(rect.y)) + @divTrunc(@as(i32, @intCast(rect.h)) - size, 2) + @divTrunc(@as(i32, size) * 880 + 512, 1024);
+                for (text) |c| {
+                    const glyph = try self.cache.getOrRender(family, 0, c, 0, size, false, &self.scratch);
+                    const mask = adapter.surface.Mask{ .bytes = glyph.alpha, .width = glyph.metrics.width, .height = glyph.metrics.height, .stride = glyph.metrics.width };
+                    _ = target.blit(mask, pen + glyph.metrics.left_px, baseline - glyph.metrics.top_px, 0x18e3);
+                    pen += @divTrunc(glyph.metrics.x_advance_26_6 + 32, 64);
+                }
+            }
         }
         /// Bounded UI text has no editor caret window or status row. Share the
         /// font family/cache/shaper/compositor while retaining every label glyph.

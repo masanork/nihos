@@ -75,6 +75,7 @@ pub const Model = struct {
     /// so it expires by itself when the context changes.
     soft_keyboard_dismissed: bool,
     soft_keyboard_context: u8,
+    soft_keyboard_state: soft_keyboard.State,
     /// Start point of the current touch, for edge-gesture recognition.
     touch_start_x: u32,
     touch_start_y: u32,
@@ -322,11 +323,35 @@ pub const Model = struct {
     }
 
     pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        const tracked = self.touch_tracking;
+        const start_x = self.touch_start_x;
+        const start_y = self.touch_start_y;
         if (self.touchGesture(x, y)) return;
         if (self.softKeyboardVisible()) {
-            if (soft_keyboard.keyAt(x, y)) |action| {
+            if (tracked) {
+                const start = soft_keyboard.keyAtState(start_x, start_y, self.soft_keyboard_state);
+                const end = soft_keyboard.keyAtState(x, y, self.soft_keyboard_state);
+                if (start != null or end != null or soft_keyboard.contains(start_x, start_y)) {
+                    if (start == null or end == null or !std.meta.eql(start.?, end.?)) return;
+                }
+            }
+            if (soft_keyboard.keyAtState(x, y, self.soft_keyboard_state)) |action| {
                 switch (action) {
-                    .char => |byte| self.handle(.{ .text = byte }),
+                    .char => |byte| {
+                        self.handle(.{ .text = byte });
+                        if (!self.soft_keyboard_state.symbols) self.soft_keyboard_state.shift = false;
+                    },
+                    .shift => {
+                        self.soft_keyboard_state.shift = !self.soft_keyboard_state.shift;
+                        self.changed();
+                    },
+                    .symbols => {
+                        self.soft_keyboard_state.symbols = !self.soft_keyboard_state.symbols;
+                        self.soft_keyboard_state.shift = false;
+                        self.changed();
+                    },
+                    .left => self.handle(.left),
+                    .right => self.handle(.right),
                     .enter => self.handle(.enter),
                     .backspace => self.handle(.backspace),
                     .escape => self.handle(.escape),
@@ -1095,4 +1120,38 @@ test "scheme can read card, inspect info, show declarative card view, and insert
     model.evaluate("(card/dismiss! h)", false);
     try std.testing.expectEqual(Status.scheme_result, model.status);
     try std.testing.expect(!test_mock_card.active);
+}
+
+test "soft keyboard enters shifted text, symbols and moves the caret" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    tapSoftKey(&model, soft_keyboard.label_shift);
+    tapSoftKey(&model, 'q');
+    try std.testing.expectEqualStrings("Q", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_symbols);
+    // Hit a symbol key using the same active layout used by the renderer.
+    var keys: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    for (soft_keyboard.layoutState(&keys, model.soft_keyboard_state)) |key| {
+        if (key.label == '(') {
+            model.touch(key.x + key.w / 2, key.y + key.h / 2);
+            break;
+        }
+    }
+    try std.testing.expectEqualStrings("Q(", model.doc.slice());
+    tapSoftKey(&model, soft_keyboard.label_left);
+    tapSoftKey(&model, soft_keyboard.label_backspace);
+    try std.testing.expectEqualStrings("(", model.doc.slice());
+}
+
+test "soft keyboard ignores a drag across different keys" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.touchDown(10, soft_keyboard.top + 10);
+    model.touch(150, soft_keyboard.top + 10);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    model.touchDown(10, soft_keyboard.top + 10);
+    model.touch(10, soft_keyboard.top + 10);
+    try std.testing.expectEqualStrings("q", model.doc.slice());
 }
