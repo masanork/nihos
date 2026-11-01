@@ -57,3 +57,23 @@ The existing P4 SRAM-only fixture has 128 KiB of SRAM and cannot hold the
 mapping or external streaming protocol) must be implemented before its loop
 can drive this pump. C6 ROM recovery has not been verified on this board. No OTA
 Begin, C6 Flash write or P4 fixture flash was performed during this stage.
+
+## One-shot start gate (host model)
+
+`hosted_ota_guard.zig` combines the version/identity preflight, the bounded OTA
+pump and a one-shot start token. The session transitions from a successful
+1.4.1 handshake to a waiting state without sending Begin. Only the exact line
+`OTA1 ` followed by the lowercase SHA-256 of the reviewed app and newline
+allows the next step to send Begin. Wrong, oversized, truncated or expired
+input retires the guard; a successful token cannot be replayed. The token is
+an operational action selector, not a cryptographic authentication channel.
+The host fixture tests no-armed/no-write, exact token, rejection and timeout.
+RV32 compilation includes the guard. It is not connected to a physical serial
+receiver or an OTA-capable P4 image, and has not performed device writes.
+
+For the isolated preflight only, C6 reset settling is now 2 seconds. Earlier
+1.4.1 long-diagnostic candidates with 300 ms and 2 s delays showed respectively
+three initialization failures and three successes, but the candidates differed
+and causality remains unresolved. The adjusted preflight has not run on the
+board. The user confirmed the board is being used by another task; continue
+host-only work until explicitly available.

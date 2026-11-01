@@ -522,7 +522,10 @@ noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
     host.io.delay(20_000);
     nih_c6_reset(1);
-    host.io.delay(300_000);
+    // Prior Tab5 long Hosted diagnostics saw repeated CMD52 response
+    // timeouts at 300 ms and completed initialization after a 2 s settle.
+    // This is a conservative preflight setting, not a proven root cause.
+    host.io.delay(2_000_000);
     if (clock_failed) return error.Clock;
     ota_preflight_stage = 2;
     try host.prepare(true);

@@ -2,6 +2,7 @@
 const pump = @import("hosted_ota_pump.zig");
 const ota = @import("hosted_ota.zig");
 const session = @import("hosted_ota_session.zig");
+const guard = @import("hosted_ota_guard.zig");
 const Stream = struct {
     pub fn send(_: *@This(), _: []const u8) error{Transport}!usize {
         return 0;
@@ -36,4 +37,17 @@ export fn nih_ota_session_probe_step(now: u64) bool {
         return true;
     }
     return false;
+}
+
+var guarded_driver: guard.Guard = undefined;
+export fn nih_ota_guard_probe_init(bytes: [*]const u8, length: usize, hash: *const [32]u8) bool {
+    guarded_driver.initInPlace(bytes[0..length], hash.*, 0, 100) catch return false;
+    return true;
+}
+export fn nih_ota_guard_probe_step(now: u64) bool {
+    guarded_driver.step(&stream, now) catch return false;
+    return true;
+}
+export fn nih_ota_guard_probe_feed(byte: u8, now: u64) bool {
+    return guarded_driver.feed(byte, now) catch false;
 }
