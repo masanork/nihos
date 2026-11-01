@@ -198,6 +198,18 @@ mod tests {
     }
 
     #[test]
+    fn disconnected_keyboard_bus_has_independent_open_drain_lines() {
+        let mut bus = Bus::new();
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
+        bus.write_u32(0x500e_0024, 1);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 2);
+        bus.write_u32(0x500e_0024, 2);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 0);
+        bus.write_u32(0x500e_0028, 3);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
+    }
+
+    #[test]
     fn usb_fifo_and_timer_capture_have_guest_visible_state() {
         let mut bus = Bus::new();
         assert_eq!(bus.read_u32(0x500d_2004), 2);
@@ -349,8 +361,16 @@ mod tests {
             {
                 emu.step_frame(30_000_000);
                 let home = emu.bus.scanout.clone().expect("home frame");
-                // Home's first card at logical (200, 220), panel (220, 1079).
-                emu.bus.touch(Some((220, 1079)));
+                // The first home card uses the same visual point in either
+                // orientation, translated back into physical panel coordinates.
+                let portrait = String::from_utf8_lossy(&emu.bus.console_output)
+                    .lines()
+                    .any(|line| {
+                        line.starts_with("NIHOS_NATIVE_XY_READY ")
+                            && line.contains("portrait=00000001")
+                    });
+                emu.bus
+                    .touch(Some(if portrait { (200, 220) } else { (220, 1079) }));
                 emu.bus.touch(None);
                 emu.step_frame(90_000_000);
                 assert_ne!(
@@ -363,6 +383,33 @@ mod tests {
         }
         panic!(
             "touch not ready: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
+    }
+
+    #[test]
+    #[ignore = "requires a keyboard-probing NIHOS_EMU_TEST_ELF with automatic orientation"]
+    fn absent_keyboard_selects_portrait() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        for _ in 0..2000 {
+            emu.step_frame(500_000);
+            assert!(!emu.paused, "guest CPU fault: {:?}", emu.fault());
+            let output = String::from_utf8_lossy(&emu.bus.console_output);
+            assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+            if let Some(line) = output
+                .lines()
+                .find(|line| line.starts_with("NIHOS_NATIVE_XY_READY "))
+            {
+                assert!(
+                    line.contains("portrait=00000001") && line.contains("keyboard_probe=00000001"),
+                    "{line}"
+                );
+                return;
+            }
+        }
+        panic!(
+            "guest not ready: {}",
             String::from_utf8_lossy(&emu.bus.console_output)
         );
     }

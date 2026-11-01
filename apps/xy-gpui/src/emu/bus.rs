@@ -351,11 +351,11 @@ impl Bus {
             0x500e_0020 => self.gpio_enable,
             0x500e_002c => self.gpio_enable1,
             0x500e_003c => {
-                if self.i2c.data_high() {
-                    1 << 31
-                } else {
-                    0
-                }
+                // GPIO 0/1 are the separate, disconnected keyboard I2C bus.
+                // Pull-ups hold each released open-drain line high; no slave
+                // pulls SDA low to acknowledge an address.
+                let keyboard_lines = !self.gpio_enable & 3;
+                keyboard_lines | if self.i2c.data_high() { 1 << 31 } else { 0 }
             }
             0x500e_0040 => u32::from(self.i2c.clock_high()),
             0x500d_2000 => {
