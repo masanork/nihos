@@ -223,6 +223,51 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.page_mode = 0;
             try instance.render(&read_request);
         },
+        .card_view => {
+            _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
+            _ = target.fillRect(48, 28, 1184, 600, 0xffff);
+            _ = target.fillRect(48, 28, 1184, 8, 0x2147);
+
+            try label(instance, target, 72, 56, "マイナンバーカード 券面情報", 32, 0x2147);
+            try label(instance, target, 72, 98, "券面事項入力補助APより取得（暗証番号照会済み）", 18, 0x528a);
+
+            const card_data = &nav.card;
+            if (card_data.valid) {
+                try label(instance, target, 72, 140, "氏名", 18, 0x528a);
+                const name = if (card_data.name_len > 0) card_data.nameSlice() else "—";
+                try label(instance, target, 72, 172, name, 32, 0x2147);
+
+                try label(instance, target, 72, 230, "生年月日 / 性別", 18, 0x528a);
+                var bg_buf: [48]u8 = undefined;
+                const gender_str = if (std.mem.eql(u8, card_data.genderSlice(), "1")) "男" else if (std.mem.eql(u8, card_data.genderSlice(), "2")) "女" else card_data.genderSlice();
+                const bg_text = if (card_data.birth_len > 0)
+                    std.fmt.bufPrint(&bg_buf, "{s}  /  {s}", .{ card_data.birthSlice(), gender_str }) catch card_data.birthSlice()
+                else
+                    "—";
+                try label(instance, target, 72, 260, bg_text, 26, 0x2147);
+
+                try label(instance, target, 72, 315, "住所", 18, 0x528a);
+                const addr = if (card_data.address_len > 0) card_data.addressSlice() else "—";
+                if (addr.len > 48) {
+                    const split_idx = @min(addr.len, 48);
+                    const line1 = addr[0..split_idx];
+                    const line2 = addr[split_idx..];
+                    try label(instance, target, 72, 345, line1, 24, 0x2147);
+                    try label(instance, target, 72, 380, line2, 24, 0x2147);
+                } else {
+                    try label(instance, target, 72, 345, addr, 24, 0x2147);
+                }
+
+                _ = target.fillRect(896, 136, 200, 264, 0xef5d);
+                _ = target.fillRect(900, 140, 192, 256, 0xdf1a);
+                try label(instance, target, 960, 260, "顔写真", 24, 0x528a);
+            } else {
+                try label(instance, target, 72, 160, "カードデータがありません", 24, 0x528a);
+            }
+
+            _ = target.fillRect(0, 648, 1280, 72, 0x2147);
+            try label(instance, target, 48, 672, "Esc / タップ: 戻る        Enter: 本文に挿入        s: 保存", 24, 0xffff);
+        },
         .document => return error.Range,
     }
 }

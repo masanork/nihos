@@ -10,6 +10,7 @@ pub const document = @import("document.zig");
 pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
+pub const card = @import("card.zig");
 pub const soft_keyboard = @import("soft_keyboard.zig");
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
@@ -37,6 +38,7 @@ const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
 pub const LearningSession = @import("learning_session.zig").Session;
 pub const Model = struct {
     camera: camera.Client,
+    card: card.Client,
     storage_client: scheme.storage.Client,
     doc: Doc,
     nav: navigation.State,
@@ -161,6 +163,17 @@ pub const Model = struct {
         self.status = .none;
         self.changed();
         if (self.nav.screen != .document) {
+            if (self.nav.screen == .card_view and key == .enter) {
+                var insert_buf: [256]u8 = undefined;
+                const formatted = std.fmt.bufPrint(&insert_buf, "氏名: {s}\n住所: {s}\n生年月日: {s}\n", .{
+                    self.nav.card.nameSlice(),
+                    self.nav.card.addressSlice(),
+                    self.nav.card.birthSlice(),
+                }) catch "";
+                self.nav.screen = .document;
+                if (formatted.len > 0) self.insert(formatted);
+                return;
+            }
             const nav_key: navigation.Key = switch (key) {
                 inline else => |value, tag| @unionInit(navigation.Key, @tagName(tag), value),
             };
@@ -390,6 +403,45 @@ pub const Model = struct {
     }
     pub fn cameraRead(self: *Model, camera_handle: i32, offset: u32, output: []u8) linksection(scheme.code_section) scheme.Error!void {
         return self.camera.read(camera_handle, offset, output);
+    }
+    pub fn cardRead(self: *Model) linksection(scheme.code_section) scheme.Error!i32 {
+        return self.card.readInputSupport();
+    }
+    pub fn cardInfo(self: *Model, card_handle: i32) linksection(scheme.code_section) scheme.Error!card.Info {
+        return self.card.info(card_handle);
+    }
+    pub fn cardDismiss(self: *Model, card_handle: i32) linksection(scheme.code_section) scheme.Error!void {
+        try self.card.dismiss(card_handle);
+        if (self.nav.screen == .card_view) {
+            self.nav.card.clear();
+            self.nav.screen = .document;
+            self.changed();
+        }
+    }
+    pub fn showCardView(self: *Model, card_handle: i32) linksection(scheme.code_section) scheme.Error!void {
+        const info = try self.card.info(card_handle);
+        self.nav.card.clear();
+        self.nav.card.valid = true;
+        const nlen = @min(info.name.len, self.nav.card.name.len);
+        @memcpy(self.nav.card.name[0..nlen], info.name[0..nlen]);
+        self.nav.card.name_len = @intCast(nlen);
+
+        const alen = @min(info.address.len, self.nav.card.address.len);
+        @memcpy(self.nav.card.address[0..alen], info.address[0..alen]);
+        self.nav.card.address_len = @intCast(alen);
+
+        const blen = @min(info.birth.len, self.nav.card.birth.len);
+        @memcpy(self.nav.card.birth[0..blen], info.birth[0..blen]);
+        self.nav.card.birth_len = @intCast(blen);
+
+        const glen = @min(info.gender.len, self.nav.card.gender.len);
+        @memcpy(self.nav.card.gender[0..glen], info.gender[0..glen]);
+        self.nav.card.gender_len = @intCast(glen);
+
+        self.nav.card.has_photo = info.photo_bytes > 0;
+        self.nav.return_screen = if (self.nav.screen == .card_view) .document else self.nav.screen;
+        self.nav.screen = .card_view;
+        self.changed();
     }
     pub fn schemeCall(self: *Model, op: scheme.EditorOp, text: []const u8, number: i32) linksection(scheme.code_section) scheme.Error!void {
         if ((self.mode == .system or self.nav.screen != .document) and (op == .insert or op == .move or op == .undo or op == .forget)) return error.EditorFailure;
@@ -976,4 +1028,71 @@ test "bottom-edge flicks summon and dismiss the soft keyboard" {
     model.touchDown(640, soft_keyboard.space_height - 4);
     model.touch(640, soft_keyboard.space_height - 30);
     try std.testing.expect(!model.softKeyboardVisible());
+}
+
+var test_mock_card = card.MockStore{};
+fn testCardReadInputSupport() card.Error!i32 {
+    test_mock_card.set("日本 太郎", "東京都千代田区霞が関1-1", "19850101", "1");
+    return 1;
+}
+fn testCardInfoLookup(card_handle: i32) card.Error!card.Info {
+    if (card_handle != 1 or !test_mock_card.active) return error.InvalidCardHandle;
+    return .{
+        .state = .ready,
+        .name = test_mock_card.name_buf[0..test_mock_card.name_len],
+        .address = test_mock_card.addr_buf[0..test_mock_card.addr_len],
+        .birth = test_mock_card.birth_buf[0..test_mock_card.birth_len],
+        .gender = test_mock_card.gender_buf[0..test_mock_card.gender_len],
+        .photo_width = test_mock_card.photo_width,
+        .photo_height = test_mock_card.photo_height,
+        .photo_bytes = test_mock_card.photo_bytes,
+    };
+}
+fn testCardDismissSession(card_handle: i32) card.Error!void {
+    if (card_handle != 1) return error.InvalidCardHandle;
+    test_mock_card.dismiss();
+}
+fn testCardReadPhotoSession(card_handle: i32, offset: u32, output: []u8) card.Error!void {
+    _ = card_handle;
+    _ = offset;
+    _ = output;
+}
+
+const test_card_provider = card.Provider{
+    .read_input_support = testCardReadInputSupport,
+    .info = testCardInfoLookup,
+    .dismiss = testCardDismissSession,
+    .read_photo = testCardReadPhotoSession,
+};
+
+test "scheme can read card, inspect info, show declarative card view, and insert into document" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.card = .{ .provider = &test_card_provider };
+
+    // 1. (card/read!) -> handle=1
+    model.evaluate("(define h (card/read!))", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+
+    // 2. (card/info h) -> association list
+    model.evaluate("(card/info h)", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+
+    // 3. (view/card! h) -> card_view screen
+    model.evaluate("(view/card! h)", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqual(navigation.Screen.card_view, model.nav.screen);
+    try std.testing.expect(model.nav.card.valid);
+    try std.testing.expectEqualStrings("日本 太郎", model.nav.card.nameSlice());
+    try std.testing.expectEqualStrings("東京都千代田区霞が関1-1", model.nav.card.addressSlice());
+
+    // 4. Press Enter in card_view -> formatted string inserted into document and return to document
+    model.handle(.enter);
+    try std.testing.expectEqual(navigation.Screen.document, model.nav.screen);
+    try std.testing.expectEqualStrings("氏名: 日本 太郎\n住所: 東京都千代田区霞が関1-1\n生年月日: 19850101\n", model.doc.slice());
+
+    // 5. (card/dismiss! h) -> clears mock store
+    model.evaluate("(card/dismiss! h)", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expect(!test_mock_card.active);
 }
