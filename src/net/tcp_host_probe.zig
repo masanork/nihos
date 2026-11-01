@@ -3,19 +3,14 @@ const connect = @import("tcp_connect.zig");
 const tcp = @import("tcp_stream.zig");
 const wait = @import("tcp_time_wait.zig");
 const hosted = @import("hosted.zig");
-const service_core = @import("hosted_tcp_service.zig");
+const owner_core = @import("hosted_tcp_owner.zig");
 const station_core = @import("hosted_station.zig");
 const station_tcp = @import("hosted_tcp_station.zig");
-const station_rx = @import("hosted_tcp_rx.zig");
 var opening: connect.Connect = .{};
 var stream: ?tcp.Stream = null;
 var time_wait: ?wait.TimeWait = null;
-var service: service_core.Service = .{};
-var service_handle: ?service_core.Handle = null;
-var staged_length: usize = 0;
-var staged_owner: enum { none, station, tcp } = .none;
+var owner: owner_core.Owner = .{};
 var host_station: station_core.Client = .{};
-var host_rx: station_rx.Queue = .{};
 var host_now_ms: u64 = 0;
 var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
@@ -91,27 +86,17 @@ export fn tcp_link_begin(port: u16) bool {
     host_station.connected = true;
     host_station.mac_address = guest_mac;
     host_station.dhcp_client = .{ .mac = guest_mac, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 30_000_000, .rebind_at = 50_000_000, .expires_at = 60_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 60 } };
-    station_tcp.refresh(&service, &host_station, 1, 0) catch return false;
-    service_handle = service.open(.{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
+    _ = owner.open(&host_station, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
     return true;
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
     if (!refreshStation(now)) return 0;
-    const handle = service_handle orelse return 0;
-    _ = host_rx.drain(&service, &host_station, handle, 1, now *| 1000) catch return 0;
-    const choice = station_tcp.next(&service, &host_station, handle, 1, now *| 1000, false) catch return 0;
+    const choice = owner.next(&host_station, now *| 1000, false) catch return 0;
     const bytes = switch (choice) {
         .idle => return 0,
-        .station => |frame| blk: {
-            staged_owner = .station;
-            break :blk frame;
-        },
-        .tcp => |frame| blk: {
-            staged_owner = .tcp;
-            break :blk frame;
-        },
+        .station => |frame| frame,
+        .tcp => |frame| frame,
     };
-    staged_length = bytes.len;
     const ethernet = bytes[12..];
     if (cap < ethernet.len) return 0;
     @memcpy(out[0..ethernet.len], ethernet);
@@ -119,57 +104,48 @@ export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
 }
 export fn tcp_link_sent(now: u64) bool {
     if (!refreshStation(now)) return false;
-    const handle = service_handle orelse return false;
-    switch (staged_owner) {
-        .station => host_station.sent(now *| 1000),
-        .tcp => service.sent(handle, staged_length, now) catch return false,
-        .none => return false,
-    }
-    staged_length = 0;
-    staged_owner = .none;
-    _ = host_rx.drain(&service, &host_station, handle, 1, now *| 1000) catch return false;
+    owner.sent(&host_station, owner.pending_len, now *| 1000) catch return false;
     return true;
 }
 export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
     if (!refreshStation(now)) return false;
-    const handle = service_handle orelse return false;
     var envelope: [1512]u8 = @splat(0);
     const bytes = hosted.frame(&envelope, hosted.station_interface, 0, frame[0..len]) catch return false;
     var decoder: hosted.Decoder = .{};
     for (bytes) |byte| {
         if (decoder.push(byte) catch return false) |decoded| {
-            _ = host_rx.receive(&service, &host_station, handle, 1, now *| 1000, decoded) catch return false;
+            _ = owner.receive(&host_station, decoded, now *| 1000) catch return false;
         }
     }
     return true;
 }
 export fn tcp_link_ready() bool {
     if (!refreshStation(host_now_ms)) return false;
-    const handle = service_handle orelse return false;
-    return service.ready(handle) catch false;
+    const handle = owner.handle orelse return false;
+    return owner.service.ready(handle) catch false;
 }
 export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) usize {
     if (!refreshStation(now)) return 0;
-    const handle = service_handle orelse return 0;
-    return service.write(handle, bytes[0..len], now, now +| 12000) catch 0;
+    const handle = owner.handle orelse return 0;
+    return owner.service.write(handle, bytes[0..len], now, now +| 12000) catch 0;
 }
 export fn tcp_link_read(out: [*]u8, cap: usize) isize {
     if (!refreshStation(host_now_ms)) return -1;
-    const handle = service_handle orelse return -1;
-    return @intCast(service.read(handle, out[0..cap]) catch return -1);
+    const handle = owner.handle orelse return -1;
+    return @intCast(owner.service.read(handle, out[0..cap]) catch return -1);
 }
 export fn tcp_link_close(now: u64) bool {
     if (!refreshStation(now)) return false;
-    const handle = service_handle orelse return false;
-    service.closeWrite(handle, now, now +| 12000) catch return false;
+    const handle = owner.handle orelse return false;
+    owner.service.closeWrite(handle, now, now +| 12000) catch return false;
     return true;
 }
 export fn tcp_link_closed(now: u64) bool {
     if (!refreshStation(now)) return false;
-    const handle = service_handle orelse return false;
-    if (!(service.closeComplete(handle) catch return false)) return false;
+    const handle = owner.handle orelse return false;
+    if (!(owner.service.closeComplete(handle) catch return false)) return false;
     if (link_time_wait == null) {
-        const link = if (service.link) |*value| value else return false;
+        const link = if (owner.service.link) |*value| value else return false;
         const s = if (link.stream) |*value| value else return false;
         link_time_wait = wait.TimeWait.begin(s, now, 2000) catch return false;
     }
@@ -177,6 +153,6 @@ export fn tcp_link_closed(now: u64) bool {
 }
 fn refreshStation(now_ms: u64) bool {
     host_now_ms = now_ms;
-    station_tcp.refresh(&service, &host_station, 1, now_ms *| 1000) catch return false;
+    station_tcp.refresh(&owner.service, &host_station, owner.epoch, now_ms *| 1000) catch return false;
     return true;
 }

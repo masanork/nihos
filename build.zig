@@ -201,6 +201,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_tcp_station_module })).step);
     const hosted_tcp_rx_module = b.createModule(.{ .root_source_file = b.path("src/net/hosted_tcp_rx.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_tcp_rx_module })).step);
+    const hosted_tcp_owner_module = b.createModule(.{ .root_source_file = b.path("src/net/hosted_tcp_owner.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = hosted_tcp_owner_module })).step);
     const tailscale_module = b.createModule(.{ .root_source_file = b.path("src/net/tailscale.zig"), .target = target, .optimize = optimize });
     tailscale_module.addImport("terminal_adapter", terminal_adapter_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tailscale_module })).step);

@@ -34,6 +34,11 @@ four-frame bounded RX queue, preserving station processing and retiring only
 the TCP handle on overflow. The owner must serialize completions and surface
 queue failure; normal boot does not call either module yet.
 
+`hosted_tcp_owner.zig` combines these prototypes behind one serialized owner,
+tracks whole-frame completion, and requires a transport reset after an
+ambiguous partial send. The OpenSSH host fixture uses this owner; the normal
+CPU0 network service and SDIO transport are not yet connected to it.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.
