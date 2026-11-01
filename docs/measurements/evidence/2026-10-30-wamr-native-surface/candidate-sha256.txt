@@ -1,0 +1,5 @@
+4b226889e627af9ce64ee0b5529d1418cd60afc80944d315ed2b64026dde1710  /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/app.wasm
+5958b4dac8881c0ffd7cc3d820072d66afe0b99bb9ed6c535ccb6a1df7be2801  /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/app-test-ed25519.nihpkg
+3cf7221864c758bbe7377a49e208343ecff55c80adeca31063db7d5df4daaa88  /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/app-update-ed25519.nihpkg
+4c1db8029745501dff7facbbe3b630ebb855ea2ed9d0871544a3d00d3293e171  /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/nihos-native-image.elf
+690ff568320b92522cc4afe67955a51b8b66a8bed682c96ceb3e4b9aa64cd1bd  /private/tmp/nihos-rust-app-sdk/build/native-emulator-wasm/nihos-native-flash.bin

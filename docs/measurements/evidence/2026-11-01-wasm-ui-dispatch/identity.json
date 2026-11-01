@@ -1,0 +1,30 @@
+{
+  "source_commit": "25d7a517e21ba0058af520088620bd1614143bdb",
+  "reconciled_main": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "scope": "Headless RV32 actual UI key dispatcher with substitute shell and presenter and synthetic camera state; no interactive scanout or physical device.",
+  "candidate": {
+    "nihos-native-image.elf": "9ad9e4d7e79625ad2bc628d5ea595c53b04b45215f00e0b8a2fd45ef84ce4c4d",
+    "nihos-native-flash.bin": "85f7cd9028a8b6a79086e68f9424c87d7e886c61e51765c19f2a4f48c68da465"
+  },
+  "evidence_sha256": {
+    "cancel.log": "4b8e3e1fb7077406be054299c69de31901c8ee6d9a502255c3c45ce1f6b217ed",
+    "device-off-audit.json": "f653e913dcb48e2a11493910de6e80d0b2305e871f4dc2b7a9d66ebca4242c64",
+    "device-off-build.log": "daaebf7ef27b3d1a32ccb485c990b7aea2c553d696d22889a59d8a9572b5ed2b",
+    "device-on-audit.json": "f03c673237e7bfef4515c879e3e1a0182ef64c1fed17f7771d9a4022a8af4104",
+    "device-on-build.log": "211f391a23f4788d170fcd7022fb1126a92f213e8c3e23bd831041fbb9d5f4cf",
+    "early-quit.log": "08ce78ac66ed47d3517cc72049c71f3c294b3020042e1b8fc8ea2c8861017392",
+    "image-audit-wamr.json": "112d1ae37a5aee12a92cc326dd0fc4b4dae3d89810e9f5611857bbd1e8c9645b",
+    "metered-trap.log": "11829a15205f7d0b87a5d8512af751cbd7b193a4a067ef22f068e178af0d4beb",
+    "native-emulator.log": "dd973e1c845fe2ceeed684fe4a3bc13b41d1d283f5b1f125a43c4b15382f5b7d",
+    "native-report.json": "8543c466d0379f5c84f1ea93566169bb82b7ee921e0059bc2105165a3dea5b41",
+    "noinput.log": "0f2aa743bfa374f8a9757f3d4b01383b361fe4cde02f63135ee7e27f1d8dc86f",
+    "normal.log": "51ce01e1c5a8deb32de60d998767cf88bf53f7b30e309d753f346f6477e53a59",
+    "present-failure.log": "587de38706ab066bcabf3ef3149dbfcea0cccbef21b462d984c3978106b347ae",
+    "python-tests.log": "0d5a4f1bd8462305c3397130eba53877153fd64b718c199834d60249cf40417f",
+    "report.json": "323c88893a29c79ea82cbdffd4b8b9943c91a6fd957acd9075527aea767dd45e",
+    "static-analysis.log": "57631563a31ed37dc6ebaa621dfa641dd5a25552d21637aad061732443317570",
+    "unit-debug.log": "783230ffccaed2a6849644449e1e999ab9416f20f3097632e2ce335182e8e4ac",
+    "unit-release-safe.log": "954d5b6e6511f5c8f94cde1beaa1c96287b210d1fcf2ab837a2e3fa915e0ad4a",
+    "wasm-matrix.log": "91170a71f8523f5c679de5dfa06d8dd9d1c34761dd5f75a3e9cfa5253af25f32"
+  }
+}

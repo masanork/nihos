@@ -1,0 +1,18 @@
+--- a/core/iwasm/common/arch/invokeNative_riscv.S
++++ b/core/iwasm/common/arch/invokeNative_riscv.S
+@@ -72,7 +72,7 @@ _invokeNative:
+  */
+ 
+         /* reserve space on stack to save return address and frame pointer */
+-        addi             sp, sp, - 2 * RV_REG_SIZE
++        addi             sp, sp, - 16
+         RV_OP_STOREREG   fp, 0 * RV_REG_SIZE(sp)    /* save frame pointer */
+         RV_OP_STOREREG   ra, 1 * RV_REG_SIZE(sp)    /* save return address */
+ 
+@@ -144,5 +144,5 @@ return:
+         mv               sp, fp                     /* restore sp saved in fp before function call */
+         RV_OP_LOADREG    fp, 0 * RV_REG_SIZE(sp)    /* load previous frame pointer to fp register */
+         RV_OP_LOADREG    ra, 1 * RV_REG_SIZE(sp)    /* load previous return address to ra register */
+-        addi             sp, sp, 2 * RV_REG_SIZE    /* pop frame, restore sp */
++        addi             sp, sp, 16                 /* pop frame, restore sp */
+         jr               ra

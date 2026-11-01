@@ -1,0 +1,4 @@
+1/2 trust_snapshot_store.test.trust snapshot and monotonic floor survive every update cut...NIHOS_TRUST_SNAPSHOT crash_cuts=260 old_or_new=1 sealed=1 partial=0
+OK
+2/2 trust_snapshot_store.test.protected floor rejects whole-medium rollback and damaged head record...OK
+All 2 tests passed.

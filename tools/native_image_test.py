@@ -11,6 +11,29 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_romaji_table_must_be_in_flash_without_sram_copy(self):
+        name, start = 'xy.ime_omni.romaji_table', 0x40070000
+        table = bytes(range(256)) * 12 + bytes(range(216))
+        self.assertEqual(MODULE.audit_xy_romaji_table({name: start}, {name: 3288}, start, table, b'', True)['bytes'], 3288)
+        for symbols, sizes, resident in [({}, {}, b''), ({name: 0x4ff10000}, {name: 3288}, b''),
+                                         ({name: start}, {name: 3284}, b''), ({name: start}, {name: 3288}, table)]:
+            with self.subTest(symbols=symbols, sizes=sizes), self.assertRaises(ValueError):
+                MODULE.audit_xy_romaji_table(symbols, sizes, start, table, resident, True)
+
+    def test_rust_session_flash_never_admits_irq_or_out_of_span_code(self):
+        boot = [('psram.probe', 0x40000120, 0x40000920),
+                ('psram_memory.prepare__func_1', 0x40000920, 0x40000a00)]
+        app = [('session.nih_app_session_start', 0x40000a00, 0x40000b00)]
+        args = (0x40000120, 0x40000b00, 0x4ff00000, 0x4ff28000)
+        MODULE.audit_boot_functions(boot + app, *args, rust_session_span=(0x40000a00, 0x40000b00))
+        with self.assertRaisesRegex(ValueError, 'unapproved Rust session'):
+            MODULE.audit_boot_functions(boot + [('nih_native_dispatch', 0x40000a00, 0x40000b00)],
+                                       *args, rust_session_span=(0x40000a00, 0x40000b00))
+        with self.assertRaisesRegex(ValueError, 'outside approved'):
+            MODULE.audit_boot_functions(boot, *args, rust_session_span=(0x40080000, 0x40080100))
+        with self.assertRaisesRegex(ValueError, 'unapproved Flash'):
+            MODULE.audit_boot_functions(boot + app, *args)
+
     def test_xy_sine_table_requires_flash_storage_without_anonymous_sram_copy(self):
         name, start = 'xy.plot_config.sine', 0x40070000
         table = bytes(range(256)) * 2
@@ -84,6 +107,22 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).renderKeyboard__func_12'))
         self.assertTrue(MODULE.xy_function('soft_keyboard.visible'))
         self.assertFalse(MODULE.xy_function('xy.soft_keyboard.calibrate'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.handleKey'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.triggerConversion__func_78'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.triggerConversion__func_bad'))
+        self.assertTrue(MODULE.xy_function('ime_omni.RomajiAutomaton.feed'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.CandidateList.append'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.imeRoute'))
+        self.assertTrue(MODULE.xy_function('xy.dict.NfstDict.lookup'))
+        self.assertTrue(MODULE.xy_function('xy.dict.NfstDict.commonPrefixSearch'))
+        self.assertTrue(MODULE.xy_function('xy.dict.NfstDict.omniQuery'))
+        self.assertTrue(MODULE.xy_function('xy.dict.MeosDict.lookup'))
+        self.assertTrue(MODULE.xy_function('xy.document.Document(4096,256,2048,1,64).setPreedit'))
+        self.assertTrue(MODULE.xy_function('xy.document.Document(4096,256,2048,1,64).commitPreedit'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.formatMinibuffer'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.feedUtf8ToReading'))
+        self.assertTrue(MODULE.xy_function('xy_scratch_live.Live(".flash.rodata.display"[0..21]).render'))
+        self.assertFalse(MODULE.xy_function('xy_scratch_live.Live(".flash.rodata.display"[0..21]).press'))
 
     def test_xy_foreground_requires_exact_functions_and_readonly_bounded_sections(self):
         start = 0x40060000

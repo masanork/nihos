@@ -1,0 +1,10 @@
+WAMR single-owner platform model: ok
+nihos C sort/format compatibility subset: ok
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-rust-app-sdk/build/wamr-rv32-compile
+[100%] Built target wamr-rv32-compile
+   text	   data	    bss	    dec	    hex	filename
+ 169505	     24	     72	 169601	  29681	/private/tmp/nihos-rust-app-sdk/build/wamr-rv32-compile/wamr-combined.o
+Compile-only RV32 object; unresolved imports: /private/tmp/nihos-rust-app-sdk/build/wamr-rv32-compile/undefined.txt
+/private/tmp/nihos-rust-app-sdk/build/wamr-arena-rv32/arena.o: ELF 32-bit LSB relocatable, UCB RISC-V, RVC, soft-float ABI, version 1 (SYSV), not stripped

@@ -1,0 +1,15 @@
+fixture: WAMR 2.4.5 classic interpreter, fixed Rust Wasm one-page module
+arena reservation: runtime=131072 linear=262144 total=393216
+initial usable: runtime=126848 linear=253824
+normal: success=1 attempts=74 requested_peak_runtime=22173 requested_peak_linear=65536
+normal buddy: peak_reserved_runtime=38976 peak_reserved_linear=131072 recovered=1
+guest invalid-range trap: success=1 recovered=1
+linear quota 65535: success=0 attempts=70 peak_reserved_runtime=5760 peak_reserved_linear=0 recovered=1
+allocation fault injection: 74/74 fully recovered
+arena unit test: passed
+single-owner platform model contract test: passed
+RV32 platform unresolved hooks: nih_wamr_monotonic_us, nih_wamr_stack_boundary
+RV32 reachable inventory: text=103541 data=24 bss=8377 unresolved=49
+WAMR bundled minimal-platform math: 14 math imports resolved, reachable text delta=4628
+nihos C compatibility host differential tests: passed
+nihos C compatibility ASan/UBSan: passed

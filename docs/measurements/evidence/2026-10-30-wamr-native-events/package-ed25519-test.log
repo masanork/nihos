@@ -1,0 +1,4 @@
+1/1 package-ed25519-test.test.actual Rust Wasm signs parses and authenticates as one canonical package...NIHOS_PACKAGE_ED25519 bytes=1419 wasm=1211 sha256=5958b4dac8881c0ffd7cc3d820072d66afe0b99bb9ed6c535ccb6a1df7be2801
+NIHOS_PACKAGE_INSTALL_ED25519 sequence=1 trust_epoch=1 readback=exact
+OK
+All 1 tests passed.

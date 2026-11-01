@@ -1,0 +1,57 @@
+{
+  "scope": "single RV32 emulator boot, ROM UART through actual UI poll and decoder; substituted shell storage and pixel presenter, no hardware scanout",
+  "candidate": {
+    "nihos-native-image.elf": "f8cd645e592ec1e7dbb7c567588632fdd2d20095d0407b0d1924ad9ad4a7f4c6",
+    "nihos-native-flash.bin": "cc4ab5963d64522594fe3f96e34c9676fed31e9be37b932515fd7b9670bb04c7"
+  },
+  "events": [
+    {
+      "round": 1,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 1,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    },
+    {
+      "round": 2,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 2,
+      "state": 4,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 5,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 1,
+      "frames": 0,
+      "signature": 0
+    },
+    {
+      "round": 3,
+      "state": 2,
+      "frames": 4,
+      "signature": 4
+    }
+  ]
+}

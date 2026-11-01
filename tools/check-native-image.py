@@ -49,7 +49,8 @@ ROM_SYMBOLS = {"nih_rom_putc": 0x4FC00054,
                "nih_rom_l2_enable": 0x4FC00504,
                "nih_rom_cache_invalidate": 0x4FC003E4,
                "nih_rom_cache_writeback": 0x4FC003F4}
-OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018}
+OPTIONAL_ROM_SYMBOLS = {"nih_rom_reset_reason": 0x4FC00018,
+                        "nih_rom_rx_one_char": 0x4FC00060}
 OPTIONAL_ROM_DATA = {"nih_rom_saved_pc": 0x4FF3FFF8}
 FLASH_SECTIONS = {".flash.appdesc": (0x40000020, 256),
                   ".flash.boot": (0x40000120, None),
@@ -94,6 +95,20 @@ PMP_FLASH_FUNCTIONS = {
 USER_PROBE_FUNCTIONS = {
     "nih_user_probe_trampoline",
     "nih_user_probe_body",
+}
+
+# Foreground-only experimental session; its region is bounded by linker
+# symbols. No scheduler/IRQ/cache-off function may be moved into this span.
+RUST_SESSION_FLASH_FUNCTIONS = {
+    'rust_session.acquire', 'rust_session.open', 'rust_session.render',
+    'rust_session.present', 'rust_session.close', 'rust_session.release',
+    'rust_session.start', 'rust_session.input', 'rust_session.cancel',
+    'session.nih_app_session_start', 'session.nih_app_session_input',
+    'session.nih_app_session_cancel', 'session.Session.finish', 'session.Session.draw', 'session.Session.guardsIntact',
+    'nih_app_session_start', 'nih_app_session_input', 'nih_app_session_cancel',
+    'app_presenter.copy', 'app_presenter.nih_app_present_copy', 'nih_app_present_copy',
+    'diagnostic_ui.presentApp', 'diagnostic_ui.drawSession', 'diagnostic_ui.sessionUsage', 'nih_rust_app_frame',
+    'nih_app_probe_attach', 'nih_app_probe_detach', 'nih_app_fill_rect', 'nih_app_text',
 }
 
 
@@ -192,7 +207,7 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation'}
+XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -225,6 +240,7 @@ XY_RENDER_FUNCTIONS = {
     'xy.navigation.State.activateHome', 'xy.navigation.State.next',
     'xy.navigation.State.back', 'xy.navigation.State.touch',
     'xy.navigation.State.touchPortrait', 'xy.navigation.State.touchPortraitHome',
+    'xy_scratch_live.Live(".flash.rodata.display"[0..21]).render',
 }
 
 
@@ -233,6 +249,11 @@ XY_LEARNING_METHODS = {
     'initInPlace', 'bind', 'setPage', 'choice', 'count', 'slot', 'doc', 'supported', 'touchPortrait',
     'open', 'replace', 'insert', 'resetVm', 'restore', 'run', 'notice', 'handle', 'touch',
 }
+# IME entry points the workspace routes keys through. The candidate
+# minibuffer formatter is deliberately not approved: the device renderer
+# does not draw candidates yet, so it must not be linked into the image.
+XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'isBuiltinPrefixTrigger', 'triggerConversion', 'feed', 'clear', 'flushTrailingN', 'append'}
+XY_DICT_METHODS = {'init', 'lookup', 'commonPrefixSearch', 'omniProvider', 'omniQuery'}
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
     'section', 'snippet', 'experiment', 'findSnippet', 'onPage', 'styleOnPage',
@@ -242,20 +263,25 @@ def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
     render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.(?:printIntAny|printValue)|fmt\.bufPrint|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
-    document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines)', name)
+    document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines|moveGraphemes|setPreedit|commitPreedit|deleteBackwardGrapheme|deleteForwardGrapheme)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
     lesson_helper = re.fullmatch(r'learning_view\.(?:render|label)__func_[0-9]+', name)
     soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|keyAtState|keyAtIn|layout|layoutState|layoutIn|contains|containsIn|edgeGestureIn|geometry|visible|probeFromResult|startupOrientation|defaultOrientation)(?:__func_[0-9]+)?', name)
+    document_helper = re.fullmatch(r'xy\.document\.(?:nextClusterEnd|prevClusterStart)', name)
+    ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+?)(?:__func_[0-9]+)?', name)
+    ime_helper = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:isBuiltinPrefixTrigger|isRawPrefixKind)(?:__func_[0-9]+)?', name)
+    dict_match = re.fullmatch(r'(?:xy\.)?dict\.(?:NfstDict|MeosDict)\.(\w+)(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or learning_allowed or soft_keyboard or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(document or document_helper or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
     start, end = span
     require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
     selected = sorted((a, b, n) for n, a, b in functions if start <= a < end)
-    require(selected and selected[0][0] == start and all(a < b <= end and xy_function(n) for a, b, n in selected), 'unapproved xy Flash function')
+    unapproved = [n for a, b, n in selected if not xy_function(n)]
+    require(selected and selected[0][0] == start and not unapproved and all(a < b <= end for a, b, n in selected), 'unapproved xy Flash function: ' + ', '.join(unapproved))
     # Export and Zig debug aliases may describe the same bytes. Every name above
     # must still be approved; only the byte-coverage walk collapses exact aliases.
     ranges = sorted(set((a, b) for a, b, _ in selected))
@@ -275,6 +301,20 @@ def audit_xy_plot_table(symbols, sizes, ro_start, ro_data, resident_rodata, requ
             'xy sine table outside declared readonly Flash storage')
     table = ro_data[start - ro_start:start - ro_start + size]
     require(table not in resident_rodata, 'xy sine table has an anonymous SRAM copy')
+    return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
+
+
+def audit_xy_romaji_table(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
+    names = [name for name in ('xy.ime_omni.romaji_table', 'ime_omni.romaji_table') if name in symbols]
+    if not required and not names:
+        return None
+    require(len(names) == 1, 'missing or competing xy romaji table storage')
+    name = names[0]
+    start, size = symbols[name], sizes.get(name)
+    require(size == 3288 and start % 4 == 0 and ro_start <= start <= ro_start + len(ro_data) - size,
+            'xy romaji table outside declared readonly Flash storage')
+    table = ro_data[start - ro_start:start - ro_start + size]
+    require(table not in resident_rodata, 'xy romaji table has an anonymous SRAM copy')
     return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
 
 
@@ -464,13 +504,28 @@ def audit_graphics(sections, symbols, sizes, functions, manifest, tables):
             "stack_bytes": 32768, "ram_reserved_bytes": 32768}, (text[0], ro[0]), payload
 
 
-def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None, xy_span=None):
+def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_functions=(), card_span=None, card_functions=(), photo_span=None, photo_functions=(), automatic_cards=False, device_span=None, time_span=None, sdmmc_span=None, fs_span=None, fs_functions=(), render_span=None, pmp_span=None, user_span=None, xy_span=None, rust_session_span=None):
+    if rust_session_span is not None:
+        app_start, app_end = rust_session_span
+        require(app_start <= app_end, 'reversed Rust session extent')
+        if app_start != app_end:
+            require(start <= app_start < app_end <= end or
+                    fs_span is not None and fs_span[0] <= app_start < app_end <= fs_span[1],
+                    'Rust session outside approved foreground Flash')
+    app_boot = []
     found = {}
     for name, address, stop in functions:
         if low <= address < high:
             require(stop <= high, "function exceeds SRAM: " + name)
             continue
         if (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS).get(name) == address:
+            continue
+        if rust_session_span is not None and rust_session_span[0] <= address < stop <= rust_session_span[1]:
+            require(name in RUST_SESSION_FLASH_FUNCTIONS or
+                    re.fullmatch(r'diagnostic_ui\.(?:beginSession|action)__func_[0-9]+', name) is not None,
+                    'unapproved Rust session Flash function: ' + name)
+            if start <= address < stop <= end:
+                app_boot.append({"name": name, "start": hex(address), "end": hex(stop)})
             continue
         if xy_span is not None and xy_span[0] <= address < stop <= xy_span[1]:
             require(xy_function(name), 'unapproved xy foreground function: ' + name)
@@ -513,10 +568,14 @@ def audit_boot_functions(functions, start, end, low, high, sql_span=None, sql_fu
         found[role] = {"name": name, "start": hex(address), "end": hex(stop)}
     expected_roles = {"probe", "mapping"} | ({"sdmmc"} if sdmmc_span is not None else set())
     require(set(found) in (expected_roles, expected_roles | {"clock"}), "missing approved Flash boot functions")
-    ordered = sorted(found.values(), key=lambda entry: int(entry["start"], 16))
+    # Exported C aliases can share an extent with their Zig implementation.
+    app_boot = list({(row['start'], row['end']): row for row in app_boot}.values())
+    ordered = sorted(list(found.values()) + app_boot, key=lambda entry: int(entry["start"], 16))
     require(int(ordered[0]["start"], 16) == start and int(ordered[-1]["end"], 16) == end and
             all(0 <= int(right["start"], 16) - int(left["end"], 16) <= 16 for left, right in zip(ordered, ordered[1:])),
             "overlapping/unaccounted Flash boot extent")
+    if app_boot:
+        found['rust_session'] = app_boot
     return found
 
 
@@ -1106,6 +1165,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_functions = audit_xy_functions(functions, xy_span)
         plot_table = audit_xy_plot_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
                                          any(name.endswith('Runtime.applyApp') for name in xy_functions))
+        romaji_table = audit_xy_romaji_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
+                                             any(name.endswith('RomajiAutomaton.feed') for name in xy_functions))
         base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
@@ -1113,6 +1174,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 524288 if 'nih_xy_render' in xy_functions else 0}
         if plot_table is not None:
             xy_report['plot_table'] = plot_table
+        if romaji_table is not None:
+            xy_report['romaji_table'] = romaji_table
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')
@@ -1133,7 +1196,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(not {'malloc','calloc','realloc','free','fopen','f_write','f_mkfs'}.intersection(symbols), 'libc heap or FAT writer linked in sqld')
         xy_payload += pad + code + bytes(ro_start - text_start - len(code)) + data
         sqld_report = {'identity': sqld_manifest['identity'], 'text_bytes':len(code), 'rodata_bytes':len(data), 'reservation':sqld_manifest['reservation'], 'heap':sqld_manifest['heap'], 'stack':sqld_manifest['stack'], 'media':sqld_manifest['media'], 'provision_cid':sqld_manifest['provision_cid'], 'physical_qualified':False}
-    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span)
+    boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span, rust_session_span=(symbols.get("__flash_rust_app_start", 0), symbols.get("__flash_rust_app_end", 0)))
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
     io_lifetimes = sqlite_manifest.get('io_lifetimes') if allow_sql else None

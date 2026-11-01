@@ -56,8 +56,10 @@ size_t NIH_C_NAME(strcspn)(const char *text, const char *reject) {
     while (text[length] && !contains(reject, (unsigned char)text[length])) ++length;
     return length;
 }
+#ifndef NIH_C_NO_FABS
 double NIH_C_NAME(fabs)(double value) {
     union { double value; uint64_t bits; } representation = { .value = value };
     representation.bits &= UINT64_C(0x7fffffffffffffff);
     return representation.value;
 }
+#endif

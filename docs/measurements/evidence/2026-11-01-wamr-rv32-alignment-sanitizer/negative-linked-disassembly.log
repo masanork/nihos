@@ -1,0 +1,39 @@
+
+build/wasm-alignment-negative/nihos-native.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .flash.boot:
+
+Disassembly of section .flash.pmp:
+
+Disassembly of section .flash.wasmtext:
+
+40020000 <nih_wamr_alignment_negative>:
+40020000:	4ff285b7          	lui	a1,0x4ff28
+40020004:	40158793          	addi	a5,a1,1025 # 4ff28401 <bytes+0x1>
+40020008:	8b8d                	andi	a5,a5,3
+4002000a:	cf89                	beqz	a5,40020024 <.L2>
+4002000c:	40021537          	lui	a0,0x40021
+40020010:	1141                	addi	sp,sp,-16
+40020012:	40158593          	addi	a1,a1,1025
+40020016:	a7050513          	addi	a0,a0,-1424 # 40020a70 <.Lubsan_data0>
+4002001a:	c606                	sw	ra,12(sp)
+4002001c:	0ff00097          	auipc	ra,0xff00
+40020020:	312080e7          	jalr	786(ra) # 4ff2032e <__ubsan_handle_type_mismatch_v1_abort>
+
+40020024 <.L2>:
+40020024:	4ff287b7          	lui	a5,0x4ff28
+40020028:	40078793          	addi	a5,a5,1024 # 4ff28400 <bytes>
+4002002c:	0017c703          	lbu	a4,1(a5)
+40020030:	0027c683          	lbu	a3,2(a5)
+40020034:	06a2                	slli	a3,a3,0x8
+40020036:	8ed9                	or	a3,a3,a4
+40020038:	0037c703          	lbu	a4,3(a5)
+4002003c:	0047c503          	lbu	a0,4(a5)
+40020040:	0742                	slli	a4,a4,0x10
+40020042:	8f55                	or	a4,a4,a3
+40020044:	0562                	slli	a0,a0,0x18
+40020046:	8d59                	or	a0,a0,a4
+40020048:	8082                	ret
+
+Disassembly of section .text:
