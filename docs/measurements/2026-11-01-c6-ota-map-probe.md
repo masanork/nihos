@@ -85,3 +85,16 @@ the mapped C6 candidate remains the same. The image and SRAM audits passed.
 This candidate has not been booted, and no C6 OTA has been attempted. The user
 confirmed another task is using Tab5, so no further serial or device operation
 is permitted until that work releases the board.
+
+## 2-second preflight on physical Tab5
+
+The build-only revision above was subsequently installed under the shared writer
+lock and exclusive serial lease, after verifying a full P4 flash backup and the
+exact P4 candidate. It reported the exact mapped candidate SHA-256 and
+`status=1 stage=6 peer_chip=13 version_known=1 major=1 minor=4 patch=1`. The
+probe stopped before OTA Begin; no C6 update was attempted. P4 flash was restored
+and the complete 16 MiB matched the immediately preceding backup SHA-256
+`0a21266492da4c6f3e643ce481de3b723948a3871d59216b5d3c53c4e3c80ee0`.
+Evidence: `/private/tmp/nihos-c6-ota-preflight-physical-20261101-2sec/`.
+This is one physical preflight success and does not prove the reset delay was
+the sole cause of earlier failures, or that an OTA write or new C6 boot works.
