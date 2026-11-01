@@ -1,0 +1,49 @@
+# Experimental Tab5 C6 Hosted 3.0.10 overlay
+
+This is a build candidate, not a qualified device update. The 2.13.1 C6
+implementation remains in `../esp-hosted-c6-time/`. Do not install this image
+until the running C6 partition layout and a recovery path have been verified,
+the P4 dual-version image has been validated, and the exact OTA candidate has
+been identified. A failed C6 image may leave no SDIO OTA route.
+
+The overlay targets ESP-Hosted commit `4e029441bc0322b368c19767d91d84c6de197ba1`
+(3.0.10) and ESP-IDF 5.5.6 commit `880a203ae603d08a94d06aa01e0d6761958e5e9e`.
+Initialize the pinned `common/serializers/third_party/msg_codec/protobuf-c`
+submodule. Apply `python3 ports/esp-hosted-c6-time-v3/apply.py HOSTED_CHECKOUT`
+to a clean checkout; the example component override requires the checkout
+directory to be named `esp_hosted`. Use the included `sdkconfig.idf556` as a
+copy in the build directory, not as a mutable file in this repository. Build
+the `examples/wifi/sta/cp` project for `esp32c6` using ESP-IDF 5.5.6.
+
+The overlay uses SDIO streaming rather than the new default software
+aggregation, the existing Tab5 partition CSV, network split, peer data, and
+Bluetooth controller. It disables automatic Wi-Fi connection on station
+start so that P4 controls connection timing. `app_main` initializes NVS and
+the event loop before `eh_cp_init`. The service registers as an auto-init
+feature after peer data, rather than racing the asynchronous core startup.
+Its clock wire format is unchanged from 2.13.1. The stock example erases NVS
+when IDF reports no free pages or an incompatible version; this behavior must
+be considered in the physical migration plan.
+
+One local build produced a 1,395,264-byte app (SHA-256
+`c76f2127d2dc182893c3f15b8bbce6cfc9f36f9653c76fdcd7989cf8ed65bb9b`),
+leaving 177,600 bytes in a 1,572,864-byte OTA slot. The generated partition
+table SHA-256 was
+`0241fa0d2e573dee86756e39fb4181e61ff7218087619cab565b602df55954d6`,
+matching the previously reconstructed table. This is not a readback of the
+installed device's partition table. The ELF map contains the time-service
+auto-init descriptor. The build is evidence of compilation and slot sizing only;
+it has not been flashed or exercised on C6.
+
+The P4 recognizes the 3.0.10 MCU RPC-v2 advertisement, echoes it only when
+advertised, rejects unsupported SDIO modes and accepts the time path only for
+the known version with its required TLVs. A matching version does not prove a
+custom time service is present: absent service must still time out safely.
+Synthetic host tests do not establish device interoperability. The previous
+physical 2.13.1 OTA and RTC results are not evidence for this 3.x candidate.
+
+Remaining qualification: validate exact upstream-generated init frames and
+RPC encodings, a byte-identified P4 image against the currently installed 2.x
+firmware, the actual OTA/partition and recovery behavior, then the 3.x boot,
+Wi-Fi, BLE, split address, time/RTC, reconnect, and a tested rollback route.
+Do not infer iroh or QUIC operation from a successful clock exchange.

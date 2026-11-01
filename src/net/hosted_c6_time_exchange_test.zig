@@ -43,7 +43,11 @@ fn address(exchange: *service.Exchange, now: u64) !void {
 }
 fn connect(exchange: *service.Exchange, version_major: u32) !void {
     try exchange.begin(.saved, 100, 0, 200);
-    try deliver(exchange, 5, &.{ 0x22, 3, 0x12, 1, 13 }, 1);
+    if (version_major == 3) {
+        try deliver(exchange, 5, &.{ 0x22, 16, 0x12, 1, 13, 0x18, 1, 1, 0x1a, 1, 2, 0x1b, 5, 0, 1, 7, 1, 7 }, 1);
+    } else {
+        try deliver(exchange, 5, &.{ 0x22, 3, 0x12, 1, 13 }, 1);
+    }
     const caps = try exchange.tx(2);
     try std.testing.expectEqual(@as(u8, 5), caps[0] & 15);
     try exchange.sent(caps.len, 2);
@@ -58,8 +62,8 @@ fn connect(exchange: *service.Exchange, version_major: u32) !void {
         var body = wire.Writer{ .out = &body_bytes };
         if (req.id == 350) {
             try body.uint(2, version_major);
-            try body.uint(3, 13);
-            try body.uint(4, 1);
+            try body.uint(3, if (version_major == 3) 0 else 13);
+            try body.uint(4, if (version_major == 3) 10 else 1);
         } else if (req.id == 257) try body.data(1, &.{ 2, 3, 4, 5, 6, 7 });
         try rpc(exchange, 2, req.id + 256, req.uid, body.slice(), now);
     }
@@ -109,6 +113,14 @@ test "station and split snapshot precede C6 time; event can precede ack" {
     try std.testing.expectEqual(@as(u64, 1760000000), e.sample.?.seconds);
     try std.testing.expectEqual(@as(u32, 17), e.sample.?.age_seconds);
 }
+test "Hosted 3 station and time exchange use the negotiated RPC wire" {
+    var e = service.Exchange{};
+    try connect(&e, 3);
+    try queueTime(&e);
+    try event(&e, true, 61);
+    try rpc(&e, 2, 644, e.uid, &.{}, 62);
+    try std.testing.expectEqual(service.Phase.done, e.phase);
+}
 test "ack first and unsynchronized result are distinguishable" {
     var e = service.Exchange{};
     try connect(&e, 2);
@@ -148,6 +160,22 @@ test "unrecognized firmware fails before Wi-Fi setup" {
     try w.uint(4, 1);
     try std.testing.expectError(error.UnsupportedPeer, rpc(&e, 2, 606, req.uid, w.slice(), 4));
     try std.testing.expectEqual(service.Phase.failed, e.phase);
+}
+test "Hosted 3 version without the negotiated transport is rejected" {
+    var e = service.Exchange{};
+    try e.begin(.saved, 100, 0, 200);
+    try deliver(&e, 5, &.{ 0x22, 3, 0x12, 1, 13 }, 1);
+    const caps = try e.tx(2);
+    try e.sent(caps.len, 2);
+    const frame = try e.tx(3);
+    const req = try outgoing(frame);
+    try e.sent(frame.len, 3);
+    var b: [32]u8 = undefined;
+    var w = wire.Writer{ .out = &b };
+    try w.uint(2, 3);
+    try w.uint(3, 0);
+    try w.uint(4, 10);
+    try std.testing.expectError(error.UnsupportedPeer, rpc(&e, 2, 606, req.uid, w.slice(), 4));
 }
 test "deadline retires an unanswered request" {
     var e = service.Exchange{};

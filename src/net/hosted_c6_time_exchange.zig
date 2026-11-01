@@ -1,4 +1,4 @@
-//! Experimental one-shot Hosted 2.13.1 station -> C6-owned DHCP -> SNTP query.
+//! Experimental one-shot Hosted station -> C6-owned DHCP -> SNTP query.
 //! Exclusive owner of station/stream until completion; no factory-path changes.
 const std = @import("std");
 fn timeSection() []const u8 {
@@ -52,9 +52,11 @@ pub const Exchange = struct {
         self.last_now = now;
     }
     noinline fn checkPeer(self: *const Exchange) linksection(timeSection()) Error!void {
+        const legacy = std.mem.eql(u32, &self.station.version, &.{ 2, 13, 1 });
+        const hosted3 = std.mem.eql(u32, &self.station.version, &.{ 3, 0, 10 }) and
+            self.station.peer_rpc_version == 2 and self.station.peer_sdio_buffer_blocks != null and self.station.peer_mode == 1;
         if (self.station.phase != .handshake and self.station.phase != .version and
-            (self.station.peer_chip != 13 or !self.station.version_known or
-                !std.mem.eql(u32, &self.station.version, &.{ 2, 13, 1 }))) return error.UnsupportedPeer;
+            (self.station.peer_chip != 13 or !self.station.version_known or (!legacy and !hosted3))) return error.UnsupportedPeer;
     }
     noinline fn adopt(self: *Exchange) linksection(timeSection()) void {
         if (self.phase != .station and self.phase != .address) return;
