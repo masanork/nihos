@@ -658,6 +658,7 @@ noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [
     try ota_update_guard.session.initInPlace(image, hash, started, started + 30_000_000);
     const root = @import("root");
     ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    ota_update_guard.session.allow_310 = @hasDecl(root, "C6OtaAllow310") and root.C6OtaAllow310;
     ota_preflight_stage = 1;
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
@@ -725,6 +726,7 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
     const root = @import("root");
     const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
     ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    ota_update_guard.session.allow_310 = @hasDecl(root, "C6OtaAllow310") and root.C6OtaAllow310;
     if (@hasDecl(root, "C6OtaRequiredPeer")) ota_update_guard.session.required_peer = root.C6OtaRequiredPeer;
     if (simulation) {
         ota_fake = .{ .image = image };

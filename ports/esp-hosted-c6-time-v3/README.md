@@ -48,8 +48,18 @@ TLV builder and checks its bytes. Its capability bits and 7-block buffer sizes
 are representative inputs, not observations from a running C6. The P4 host
 test parses the resulting complete initialization payload.
 
-Remaining qualification: validate RPC encodings and a full device-generated
-init frame, a byte-identified P4 image against the currently installed 2.x
-firmware, the actual OTA/partition and recovery behavior, then the 3.x boot,
+`sh ports/esp-hosted-c6-time-v3/check-ota-reference.sh HOSTED_CHECKOUT`
+generates Begin, Write, End and Activate requests with the upstream 3.0.10
+protobuf-c definitions and checks the P4's independent test vectors. The P4
+OTA session supports 3.0.10 only via explicit `allow_310` opt-in and matching
+RPC-v2/streaming advertisements. Successful Activate response means accepted,
+not that the next firmware booted or that a recovery route is available.
+
+The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
+ran a byte-identified P4 image against the previously installed C6 application;
+it did not independently read back the C6 version or test the 3.x firmware.
+
+Remaining qualification: validate a full device-generated
+init frame, the actual OTA/partition and recovery behavior, then the 3.x boot,
 Wi-Fi, BLE, split address, time/RTC, reconnect, and a tested rollback route.
 Do not infer iroh or QUIC operation from a successful clock exchange.

@@ -41,7 +41,7 @@ pub const Client = struct {
     pub fn next(self: *Client) Error![]const u8 {
         if (self.pending_id != null or self.phase == .complete or self.phase == .failed) return error.WrongState;
         if (self.uid == std.math.maxInt(u32)) return error.UidExhausted;
-        // Hosted 2.13 with IDF >= 6.1 validates the complete 24-byte image
+        // Hosted 2.13/3.x with newer IDF can validate the complete 24-byte image
         // header, 8-byte segment header and 256-byte app descriptor on the
         // first Write. Reject short images conservatively on all 2.13 builds.
         if (self.phase == .begin and self.activation == .explicit_rpc and self.image.len < 288) {
