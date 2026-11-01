@@ -184,3 +184,27 @@ test "transport invalidation revokes an address without waiting for down event" 
     try std.testing.expect(!state.invalidate());
     try std.testing.expect(state.address == null);
 }
+test "not-ready 2.13 status does not become an address" {
+    var bytes: [128]u8 = undefined;
+    var writer = hosted.Writer{ .out = &bytes };
+    try writer.data(4, "0.0.0.0\x00");
+    try writer.data(5, "0.0.0.0\x00");
+    try writer.data(6, "0.0.0.0\x00");
+    try writer.data(8, "192.168.1.1\x00");
+    try std.testing.expect((try split.decode(writer.slice())) == null);
+    writer = .{ .out = &bytes };
+    try writer.uint(2, 1);
+    try writer.uint(3, 1);
+    try writer.uint(7, 1);
+    try writer.data(4, "0.0.0.0\x00");
+    try writer.data(5, "0.0.0.0\x00");
+    try writer.data(6, "0.0.0.0\x00");
+    try writer.data(8, "0.0.0.0\x00");
+    try std.testing.expect((try split.decode(writer.slice())) == null);
+}
+test "down status with a nonzero interface address is rejected" {
+    var bytes: [128]u8 = undefined;
+    var writer = hosted.Writer{ .out = &bytes };
+    try writer.data(4, "192.168.1.2\x00");
+    try std.testing.expectError(error.InvalidStatus, split.decode(writer.slice()));
+}

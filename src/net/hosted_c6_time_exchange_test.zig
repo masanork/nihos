@@ -261,3 +261,28 @@ test "a reply with the wrong request UID cannot satisfy the status query" {
     try std.testing.expectError(error.Stale, rpc(&e, 2, 609, req.uid + 1, &.{}, 11));
     try std.testing.expectEqual(service.Phase.failed, e.phase);
 }
+test "zero-address response waits for a complete DHCP event" {
+    var e = service.Exchange{};
+    try e.begin(.saved, 100, 0, 200);
+    e.station.phase = .link;
+    e.station.connected = true;
+    e.station.peer_chip = 13;
+    e.station.version_known = true;
+    e.station.version = .{ 2, 13, 1 };
+    const query = try e.tx(10);
+    const req = try outgoing(query);
+    try e.sent(query.len, 10);
+    var buf: [128]u8 = undefined;
+    var w = wire.Writer{ .out = &buf };
+    try w.uint(2, 1);
+    try w.uint(3, 1);
+    try w.uint(7, 1);
+    try w.data(4, "0.0.0.0\x00");
+    try w.data(5, "0.0.0.0\x00");
+    try w.data(6, "0.0.0.0\x00");
+    try w.data(8, "0.0.0.0\x00");
+    try rpc(&e, 2, 609, req.uid, w.slice(), 11);
+    try std.testing.expectEqual(service.Phase.address, e.phase);
+    try address(&e, 12);
+    try std.testing.expectEqual(service.Phase.ready, e.phase);
+}

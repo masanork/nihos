@@ -1,7 +1,8 @@
 # C6 time candidate: OTA preparation and P4 simulation — 2026-11-01
 
 This records an actual P4 run with an in-memory OTA responder, plus host and
-build checks. **The C6 time firmware was not installed.** The simulated transfer
+build checks. **The C6 time firmware was not installed in this simulation.**
+A later OTA is recorded separately in `2026-11-01-c6-time-ota-upgrade.md`. The simulated transfer
 does not demonstrate a C6 2.13.1 boot, NTP, or a working recovery path.
 
 ## Explicit upgrade and recovery fixtures
