@@ -40,6 +40,8 @@ def analyze(capture, candidate_sha256, sent_token):
     except UnicodeDecodeError as error:
         raise InvalidEvidence('non-ASCII capture') from error
     lines = text.splitlines()
+    if 'NIHOS_C6_OTA_SIMULATED' in lines:
+        raise InvalidEvidence('simulation capture cannot prove a C6 OTA')
     if lines.count('NIHOS_C6_MAP_BOOT') != 1:
         raise InvalidEvidence('missing or repeated P4 fixture boot')
     expected_map = f'NIHOS_C6_MAP_RESULT bytes={CANDIDATE_BYTES:08x} sha256={candidate_sha256}'

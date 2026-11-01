@@ -23,6 +23,7 @@ class EvidenceTest(unittest.TestCase):
             (good().replace(b'diag_known=00000001', b'diag_known=00000000'), TOKEN),
             (good().replace(b'diag_heap=00012345', b'diag_heap=00000000'), TOKEN),
             (good() + b'NIHOS_C6_MAP_BOOT\r\n', TOKEN),
+            (good() + b'NIHOS_C6_OTA_SIMULATED\r\n', TOKEN),
             (good() + b'NIHOS_C6_OTA_ERROR Timeout\r\n', TOKEN),
             (good().replace(b'NIHOS_C6_OTA_READY\r\n', b''), TOKEN),
             (good().replace(b'status=00000001 stage=00000008', b'status=00000001 status=00000001 stage=00000008'), TOKEN),
