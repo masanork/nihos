@@ -128,7 +128,8 @@ The map audit matched the 1,397,104-byte C6 candidate at `0x40010024` and
 passed the P4 SRAM/ROM boundary checks. A previous attempt that combined the
 full read-only descriptor diagnostic and updater exceeded the fixture's SRAM
 limit; the clean build uses separate diagnostics and does not silently widen
-the memory map. This build has not been installed or run on Tab5.
+the memory map. A later clean rebuild was [run only to the pre-token gate](../../docs/measurements/2026-11-02-hosted3-updater-preflight.md)
+on Tab5; no OTA was started and P4 flash was restored and verified.
 
 The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
 ran a byte-identified P4 image against the previously installed C6 application;
