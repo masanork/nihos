@@ -5,6 +5,11 @@
 //! (RPC 777) snapshot and uses `generation` to revoke users of an old address.
 //! This module does not configure hardware, start DHCP, or implement UDP.
 const std = @import("std");
+fn timeSection() []const u8 {
+    const root = @import("root");
+    if (@hasDecl(root, "C6TimeFlash") and root.C6TimeFlash) return ".flash.text.time";
+    return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+}
 const hosted = @import("hosted.zig");
 pub const Rpc = hosted.Rpc;
 
@@ -31,18 +36,18 @@ pub const State = struct {
 
     /// Consumes only RPC events with ID 777.  A rejected event never changes
     /// the current address or generation.
-    pub fn receive(self: *State, message: Rpc) Outcome {
+    pub noinline fn receive(self: *State, message: Rpc) linksection(timeSection()) Outcome {
         if (message.kind != 3 or message.id != event_id) return .ignored;
         return self.apply(message.body);
     }
 
     /// Applies only the response correlated to a nonzero request UID.
-    pub fn receiveResponse(self: *State, message: Rpc, expected_uid: u32) Outcome {
+    pub noinline fn receiveResponse(self: *State, message: Rpc, expected_uid: u32) linksection(timeSection()) Outcome {
         if (expected_uid == 0 or message.kind != 2 or message.id != response_id or message.uid != expected_uid) return .ignored;
         return self.apply(message.body);
     }
 
-    fn apply(self: *State, body: []const u8) Outcome {
+    noinline fn apply(self: *State, body: []const u8) linksection(timeSection()) Outcome {
         const next = decode(body) catch {
             self.rejected +|= 1;
             return .rejected;
@@ -62,14 +67,14 @@ pub const State = struct {
         return .changed;
     }
 
-    pub fn current(self: *const State, generation: u64) ?Address {
+    pub noinline fn current(self: *const State, generation: u64) linksection(timeSection()) ?Address {
         if (generation != self.generation) return null;
         return self.address;
     }
 
     /// Revokes every handle derived from the current address even when the
     /// coprocessor reset/disconnect races the explicit all-down event.
-    pub fn invalidate(self: *State) bool {
+    pub noinline fn invalidate(self: *State) linksection(timeSection()) bool {
         if (self.generation == std.math.maxInt(u64)) {
             self.rejected +|= 1;
             self.address = null;
@@ -83,7 +88,7 @@ pub const State = struct {
 
 /// Builds GetDhcpDnsStatus for station interface. The zero-valued proto3
 /// interface field is omitted from the body; the response is RPC 609.
-pub fn statusRequest(out: []u8, uid: u32) hosted.Error![]const u8 {
+pub noinline fn statusRequest(out: []u8, uid: u32) linksection(timeSection()) hosted.Error![]const u8 {
     return hosted.request(out, request_id, uid, &.{});
 }
 
@@ -100,7 +105,7 @@ const Status = struct {
     response: u32 = 0,
 };
 
-pub fn decode(body: []const u8) (hosted.Error || Error)!?Address {
+pub noinline fn decode(body: []const u8) linksection(timeSection()) (hosted.Error || Error)!?Address {
     var status: Status = .{};
     var seen: u16 = 0;
     var reader = hosted.Reader{ .bytes = body };
@@ -171,7 +176,7 @@ pub fn decode(body: []const u8) (hosted.Error || Error)!?Address {
     return address;
 }
 
-fn text(value: ?[]const u8) Error![]const u8 {
+noinline fn text(value: ?[]const u8) linksection(timeSection()) Error![]const u8 {
     const bytes = value orelse return error.Malformed;
     if (bytes.len == 0 or bytes.len > 64) return error.Malformed;
     const end = std.mem.indexOfScalar(u8, bytes, 0) orelse bytes.len;
@@ -179,14 +184,14 @@ fn text(value: ?[]const u8) Error![]const u8 {
     return bytes[0..end];
 }
 
-fn optionalAddress(value: ?[]const u8) Error!u32 {
+noinline fn optionalAddress(value: ?[]const u8) linksection(timeSection()) Error!u32 {
     const bytes = value orelse return 0;
     if (bytes.len > 64) return error.Malformed;
     if (std.mem.allEqual(u8, bytes, 0)) return 0;
     return ipv4(try text(bytes));
 }
 
-fn ipv4(bytes: []const u8) Error!u32 {
+noinline fn ipv4(bytes: []const u8) linksection(timeSection()) Error!u32 {
     if (bytes.len < 7 or bytes.len > 15) return error.InvalidAddress;
     var parts = std.mem.splitScalar(u8, bytes, '.');
     var result: u32 = 0;
@@ -201,7 +206,7 @@ fn ipv4(bytes: []const u8) Error!u32 {
     return result;
 }
 
-fn unicast(address: u32) bool {
+noinline fn unicast(address: u32) linksection(timeSection()) bool {
     const first = address >> 24;
     return first != 0 and first != 127 and first < 224 and address >> 16 != 0xa9fe;
 }

@@ -1,8 +1,14 @@
 //! Single-flight factory-Hosted station boot experiment. Keeps credentials
 //! volatile, correlates RPC UID + ID, and requires an actual DHCP ACK.
 const std = @import("std");
+fn timeSection() []const u8 {
+    const root = @import("root");
+    if (@hasDecl(root, "C6TimeFlash") and root.C6TimeFlash) return ".flash.text.time";
+    return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
+}
 pub const wire = @import("hosted.zig");
 pub const c6_time_exchange = @import("hosted_c6_time_exchange.zig");
+pub const c6_time_policy = @import("hosted_c6_time_policy.zig");
 pub const diagnostics = @import("hosted_diagnostics.zig");
 pub const ota_session = @import("hosted_ota_session.zig");
 pub const ota_guard = @import("hosted_ota_guard.zig");
@@ -95,7 +101,7 @@ pub const Client = struct {
     pub fn beginDual(self: *Client, join: Join, now: u64, enable_ipv6: bool) void {
         self.* = .{ .join = join, .started = now, .deadline = now + 5_000_000, .ipv6_enabled = enable_ipv6 };
     }
-    pub fn receive(self: *Client, frame: wire.Frame, now: u64) Error!void {
+    pub noinline fn receive(self: *Client, frame: wire.Frame, now: u64) linksection(timeSection()) Error!void {
         self.frames +|= 1;
         if (frame.interface >> 4 != 0) return;
         switch (frame.interface & 15) {
@@ -247,7 +253,7 @@ pub const Client = struct {
         self.transmitted = false;
         self.deadline = now + if (phase == .link) @as(u64, 30_000_000) else 5_000_000;
     }
-    pub fn tx(self: *Client, now: u64) Error![]const u8 {
+    pub noinline fn tx(self: *Client, now: u64) linksection(timeSection()) Error![]const u8 {
         if (now < self.started) return error.Timeout;
         if (self.keep_serving) try self.maintain(now);
         if (self.phase == .done) {
@@ -398,7 +404,7 @@ pub const Client = struct {
         self.bluetooth_setup_done = true;
         self.advance(if (self.join == .disabled) .done else .init_wifi, now);
     }
-    pub fn sent(self: *Client, now: u64) void {
+    pub noinline fn sent(self: *Client, now: u64) linksection(timeSection()) void {
         @memset(self.output[0..self.output_len], 0);
         self.output_len = 0;
         if (self.phase == .handshake) self.advance(.version, now) else if (self.phase == .lease or (self.phase == .done and self.keep_serving)) {

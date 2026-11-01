@@ -74,3 +74,6 @@ is not qualified.
 
 The diagnostic fixture may print a raw DHCP/DNS status on error, including
 local IP addresses and DNS server addresses; handle its serial logs as private.
+
+A pinned source overlay, exact sdkconfig and reconstruction notes are in
+`ports/esp-hosted-c6-time/reproduction/`.

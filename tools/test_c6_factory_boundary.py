@@ -135,6 +135,21 @@ class FactoryC6BoundaryTests(unittest.TestCase):
                 self.assertIn('pub const long_dma = ' + ('true' if flag == '1' else 'false') + ';',
                               destination.read_text())
 
+    def test_time_offload_is_explicit_and_incompatible_with_ipv6_or_at(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for flag, protocol, ipv6, valid in [('0', 'hosted', '1', True),
+                                                 ('1', 'hosted', '0', True),
+                                                 ('1', 'hosted', '1', False),
+                                                 ('1', 'at', '0', False),
+                                                 ('invalid', 'hosted', '0', False)]:
+                env = {**os.environ, 'NIHOS_C6_TIME_OFFLOAD': flag, 'NIHOS_C6_IPV6': ipv6}
+                dest = Path(directory) / 'config.zig'
+                result = subprocess.run(['python3', str(ROOT / 'tools/c6-wifi-config.py'), str(dest), '', protocol],
+                                        env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, valid)
+                if valid:
+                    self.assertIn('pub const c6_time_offload = ' + ('true' if flag == '1' else 'false') + ';', dest.read_text())
+
     def test_normal_sources_do_not_depend_on_custom_c6_experiment(self):
         forbidden = (
             'SplitHttpsClient', 'SplitStationClient', 'runHostedHttps',
