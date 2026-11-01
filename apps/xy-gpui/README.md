@@ -12,7 +12,9 @@ session consumes CPU, so concurrent sessions can run more slowly; pause a sessio
 to stop its CPU work without discarding its state. Portrait rotates the
 host display counterclockwise; it does not change the guest's display orientation or
 input coordinates. Mouse press, drag and release on the screen simulate one
-ST7123 touch contact; coordinates follow the displayed rotation. Input is
+ST7123 touch contact; coordinates follow the displayed rotation. The Tab5
+keyboard I2C bus is modeled as disconnected, so firmware can detect its
+absence. The host rotation control remains manual. Input is
 released on focus loss, rotation, pause, power off, or reset. Power off stops CPU execution and blanks the screen; power on
 and Reset reload the ELF into a new emulated machine. This model does not yet
 preserve flash or other storage across power cycles.
