@@ -1,10 +1,10 @@
 # Experimental Tab5 C6 Hosted 3.0.10 overlay
 
-This is a build candidate, not a qualified device update. The 2.13.1 C6
-implementation remains in `../esp-hosted-c6-time/`. Do not install this image
-until the running C6 partition layout and a recovery path have been verified,
-the P4 dual-version image has been validated, and the exact OTA candidate has
-been identified. A failed C6 image may leave no SDIO OTA route.
+This experimental overlay has been installed once on Tab5 and exercised with
+P4 time/RTC, Wi-Fi and BLE. See the [physical record](../../docs/measurements/2026-11-02-hosted3-ota-upgrade.md).
+It is not a general release qualification. The 2.13.1 implementation remains in
+`../esp-hosted-c6-time/`. A failed C6 image may leave no SDIO OTA route; an
+independent recovery path and automatic boot rollback are unverified.
 
 The overlay targets ESP-Hosted commit `4e029441bc0322b368c19767d91d84c6de197ba1`
 (3.0.10) and ESP-IDF 5.5.6 commit `880a203ae603d08a94d06aa01e0d6761958e5e9e`.
@@ -46,7 +46,8 @@ A full queue drops requests, so the P4
 must time out. A successful 3.x build with this addition produced 1,397,104
 bytes, SHA-256
 `04bd14faf943453ccf39075bc61456463b3f362643a3a63dab0f82a53f4dc8fe`,
-and left 175,760 bytes in the nominal slot. This candidate is also unflashed.
+and left 175,760 bytes in the nominal slot. This exact candidate was subsequently
+installed once through SDIO OTA and reported Hosted 3.0.10 after reboot.
 The link map contains the service feature descriptor; the service object's
 undefined OTA/flash references are limited to read-only queries.
 
@@ -61,12 +62,13 @@ Hosted handshake, reads the standard application descriptor and then makes
 this one query. Its stream guard admits only the exact handshake configuration,
 version, read-only descriptor and Bluetooth setup, and this CustomRpc;
 it rejects OTA Begin, Write, End, Activate and other CustomRpc IDs. It does
-not authorize a C6 OTA. There is not yet a device UI or a 3.x physical capture.
+not authorize a C6 OTA. A later 3.x physical capture is recorded above; there
+is not yet a device UI for the query.
 In a [physical negative test](../../docs/measurements/2026-11-01-c6-ota-info-negative.md),
 the current 2.13.1 C6 returned `ESP_ERR_NOT_FOUND`; the P4 was restored.
-Values are self-reported by the running C6 application; this service is absent from the
-currently installed 2.13.1 image and cannot establish its actual partition
-layout before the first update. Neither a reported layout nor a security flag
+Values are self-reported by the running C6 application; this service was absent
+from the 2.13.1 image and did not establish its actual partition layout before
+the first update. Neither a reported layout nor a security flag
 proves an independent ROM recovery path.
 The application descriptor's version, project name and IDF version are
 self-reported metadata. The optional ELF hash is not the application binary's
@@ -111,15 +113,15 @@ state machine and in-memory 2.13.1 responder on the host.
 update fixture for that same pinned digest. **Unlike the simulation, this
 fixture can write the C6 after its one-shot token.** It checks the mapped
 candidate digest, requires a 2.13.1 origin, and reports a 3.0.10 version after
-activation. It is build-only and has not been run; it does not independently
-establish the C6 partition layout, bootloader behavior, or a recovery route.
-Do not install it until those gates have been addressed. The application
+activation. One byte-identified build was used for the recorded physical OTA; the fixture
+does not independently establish the C6 partition table, bootloader behavior,
+or a recovery route. The application
 descriptor preflight is a separate diagnostic and is not enforced inside this
 update image. A future runner must keep exclusive device ownership across both
 checks, verify exact bytes, and restore the P4; an uncertain activation must
-not be blindly replayed. `tools/c6_hosted3_upgrade_evidence.py` checks a future
-capture and explicitly rejects simulation markers; its passing output would
-still be a P4-reported version and transfer, not C6 flash readback.
+not be blindly replayed. `tools/c6_hosted3_upgrade_evidence.py` checks the recorded
+capture and explicitly rejects simulation markers; its passing output is a
+P4-reported version and transfer, not C6 flash readback.
 
 The clean build from commit `0cd87de93cf57d88e2b102feadb85d1bdbb69086`
 produced P4 app SHA-256
@@ -148,7 +150,7 @@ The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legac
 ran a byte-identified P4 image against the previously installed C6 application;
 it did not independently read back the C6 version or test the 3.x firmware.
 
-Remaining qualification: validate a full device-generated
-init frame, the actual OTA/partition and recovery behavior, then the 3.x boot,
-Wi-Fi, BLE, split address, time/RTC, reconnect, and a tested rollback route.
+Remaining qualification includes independently validating the partition table,
+a full device-generated init frame, cold boot and reconnect behavior, longer
+operation, and a tested independent recovery or rollback route.
 Do not infer iroh or QUIC operation from a successful clock exchange.
