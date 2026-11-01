@@ -1,0 +1,31 @@
+{
+  "commit": "24bc1212c9afb62e9c2e795fb966c1c1f88daf69",
+  "candidate_sha256": {
+    "0x2000": "f59b0fe2929c0d49bfd61d3c4474b5ac649de90953d72e45656d3d71e4596ce6",
+    "0x8000": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
+    "0x10000": "2d716b7fb25bb143039b11b8aa98eedcda15b6d6b6c50df51b27cf96c55de5eb"
+  },
+  "installed": true,
+  "restored": true,
+  "boot": true,
+  "document_render": true,
+  "touch_tested": false,
+  "optical_tested": false,
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": {
+    "0x2000": "bbdb5cf52e596868c6e4a56d60b316e2c0ef9d82887e0e3c35b75ed07230e0c8",
+    "0x8000": "ba8b75bd812bd5288090c2691d5cc6efba539455a7c3e2de50e94c18596523ac",
+    "0x10000": "9fa49466341be5b30385cc0222eba50f8044c039f96595133cf7b9d21f37f3ce"
+  },
+  "install_attempted": true,
+  "scope": "forced absent keyboard; serial document transition; no optical or physical touch qualification",
+  "backup_lengths": {
+    "0x2000": 24576,
+    "0x8000": 32768,
+    "0x10000": 4947968
+  }
+}
