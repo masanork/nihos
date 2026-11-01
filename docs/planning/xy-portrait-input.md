@@ -1,6 +1,7 @@
 # xy portrait document: integration boundary
 
-The portrait Home and document geometry and host rendering/input tests are prepared,
+The portrait Home, document, reader, chapter list and settings geometry and
+host rendering/input tests are prepared,
 but the native workspace still displays and consumes touch in landscape. No
 automatic orientation switch is enabled by this change.
 
@@ -18,8 +19,8 @@ owner must propagate a single orientation through display and input, cancel an
 active touch when it changes, invalidate the retained frame, and ensure the
 screen's renderer and hit testing use the same geometry. The portrait Home prototype shares card geometry with hit testing and can open
 the portrait document in the host model; its renderer request is not selected
-by the native session. Reader, settings, learning, system views, diagnostic
-controls and transitions still rely on landscape coordinates. They must be
+by the native session. Learning, card, system views, diagnostic controls and some transitions still
+rely on landscape coordinates. They must be
 adapted and tested before a session-wide
 portrait default is enabled. A keyboard I2C failure is not proof of a clean
 physical detach; define unknown/fault and any retry policy separately rather

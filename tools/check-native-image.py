@@ -214,7 +214,9 @@ XY_RENDER_FUNCTIONS = {
     'line_layout.Flow.place', 'render_adapter.computeCursorRect',
     'render_adapter.ThemePalette.color565', 'document.nextClusterEnd',
     'document.isClusterBoundary', 'render_session.SizedSession(2048).render',
-    'native_render_entry.readingPack', 'catalog.Pack.entry', 'catalog.Pack.chapter',
+    'native_render_entry.readingPack', 'native_reading.prepareViewport',
+    'render_session.SizedSession(2048).renderPortrait', 'catalog.Pack.counts',
+    'catalog.Pack.entry', 'catalog.Pack.chapter',
     'catalog.Pack.font', 'catalog.Pack.learningBytes', 'reader.shorter', 'reader.closeBoundary', 'viewport_layout.ClusterIterator.next',
     'view_config.Config.set', 'Io.Writer.writeAll', 'Io.Writer.unimplementedSendFile',
     'Io.Writer.failingRebase', 'Io.Writer.noopFlush', 'Io.Writer.fixedDrain',
@@ -238,7 +240,7 @@ XY_CATALOG_METHODS = {
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.(?:printIntAny|printValue)|fmt\.bufPrint|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
     document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)

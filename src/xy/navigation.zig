@@ -227,6 +227,52 @@ pub const State = struct {
         self.home_selection = @intCast(index);
         self.activateHome();
     }
+    /// Portrait controls use 720x1280 logical coordinates.
+    pub fn touchPortrait(self: *State, x: u32, y: u32, view: *config.Config) linksection(section) void {
+        if (x >= 720 or y >= 1280) return;
+        if (self.screen == .home) return self.touchPortraitHome(x, y);
+        if (y >= 1208) {
+            const button = x / 120;
+            if (button == 0) return self.home();
+            if (self.screen == .chapters) {
+                if (button <= 2) self.selected_chapter -|= 8 else self.selected_chapter = @min(self.chapter_count[self.book] - 1, self.selected_chapter + 8);
+            } else if (self.screen == .reading) switch (button) {
+                1 => self.back(),
+                2 => self.next(),
+                3 => if (self.can_try) {
+                    self.screen = .examples;
+                },
+                4 => {
+                    self.selected_chapter = self.chapter;
+                    self.screen = .chapters;
+                },
+                5 => {
+                    self.return_screen = .reading;
+                    self.screen = .settings;
+                },
+                else => {},
+            };
+            return;
+        }
+        switch (self.screen) {
+            .chapters => if (y >= 132 and y < 1012) {
+                const offset = y - 132;
+                if (offset % 110 >= 90) return;
+                const selected: u16 = (self.selected_chapter / 8) * 8 + @as(u16, @intCast(offset / 110));
+                if (selected < self.chapter_count[self.book]) {
+                    self.selected_chapter = selected;
+                    self.selectChapter();
+                }
+            },
+            .reading => if (x < 360) self.back() else self.next(),
+            .settings => {
+                if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen;
+            },
+            .credits => self.screen = .reading,
+            .document => self.home(),
+            else => {},
+        }
+    }
     /// Validated logical landscape coordinates from the pointer service.
     pub fn touch(self: *State, x: u32, y: u32, view: *config.Config) linksection(section) void {
         if (x >= 1280 or y >= 720) return;
