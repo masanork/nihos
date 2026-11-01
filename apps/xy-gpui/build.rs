@@ -49,6 +49,8 @@ fn main() {
             "rotated_surface",
             "--dep",
             "canvas",
+            "--dep",
+            "terminal_adapter",
             "-Mroot=src/gpui_host.zig",
             "-Msurface=src/graphics/surface.zig",
             "--dep",
@@ -62,6 +64,7 @@ fn main() {
             "--dep",
             "surface",
             "-Mcanvas=src/graphics/canvas.zig",
+            "-Mterminal_adapter=src/net/terminal_adapter.zig",
         ])
         .status()
         .expect("compile the shared Zig renderer");
