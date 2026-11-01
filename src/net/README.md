@@ -13,11 +13,12 @@ It has no ARP/routing adapter, socket service, data transfer, close handling,
 or physical/real-network qualification and is not connected to SSH.
 
 `tcp_stream.zig` is a separate host-tested experimental data plane with one
-segment in flight, bounded receive buffering, retransmission and FIN handling.
+segment in flight, bounded receive buffering, retransmission, zero-window
+probing and FIN handling.
 `tcp_time_wait.zig` retains the tuple through a caller-supplied TIME_WAIT and
 acknowledges duplicate FINs. These are not a complete TCP implementation:
-among other gaps they lack a persist timer, congestion control, a socket table,
-routing and integration with the normal network service. They must not yet be
+among other gaps they lack congestion control, a socket table, routing and
+integration with the normal network service. They must not yet be
 exposed as an application socket.
 
 `esp_at.zig` decodes the bounded passive-socket/BLE receive profile.

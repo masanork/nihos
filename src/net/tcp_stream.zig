@@ -1,5 +1,5 @@
 //! Experimental one-segment-in-flight IPv4 TCP data plane. No routing, socket
-//! table, congestion control, persist timer or TIME_WAIT yet.
+//! table, congestion control or automatic TIME_WAIT ownership yet.
 const std = @import("std");
 const wire = @import("tcp_wire.zig");
 const connect = @import("tcp_connect.zig");
@@ -16,10 +16,11 @@ pub const Stream = struct {
     rx_len: usize = 0,
     tx: [536]u8 = undefined,
     tx_len: usize = 0,
-    tx_sent: bool = false,
+    tx_sent_len: usize = 0,
     tx_deadline: u64 = 0,
     retry_at: u64 = 0,
     attempts: u8 = 0,
+    persist_at: ?u64 = null,
     ack_needed: bool = false,
     peer_fin: bool = false,
     close_requested: bool = false,
@@ -32,6 +33,7 @@ pub const Stream = struct {
     out_kind: OutKind = .none,
     out_ack: u32 = 0,
     out_window: u16 = 0,
+    out_data_len: usize = 0,
 
     pub fn init(established: connect.Established) Stream {
         return .{ .local = established.local, .remote = established.remote, .send_unacked = established.send_next, .receive_next = established.receive_next, .remote_window = established.remote_window, .remote_mss = established.remote_mss };
@@ -41,12 +43,14 @@ pub const Stream = struct {
     pub fn write(self: *Stream, bytes: []const u8, now: u64, deadline: u64) Error!usize {
         if (self.failed or self.close_requested) return error.InvalidState;
         if (bytes.len == 0 or deadline <= now) return error.InvalidArgument;
-        if (self.tx_len != 0 or self.remote_window == 0) return error.WouldBlock;
-        const n = @min(bytes.len, @min(self.tx.len, @min(self.remote_window, self.remote_mss)));
+        if (self.tx_len != 0) return error.WouldBlock;
+        const limit = if (self.remote_window == 0) @as(usize, 1) else @as(usize, self.remote_window);
+        const n = @min(bytes.len, @min(self.tx.len, @min(limit, self.remote_mss)));
         if (n == 0) return error.WouldBlock;
         @memcpy(self.tx[0..n], bytes[0..n]);
         self.tx_len = n;
-        self.tx_sent = false;
+        self.tx_sent_len = 0;
+        self.persist_at = null;
         self.tx_deadline = deadline;
         self.attempts = 0;
         return n;
@@ -72,15 +76,21 @@ pub const Stream = struct {
             return error.Timeout;
         }
         if (self.out_kind != .none) return self.packet[0..self.packet_len];
-        const kind: OutKind = if (self.ack_needed) .ack else if (self.tx_len != 0 and (!self.tx_sent or now >= self.retry_at)) .data else if (self.close_requested and self.tx_len == 0 and !self.fin_acked and (self.remote_window != 0 or self.fin_sent) and (!self.fin_sent or now >= self.retry_at)) .fin else return null;
-        const payload: []const u8 = if (kind == .data) self.tx[0..self.tx_len] else "";
-        const sequence = self.send_unacked +% if (kind == .ack and self.tx_sent) @as(u32, @intCast(self.tx_len)) else if (kind == .ack and self.fin_sent and !self.fin_acked) @as(u32, 1) else @as(u32, 0);
+        const waiting = (self.tx_len != 0 and self.tx_sent_len == 0) or (self.close_requested and self.tx_len == 0 and !self.fin_sent and !self.fin_acked);
+        if (waiting and self.remote_window == 0 and self.persist_at == null) self.persist_at = now +| 1000;
+        if (self.remote_window != 0) self.persist_at = null;
+        const ready = self.remote_window != 0 or (self.persist_at != null and now >= self.persist_at.?);
+        const kind: OutKind = if (self.ack_needed) .ack else if (self.tx_len != 0 and (if (self.tx_sent_len == 0) ready else now >= self.retry_at)) .data else if (self.close_requested and self.tx_len == 0 and !self.fin_acked and (if (self.fin_sent) now >= self.retry_at else ready)) .fin else return null;
+        const length: usize = if (kind != .data) 0 else if (self.tx_sent_len != 0) self.tx_sent_len else if (self.remote_window == 0) 1 else @min(self.tx_len, self.remote_window);
+        const payload: []const u8 = if (kind == .data) self.tx[0..length] else "";
+        const sequence = self.send_unacked +% if (kind == .ack and self.tx_sent_len != 0) @as(u32, @intCast(self.tx_sent_len)) else if (kind == .ack and self.fin_sent and !self.fin_acked) @as(u32, 1) else @as(u32, 0);
         const flags: u8 = wire.Flags.ack | if (kind == .data) wire.Flags.psh else if (kind == .fin) wire.Flags.fin else @as(u8, 0);
         const packet = try wire.encode(&self.packet, .{ .src = self.local.address, .dst = self.remote.address, .src_port = self.local.port, .dst_port = self.remote.port, .seq = sequence, .ack = self.receive_next, .flags = flags, .window = self.window(), .options = "", .payload = payload }, 0);
         self.packet_len = packet.len;
         self.out_kind = kind;
         self.out_ack = self.receive_next;
         self.out_window = self.window();
+        self.out_data_len = length;
         return self.packet[0..self.packet_len];
     }
     pub fn sent(self: *Stream, now: u64) Error!void {
@@ -97,7 +107,8 @@ pub const Stream = struct {
             const shift: u6 = @intCast(@min(self.attempts, 4));
             self.retry_at = now +| (@as(u64, 1000) << shift);
             self.attempts +|= 1;
-            if (self.out_kind == .data) self.tx_sent = true else self.fin_sent = true;
+            if (self.out_kind == .data) self.tx_sent_len = self.out_data_len else self.fin_sent = true;
+            self.persist_at = null;
         }
         if (self.out_ack == self.receive_next and self.out_window == self.window()) self.ack_needed = false;
         self.out_kind = .none;
@@ -118,7 +129,7 @@ pub const Stream = struct {
         if ((seg.flags & wire.Flags.syn) != 0 or (seg.flags & wire.Flags.ack) == 0) return false;
         const acknowledged = seg.ack -% self.send_unacked;
         const fin_ack = self.tx_len == 0 and self.fin_sent and !self.fin_acked and acknowledged == 1;
-        if (!fin_ack and (acknowledged > self.tx_len or (acknowledged != 0 and !self.tx_sent))) return false;
+        if (!fin_ack and acknowledged > self.tx_sent_len) return false;
         if (fin_ack) {
             self.fin_acked = true;
             self.send_unacked +%= 1;
@@ -131,14 +142,22 @@ pub const Stream = struct {
             const n: usize = acknowledged;
             std.mem.copyForwards(u8, self.tx[0 .. self.tx_len - n], self.tx[n..self.tx_len]);
             self.tx_len -= n;
+            self.tx_sent_len -= n;
             self.send_unacked +%= acknowledged;
             if (self.out_kind == .data) {
                 self.out_kind = .none;
                 self.packet_len = 0;
             }
-            if (self.tx_len == 0) {
-                self.tx_sent = false;
+            if (self.tx_sent_len == 0) {
                 self.attempts = 0;
+                self.persist_at = null;
+            }
+        }
+        if (self.remote_window != seg.window) {
+            self.persist_at = null;
+            if ((self.out_kind == .data and self.tx_sent_len == 0) or (self.out_kind == .fin and !self.fin_sent)) {
+                self.out_kind = .none;
+                self.packet_len = 0;
             }
         }
         self.remote_window = seg.window;
@@ -219,7 +238,6 @@ test "flow control, invalid ACK and send deadline fail safely" {
     const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
     const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
     var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 10, .receive_next = 20, .remote_window = 0, .remote_mss = 536 });
-    try std.testing.expectError(error.WouldBlock, s.write("x", 0, 3000));
     var packet: [64]u8 = undefined;
     var peer = wire.Segment{ .src = remote.address, .dst = local.address, .src_port = 22, .dst_port = 50000, .seq = 20, .ack = 10, .flags = wire.Flags.ack, .window = 2, .options = "", .payload = "" };
     try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
@@ -289,4 +307,40 @@ test "a sent FIN can be retransmitted after the peer closes its window" {
     try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
     const retry = try wire.parse((try s.poll(1000)).?);
     try std.testing.expectEqual(wire.Flags.ack | wire.Flags.fin, retry.flags);
+}
+
+test "zero-window probe retains unsent bytes and resumes after update" {
+    const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
+    const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
+    var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 10, .receive_next = 20, .remote_window = 3, .remote_mss = 536 });
+    try std.testing.expectEqual(@as(usize, 3), try s.write("abc", 0, 10000));
+    try std.testing.expectEqualStrings("abc", (try wire.parse((try s.poll(0)).?)).payload);
+    var packet: [64]u8 = undefined;
+    var peer = wire.Segment{ .src = remote.address, .dst = local.address, .src_port = 22, .dst_port = 50000, .seq = 20, .ack = 10, .flags = wire.Flags.ack, .window = 0, .options = "", .payload = "" };
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expect((try s.poll(0)) == null);
+    try std.testing.expect((try s.poll(999)) == null);
+    try std.testing.expectEqualStrings("a", (try wire.parse((try s.poll(1000)).?)).payload);
+    try s.sent(1000);
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expectEqualStrings("a", (try wire.parse((try s.poll(2000)).?)).payload);
+    try s.sent(2000);
+    peer.ack = 11;
+    peer.window = 2;
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expectEqualStrings("bc", (try wire.parse((try s.poll(2001)).?)).payload);
+    try s.sent(2001);
+    peer.ack = 13;
+    try std.testing.expect(try s.receive(try wire.encode(&packet, peer, 0)));
+    try std.testing.expectEqual(@as(usize, 0), s.tx_len);
+}
+
+test "write against a zero window accepts at most one bounded probe byte" {
+    const local = connect.Endpoint{ .address = .{ 192, 0, 2, 1 }, .port = 50000 };
+    const remote = connect.Endpoint{ .address = .{ 198, 51, 100, 2 }, .port = 22 };
+    var s = Stream.init(.{ .local = local, .remote = remote, .send_next = 1, .receive_next = 2, .remote_window = 0, .remote_mss = 536 });
+    try std.testing.expectEqual(@as(usize, 1), try s.write("abc", 0, 5000));
+    try std.testing.expectError(error.WouldBlock, s.write("bc", 0, 5000));
+    try std.testing.expect((try s.poll(0)) == null);
+    try std.testing.expectEqualStrings("a", (try wire.parse((try s.poll(1000)).?)).payload);
 }
