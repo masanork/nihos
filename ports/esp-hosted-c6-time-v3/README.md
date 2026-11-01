@@ -121,6 +121,15 @@ not be blindly replayed. `tools/c6_hosted3_upgrade_evidence.py` checks a future
 capture and explicitly rejects simulation markers; its passing output would
 still be a P4-reported version and transfer, not C6 flash readback.
 
+The clean build from commit `0cd87de93cf57d88e2b102feadb85d1bdbb69086`
+produced P4 app SHA-256
+`84b4a9926b94c3df031b2c7a2b38b3ec9a16591185bf2b19bc448c1af9f5c716`.
+The map audit matched the 1,397,104-byte C6 candidate at `0x40010024` and
+passed the P4 SRAM/ROM boundary checks. A previous attempt that combined the
+full read-only descriptor diagnostic and updater exceeded the fixture's SRAM
+limit; the clean build uses separate diagnostics and does not silently widen
+the memory map. This build has not been installed or run on Tab5.
+
 The [P4 compatibility trial](../../docs/measurements/2026-11-01-hosted3-p4-legacy.md)
 ran a byte-identified P4 image against the previously installed C6 application;
 it did not independently read back the C6 version or test the 3.x firmware.
