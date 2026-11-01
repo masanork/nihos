@@ -73,6 +73,10 @@ pub const Model = struct {
     /// so it expires by itself when the context changes.
     soft_keyboard_dismissed: bool,
     soft_keyboard_context: u8,
+    /// Start point of the current touch, for edge-gesture recognition.
+    touch_start_x: u32,
+    touch_start_y: u32,
+    touch_tracking: bool,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -274,7 +278,38 @@ pub const Model = struct {
         return soft_keyboard.visible(self.physical_keyboard, context != 0, dismissed);
     }
 
+    pub fn touchDown(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        self.touch_start_x = x;
+        self.touch_start_y = y;
+        self.touch_tracking = true;
+    }
+
+    /// Applies a recognized edge gesture, returning true when it consumed
+    /// the touch: flick up from the bottom edge summons the keyboard
+    /// (clearing a dismissal), flick down across it dismisses it.
+    fn touchGesture(self: *Model, x: u32, y: u32) bool {
+        if (!self.touch_tracking) return false;
+        self.touch_tracking = false;
+        switch (soft_keyboard.edgeGesture(self.touch_start_x, self.touch_start_y, x, y)) {
+            .none => return false,
+            .show => {
+                if (self.physical_keyboard or self.softKeyboardContext() == 0) return false;
+                self.soft_keyboard_dismissed = false;
+                self.changed();
+                return true;
+            },
+            .hide => {
+                if (!self.softKeyboardVisible()) return false;
+                self.soft_keyboard_dismissed = true;
+                self.soft_keyboard_context = self.softKeyboardContext();
+                self.changed();
+                return true;
+            },
+        }
+    }
+
     pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.touchGesture(x, y)) return;
         if (self.softKeyboardVisible()) {
             if (soft_keyboard.keyAt(x, y)) |action| {
                 switch (action) {
@@ -920,4 +955,25 @@ test "dismissing the soft keyboard lasts only for the current input context" {
     model.handle(.escape);
     try std.testing.expectEqual(Mode.command, model.mode);
     try std.testing.expect(model.softKeyboardVisible());
+}
+
+test "bottom-edge flicks summon and dismiss the soft keyboard" {
+    var model: Model = undefined;
+    model.initInPlace();
+    // Dismiss, then flick up from the bottom edge: the keyboard returns
+    // without waiting for a context change.
+    tapSoftKey(&model, soft_keyboard.label_dismiss);
+    try std.testing.expect(!model.softKeyboardVisible());
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.touch(640, soft_keyboard.space_height - 160);
+    try std.testing.expect(model.softKeyboardVisible());
+    // A flick down across the keyboard dismisses it again.
+    model.touchDown(640, soft_keyboard.top + 30);
+    model.touch(640, soft_keyboard.top + 190);
+    try std.testing.expect(!model.softKeyboardVisible());
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    // A short drag is not a gesture: the tap underneath still applies.
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.touch(640, soft_keyboard.space_height - 30);
+    try std.testing.expect(!model.softKeyboardVisible());
 }
