@@ -1,0 +1,256 @@
+{
+  "passed": true,
+  "source": "1004c716d138384e4c3584bf027ac52d6b7ab652",
+  "device": {
+    "chip": "ESP32-P4 (revision v1.3)",
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "flash_id": 1589318
+  },
+  "kernel_exclusive": true,
+  "partition_table_preserved": true,
+  "existing_factory_partition_bytes": 4194304,
+  "original_image_sha256": "ca8aaaab9839eb1063fa4e733fbeadab84d26beeee4f142a7b523f008dbeaa0c",
+  "original_image_bytes": 3501584,
+  "backups": {
+    "backup-app-partition.bin": "b31e30b4fe4aa150a419d71912f14070b205d7a3bbb00bd41f3d22c75e6dd11f",
+    "backup-partition-span.bin": "f8a68a4e81408b9814fae81586a0c9511a334ee1b429b90fceacbad8b53d54d8",
+    "backup-loader-span.bin": "4689878f8b8674526fb2fc9a1b5b142060f29a2b4b61500ce6f99a0f8b4af4d3"
+  },
+  "candidates": {
+    "normal": {
+      "image_sha256": "bd380ae9a37b13d511500392592bc1970e2c70fdfaab19541559c2a52b23eff3",
+      "heap_span": 49728,
+      "files": {
+        "partitions.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+        "nihos-native.bin": "bd380ae9a37b13d511500392592bc1970e2c70fdfaab19541559c2a52b23eff3",
+        "image-audit.json": "70e5d979468aa80d3c102c34f63935f12500f9d9efdea316f11de0b2290fd235",
+        "native_options.zig": "c0a34093b30a8892865df3c800630d9384a5c5282e8ac319278799404e6bd93b",
+        "bootloader.bin": "23c6a6b4b95ff389c2d50d64e807a5a2b9fe77e23ba8babffc6ae5d23bd183fc"
+      }
+    },
+    "trace": {
+      "image_sha256": "cfd5f1cdff3646cb5bf442e09f53b9961024a4507acadcd6a71e78344d3415b7",
+      "heap_span": 49600,
+      "files": {
+        "partitions.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+        "nihos-native.bin": "cfd5f1cdff3646cb5bf442e09f53b9961024a4507acadcd6a71e78344d3415b7",
+        "image-audit.json": "182b3175ff2a1e283e157692d69d8c08a08bced35b77cbec5f4df66993dc6754",
+        "native_options.zig": "5675b5706e976b70949efdb44f9d1b363388b1a943cb09f34c8ee60ced5b0a25",
+        "bootloader.bin": "3b3604e5069f7c0b03c9a388e024c5c862098e7779bda06f60393999439a755e"
+      }
+    }
+  },
+  "postverified": true,
+  "original_restored_and_verified": true,
+  "left_installed": "original reader candidate",
+  "optical_confirmation": false,
+  "cold_power_cycle": false,
+  "sd_writes": false,
+  "scope": "7 USB warm resets: trace 3, normal 4. Full native/display checker passed; no optical or cold power-on qualification.",
+  "original_candidate_match": {
+    "audit": "/private/tmp/nihos-xy-home-main-physical-20261031-02/candidate/image-audit.json",
+    "image_sha256": "ca8aaaab9839eb1063fa4e733fbeadab84d26beeee4f142a7b523f008dbeaa0c"
+  },
+  "boots": [
+    {
+      "candidate": "trace",
+      "run": 1,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.5305101249999993,
+        "NIHOS_NATIVE_UI_READY": 1.7126451660000015,
+        "NIHOS_NATIVE_UI_SETTLED": 3.0568210829999956,
+        "NIHOS_NATIVE_XY_READY": 3.057970499999996
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": [
+        {
+          "render_frames": 1,
+          "scanout_frames": 164,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        },
+        {
+          "render_frames": 1,
+          "scanout_frames": 224,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        }
+      ]
+    },
+    {
+      "candidate": "trace",
+      "run": 2,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.529906750000002,
+        "NIHOS_NATIVE_UI_READY": 1.7129115830000003,
+        "NIHOS_NATIVE_UI_SETTLED": 3.055754292000003,
+        "NIHOS_NATIVE_XY_READY": 3.058036792000003
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": [
+        {
+          "render_frames": 1,
+          "scanout_frames": 164,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        },
+        {
+          "render_frames": 1,
+          "scanout_frames": 224,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        }
+      ]
+    },
+    {
+      "candidate": "trace",
+      "run": 3,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.530151832999998,
+        "NIHOS_NATIVE_UI_READY": 1.7121100000000027,
+        "NIHOS_NATIVE_UI_SETTLED": 3.0559938330000023,
+        "NIHOS_NATIVE_XY_READY": 3.0574237080000017
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": [
+        {
+          "render_frames": 1,
+          "scanout_frames": 587,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        },
+        {
+          "render_frames": 1,
+          "scanout_frames": 648,
+          "published_bytes": 1843200,
+          "backing_payload": 2958656,
+          "backing_reserved": 4194304,
+          "dma_error": 0
+        }
+      ]
+    },
+    {
+      "candidate": "normal",
+      "run": 1,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.5302743339999978,
+        "NIHOS_NATIVE_UI_READY": 1.712525124999999,
+        "NIHOS_NATIVE_UI_SETTLED": 3.056021084000008,
+        "NIHOS_NATIVE_XY_READY": 3.0577367500000037
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": []
+    },
+    {
+      "candidate": "normal",
+      "run": 2,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.5301937499999951,
+        "NIHOS_NATIVE_UI_READY": 1.7123852919999933,
+        "NIHOS_NATIVE_UI_SETTLED": 3.0558960420000005,
+        "NIHOS_NATIVE_XY_READY": 3.0574439999999896
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": []
+    },
+    {
+      "candidate": "normal",
+      "run": 3,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.5302092499999986,
+        "NIHOS_NATIVE_UI_READY": 1.7122458750000078,
+        "NIHOS_NATIVE_UI_SETTLED": 3.0617147920000036,
+        "NIHOS_NATIVE_XY_READY": 3.061719209000003
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": []
+    },
+    {
+      "candidate": "normal",
+      "run": 4,
+      "timing_scope": "host receive after USB warm reset; not optical timing",
+      "seconds": {
+        "NIHOS_NATIVE_UI_START": 1.5302464170000007,
+        "NIHOS_NATIVE_UI_READY": 1.712367792000009,
+        "NIHOS_NATIVE_UI_SETTLED": 3.0564395829999995,
+        "NIHOS_NATIVE_XY_READY": 3.0577237079999975
+      },
+      "settled": [
+        {
+          "frames": 94,
+          "progress": 255,
+          "target": 255
+        }
+      ],
+      "scanout_status": 1,
+      "dma_error": 0,
+      "idle": []
+    }
+  ],
+  "private_evidence_directory": "/private/tmp/nihos-splash-deployment-20261031-1750",
+  "transaction_tool_sha256": "c28e9d4fee068e81d55f921a47addb1ad569d5dd6538a6257d3699bfc6647ead"
+}

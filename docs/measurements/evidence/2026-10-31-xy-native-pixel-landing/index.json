@@ -1,0 +1,49 @@
+{
+  "source_commit": "9443377bdfb8a579691a0a3e1a38dc59ee9d15a1",
+  "physical": {
+    "passed": true,
+    "observations": 56,
+    "idle": {
+      "seconds": 30,
+      "records": 30,
+      "render_frames": 32,
+      "scanout_frame_delta": 1751,
+      "backing_payload": 2958656,
+      "backing_reserved": 4194304,
+      "dma_error": 0
+    },
+    "restored_verified": true
+  },
+  "optical": {
+    "readability_confirmed_on_previous_candidate": true,
+    "occasional_flicker_reported_on_previous_candidate": true,
+    "post_fix_flicker_free_claim": false
+  },
+  "files": {
+    "ci-timeout.json": "a92971f67c3ec322a17a482177ebb1c9a8e14891e78ac8d61a2633bd57782f0b",
+    "debug-tests.log.gz": "9c8e985c4862dfbb994f923780d8d3275aaf696a515147f976611273ab3ec4bf",
+    "emulator-result.json.gz": "d2a29e78ba7370d2edaf509d9af03e58f8936183fb67d861b7d64f034e401a58",
+    "emulator.log.gz": "83ba23ea2c35156d75a35a852c4af88c18ad3151f41dc10278e3f098bb250ca7",
+    "long-idle-capture.log.gz": "6a38efa14a6b29a1649c553962045108c709f2c6bce75968eec28cded7b067a8",
+    "long-idle-observe.log.gz": "d8f7d323abd645f7359a89836660aef446d39e0bef7824a866926fbd7846bdaf",
+    "long-idle-result.json.gz": "9c829ce803161e6cd80ce08d217d02c936b566f4440a544295b4d100f3f14e64",
+    "normal-image-audit.json.gz": "96446e748f6bac4643aa0c431628d9fc65c55be79d5b34361b01b73d099e2cf5",
+    "normal-normal-fs-manifest.json.gz": "19bed84ea6aea12b289e18bc08bf553471769b14cd382df43ebff7a1372d4159",
+    "original-worktree.json": "121bfa799d3ef93a091232b956aadfcc6e3848a045f4280dcc1b65c0b5266d3a",
+    "physical-capture.log.gz": "d47b3f55cca3e0a97bf19e1cf7eebfd6de85be74738db80eb75aa84f2c794f0a",
+    "physical-observe.log.gz": "9adceda36c80f186bf41df00dd34c5ff34bdf4f4487cd5621a9773aa0285df5e",
+    "physical-restore-verify_flash.log.gz": "539ad068274e8f6e768539f6820d3039a6a7a899ad5c7b85723b3fdbed678ef2",
+    "physical-result.json.gz": "3a191a77a699b81d527470e05f632d2390e1268380ebeb351fef583212eb5077",
+    "physical-verify-after.log.gz": "99a11112bc0e54b10289857b4a3d2a712bfcb6d1f56ba4c39b124204f9545758",
+    "physical-verify-before.log.gz": "99a11112bc0e54b10289857b4a3d2a712bfcb6d1f56ba4c39b124204f9545758",
+    "pre-review-physical-result.json.gz": "4dd80a94b3f89a768c607be2ba03181bd88f6124cb1456303df05b30f9b976e7",
+    "python-tests.log.gz": "855a51a0ea3a8c3b2ab73cda5669fd712460f551477de776ed34e83ad52ab8c6",
+    "qualification-tool.py.gz": "d3868a32640a5b49e9b880150385fab97ab3bc1c2827b3966051ceecc5549f75",
+    "release-tests.log.gz": "0e9960d0c08585b3d339c80d1343086f037547a5d624fd6b924beff47e0b6816",
+    "static.log.gz": "c4bcde69fb8cb7970d77bb4a01c0a8d8c2844247c8d4299d6bc8aebd3a28d86f",
+    "trace-image-audit.json.gz": "f69936c17f47d54c8f269c743b32fcb66f3d03b63cb8a7946265177b7e97fb7d",
+    "trace-normal-fs-manifest.json.gz": "afac5a97a66bf5811dfdd14deb0ee3ece729b814afae3f609fd9ab00cbc05809",
+    "workspace-tests.log.gz": "417d2846a950f37bbc26c475aba0d5afd65af412fe070611993adcd7c99e7a19"
+  },
+  "equivalent_runtime_head": "43323d43e89d59312b4cb1c46d9664f50ffc499b"
+}

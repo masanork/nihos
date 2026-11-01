@@ -1,6 +1,50 @@
 const std = @import("std");
 const sdio = @import("c6_sdio.zig");
 
+const LongHost = struct {
+    pub const TransportError = error{Io};
+    total: u32 = 0,
+    reads: u32 = 0,
+    writes: u32 = 0,
+    pub fn readWord(self: *@This(), _: u32) TransportError!u32 {
+        self.reads += 1;
+        return self.total << 16;
+    }
+    pub fn writeBlocks(self: *@This(), _: u32, _: []const u8) TransportError!void {
+        self.writes += 1;
+    }
+};
+const CreditObserver = struct {
+    calls: u32 = 0,
+    total: u32 = 0,
+    credit: u32 = 0,
+    counter: u32 = 0,
+    pub fn record(self: *@This(), total: u32, credit: u32, counter: u32) void {
+        self.* = .{ .calls = self.calls + 1, .total = total, .credit = credit, .counter = counter };
+    }
+};
+
+test "long send observer records the existing credit read without extra I/O" {
+    var host: LongHost = .{};
+    var stream = sdio.ProfileStream(LongHost, 64){ .host = &host };
+    var observer: CreditObserver = .{};
+    var padding: [1536]u8 = undefined;
+    const packet: [1254]u8 = @splat(0x41);
+    try std.testing.expectEqual(@as(usize, 0), try stream.sendLongObserved(&packet, &padding, &observer));
+    try std.testing.expectEqual(@as(u32, 1), host.reads);
+    try std.testing.expectEqual(@as(u32, 0), host.writes);
+    try std.testing.expectEqual(@as(u32, 0), observer.credit);
+    host.total = 2;
+    try std.testing.expectEqual(@as(usize, packet.len), try stream.sendLongObserved(&packet, &padding, &observer));
+    try std.testing.expectEqual(@as(u32, 2), host.reads);
+    try std.testing.expectEqual(@as(u32, 1), host.writes);
+    try std.testing.expectEqual(@as(u32, 2), observer.calls);
+    try std.testing.expectEqual(@as(u32, 2), observer.total);
+    try std.testing.expectEqual(@as(u32, 2), observer.credit);
+    try std.testing.expectEqual(@as(u32, 0), observer.counter);
+    try std.testing.expectEqual(@as(u32, 1), stream.sent_buffers);
+}
+
 const Host = struct {
     pub const TransportError = error{Io};
     total: u32 = 0,
@@ -72,7 +116,11 @@ test "credit exhaustion leaves TX and counters unchanged without blocking" {
     try std.testing.expectEqual(@as(u32, 0), stream.sent_buffers);
     host.credits = 2;
     const bytes: [1024]u8 = @splat(3);
-    try std.testing.expectEqual(@as(usize, 512), try stream.send(&bytes));
+    try std.testing.expectError(error.InvalidBuffer, stream.send(&bytes));
+    try std.testing.expectEqual(@as(usize, 0), host.fifo_calls);
+    try std.testing.expectEqual(@as(u32, 0), stream.sent_buffers);
+    try std.testing.expect(!stream.faulted);
+    try std.testing.expectEqual(@as(usize, 512), try stream.send(bytes[0..512]));
     try std.testing.expectEqual(@as(usize, 512), try stream.send(bytes[512..]));
     try std.testing.expectEqual(@as(usize, 0), try stream.send("abc"));
 }

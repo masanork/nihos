@@ -383,6 +383,11 @@ pub const Face = struct {
 /// Multi-layer font family (e.g. [Base, Ext, PUP]).
 pub const Family = struct {
     faces: []const Face,
+    // Styles 3/5 are source code in a mixed book page; other families keep the default.
+    code_faces: ?[]const Face = null,
+    pub inline fn forStyle(self: Family, style_id: u4) Family {
+        return .{ .faces = if (style_id == 3 or style_id == 5) self.code_faces orelse self.faces else self.faces };
+    }
 
     pub const ResolvedGlyph = struct {
         layer_index: u8,
@@ -413,12 +418,14 @@ pub const Family = struct {
 /// Vertical writing coordinate transformation rules in em-space.
 pub const VerticalTransform = enum {
     none,
+    sideways,
     rotate_cw_90,
     rotate_prolonged,
     shift_top_right,
     shift_small_kana,
 
     pub fn forCodepoint(cp: u21) VerticalTransform {
+        if (isSideways(cp)) return .sideways;
         return switch (cp) {
             // Brackets, leader dots, dashes -> 90 deg clockwise rotation
             '(',
@@ -484,6 +491,13 @@ pub const VerticalTransform = enum {
 
         return switch (self) {
             .none => .{ .x = x, .y = y },
+            // Rotate a horizontal cell about its top-left corner. The shared
+            // renderer uses the same 880/1024 baseline, so consecutive glyphs
+            // join at their horizontal advances instead of an em-box centre.
+            .sideways => .{
+                .x = @intCast(std.math.clamp(em - @divTrunc(em * 880, 1024) + @as(i32, y), -16384, 16383)),
+                .y = @intCast(std.math.clamp(@divTrunc(em * 880, 1024) - @as(i32, x), -16384, 16383)),
+            },
             // 90 deg clockwise in Y-up em coordinates: (dx, dy) -> (dy, -dx)
             .rotate_cw_90 => .{
                 .x = @intCast(std.math.clamp(center_x + dy, -16384, 16383)),
@@ -505,6 +519,14 @@ pub const VerticalTransform = enum {
         };
     }
 };
+
+/// Bounded Latin/ASCII support for mixed Japanese book text (UAX #50 sideways).
+/// Japanese punctuation and fullwidth forms retain their existing transforms.
+pub inline fn isSideways(cp: u21) bool {
+    return (cp >= 0x21 and cp <= 0x7e) or
+        (cp >= 0xc0 and cp <= 0xd6) or (cp >= 0xd8 and cp <= 0xf6) or
+        (cp >= 0xf8 and cp <= 0x24f) or (cp >= 0x1e00 and cp <= 0x1eff);
+}
 
 pub const CurvePoint = struct {
     x: i16,
@@ -809,7 +831,9 @@ pub fn rasterizeContours(
 
     const toXFp = struct {
         inline fn f(em_x: i32, l_px: i32, s_px: i32, u: i32) i32 {
-            return @divTrunc((em_x * s_px - l_px * u) * 65536, u);
+            // The quotient fits 16.16 bitmap coordinates, but an ordinary
+            // 1000-em glyph at 36 px already overflows an i32 numerator.
+            return @intCast(@divTrunc((@as(i64, em_x) * s_px - @as(i64, l_px) * u) * 65536, u));
         }
     }.f;
     const toYSub = struct {
@@ -1025,7 +1049,7 @@ pub fn TwoTierCache(
 
         pub fn getOrRender(
             self: *Self,
-            family: Family,
+            input_family: Family,
             style_id: u4,
             base_cp: u21,
             ivs_cp: u21,
@@ -1033,6 +1057,29 @@ pub fn TwoTierCache(
             vertical: bool,
             glyf_scratch: []u8,
         ) Error!CachedGlyph {
+            const family = input_family.forStyle(style_id);
+            // Some CJK subset fonts omit whitespace from cmap entirely. Whitespace
+            // still participates in layout and must not abort a source-code frame.
+            if (base_cp == ' ' or base_cp == '\t' or base_cp == 0x3000) {
+                if (px_size < 6 or px_size > 200) return error.InvalidScale;
+                var space_advance: i32 = @as(i32, px_size) * 32;
+                if (base_cp != 0x3000) {
+                    if (try family.resolve(' ', 0)) |resolved| {
+                        const face = &family.faces[resolved.layer_index];
+                        const span = try face.glyphSpan(resolved.glyph_id);
+                        space_advance = @divTrunc(@as(i32, span.advance_em) * px_size * 64 + @divTrunc(@as(i32, face.units_per_em), 2), face.units_per_em);
+                    }
+                }
+                const advance = if (base_cp == '\t') space_advance * 4 else if (base_cp == 0x3000) @as(i32, px_size) * 64 else space_advance;
+                return .{ .metrics = .{
+                    .width = 0,
+                    .height = 0,
+                    .left_px = 0,
+                    .top_px = 0,
+                    .x_advance_26_6 = if (vertical) 0 else advance,
+                    .y_advance_26_6 = if (vertical) -advance else 0,
+                }, .alpha = &.{} };
+            }
             const bkey = BitmapKey{
                 .base_cp = base_cp,
                 .ivs_cp = ivs_cp,
@@ -1055,7 +1102,7 @@ pub fn TwoTierCache(
             // 2. Check Tier 1 (Outline Cache) by (style_id, base_cp, ivs_cp) tag first
             const rtag = makeResolvedTag(style_id, base_cp, ivs_cp);
             var o_idx: ?usize = null;
-            for (self.outlines, 0..) |slot, i| {
+            for (&self.outlines, 0..) |*slot, i| {
                 if (slot.valid and slot.resolved_key == rtag) {
                     o_idx = i;
                     break;
@@ -1064,7 +1111,9 @@ pub fn TwoTierCache(
 
             if (o_idx == null) {
                 self.outline_misses += 1;
-                const resolved = (try family.resolve(base_cp, ivs_cp)) orelse return error.GlyphNotFound;
+                const resolved = (try family.resolve(base_cp, ivs_cp)) orelse
+                    (try family.resolve(0xfffd, 0)) orelse
+                    (try family.resolve(0x25a1, 0)) orelse return error.GlyphNotFound;
                 const okey = OutlineKey{
                     .style_id = style_id,
                     .layer_index = @intCast(resolved.layer_index),
@@ -1075,7 +1124,7 @@ pub fn TwoTierCache(
 
                 // Pick LRU outline slot
                 var victim: usize = 0;
-                for (self.outlines, 0..) |slot, i| {
+                for (&self.outlines, 0..) |*slot, i| {
                     if (!slot.valid) {
                         victim = i;
                         break;
@@ -1118,7 +1167,7 @@ pub fn TwoTierCache(
 
             // Pick LRU bitmap slot
             var b_victim: usize = 0;
-            for (self.bitmaps, 0..) |slot, i| {
+            for (&self.bitmaps, 0..) |*slot, i| {
                 if (!slot.valid) {
                     b_victim = i;
                     break;
@@ -1127,7 +1176,7 @@ pub fn TwoTierCache(
             }
 
             var b_slot = &self.bitmaps[b_victim];
-            const metrics = try rasterizeContours(
+            var metrics = try rasterizeContours(
                 face,
                 o_slot.advance_em,
                 transformed_pts[0..pt_count],
@@ -1135,6 +1184,9 @@ pub fn TwoTierCache(
                 vertical,
                 &b_slot.pixels,
             );
+            if (vertical and isSideways(base_cp)) {
+                metrics.y_advance_26_6 = -@divTrunc(@as(i32, o_slot.advance_em) * px_size * 64 + @divTrunc(@as(i32, face.units_per_em), 2), face.units_per_em);
+            }
             self.clock +%= 1;
             b_slot.valid = true;
             b_slot.stamp = self.clock;
@@ -1414,4 +1466,25 @@ test "TwoTierCache re-rasterizes across size and vertical changes with zero medi
     try std.testing.expectEqual(@as(u32, 3), cache.bitmap_misses);
     try std.testing.expect(g32h.metrics.width >= g20h.metrics.width);
     try std.testing.expectEqual(@as(i32, -32 * 64), g32v.metrics.y_advance_26_6);
+}
+
+test "36px em-square scaling retains full coverage without fixed-point overflow" {
+    var font_buf: [512]u8 = undefined;
+    const font_bytes = buildTestFont(&font_buf, 0x300C, 0xE0100, true);
+    const face = try Face.init(SliceReader.fromSlice(&font_bytes));
+    const square = [_]CurvePoint{
+        .{ .x = 0, .y = 0, .on_curve = true, .contour_end = false },
+        .{ .x = 1000, .y = 0, .on_curve = true, .contour_end = false },
+        .{ .x = 1000, .y = 1000, .on_curve = true, .contour_end = false },
+        .{ .x = 0, .y = 1000, .on_curve = true, .contour_end = true },
+    };
+    var pixels: [64 * 64]u8 = @splat(0);
+    const metrics = try rasterizeContours(&face, 1000, &square, 36, true, &pixels);
+    var full: usize = 0;
+    for (pixels[0 .. @as(usize, metrics.width) * metrics.height]) |alpha| {
+        try std.testing.expect(alpha == 0 or alpha == 255);
+        if (alpha == 255) full += 1;
+    }
+    try std.testing.expectEqual(@as(usize, 36 * 36), full);
+    try std.testing.expectEqual(@as(i32, -36 * 64), metrics.y_advance_26_6);
 }

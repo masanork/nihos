@@ -4,6 +4,20 @@ const wire = station.wire;
 const dhcp = station.dhcp;
 const mac = [_]u8{ 2, 3, 4, 5, 6, 7 };
 
+test "in-place Hosted frames equal separate-buffer encoding" {
+    const payload: [1242]u8 = @splat(0x57);
+    for ([_]usize{ 106, 1242 }) |length| {
+        var separate: [1254]u8 = undefined;
+        var inplace: [1254]u8 = undefined;
+        @memcpy(inplace[12..][0..length], payload[0..length]);
+        const expected = try wire.frame(&separate, wire.station_interface, 0x7000, payload[0..length]);
+        const actual = try wire.frameInPlace(&inplace, wire.station_interface, 0x7000, length);
+        try std.testing.expectEqualSlices(u8, expected, actual);
+    }
+    var tiny: [12]u8 = undefined;
+    try std.testing.expectError(error.Capacity, wire.frameInPlace(&tiny, 1, 0, 1));
+}
+
 test "settings provider owns credentials and validates updates before replacing" {
     var config: station.Configuration = .{};
     var name = [_]u8{ 't', 'e', 's', 't' };
@@ -192,6 +206,31 @@ test "Hosted stream handles every byte boundary and rejects corruption and fragm
     buffer[1] = 1;
     for (buffer[0..11]) |byte| _ = try decoder.push(byte);
     try std.testing.expectError(error.Fragmented, decoder.push(buffer[11]));
+}
+
+test "Hosted framing preserves QUIC-sized Ethernet payload across 512-byte chunks" {
+    // 14-byte Ethernet + 20-byte IPv4 + 8-byte UDP + 1200-byte QUIC datagram.
+    var ethernet: [1242]u8 = undefined;
+    for (&ethernet, 0..) |*byte, i| byte.* = @truncate(i);
+    var encoded_buffer: [1513]u8 = undefined;
+    const encoded = try wire.frame(&encoded_buffer, 1, 9, &ethernet);
+    var decoder: wire.Decoder = .{};
+    var received: usize = 0;
+    var offset: usize = 0;
+    while (offset < encoded.len) {
+        const end = @min(offset + 512, encoded.len);
+        for (encoded[offset..end]) |byte| {
+            if (try decoder.push(byte)) |frame| {
+                try std.testing.expectEqual(@as(u8, 1), frame.interface);
+                try std.testing.expectEqualSlices(u8, &ethernet, frame.payload);
+                received += 1;
+            }
+        }
+        offset = end;
+    }
+    try std.testing.expectEqual(@as(usize, 1), received);
+    var too_large: [1501]u8 = @splat(0);
+    try std.testing.expectError(error.Capacity, wire.frame(&encoded_buffer, 1, 10, &too_large));
 }
 
 test "RPC rejects malformed TLV lengths and correlates UID and message ID" {

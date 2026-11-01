@@ -4,7 +4,7 @@
 
 nihosは「読める、調べられる、書ける、書いたプログラムを動かせる」小さな学習・制作端末（HackerのためのConvivial Machine）を目指すとよい。クラウド常時接続を前提にするIoT端末や、POSIX風shellと個別Cアプリを並べる構成とは一線を画し、当面は独立したshellを持たず、起動直後から統合環境 `xy` が立ち上がる専用機として設計する。エディタ、書籍、辞書を別々のバイナリに分断せず、読書中に語を引き、引用とメモを残し、自分のプログラムで計算や図示・道具の改造を行うところまでを、`xy` 上のバッファとS式評価でつなげる。Quakeは負荷と性能の評価に使い、日常の有用性はこの一連の操作で作る。
 
-子ども向けの正面の言語は、エディタ拡張の言語と分けて選ぶ選択肢を残しつつ、まずは `xy` 自身の拡張とユーザーランドアプリ（電子書籍リーダー、辞書、学習ノート等）をSchemeで統一的に記述する経路を先行させる。[処理系の比較](learning-languages.md)では、制作APIを持つMicroPython＋ulabを第一候補に、Lua/Luauを制作向けの対抗案としている。エディタ拡張についても[SchemeとLuaの比較](editor-extension-language.md)を行い、Unicode編集は共通coreが担う構成にする。
+子ども向けの正面の言語は、エディタ拡張の言語と分けて選ぶ選択肢を残しつつ、まずは `xy` 自身の拡張とユーザーランドアプリ（電子書籍リーダー、辞書、学習ノート等）をSchemeで統一的に記述する経路を先行させる。[処理系の比較](learning-languages.md)では、制作APIを持つMicroPython＋ulabを第一候補に、Lua/Luauを制作向けの対抗案としている。エディタ拡張はSchemeを採用し、[比較検討の記録](editor-extension-language.md)にある共通APIへ接続する。Unicode編集は共通coreが担う。
 
 ## 最初に用意したい道具（`xy` 上のモードとして統合）
 
@@ -276,6 +276,11 @@ VMの4 MiB payloadが4 MiBの課金で済むallocator移行は、統合・検証
 一つの文書を見ながら一つのプログラムを実行する利用を先に成立させる。同時に多数の処理系やコンパイラを起動する条件は、独立した負荷試験にする。GCのpause、検索のI/O、font missが、入力や表示を止めないことを確かめる。
 
 ## 実装を始める順序（Convivial Machineへの最短経路）
+
+2026-10-31補足: 以下の永続化・IME・VM統合は完成条件を示す。RAM上の `*scratch*`
+を使う `xy` 直起動はこれらの全完成を待たずに進める。日常操作から独立shellを外し、
+コマンドをSchemeから育てる直近の接続順は
+[起動面と操作体系](xy-architecture.md)に定める。
 
 1. **LFS（Checkpoint/CoW Store）と `sqld` の実機結合を走り抜ける**: [VFSのV1〜V4](filesystem-vfs.md)と[SQLiteの段階別条件](sqlite-integration.md)に従い、`xy` からの原稿保存・再起動復元と、単一owner `sqld`（read-only辞書/書籍パック＋個人ノートDBの `PERSIST` 更新）をSRAM 64 KiB空きフロアを守った状態でTab5実機へ通す。
 2. **Shellを廃し、起動直後の `xy` コアとミニバッファ型SKKを成立させる**: hostで動くUTF-8文字・書記素・ルビ組版・編集モデルをTab5へ載せ、画面退避スナップショットを持たないpreedit overlay＋ミニバッファSKK（辞書引きと学習保存は `sqld`/LFS を利用）を接続する。

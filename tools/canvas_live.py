@@ -60,6 +60,7 @@ class Mi:
         self.buf = b''
         self.token = 0
         self.stops = []
+        self.command('-gdb-set mi-async on')
 
     def line(self, deadline):
         while b'\n' not in self.buf:

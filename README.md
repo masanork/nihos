@@ -68,7 +68,10 @@ The normal device image includes
 and [SNTP-to-UTC RTC synchronization](docs/adr/0053-network-time-to-rtc.md).
 SQLite has a [bounded single-owner memory session](docs/adr/0040-bounded-single-owner-sqlite-session.md)
 and an [opt-in native execution fixture](docs/adr/0042-native-sqlite-flash-execution.md);
-a persistent `sqld` task/RPC and production VFS remain future work.
+the normal xy image now starts a [persistent `sqld` owner and checkpoint VFS](docs/planning/sqld-xy-service.md)
+on a provisioned microSD region. Scheme exposes SQL, file save/load, rollback,
+snapshots and collection. [Native qualification](docs/measurements/2026-10-31-sqld-native.md)
+separates warm-reboot persistence from physical power-loss qualification.
 
 ## Project metrics
 
@@ -185,12 +188,20 @@ and
 The first idle touch-poll result is in
 [`docs/measurements/2026-10-25-tab5-touch-bootstrap.md`](docs/measurements/2026-10-25-tab5-touch-bootstrap.md).
 
-## Native launcher
+## xy home and offline books
 
-The live native integer normal-boot profile now opens a small launcher after
-initialisation. Escape opens an ASCII shell; `exit` returns to the launcher.
-Shell, boot logs, CPU0 memory usage and per-core runtime counters are available.
+The normal native Tab5 build opens xy Home after initialisation. Touch a card
+to write a RAM document, read a tutorial, open Kusamakura, SICP excerpts or this
+repository's book, or change the typography. Books and fonts are bundled in
+Flash and work without SD or network access. Vertical text keeps Japanese
+upright and turns Latin text sideways with horizontal spacing.
+Press `n` to write, Esc in the document for the Scheme minibuffer, and Ctrl-C
+to return Home. Tab5 documents and settings currently live in RAM.
+The diagnostic launcher and ASCII shell remain available with
+`NIHOS_NATIVE_XY_WORKSPACE=0`.
 See [native session behaviour and build flags](docs/native-session.md).
+On macOS, `sh tools/build-xy-mac.sh` builds `build/xy-mac/xy.app`, with the same
+book text renderer, file open/save and persistent display preferences.
 Physical results qualify the exact candidates recorded in the measurement
 files; new builds require their own input/display validation.
 
@@ -230,7 +241,7 @@ See [ADR 0047](docs/adr/0047-default-connectivity-and-board-devices.md) and the
 [device support inventory](docs/planning/tab5-native-device-support.md) for
 implemented features and remaining gates.
 
-The normal interactive device build also includes a camera preview prototype.
+The diagnostic launcher profile also includes a camera preview prototype.
 Press Escape to open the shell, then use `camera` for a snapshot or
 `camera-live` for automatic updates; press a key to close it. The current
 preview is sampled grayscale; normal `camera-live` uses interrupt-rearmed DMA
@@ -239,6 +250,10 @@ and two buffers. Two 120-second Tab5 trials measured about 19 updates per second
 explicit fixture profile. See the [normal-profile camera trial](docs/measurements/2026-10-30-camera-normal-profile.md)
 for the original tested configuration and remaining limits, and the
 [live capture soak trial](docs/measurements/2026-10-31-camera-live-soak.md) for current measurements, incomplete-frame recovery and memory costs.
+
+An opt-in [hardware JPEG fixture](docs/measurements/2026-10-31-camera-hardware-jpeg.md)
+encodes 1280×720 RGB565 camera frames using the ISP and JPEG/DMA2D hardware.
+It is separate from the default preview. The opt-in [XY camera API](docs/measurements/2026-10-31-xy-camera-jpeg.md) provides one boot-retained JPEG handle and bounded copied reads; filesystem saving remains separate.
 
 Normal native Tab5 boot also initializes BMI270 and acquires acceleration and
 gyroscope readings through the shared board I2C owner. See

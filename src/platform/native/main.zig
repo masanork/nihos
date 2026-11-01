@@ -64,7 +64,7 @@ export fn nih_fs_command(path: [*]const u8, length: u32) callconv(.c) void {
     if (!accepted) printBoot("Storage request unavailable or busy.\n");
 }
 var last_storage_status: u32 = 0xffffffff;
-fn serviceStorage() void {
+noinline fn serviceStorage() linksection(if (native_sqld) ".flash.sqldtext" else ".text") void {
     if (!normal_storage) return;
     const completed = normal_fs.poll(storageClient());
     const report = normal_fs.snapshot();
@@ -92,7 +92,7 @@ fn serviceStorage() void {
     if (changed) switch (report.status) {
         .mounted => printBoot("SD ready. :read path reads up to 4096 bytes; :storage refreshes.\n"),
         .no_card => printBoot("No SD card. Insert a card and enter :storage.\n"),
-        .rejected => printBoot("SD unavailable. Enter :storage to retry.\n"),
+        .rejected => if (!native_sqld) printBoot("SD unavailable. Enter :storage to retry.\n"),
         .no_memory => printBoot("Storage memory unavailable.\n"),
         .quarantined => printBoot("Storage stopped. Restart to recover.\n"),
         else => {},
@@ -157,10 +157,11 @@ var camera_screen_state: u32 = 0;
 var camera_screen_frame: u32 = 0;
 var camera_screen_mismatches: u32 = 0xffffffff;
 var camera_screen_tone: u32 = 0;
-noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (options.console_live and options.boot_fast) {
         if (options.camera_id and board_devices.cameraStreaming() and !ui.cameraLiveActive()) board_devices.cameraStopStreaming();
         board_devices.poll();
+        if (options.camera_jpeg) @import("camera_jpeg.zig").poll();
         if (options.camera_id and board_devices.cameraStreamDrained()) {
             _ = ui.cameraAcceptFrame();
             const stream = board_devices.cameraStreamStats();
@@ -574,6 +575,15 @@ export fn nih_native_dispatch(frame: *tasks.context.IntegerContext, cause: u32, 
             const diagnostic = .{ .hart = hart, .cause = cause, .status = status, .current_status = current_status, .mepc = frame.mepc, .ra = frame.ra, .frame = @as(u32, @intCast(@intFromPtr(frame))), .saved_sp = frame.sp, .irq_sp = irq_sp, .guard_addr = @as(u32, @intCast(@intFromPtr(guard))), .guard0 = guard[0], .guard1 = guard[1], .guard2 = guard[2], .guard3 = guard[3], .top = @as(u32, @intCast(top)), .w_low = wdiag.low, .w_high = wdiag.high, .w_slot = @as(u32, wdiag.slot), .w_gen = @as(u32, wdiag.gen), .w_cur_slot = @as(u32, wdiag.cur_slot), .w_cur_gen = @as(u32, wdiag.cur_gen) };
             logger.record("NIHOS_WAMR_CORPUS_IRQ_FAIL", null, .{ "hart", "cause", "status", "current_status", "mepc", "ra", "frame", "saved_sp", "irq_sp", "guard_addr", "guard0", "guard1", "guard2", "guard3", "top", "w_low", "w_high", "w_slot", "w_gen", "w_cur_slot", "w_cur_gen" }, &diagnostic);
         }
+        print("NIHOS_NATIVE_STACK_FAIL frame=");
+        hex(@intFromPtr(frame));
+        print(" sp=");
+        hex(frame.sp);
+        print(" cause=");
+        hex(cause);
+        print(" status=");
+        hex(status);
+        print("\n");
         fail("interrupt stack/MIE");
     }
     const state = tasks.context.ReturnState{ .mstatus = status, .mcause = cause };
@@ -667,6 +677,12 @@ export fn nih_audio_stage(code: u32) callconv(.c) void {
 }
 
 export fn nih_native_task_failed() callconv(.c) noreturn {
+    const caller_pc = asm volatile ("mv %[v],ra"
+        : [v] "=r" (-> u32),
+    );
+    print("NIHOS_NATIVE_TASK_FAIL caller=");
+    hex(caller_pc);
+    print("\n");
     if (options.fatfs_native) {
         print("NIHOS_NATIVE_TASK_FAILURE caller=");
         hex(@returnAddress());
@@ -728,7 +744,7 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
-fn taskReport(hart: u32) void {
+noinline fn taskReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.report(hart);
     if (options.rust_probe and hart == 0) {
         if (!tasks.rustTaskPass()) fail("Rust task fixture");
@@ -764,7 +780,7 @@ fn ipiReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_IPI", hart, .{ "sent", "received", "ipis", "delivered", "woken", "rejected", "from_idle", "entries", "returns", "pending_before_wfi", "self_ipi", "timer_start", "timer_end", "queued" }, &report);
 }
 
-fn floatingReport(hart: u32) void {
+noinline fn floatingReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.floating.report(hart);
     if (report.confirmed != 1 or report.saves != report.restores or
         report.saves != report.timer + report.calls + report.ipi) fail("FP quiescence");
@@ -852,7 +868,7 @@ noinline fn runSqlProbe() linksection(if (options.cold_flash and options.fatfs_n
     logger.record("NIHOS_NATIVE_SQLITE_CLASSES", null, .{ "c8", "c16", "c32", "c64", "c128", "c256", "c512", "c1024", "c2048", "c4096" }, &classes);
 }
 
-noinline fn bootMemory() u32 {
+noinline fn bootMemory() linksection(if (native_sqld) ".flash.sqldtext" else ".text") u32 {
     const external = native_psram.probe(timer(0));
     const BootCode = struct { start: u32, end: u32, probe: u32, mapping: u32, completed: u32 };
     const boot_code = BootCode{
@@ -969,7 +985,7 @@ noinline fn captureBoot(snapshot: *const reset_capture.Snapshot) linksection(".f
     logger.record("NIHOS_NATIVE_RESET", null, .{ "cpu0", "ack", "raw_cause", "lp", "cpu1", "reset_flags", "saved_pc0", "saved_pc1", "clock_gates", "wdt_valid", "wdt0", "wdt1" }, snapshot);
 }
 
-export fn nih_native_main() callconv(.c) noreturn {
+export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else ".text") callconv(.c) noreturn {
     // Sample before watchdogOff / prepareTimers alter the state. Assembly CRT
     // and the loader have already run; this does not record their entry state.
     const snapshot = if (options.cold_capture) reset_capture.sample(struct {
@@ -1099,6 +1115,12 @@ export fn nih_native_main() callconv(.c) noreturn {
     if (options.high_sram) tasks.memory.high.ownerExchange();
     const external_smp = native_psram.exchange();
     logger.record("NIHOS_NATIVE_PSRAM_SMP", null, .{ "status", "rounds", "owner_checks", "peer_checks", "command_checks", "syncs" }, &external_smp);
+    if (native_sqld) {
+        const region = @import("sqld_layout.zig");
+        if (!region.admitted(external_bytes, external_heap_start, external_heap_bytes)) fail("sqld PSRAM reservation");
+        external_heap_start += region.bytes;
+        external_heap_bytes -= region.bytes;
+    }
     if (external_smp.status == 1 and !tasks.memory.prepareExternal(
         external_heap_start,
         external_heap_bytes,
@@ -1321,7 +1343,7 @@ fn reportPmpProbe() noreturn {
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }
 
-fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
+noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (options.card_photo) ".flash.photo" else ".text") noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };
@@ -1467,6 +1489,10 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                         const live_address = board.framebuffer + board.frame_bytes + 16;
                         if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
                         const live: *Live = @ptrFromInt(live_address);
+                        const XyLive = @import("xy_scratch_live.zig").Live(".flash.rodata.display");
+                        if (16 + @sizeOf(XyLive) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(XyLive) != 0) fail("xy scratch region");
+                        // Mutually exclusive fixture views borrow the same tail.
+                        const xy_live: *XyLive = @ptrFromInt(live_address);
                         while (true) {
                             const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
                             if (input.command == 0) break;
@@ -1486,11 +1512,14 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                                     }
                                 },
                                 2 => {
-                                    if (nih_emulator_output.mode != 1 or input.contacts > 255 or input.x > 255) fail("emulator key");
+                                    if ((nih_emulator_output.mode != 1 and nih_emulator_output.mode != 2) or input.contacts > 255 or input.x > 255) fail("emulator key");
                                     nih_emulator_output.keys += 1;
-                                    const key_result = live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render");
-                                    if (key_result == .edited) nih_emulator_output.edits += 1;
-                                    nih_emulator_output.cursor = @intCast(live.editor.column);
+                                    const edited = if (nih_emulator_output.mode == 2)
+                                        xy_live.press(frame, @intCast(input.contacts), @intCast(input.x)) catch fail("xy key render")
+                                    else
+                                        (live.press(frame, .{ .modifiers = @intCast(input.contacts), .usage = @intCast(input.x) }) catch fail("editor key render")) == .edited;
+                                    if (edited) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = if (nih_emulator_output.mode == 2) xy_live.model.doc.cursor else @intCast(live.editor.column);
                                 },
                                 3 => {
                                     if (!live.start(frame)) fail("editor live start");
@@ -1504,14 +1533,31 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
                                     if (!live.load(frame, nih_emulator_document.bytes[0..nih_emulator_document.length])) fail("editor load render");
                                     nih_emulator_output.cursor = @intCast(live.editor.column);
                                 },
+                                5 => {
+                                    if (!xy_live.start(frame)) fail("xy scratch start");
+                                    nih_emulator_output.mode = 2;
+                                    nih_emulator_output.keys = 0;
+                                    nih_emulator_output.edits = 0;
+                                    nih_emulator_output.cursor = 0;
+                                },
+                                6 => {
+                                    if (nih_emulator_output.mode != 2) fail("xy serial byte");
+                                    const byte = text_console.session.input.transportByte(@bitCast(input.x)) orelse fail("xy serial result");
+                                    nih_emulator_output.keys += 1;
+                                    if (xy_live.serialByte(frame, byte, input.time_us) catch fail("xy serial render")) nih_emulator_output.edits += 1;
+                                    nih_emulator_output.cursor = xy_live.model.doc.cursor;
+                                },
                                 else => fail("emulator input command"),
                             }
-                            if (nih_emulator_output.mode == 1) {
-                                const content = live.document();
+                            if (nih_emulator_output.mode == 1 or nih_emulator_output.mode == 2) {
+                                const content = if (nih_emulator_output.mode == 2) xy_live.document() else live.document();
+                                var count = @min(content.len, nih_emulator_document.bytes.len);
+                                while (!std.unicode.utf8ValidateSlice(content[0..count])) count -= 1;
                                 @memset(&nih_emulator_document.bytes, 0);
-                                @memcpy(nih_emulator_document.bytes[0..content.len], content);
-                                nih_emulator_document.length = @intCast(content.len);
+                                @memcpy(nih_emulator_document.bytes[0..count], content[0..count]);
+                                nih_emulator_document.length = @intCast(count);
                             }
+                            if (!std.mem.allEqual(u8, guard, 0xa5)) fail("emulator workspace guard");
                             @call(.never_inline, nih_canvas_frame_ready, .{});
                         }
                     }
@@ -1578,7 +1624,12 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
 }
 
 extern fn nih_wamr_alignment_negative() callconv(.c) u32;
-fn normalReady() noreturn {
+const native_sqld = @hasDecl(options, "sqld") and options.sqld;
+const sqld = @import("sqld_abi.zig");
+comptime {
+    if ((@hasDecl(options, "xy_workspace") and options.xy_workspace) or options.canvas_interactive) _ = @import("xy_eval_runtime.zig");
+}
+fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") noreturn {
     const started = ui.timer().counter() orelse fail("boot health clock");
     while (@atomicLoad(u32, &progress[1], .acquire) == 0) {
         if ((ui.timer().counter() orelse fail("boot health clock")) - started > 250_000) fail("CPU1 ready timeout");
@@ -1602,6 +1653,7 @@ fn normalReady() noreturn {
     if (options.console_live) {
         ui.report(&logger);
         ui.liveReport(&logger, true);
+        if (options.camera_jpeg) ui.bindCamera(&@import("camera_jpeg.zig").provider);
         if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {
@@ -1632,6 +1684,10 @@ fn normalReady() noreturn {
     if (options.rust_session_test) {
         if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
         print("NIHOS_RUST_SESSION_READY\n");
+    }
+    if (native_sqld) {
+        if (!tasks.startSqld()) fail("sqld task start");
+        ui.bindStorage(&sqld.provider);
     }
     var idle_checked = false;
     while (true) {
@@ -1677,6 +1733,7 @@ fn normalReady() noreturn {
         serviceNetwork();
         serviceStorage();
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
+        if (native_sqld) serviceSqld();
         if (!ui.service(&logger)) fail("normal console idle");
         if (options.wasm_interactive_repeat) {
             const fixture = @import("wasm_session_fixture.zig");
@@ -2039,7 +2096,7 @@ fn heapReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_HEAP", hart, .{ "start", "end", "metadata", "capacity", "free", "live", "allocations", "frees", "rejected", "checks0", "checks1", "levels", "max_steps", "confirmed" }, &report);
 }
 
-noinline fn resourceReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
+noinline fn resourceReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") void {
     const report = tasks.memory.reusable.resourceReport(hart);
     logger.record("NIHOS_NATIVE_RESOURCES", hart, .{ "opened", "closed", "completed", "reclaimed", "reuses", "owned", "pending", "stale", "full", "forced", "pool_objects", "pool_rejected", "slab_objects", "slab_frees", "slab_rejected", "object_moves", "object_inplace", "object_rejected", "object_copy_bytes", "c_probes" }, &report);
 }
@@ -2050,7 +2107,45 @@ fn flashReport(hart: u32) void {
     logger.record("NIHOS_NATIVE_FLASH", hart, .{ "start", "end", "bytes", "initial", "final", "checks", "confirmed" }, &report);
 }
 
-noinline fn stackReport(hart: u32) linksection(if (options.card_read) ".flash.text.card" else ".text") void {
+noinline fn stackReport(hart: u32) linksection(if (options.graphics) ".flash.text.render" else if (options.card_read) ".flash.text.card" else ".text") void {
     const report = tasks.memory.stacks.report(hart) orelse fail("stack bank publication");
     logger.record("NIHOS_NATIVE_STACKS", hart, .{ "start", "end", "boot_start", "boot_end", "irq_start", "irq_end", "task_start", "task_end", "boot_frame", "irq_sp", "task0_frame", "task1_frame", "task2_frame", "frames", "zeroed", "confirmed" }, &report);
+}
+
+fn nih_sqld_wake(bits: u32) callconv(.c) void {
+    tasks.wakeSqld(bits);
+}
+var sqld_reported_phase: u32 = 0;
+var sqld_progress_time: u64 = 0;
+fn serviceSqld() linksection(".flash.sqldtext") void {
+    sqld.nih_sqld_native_poll();
+    const value = sqld.report();
+    const clock_us = ui.timer().counter() orelse 0;
+    if (clock_us -| sqld_progress_time >= 1_000_000) {
+        sqld_progress_time = clock_us;
+        const progress_record = .{ .requests = value.requests, .completed = value.completed, .reads = value.io_reads, .writes = value.io_writes, .syncs = value.syncs, .generation = value.generation, .stack_used = value.stack_used, .heap_used = value.heap_used };
+        logger.record("NIHOS_NATIVE_SQLD_PROGRESS", null, .{ "requests", "completed", "reads", "writes", "syncs", "generation", "stack_used", "heap_used" }, &progress_record);
+    }
+    if (value.phase != sqld_reported_phase) {
+        sqld_reported_phase = value.phase;
+        if (value.phase == 2) printBoot("SD ready: use (buffer/save! \"name\") and (buffer/load! \"name\").\n");
+        const record = .{ .phase = value.phase, .error_code = @as(u32, @bitCast(value.error_code)), .sectors = value.sectors, .cid_crc = value.cid_crc, .generation = value.generation };
+        logger.record("NIHOS_NATIVE_SQLD", null, .{ "phase", "error_code", "sectors", "cid_crc", "generation" }, &record);
+    }
+}
+fn nih_sqld_front_pump() linksection(".flash.sqldtext") callconv(.c) void {
+    serviceNetwork();
+    serviceStorage();
+    serviceSqld();
+    if (!ui.service(&logger)) fail("sqld foreground display");
+    tasks.idleOnce(0);
+}
+comptime {
+    // Graphics and other non-sqld images must not keep this call graph. The
+    // section is only an output region when sqld is linked; an unconditional
+    // export is an orphan SRAM root and drops the heap under 48 KiB.
+    if (native_sqld) {
+        @export(&nih_sqld_wake, .{ .name = "nih_sqld_wake" });
+        @export(&nih_sqld_front_pump, .{ .name = "nih_sqld_front_pump" });
+    }
 }

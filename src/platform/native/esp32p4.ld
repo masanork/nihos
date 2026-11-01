@@ -12,6 +12,7 @@ __native_profile = 0;
 #endif
 __native_devices = NIH_NATIVE_DEVICES;
 __native_network = NIH_NATIVE_NETWORK;
+__native_sqld = NIH_NATIVE_SQLD;
 __native_normal_storage = NIH_NATIVE_NORMAL_STORAGE;
 OUTPUT_ARCH(riscv)
 ENTRY(nih_native_start)
@@ -39,6 +40,14 @@ MEMORY {
     flash_fs (rx) : ORIGIN = 0x40020000, LENGTH = 256K
 #elif NIH_NATIVE_KEYPAD
     flash_ui (r) : ORIGIN = 0x40020000, LENGTH = 640K
+#endif
+#if NIH_NATIVE_XY
+    flash_xy_gap (r) : ORIGIN = 0x40010020, LENGTH = 320K - 0x20
+    /* Foreground xy evaluator; no ISR/cache-off entry points. */
+    flash_xy (rx) : ORIGIN = 0x40060000, LENGTH = 4M - 384K
+#endif
+#if NIH_NATIVE_SQLD
+    flash_sqld (rx) : ORIGIN = 0x40400000, LENGTH = 768K
 #endif
     flash_records (r) : ORIGIN = 0x40010020, LENGTH = 64K - 0x20
 }
@@ -114,6 +123,10 @@ SECTIONS
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)
+        *(.flash.rodata.camera)
+#if NIH_NATIVE_XY
+        . = ALIGN(4);
+#endif
         __flash_records_end = .;
     } > flash_records
 #if NIH_NATIVE_KEYPAD
@@ -285,14 +298,66 @@ SECTIONS
         __flash_console_font_start = .;
         *(.flash.fs.console)
         __flash_console_font_end = .;
+#if NIH_NATIVE_XY
+        . = ALIGN(4);
+#endif
         __flash_fs_rodata_end = .;
     } > flash_fs
+#endif
+#if NIH_NATIVE_XY
+#if NIH_NATIVE_NORMAL_STORAGE
+    __xy_gap_start = ADDR(.flash.fsrodata) + SIZEOF(.flash.fsrodata);
+#else
+    __xy_gap_start = ADDR(.flash.rodata) + SIZEOF(.flash.rodata);
+#endif
+    .flash.xypad __xy_gap_start : {
+        BYTE(0)
+        . = ORIGIN(flash_xy);
+    } > flash_xy_gap
+    .flash.xytext : ALIGN(16) {
+        __flash_xy_start = .;
+        *xy_render.o(.text .text.*)
+        *(.flash.xytext .flash.xytext.*)
+        . = ALIGN(16);
+        __flash_xy_text_end = .;
+    } > flash_xy
+    .flash.xyrodata : ALIGN(16) {
+        __flash_xy_rodata_start = .;
+        *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
+        /* LLVM's switch tables do not inherit the function's linksection.
+         * The bounded Scheme evaluator is foreground-only mapped Flash code;
+         * keep its generated read-only tables with that same owner. */
+        *(.rodata.xy.scheme_runtime.Runtime.* .rodata.scheme_runtime.Runtime.*)
+        *(.flash.xyrodata .flash.xyrodata.*)
+        . = ALIGN(4);
+        __flash_xy_end = .;
+    } > flash_xy
+#endif
+#if NIH_NATIVE_SQLD
+    .flash.sqldpad ADDR(.flash.xyrodata) + SIZEOF(.flash.xyrodata) : { BYTE(0) . = ORIGIN(flash_xy) + LENGTH(flash_xy); } > flash_xy
+    .flash.sqldtext : ALIGN(16) {
+        __flash_sqld_start = .;
+        *sqld_*.o(.text .text.*)
+        *(.flash.sqldtext)
+        *(.text.compiler_rt.addf3.* .text.compiler_rt.mulf3.* .text.compiler_rt.divf3.* .text.compiler_rt.divsf3.* .text.compiler_rt.divdf3.* .text.compiler_rt.comparef.* .text.compiler_rt.float_from_int.* .text.compiler_rt.int_from_float.* .text.compiler_rt.extendf.* .text.compiler_rt.truncf.*)
+        . = ALIGN(16);
+        __flash_sqld_text_end = .;
+    } > flash_sqld
+    .flash.sqldrodata : ALIGN(16) {
+        __flash_sqld_rodata_start = .;
+        KEEP(*(.sqld.identity))
+        *sqld_*.o(.rodata .rodata.* .srodata .srodata.*)
+        . = ALIGN(4);
+        __flash_sqld_end = .;
+    } > flash_sqld
+#endif
+#if NIH_NATIVE_NORMAL_STORAGE
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
 #endif
 #if NIH_NATIVE_WASM
     /* Experimental classic-interpreter fixture.  As with SQLite, keep the
      * stock loader's second mapping contiguous from the records page. */
-    .flash.wasmpad : ALIGN(4) {
+    .flash.wasmpad : {
         __flash_wasm_pad_start = .;
         BYTE(0)
         . = ORIGIN(flash_records) + LENGTH(flash_records);

@@ -4,6 +4,9 @@
 //! C-ABI Display List (`PlacedGlyph`) for both `nihos` (Tab5 framebuffer)
 //! and macOS/PC (`GPUI` backend).
 const std = @import("std");
+pub const code_font = @import("code_font.zig");
+pub const book_font = @import("book_font.zig");
+pub const CodeSpan = @import("view_config").CodeSpan;
 pub const ttf = @import("ttf.zig");
 pub const ruby = @import("ruby_layout.zig");
 pub const policy = ruby.policy;
@@ -15,22 +18,7 @@ pub const Error = ttf.Error || ruby.Error || error{
 };
 
 /// Live-configurable view parameters controllable from Scheme `(view/set! ...)`.
-pub const ViewStyle = extern struct {
-    style_id: u8 = 0, // 0: mincho, 1: gothic
-    body_px: u8 = 24,
-    ruby_px: u8 = 12,
-    axis: u8 = 0, // 0: horizontal, 1: vertical
-    line_gap_px: u8 = 12,
-    ruby_gap_px: u8 = 2,
-    margin_x_px: u16 = 24,
-    margin_y_px: u16 = 24,
-    viewport_width_px: u16 = 1280,
-    viewport_height_px: u16 = 720,
-
-    pub inline fn layoutAxis(self: ViewStyle) layout.Axis {
-        return if (self.axis == 0) .horizontal else .vertical;
-    }
-};
+pub const ViewStyle = @import("view_config").Style;
 
 /// C-ABI Display List item representing a positioned glyph ready for either
 /// Tab5 RGB565 alpha-blitting or GPUI texture-atlas rendering.
@@ -50,10 +38,13 @@ pub const PlacedGlyph = extern struct {
     bitmap_y_px: i32 = 0,
     bitmap_width: u16 = 0,
     bitmap_height: u16 = 0,
+    /// Inline advance; base_cp=0 identifies an invisible paragraph caret anchor.
+    advance_px: u16 = 0,
 };
 
 /// Internal shaped glyph compatible with `line_layout.zig` and `ruby_layout.zig`.
 pub const ShapedGlyph = struct {
+    style_id: u4 = 0,
     id: u32 = 1,
     cluster: u32 = 0,
     run: u32 = 0,
@@ -206,13 +197,36 @@ pub fn shapeRun(
     glyf_scratch: []u8,
     out_glyphs: []ShapedGlyph,
 ) Error!usize {
+    return shapeStyledRun(CacheType, cache, family, style_id, px_size, vertical, run_id, text, glyf_scratch, out_glyphs, &.{}, 0);
+}
+
+pub fn shapeStyledRun(
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    style_id: u4,
+    px_size: u8,
+    vertical: bool,
+    run_id: u32,
+    text: []const u8,
+    glyf_scratch: []u8,
+    out_glyphs: []ShapedGlyph,
+    spans: []const CodeSpan,
+    origin: u32,
+) Error!usize {
     var it = ClusterIterator{ .text = text };
     var count: usize = 0;
     while (try it.next()) |cl| {
         if (count >= out_glyphs.len) return error.Capacity;
+        const absolute = origin + cl.byte_start;
+        var selected_style = style_id;
+        for (spans) |span| if (absolute >= span.start and absolute < span.end) {
+            selected_style = if (style_id == 4) 5 else 3;
+            break;
+        };
         const rendered = try cache.getOrRender(
             family,
-            style_id,
+            selected_style,
             cl.base_cp,
             cl.ivs_cp,
             px_size,
@@ -221,6 +235,7 @@ pub fn shapeRun(
         );
         out_glyphs[count] = .{
             .id = 1,
+            .style_id = selected_style,
             .cluster = cl.byte_start,
             .run = run_id,
             .base_cp = cl.base_cp,
@@ -254,10 +269,53 @@ pub fn layoutParagraph(
     glyf_scratch: []u8,
     out_display_list: []PlacedGlyph,
 ) Error![]PlacedGlyph {
+    return layoutParagraphWithWordWrap(max_glyphs, max_body_bytes, max_ruby_bytes, CacheType, cache, family, view, body_text, ruby_text, annotations, glyf_scratch, out_display_list, false);
+}
+
+pub fn layoutParagraphWithWordWrap(
+    comptime max_glyphs: usize,
+    comptime max_body_bytes: usize,
+    comptime max_ruby_bytes: usize,
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    view: ViewStyle,
+    body_text: []const u8,
+    ruby_text: []const u8,
+    annotations: []const ruby.Annotation,
+    glyf_scratch: []u8,
+    out_display_list: []PlacedGlyph,
+    comptime wrap_words: bool,
+) Error![]PlacedGlyph {
+    return layoutStyledParagraph(max_glyphs, max_body_bytes, max_ruby_bytes, CacheType, cache, family, view, body_text, ruby_text, annotations, glyf_scratch, out_display_list, wrap_words, &.{});
+}
+
+pub fn layoutStyledParagraph(
+    comptime max_glyphs: usize,
+    comptime max_body_bytes: usize,
+    comptime max_ruby_bytes: usize,
+    comptime CacheType: type,
+    cache: *CacheType,
+    family: ttf.Family,
+    view: ViewStyle,
+    body_text: []const u8,
+    ruby_text: []const u8,
+    annotations: []const ruby.Annotation,
+    glyf_scratch: []u8,
+    out_display_list: []PlacedGlyph,
+    comptime wrap_words: bool,
+    code_spans: []const CodeSpan,
+) Error![]PlacedGlyph {
     if (body_text.len == 0 or body_text.len > max_body_bytes or ruby_text.len > max_ruby_bytes)
         return error.Capacity;
 
-    const axis = view.layoutAxis();
+    var previous: u32 = 0;
+    for (code_spans) |span| {
+        if (span.start < previous or span.start >= span.end or span.end > body_text.len) return error.Range;
+        if ((span.start < body_text.len and body_text[span.start] & 0xc0 == 0x80) or (span.end < body_text.len and body_text[span.end] & 0xc0 == 0x80)) return error.InvalidUtf8;
+        previous = span.end;
+    }
+    const axis: layout.Axis = if (view.axis == 0) .horizontal else .vertical;
     const is_vert = axis == .vertical;
     const style_u4: u4 = @intCast(view.style_id & 0x0F);
 
@@ -269,7 +327,9 @@ pub fn layoutParagraph(
     const inline_limit_26_6: i32 = (if (is_vert) usable_h else usable_w) * 64;
     const step_px: i32 = @as(i32, view.body_px) + @as(i32, view.ruby_px) + @as(i32, view.line_gap_px);
     const step_26_6: i32 = step_px * 64;
-    const max_lines: u16 = @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
+    // Reader candidates must reach beyond the page so visibleEnd can find the
+    // exact break. Throwing BlockFull first forces a coarse prefix backoff.
+    const max_lines: u16 = if (wrap_words) @intCast(max_glyphs) else @intCast(@max(1, @divTrunc(if (is_vert) usable_w else usable_h, step_px) + 2));
     const cross_offset_26_6: i32 = (@as(i32, view.ruby_px) + @as(i32, view.ruby_gap_px)) * 64;
 
     var ruby_map: [max_ruby_bytes + 1]policy.Boundary = undefined;
@@ -277,6 +337,8 @@ pub fn layoutParagraph(
 
     var body_map: [max_body_bytes + 1]policy.Boundary = undefined;
     var shaped: [max_glyphs]ShapedGlyph = undefined;
+    // Body shaping must not overwrite ruby glyphs stored in the same array.
+    var ruby_shaped: [@min(max_glyphs / 2, 512)]ShapedGlyph = undefined;
 
     const ruby_count = try shapeRun(
         CacheType,
@@ -288,9 +350,8 @@ pub fn layoutParagraph(
         1,
         ruby_text,
         glyf_scratch,
-        shaped[max_glyphs - @min(max_glyphs / 2, 128) ..],
+        &ruby_shaped,
     );
-    const ruby_shaped_slice = shaped[max_glyphs - @min(max_glyphs / 2, 128) ..][0..ruby_count];
 
     var total_emitted: usize = 0;
     var para_block_offset_px: i32 = 0;
@@ -301,10 +362,10 @@ pub fn layoutParagraph(
         while (p_end < body_text.len and body_text[p_end] != '\n' and body_text[p_end] != '\r') : (p_end += 1) {}
 
         const para_slice = body_text[p_start..p_end];
-        if (para_slice.len > 0) {
+        if (para_slice.len > 0 and !((view.style_id == 2 or view.style_id == 4) and std.mem.trim(u8, para_slice, " \t").len == 0)) {
             try policy.map(para_slice, body_map[0 .. para_slice.len + 1]);
 
-            const body_count = try shapeRun(
+            const body_count = try shapeStyledRun(
                 CacheType,
                 cache,
                 family,
@@ -315,10 +376,14 @@ pub fn layoutParagraph(
                 para_slice,
                 glyf_scratch,
                 shaped[0 .. max_glyphs - ruby_count],
+                code_spans,
+                @intCast(p_start),
             );
 
+            if (wrap_words) keepWords(shaped[0..body_count], body_map[0 .. para_slice.len + 1], inline_limit_26_6, is_vert);
+
             // Copy only ruby annotations belonging to `[p_start, p_end)`
-            var local_anns: [64]ruby.Annotation = undefined;
+            var local_anns: [128]ruby.Annotation = undefined;
             var local_ann_count: usize = 0;
             const p_start_u32: u32 = @intCast(p_start);
             for (annotations) |ann| {
@@ -333,9 +398,29 @@ pub fn layoutParagraph(
 
             // Append ruby glyphs after `shaped[0..body_count]` when annotations exist in this paragraph
             var para_total = body_count;
+            var para_ruby_bytes: usize = 0;
+            var para_ruby_start: u32 = 0;
             if (local_ann_count > 0) {
-                @memcpy(shaped[body_count .. body_count + ruby_count], ruby_shaped_slice);
-                para_total += ruby_count;
+                const ruby_start = local_anns[0].ruby.start;
+                para_ruby_start = ruby_start;
+                const ruby_end = local_anns[local_ann_count - 1].ruby.end;
+                if (ruby_end < ruby_start or ruby_end > ruby_text.len) return error.Range;
+                para_ruby_bytes = ruby_end - ruby_start;
+                try policy.map(ruby_text[ruby_start..ruby_end], ruby_map[0 .. para_ruby_bytes + 1]);
+                for (local_anns[0..local_ann_count]) |*ann| {
+                    if (ann.ruby.start < ruby_start or ann.ruby.end > ruby_end) return error.Range;
+                    ann.ruby.start -= ruby_start;
+                    ann.ruby.end -= ruby_start;
+                }
+                for (ruby_shaped[0..ruby_count]) |g| {
+                    if (g.cluster < ruby_start or g.cluster >= ruby_end) continue;
+                    var local_glyph = g;
+                    local_glyph.cluster -= ruby_start;
+                    shaped[para_total] = local_glyph;
+                    para_total += 1;
+                }
+            } else {
+                try policy.map("", ruby_map[0..1]);
             }
 
             const initial_flow = try layout.Flow.init(inline_limit_26_6, step_26_6, max_lines);
@@ -344,7 +429,7 @@ pub fn layoutParagraph(
                 ShapedGlyph,
                 shaped[0..para_total],
                 body_map[0 .. para_slice.len + 1],
-                if (local_ann_count > 0) ruby_map[0 .. ruby_text.len + 1] else ruby_map[0..1],
+                ruby_map[0 .. para_ruby_bytes + 1],
                 local_anns[0..local_ann_count],
                 axis,
                 initial_flow,
@@ -391,9 +476,9 @@ pub fn layoutParagraph(
                 out_display_list[total_emitted] = .{
                     .base_cp = g.base_cp,
                     .ivs_cp = g.ivs_cp,
-                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster,
+                    .cluster_byte_offset = if (g.run == 0) g.cluster + @as(u32, @intCast(p_start)) else g.cluster + para_ruby_start,
                     .run = @intCast(g.run),
-                    .style_id = view.style_id,
+                    .style_id = g.style_id,
                     .px_size = g.px_size,
                     .vertical = @intFromBool(is_vert),
                     .cell_x_px = cell_x,
@@ -402,28 +487,82 @@ pub fn layoutParagraph(
                     .bitmap_y_px = baseline_y - g.top_px,
                     .bitmap_width = g.width,
                     .bitmap_height = g.height,
+                    .advance_px = @intCast(@divTrunc((if (is_vert) -g.y_advance else g.x_advance) + 32, 64)),
                 };
                 total_emitted += 1;
             }
             para_block_offset_px += max_block_px_in_para + step_px;
         } else {
-            para_block_offset_px += step_px;
+            para_block_offset_px += if (view.style_id == 2 or view.style_id == 4) @max(2, @divTrunc(step_px, 4)) else step_px;
         }
 
         if (p_end >= body_text.len) break;
-        if (body_text[p_end] == '\r' and p_end + 1 < body_text.len and body_text[p_end + 1] == '\n') {
-            p_start = p_end + 2;
-        } else {
-            p_start = p_end + 1;
-        }
+        const next_start = if (body_text[p_end] == '\r' and p_end + 1 < body_text.len and body_text[p_end + 1] == '\n') p_end + 2 else p_end + 1;
+        if (total_emitted >= out_display_list.len) return error.Capacity;
+        out_display_list[total_emitted] = .{
+            .cluster_byte_offset = @intCast(next_start),
+            .px_size = view.body_px,
+            .style_id = view.style_id,
+            .vertical = @intFromBool(is_vert),
+            .cell_x_px = if (is_vert) @as(i32, view.viewport_width_px) - view.margin_x_px - view.ruby_px - view.body_px - para_block_offset_px else view.margin_x_px,
+            .cell_y_px = if (is_vert) view.margin_y_px else @as(i32, view.margin_y_px) + view.ruby_px + para_block_offset_px,
+        };
+        total_emitted += 1;
+        p_start = next_start;
     }
 
     return out_display_list[0..total_emitted];
 }
 
+// Keep Latin words together in prose, including attached sideways punctuation
+// in vertical text. Overlong identifiers retain grapheme-level emergency breaks.
+fn keepWords(glyphs: []const ShapedGlyph, boundaries: []policy.Boundary, limit: i32, vertical: bool) void {
+    var start: usize = 0;
+    while (start < glyphs.len) {
+        const cp = glyphs[start].base_cp;
+        if (!(if (vertical) ttf.isSideways(cp) else cp < 128 and std.ascii.isAlphanumeric(@intCast(cp)))) {
+            start += 1;
+            continue;
+        }
+        var end = start + 1;
+        var advance: i64 = if (vertical) -glyphs[start].y_advance else glyphs[start].x_advance;
+        while (end < glyphs.len) : (end += 1) {
+            const next = glyphs[end].base_cp;
+            if (vertical) {
+                if (!ttf.isSideways(next)) break;
+            } else if (next >= 128 or !(std.ascii.isAlphanumeric(@intCast(next)) or next == '\'' or next == '_')) break;
+            advance += if (vertical) -glyphs[end].y_advance else glyphs[end].x_advance;
+        }
+        if (advance <= limit) {
+            for (glyphs[start + 1 .. end]) |g| boundaries[g.cluster].allowed = false;
+        }
+        start = end;
+    }
+}
+
 // ============================================================================
 // Unit Tests
 // ============================================================================
+
+test "sideways words use horizontal advances and wrap together into the next column" {
+    const face = try code_font.face();
+    const family = ttf.Family{ .faces = &.{face} };
+    const Cache = ttf.TwoTierCache(8, 1024, 16, 64 * 64);
+    var cache: Cache = .{};
+    var scratch: [16384]u8 = undefined;
+    var placed: [32]PlacedGlyph = undefined;
+    const style = ViewStyle{ .body_px = 20, .ruby_px = 10, .axis = 1, .viewport_width_px = 256, .viewport_height_px = 140 };
+    const list = try layoutParagraphWithWordWrap(32, 128, 0, Cache, &cache, family, style, "abc defghij", "", &.{}, &scratch, &placed, true);
+    try std.testing.expectEqual(@as(usize, 11), list.len);
+    try std.testing.expectEqual(@as(u16, 12), list[0].advance_px);
+    try std.testing.expectEqual(list[0].cell_y_px + 12, list[1].cell_y_px);
+    try std.testing.expect(list[4].cell_x_px < list[0].cell_x_px);
+    try std.testing.expectEqual(@as(i32, style.margin_y_px), list[4].cell_y_px);
+    for (list[5..], 5..) |g, i| {
+        try std.testing.expectEqual(list[4].cell_x_px, g.cell_x_px);
+        try std.testing.expectEqual(list[i - 1].cell_y_px + 12, g.cell_y_px);
+    }
+}
 
 test "ClusterIterator groups IVS and composes combining dakuten" {
     // "か" (U+304B) + U+3099 -> "が" (U+304C), followed by "葛" (U+845B) + IVS U+E0100
@@ -490,6 +629,34 @@ test "layoutParagraph switches live between horizontal and vertical with group r
     try std.testing.expectEqual(list_v[0].cell_x_px, list_v[1].cell_x_px);
     // Ruby sits to the RIGHT (+X) of the parent vertical body column
     try std.testing.expect(list_v[2].cell_x_px > list_v[0].cell_x_px);
+}
+
+test "long body cannot overwrite ruby glyphs and paragraph readings stay local" {
+    var font_buf: [512]u8 = undefined;
+    const bytes = ttf_test_helper(&font_buf);
+    const face = try ttf.Face.init(ttf.SliceReader.fromSlice(&bytes));
+    const family = ttf.Family{ .faces = &[_]ttf.Face{face} };
+    const CacheType = ttf.TwoTierCache(16, 64, 32, 64 * 64);
+    var cache: CacheType = .{};
+    var scratch: [256]u8 = undefined;
+    var placed: [256]PlacedGlyph = undefined;
+    var body: [424]u8 = undefined;
+    for (0..140) |i| @memcpy(body[i * 3 ..][0..3], "か");
+    @memcpy(body[420..], "\nか");
+    const annotations = [_]ruby.Annotation{
+        .{ .base = .{ .start = 417, .end = 420 }, .ruby = .{ .start = 0, .end = 3 } },
+        .{ .base = .{ .start = 421, .end = 424 }, .ruby = .{ .start = 3, .end = 6 } },
+    };
+    for (0..2) |axis| {
+        const style = ViewStyle{ .body_px = 16, .ruby_px = 8, .axis = @intCast(axis), .viewport_width_px = 4096, .viewport_height_px = 2048 };
+        const list = try layoutParagraph(256, 512, 64, CacheType, &cache, family, style, &body, "つつ", &annotations, &scratch, &placed);
+        var ruby_count: usize = 0;
+        for (list) |glyph| if (glyph.run == 1) {
+            try std.testing.expectEqual(@as(u32, 'つ'), glyph.base_cp);
+            ruby_count += 1;
+        };
+        try std.testing.expectEqual(@as(usize, 2), ruby_count);
+    }
 }
 
 pub fn ttf_test_helper(buf: []u8) []const u8 {

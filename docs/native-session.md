@@ -1,6 +1,53 @@
-# Native launcher and shell
+# Native xy workspace and diagnostic launcher
 
-The live integer normal-boot profile enters a small launcher after core health
+The normal `sh tools/build-native.sh device integer` profile starts xy Home.
+Its touch cards open a RAM document, tutorials, Kusamakura, SICP excerpts,
+the repository book, and display settings. Books and fonts are bundled in
+Flash; SD and network access are not needed for reading. Select `n` to enter
+the RAM document. It supports UTF-8 text, grapheme editing, undo and a bounded
+Scheme minibuffer; see [the xy overview](../README.md). The I2C Tab5 Keyboard is
+enabled by default with the existing US HID mapping; set
+`NIHOS_NATIVE_KEYBOARD_I2C=0` to disable it. With a provisioned microSD, Esc
+opens Scheme operations `(buffer/save! "draft.scm")` and `(buffer/load! "draft.scm")`. The older single-row ASCII editor and terminal-first startup from
+PRs #71 and #79 are superseded by this workspace.
+
+## Normal xy input connections
+
+The standard device profile polls the Tab5 I2C keyboard at address `0x6d`
+outside interrupts. `Keyboard.poll` supplies bounded HID press events to
+`session_input.Hid`, then `diagnostic_ui.sessionKey` calls the shared xy
+`scratch.Model.handle`. Serial UTF-8 uses `scratch.Model.feedSerial` and the
+same document/controller. The physical-keyboard path is active in xy mode;
+it does not depend on entering the diagnostic launcher.
+
+| Input | Normal xy action |
+| --- | --- |
+| Home: touch, arrows / Enter, `1`–`4`, `n`, `s` | Choose a book, document or settings |
+| Document: letters, digits, Shift, Caps Lock | US HID text mapping |
+| Document: arrows, Enter, Backspace | Move, newline, delete before cursor |
+| Document: Ctrl-D, Ctrl-Z | Delete after cursor, undo |
+| Document: Esc, Ctrl-C | Open minibuffer, return Home |
+| Reading: touch footer, arrows / Space, `c`, `s`, Esc | Page, contents, settings, Home |
+| Ctrl-L | Refresh the current view |
+| Document: touch body | Return Home; no touch caret placement |
+
+The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
+Those system views are read-only. USB/Bluetooth keyboard adapters, native IME,
+and automatic startup restoration of RAM text/settings remain separate work.
+[Persistent storage bindings](planning/sqld-xy-service.md) are available through
+the normal sqld owner; unknown media are never automatically initialized. Japanese display and serial UTF-8 input are separate from IME.
+The [Tab5 reader report](measurements/2026-10-31-xy-tab5-reader.md) and
+[sideways Latin report](measurements/2026-10-31-xy-sideways-latin.md) record
+the reader candidates. The earlier
+[boot/input physical report](measurements/2026-10-31-xy-boot-input.md)
+records keyboard and splash validation on its own candidate.
+
+## Diagnostic launcher fallback
+
+The following launcher and shell describe the diagnostic fallback used when
+`NIHOS_NATIVE_XY_WORKSPACE=0`, including explicit camera qualification profiles.
+
+The live integer diagnostic profile enters a small launcher after core health
 checks complete and the milestone-driven boot graphic reaches its final colour.
 The ESP-IDF backend and native qualification profiles retain their existing
 behaviour. This work builds on `codex/native-console` (`8cd0076`).

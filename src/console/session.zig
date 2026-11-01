@@ -3,7 +3,7 @@ const std = @import("std");
 pub const input = @import("session_input.zig");
 const Journal = @import("../diagnostics/boot_journal.zig").Journal;
 pub const View = enum(u8) { launcher, shell, logs };
-pub const Command = enum { shell, help, clear, log, mem, tasks, camera, camera_live, rust_app, launcher, exit };
+pub const Command = enum { shell, help, clear, log, mem, tasks, camera, camera_live, rust_app, launcher, exit, @"suspend" };
 const Entry = struct { command: Command, name: []const u8, help: []const u8 };
 pub const commands = [_]Entry{
     .{ .command = .shell, .name = "shell", .help = "Open the command prompt" },
@@ -15,6 +15,7 @@ pub const commands = [_]Entry{
     .{ .command = .camera, .name = "camera", .help = "Open a camera snapshot" },
     .{ .command = .camera_live, .name = "camera-live", .help = "Open an updating camera preview" },
     .{ .command = .rust_app, .name = "rust-app", .help = "Run the Rust sample" },
+    .{ .command = .@"suspend", .name = "suspend", .help = "Suspend display and enter standby" },
     .{ .command = .launcher, .name = "launcher", .help = "Return to the launcher" },
     .{ .command = .exit, .name = "exit", .help = "Return to the launcher" },
 };
@@ -82,7 +83,9 @@ pub const Model = struct {
         self.output.dropped = 0;
     }
     fn shell(self: *Model, sink: anytype) void {
-        if (self.view != .shell) self.write(sink, "\r\nnihos shell | help: commands | exit: launcher\r\n");
+        // Serial needs its own heading; the screen already renders one.
+        // Keep entrance notices out of the shared command history.
+        if (self.view != .shell) sink.write("\r\nnihos / shell\r\n");
         self.view = .shell;
         self.length = 0;
     }
@@ -103,7 +106,7 @@ pub const Model = struct {
                 self.view = .logs;
                 sink.write("\r\nBoot log | Esc: launcher\r\n");
             },
-            .mem, .tasks, .camera, .camera_live, .rust_app => {
+            .mem, .tasks, .camera, .camera_live, .rust_app, .@"suspend" => {
                 self.shell(sink);
                 return command;
             },
@@ -185,15 +188,15 @@ pub const Model = struct {
         return null;
     }
     pub fn render(self: *const Model, grid: anytype) void {
-        const header = @import("snapshot.zig").header_rows;
+        const header: usize = if (self.view == .shell) 1 else @import("snapshot.zig").header_rows;
         @memset(&grid.cells, ' ');
         grid.x = 0;
         grid.y = 0;
         grid.wrap_pending = false;
         grid.scrolls = 0;
         _ = grid.setScrollTop(header);
-        grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n\n");
-        grid.write(if (self.view == .launcher) "Up/Down or 1-4: select | Enter: open | Esc: shell\n" else "help: commands | exit: launcher | Ctrl-C: cancel | ASCII input\n");
+        grid.write(if (self.view == .launcher) "nihos / launcher\n\n" else "nihos / shell\n");
+        if (self.view == .launcher) grid.write("Up/Down or 1-4: select | Enter: open | Esc: shell\n");
         if (self.view == .shell and self.output.dropped != 0) grid.write("[older shell output discarded]\n");
         while (grid.y < header) grid.write("\n");
         if (self.view == .launcher) {
@@ -244,6 +247,7 @@ test "launcher, shell and log round trips share the command registry" {
     try std.testing.expectEqual(Command.tasks, typeLine(&model, &sink, "tasks").?);
     try std.testing.expectEqual(Command.camera, typeLine(&model, &sink, "camera").?);
     try std.testing.expectEqual(Command.camera_live, typeLine(&model, &sink, "camera-live").?);
+    try std.testing.expectEqual(Command.@"suspend", typeLine(&model, &sink, "suspend").?);
     try std.testing.expectEqual(View.shell, model.view);
     _ = typeLine(&model, &sink, "launcher");
     try std.testing.expectEqual(View.launcher, model.view);

@@ -1,0 +1,6 @@
+{
+  "positive_elf_accepted": true,
+  "wrong_table_address_rejected": "xy sine table outside declared readonly Flash storage",
+  "duplicate_sram_table_rejected": "xy sine table has an anonymous SRAM copy",
+  "physical_execution": false
+}

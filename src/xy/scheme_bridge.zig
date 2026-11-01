@@ -15,6 +15,7 @@ const std = @import("std");
 pub const viewport_layout = @import("viewport_layout");
 pub const document = @import("document.zig");
 pub const ime_omni = @import("ime_omni.zig");
+pub const terminal_adapter = @import("terminal_adapter");
 
 pub const ViewStyle = viewport_layout.ViewStyle;
 pub const PlacedGlyph = viewport_layout.PlacedGlyph;
@@ -27,6 +28,7 @@ pub const EvalError = error{
     TypeMismatch,
     ArityMismatch,
     NoPreviousConfigGeneration,
+    SqlUnavailable,
 } || document.Error;
 
 // ============================================================================
@@ -227,6 +229,7 @@ pub const Reader = struct {
             if (tok.len <= 2) return error.SyntaxError;
             return try self.arena.allocNode(.{ .keyword = tok[2..] });
         }
+        if (std.mem.startsWith(u8, tok, "#x")) return try self.arena.allocNode(.{ .int = std.fmt.parseInt(i64, tok[2..], 16) catch return error.SyntaxError });
         if (std.fmt.parseInt(i64, tok, 10)) |num| {
             return try self.arena.allocNode(.{ .int = num });
         } else |_| {}
@@ -301,7 +304,9 @@ pub const Reader = struct {
 // Versioned `sys_config` + `sqld` Declarative Query Bridge
 // ============================================================================
 
+pub const view_config = @import("view_config");
 pub const ConfigSnapshot = struct {
+    appearance: view_config.Appearance = .{},
     generation: u32 = 1,
     style: ViewStyle = .{},
 };
@@ -323,6 +328,62 @@ pub const CustomPrefixBinding = struct {
     expansion_buf: [64]u8 = @splat(0),
     expansion_len: u8 = 0,
     active: bool = false,
+};
+
+/// Allocation-free Towers of Hanoi state machine (`(hanoi/init! N)` / `(hanoi/step!)`).
+pub const HanoiState = struct {
+    disks: u8 = 4,
+    step: u16 = 0,
+    total_steps: u16 = 15,
+    last_disk: u8 = 0,
+    last_from: u8 = 0,
+    last_to: u8 = 0,
+    peg_len: [3]u8 = .{ 4, 0, 0 },
+    pegs: [3][8]u8 = .{
+        .{ 3, 2, 1, 0, 0, 0, 0, 0 },
+        .{ 0, 0, 0, 0, 0, 0, 0, 0 },
+        .{ 0, 0, 0, 0, 0, 0, 0, 0 },
+    },
+
+    pub fn init(self: *HanoiState, n_disks: u8) void {
+        const d = std.math.clamp(n_disks, 1, 6);
+        self.* = .{
+            .disks = d,
+            .step = 0,
+            .total_steps = (@as(u16, 1) << @intCast(d)) - 1,
+            .peg_len = .{ d, 0, 0 },
+        };
+        var i: u8 = 0;
+        while (i < d) : (i += 1) {
+            self.pegs[0][i] = d - 1 - i;
+        }
+    }
+
+    pub fn stepForward(self: *HanoiState) bool {
+        if (self.step >= self.total_steps) return false;
+        self.step += 1;
+        const disk: u8 = @intCast(@ctz(self.step));
+
+        var from_peg: u8 = 0;
+        for (0..3) |p| {
+            const len = self.peg_len[p];
+            if (len > 0 and self.pegs[p][len - 1] == disk) {
+                from_peg = @intCast(p);
+                break;
+            }
+        }
+        const stride: u8 = if (((self.disks - disk) & 1) == 1) 2 else 1;
+        const to_peg: u8 = (from_peg + stride) % 3;
+
+        self.peg_len[from_peg] -= 1;
+        self.pegs[to_peg][self.peg_len[to_peg]] = disk;
+        self.peg_len[to_peg] += 1;
+
+        self.last_disk = disk;
+        self.last_from = from_peg;
+        self.last_to = to_peg;
+        return true;
+    }
 };
 
 // ============================================================================
@@ -348,6 +409,7 @@ pub fn XyWorkspace(
 
         doc: DocType = .{},
         style: ViewStyle = .{},
+        appearance: view_config.Appearance = .{},
         ime: ime_omni.OmniIme = .{},
         arena: SexpArena = .{},
 
@@ -362,16 +424,24 @@ pub fn XyWorkspace(
         /// Custom prefix expansions registered from Scheme via `(ime/register-prefix! "#" "...")`.
         custom_bindings: [8]CustomPrefixBinding = @splat(.{}),
 
+        /// Built-in Towers of Hanoi animation state for `(hanoi/init! N)` / `(hanoi/step!)`.
+        hanoi: HanoiState = .{},
+
         /// Optional `sqld` query hook for `(q 'table #:where ... #:limit ...)` and non-Scheme omni queries.
         sql_ctx: ?*anyopaque = null,
         sql_query_hook: ?SqlQueryHook = null,
         ext_omni_provider: ?ime_omni.OmniProvider = null,
+
+        /// Optional Tailscale status hook for `(ts/status)` and `(ts/peers)`.
+        ts_ctx: ?*anyopaque = null,
+        ts_status_hook: ?*const fn (ctx: ?*anyopaque, out: *terminal_adapter.TsStatus) void = null,
 
         fn pushConfigSnapshot(self: *Self) void {
             if (self.config_history_count < self.config_history.len) {
                 self.config_history[self.config_history_count] = .{
                     .generation = self.config_generation,
                     .style = self.style,
+                    .appearance = self.appearance,
                 };
                 self.config_history_count += 1;
             } else {
@@ -383,6 +453,7 @@ pub fn XyWorkspace(
                 self.config_history[self.config_history.len - 1] = .{
                     .generation = self.config_generation,
                     .style = self.style,
+                    .appearance = self.appearance,
                 };
             }
             self.config_generation +%= 1;
@@ -395,6 +466,7 @@ pub fn XyWorkspace(
             self.config_history_count -= 1;
             const snap = self.config_history[self.config_history_count];
             self.style = snap.style;
+            self.appearance = snap.appearance;
             self.config_generation = snap.generation;
             self.layout_dirty = true;
             return self.config_generation;
@@ -525,48 +597,24 @@ pub fn XyWorkspace(
 
             // 4. Live Viewport & Typography control: `(view/set! #:font ... #:size ... #:direction ... #:line-gap ...)`
             if (std.mem.eql(u8, op, "view/set!")) {
-                if (args.len % 2 != 0) return error.ArityMismatch;
-                self.pushConfigSnapshot();
+                if (args.len == 0 or args.len % 2 != 0) return error.ArityMismatch;
+                var next = view_config.Config{ .style = self.style, .appearance = self.appearance };
                 var i: usize = 0;
                 while (i < args.len) : (i += 2) {
-                    const kw_val = self.arena.nodes[args[i]];
-                    const key_name = switch (kw_val) {
-                        .keyword, .symbol => |k| k,
+                    const key_name = try self.evalSymbolOrSelf(args[i]);
+                    const val = try self.evalNode(args[i + 1]);
+                    const value: view_config.Value = switch (val) {
+                        .int => |n| .{ .number = std.math.cast(i32, n) orelse return error.TypeMismatch },
+                        .symbol, .string => |name| .{ .symbol = name },
+                        .boolean => |yes| .{ .boolean = yes },
                         else => return error.TypeMismatch,
                     };
-                    if (std.mem.eql(u8, key_name, "font")) {
-                        const font_name = try self.evalSymbolOrSelf(args[i + 1]);
-                        if (std.mem.eql(u8, font_name, "bunsen-mincho") or std.mem.eql(u8, font_name, "mincho")) {
-                            self.style.style_id = 0;
-                        } else if (std.mem.eql(u8, font_name, "bunsen-gothic") or std.mem.eql(u8, font_name, "gothic")) {
-                            self.style.style_id = 1;
-                        } else {
-                            return error.TypeMismatch;
-                        }
-                    } else if (std.mem.eql(u8, key_name, "size")) {
-                        const px = try self.evalInt(args[i + 1]);
-                        const clamped: u8 = @intCast(std.math.clamp(px, 8, 96));
-                        self.style.body_px = clamped;
-                        self.style.ruby_px = @max(6, clamped / 2);
-                    } else if (std.mem.eql(u8, key_name, "ruby-size")) {
-                        const rpx = try self.evalInt(args[i + 1]);
-                        self.style.ruby_px = @intCast(std.math.clamp(rpx, 6, 48));
-                    } else if (std.mem.eql(u8, key_name, "direction")) {
-                        const dir_name = try self.evalSymbolOrSelf(args[i + 1]);
-                        if (std.mem.eql(u8, dir_name, "horizontal")) {
-                            self.style.axis = 0;
-                        } else if (std.mem.eql(u8, dir_name, "vertical")) {
-                            self.style.axis = 1;
-                        } else {
-                            return error.TypeMismatch;
-                        }
-                    } else if (std.mem.eql(u8, key_name, "line-gap")) {
-                        const gap = try self.evalInt(args[i + 1]);
-                        self.style.line_gap_px = @intCast(std.math.clamp(gap, 0, 64));
-                    } else {
-                        return error.UnknownForm;
-                    }
+                    next.set(key_name, value) catch return error.TypeMismatch;
                 }
+                next.validate() catch return error.TypeMismatch;
+                self.pushConfigSnapshot();
+                self.style = next.style;
+                self.appearance = next.appearance;
                 self.layout_dirty = true;
                 return .{ .int = @intCast(self.config_generation) };
             }
@@ -574,18 +622,13 @@ pub fn XyWorkspace(
             if (std.mem.eql(u8, op, "view/get")) {
                 if (args.len != 1) return error.ArityMismatch;
                 const key_name = try self.evalSymbolOrSelf(args[0]);
-                if (std.mem.eql(u8, key_name, "font")) {
-                    return .{ .symbol = if (self.style.style_id == 0) "bunsen-mincho" else "bunsen-gothic" };
-                } else if (std.mem.eql(u8, key_name, "size")) {
-                    return .{ .int = self.style.body_px };
-                } else if (std.mem.eql(u8, key_name, "ruby-size")) {
-                    return .{ .int = self.style.ruby_px };
-                } else if (std.mem.eql(u8, key_name, "direction")) {
-                    return .{ .symbol = if (self.style.axis == 0) "horizontal" else "vertical" };
-                } else if (std.mem.eql(u8, key_name, "line-gap")) {
-                    return .{ .int = self.style.line_gap_px };
-                }
-                return error.UnknownForm;
+                const config = view_config.Config{ .style = self.style, .appearance = self.appearance };
+                const value = config.get(key_name) catch return error.UnknownForm;
+                return switch (value) {
+                    .number => |n| .{ .int = n },
+                    .symbol => |name| .{ .symbol = name },
+                    .boolean => |yes| .{ .boolean = yes },
+                };
             }
 
             // 5. Transactional OS Config rollback: `(sys/config-rollback!)`
@@ -666,7 +709,7 @@ pub fn XyWorkspace(
                 if (self.sql_query_hook) |hook| {
                     return try hook(self.sql_ctx.?, req, &self.arena);
                 }
-                return .{ .nil = {} };
+                return error.SqlUnavailable;
             }
 
             // 8. SKK Omni-Completion custom prefix registration: `(ime/register-prefix! "#" "expansion")`
@@ -689,7 +732,225 @@ pub fn XyWorkspace(
                 return .{ .boolean = true };
             }
 
+            // 9. Towers of Hanoi live buffer animation: `(hanoi/init! [disks])` and `(hanoi/step!)`
+            if (std.mem.eql(u8, op, "hanoi/init!")) {
+                var n_disks: u8 = 4;
+                if (args.len >= 1) {
+                    n_disks = @intCast(std.math.clamp(try self.evalInt(args[0]), 1, 6));
+                }
+                self.hanoi.init(n_disks);
+                try self.renderHanoiToDoc();
+                self.layout_dirty = true;
+                return .{ .int = @intCast(self.hanoi.total_steps) };
+            }
+            if (std.mem.eql(u8, op, "hanoi/step!")) {
+                const moved = self.hanoi.stepForward();
+                try self.renderHanoiToDoc();
+                self.layout_dirty = true;
+                return .{ .boolean = moved };
+            }
+
+            // 8. Tailscale & SSH Terminal integration
+            if (std.mem.eql(u8, op, "ts/status")) {
+                var status: terminal_adapter.TsStatus = .{};
+                if (self.ts_status_hook) |hook| {
+                    hook(self.ts_ctx, &status);
+                }
+                const st_name = switch (status.state) {
+                    .stopped => "stopped",
+                    .connecting => "connecting",
+                    .needs_login => "needs-login",
+                    .running => "running",
+                    .error_state => "error",
+                };
+                return .{ .symbol = st_name };
+            }
+
+            if (std.mem.eql(u8, op, "ts/peers")) {
+                var status: terminal_adapter.TsStatus = .{};
+                if (self.ts_status_hook) |hook| {
+                    hook(self.ts_ctx, &status);
+                }
+                var list_idx = try self.arena.allocNode(.{ .nil = {} });
+                const count: usize = @intCast(std.math.clamp(status.peer_count, 0, @as(i32, @intCast(status.peers.len))));
+                var i = count;
+                while (i > 0) {
+                    i -= 1;
+                    const hname = status.peers[i].getHostname();
+                    if (hname.len > 0) {
+                        const str = try self.arena.allocString(hname);
+                        const item_idx = try self.arena.allocNode(.{ .string = str });
+                        list_idx = try self.arena.cons(item_idx, list_idx);
+                    }
+                }
+                return self.arena.nodes[list_idx];
+            }
+
+            if (std.mem.eql(u8, op, "ssh/connect")) {
+                if (args.len < 1) return error.ArityMismatch;
+                const host = try self.evalSymbolOrSelf(args[0]);
+                var tmp: [128]u8 = undefined;
+                const msg = std.fmt.bufPrint(&tmp, "connecting to {s}...", .{host}) catch "connecting...";
+                const str = try self.arena.allocString(msg);
+                return .{ .string = str };
+            }
+
             return error.UnknownForm;
+        }
+
+        fn formatKanjiNum(n: u16, out: *[24]u8) []const u8 {
+            const digits = [_][]const u8{ "零", "一", "二", "三", "四", "五", "六", "七", "八", "九" };
+            if (n == 0) return digits[0];
+            var pos: usize = 0;
+            const tens = n / 10;
+            const ones = n % 10;
+            if (tens > 0) {
+                if (tens > 1 and tens < 10) {
+                    const d = digits[tens];
+                    @memcpy(out[pos .. pos + d.len], d);
+                    pos += d.len;
+                }
+                const ten_s = "十";
+                @memcpy(out[pos .. pos + ten_s.len], ten_s);
+                pos += ten_s.len;
+            }
+            if (ones > 0) {
+                const d = digits[ones];
+                @memcpy(out[pos .. pos + d.len], d);
+                pos += d.len;
+            }
+            return out[0..pos];
+        }
+
+        fn renderHanoiToDoc(self: *Self) EvalError!void {
+            const peg_names = [_][]const u8{ "壱", "弐", "参" };
+            const peg_rubies = [_][]const u8{ "いち", "に", "さん" };
+            const disk_nums = [_][]const u8{ "一", "二", "三", "四", "五", "六" };
+
+            var buf: [2048]u8 = undefined;
+            var pos: usize = 0;
+            const append = struct {
+                inline fn f(b: *[2048]u8, p: *usize, s: []const u8) void {
+                    @memcpy(b[p.* .. p.* + s.len], s);
+                    p.* += s.len;
+                }
+            }.f;
+            const appendRepeat = struct {
+                inline fn f(b: *[2048]u8, p: *usize, s: []const u8, count: usize) void {
+                    for (0..count) |_| {
+                        @memcpy(b[p.* .. p.* + s.len], s);
+                        p.* += s.len;
+                    }
+                }
+            }.f;
+
+            // Row 1: Classic title + move status on one header line
+            append(&buf, &pos, "ハノイの");
+            const tou_start: u32 = @intCast(pos);
+            append(&buf, &pos, "塔");
+            const tou_end: u32 = @intCast(pos);
+
+            var s_buf: [24]u8 = undefined;
+            var t_buf: [24]u8 = undefined;
+            append(&buf, &pos, "【第");
+            append(&buf, &pos, formatKanjiNum(self.hanoi.step, &s_buf));
+            append(&buf, &pos, "手／全");
+            append(&buf, &pos, formatKanjiNum(self.hanoi.total_steps, &t_buf));
+            append(&buf, &pos, "手】　");
+
+            var eb_start: u32 = 0;
+            var eb_end: u32 = 0;
+            if (self.hanoi.step == 0) {
+                append(&buf, &pos, "開始：");
+                eb_start = @intCast(pos);
+                append(&buf, &pos, "円盤");
+                eb_end = @intCast(pos);
+                append(&buf, &pos, "を壱から参へ移す\n");
+            } else if (self.hanoi.step < self.hanoi.total_steps) {
+                append(&buf, &pos, "移動：");
+                eb_start = @intCast(pos);
+                append(&buf, &pos, "円盤");
+                eb_end = @intCast(pos);
+                append(&buf, &pos, "［");
+                append(&buf, &pos, disk_nums[self.hanoi.last_disk]);
+                append(&buf, &pos, "］");
+                append(&buf, &pos, peg_names[self.hanoi.last_from]);
+                append(&buf, &pos, "・");
+                append(&buf, &pos, peg_names[self.hanoi.last_to]);
+                append(&buf, &pos, "\n");
+            } else {
+                append(&buf, &pos, "完成！全");
+                eb_start = @intCast(pos);
+                append(&buf, &pos, "円盤");
+                eb_end = @intCast(pos);
+                append(&buf, &pos, "の移動完了\n");
+            }
+
+            const n_disks: usize = self.hanoi.disks;
+            const peg_w: usize = 2 * n_disks + 1;
+
+            // Row 2: Top of the 3 poles (`　　　　｜　　　　`)
+            for (0..3) |p| {
+                if (p > 0) append(&buf, &pos, "　");
+                appendRepeat(&buf, &pos, "　", n_disks);
+                append(&buf, &pos, "｜");
+                appendRepeat(&buf, &pos, "　", n_disks);
+            }
+            append(&buf, &pos, "\n");
+
+            // Rows 3..(2 + n_disks): Disk levels from top (`lvl = n_disks - 1`) to bottom (`lvl = 0`)
+            var lvl: usize = n_disks;
+            while (lvl > 0) {
+                lvl -= 1;
+                for (0..3) |p| {
+                    if (p > 0) append(&buf, &pos, "　");
+                    if (lvl < self.hanoi.peg_len[p]) {
+                        const d: usize = self.hanoi.pegs[p][lvl];
+                        const radius: usize = d + 1; // 1..n_disks
+                        const pad: usize = n_disks - radius;
+                        appendRepeat(&buf, &pos, "　", pad);
+                        appendRepeat(&buf, &pos, "■", radius);
+                        append(&buf, &pos, disk_nums[d]);
+                        appendRepeat(&buf, &pos, "■", radius);
+                        appendRepeat(&buf, &pos, "　", pad);
+                    } else {
+                        appendRepeat(&buf, &pos, "　", n_disks);
+                        append(&buf, &pos, "｜");
+                        appendRepeat(&buf, &pos, "　", n_disks);
+                    }
+                }
+                append(&buf, &pos, "\n");
+            }
+
+            // Base row: `━━━━━━━━━　━━━━━━━━━　━━━━━━━━━`
+            for (0..3) |p| {
+                if (p > 0) append(&buf, &pos, "　");
+                appendRepeat(&buf, &pos, "━", peg_w);
+            }
+            append(&buf, &pos, "\n");
+
+            // Label row: `　　　【壱】　　　　　　　【弐】　　　　　　　【参】　　　`
+            var p_starts: [3]u32 = undefined;
+            var p_ends: [3]u32 = undefined;
+            const label_pad: usize = if (n_disks >= 1) n_disks - 1 else 0;
+            for (0..3) |p| {
+                if (p > 0) append(&buf, &pos, "　");
+                appendRepeat(&buf, &pos, "　", label_pad);
+                append(&buf, &pos, "【");
+                p_starts[p] = @intCast(pos);
+                append(&buf, &pos, peg_names[p]);
+                p_ends[p] = @intCast(pos);
+                append(&buf, &pos, "】");
+                appendRepeat(&buf, &pos, "　", label_pad);
+            }
+
+            self.doc.clear();
+            try self.doc.insertUtf8(buf[0..pos]);
+            try self.doc.addRuby(tou_start, tou_end, "とう");
+            try self.doc.addRuby(eb_start, eb_end, "えんばん");
+            for (0..3) |p| {
+                try self.doc.addRuby(p_starts[p], p_ends[p], peg_rubies[p]);
+            }
         }
 
         // ====================================================================
@@ -764,6 +1025,10 @@ pub fn XyWorkspace(
             glyph_scratch: []u8,
             out_placed: []PlacedGlyph,
         ) viewport_layout.Error![]const PlacedGlyph {
+            if (self.doc.len == 0) {
+                self.layout_dirty = false;
+                return out_placed[0..0];
+            }
             var ann_buf: [max_ruby_spans]viewport_layout.ruby.Annotation = undefined;
             for (self.doc.ruby_spans[0..self.doc.ruby_count], 0..) |s, idx| {
                 ann_buf[idx] = .{
@@ -925,4 +1190,80 @@ test "End-to-end 5-module integration: Scheme live-switches horizontal to vertic
     try std.testing.expectEqual(misses_after_h, cache.outline_misses); // Zero new SD/outline fetches!
     try std.testing.expect(list_v[1].cell_y_px > list_v[0].cell_y_px); // Vertical downward flow
     try std.testing.expect(list_v[2].cell_x_px > list_v[0].cell_x_px); // Ruby on the right side
+}
+
+test "appearance changes and rollback are atomic with typography" {
+    var ws: XyWorkspace(256, 8, 128, 2, 64) = .{};
+    _ = try ws.evalStr("(view/set! #:foreground #x234567 #:size 36 #:cursor-width 4)");
+    try std.testing.expectEqual(@as(u32, 0x234567), ws.appearance.foreground);
+    try std.testing.expectError(error.TypeMismatch, ws.evalStr("(view/set! #:background 0 #:size 0)"));
+    try std.testing.expectEqual(@as(u32, 0xfaf6ee), ws.appearance.background);
+    try std.testing.expectEqual(@as(u32, 2), ws.config_generation);
+    _ = try ws.evalStr("(sys/config-rollback!)");
+    try std.testing.expectEqual(@as(u8, 24), ws.style.body_px);
+    try std.testing.expectEqual(@as(u32, 0x1c1c1e), ws.appearance.foreground);
+}
+
+test "Scheme (hanoi/init! 4) and (hanoi/step!) solve 4-disk Towers of Hanoi in 15 steps with ruby annotations" {
+    const WsType = XyWorkspace(2048, 32, 512, 16, 256);
+    var ws: WsType = .{};
+
+    const total = try ws.evalStr("(hanoi/init! 4)");
+    try std.testing.expectEqual(@as(i64, 15), total.int);
+    try std.testing.expectEqual(@as(u8, 4), ws.hanoi.peg_len[0]);
+    try std.testing.expectEqual(@as(u8, 0), ws.hanoi.peg_len[2]);
+    try std.testing.expectEqual(@as(u32, 5), ws.doc.ruby_count);
+
+    for (0..15) |_| {
+        const moved = try ws.evalStr("(hanoi/step!)");
+        try std.testing.expect(moved.boolean);
+    }
+    try std.testing.expectEqual(@as(u8, 0), ws.hanoi.peg_len[0]);
+    try std.testing.expectEqual(@as(u8, 0), ws.hanoi.peg_len[1]);
+    try std.testing.expectEqual(@as(u8, 4), ws.hanoi.peg_len[2]);
+
+    const after_done = try ws.evalStr("(hanoi/step!)");
+    try std.testing.expect(!after_done.boolean);
+}
+
+test "Scheme Tailscale and SSH terminal queries: (ts/status), (ts/peers), and (ssh/connect)" {
+    const WsType = XyWorkspace(2048, 32, 512, 16, 256);
+    var ws: WsType = .{};
+
+    // Default status when no hook is set
+    const default_st = try ws.evalStr("(ts/status)");
+    try std.testing.expectEqualStrings("stopped", default_st.symbol);
+
+    const empty_peers = try ws.evalStr("(ts/peers)");
+    try std.testing.expectEqual(ValueTag.nil, @as(ValueTag, empty_peers));
+
+    // Mock status hook
+    const MockHook = struct {
+        fn hook(_: ?*anyopaque, out: *terminal_adapter.TsStatus) void {
+            out.state = .running;
+            out.peer_count = 2;
+            var p0 = terminal_adapter.TsPeer{ .online = true };
+            @memcpy(p0.hostname[0..7], "macbook");
+            out.peers[0] = p0;
+
+            var p1 = terminal_adapter.TsPeer{ .online = true };
+            @memcpy(p1.hostname[0..12], "linux-server");
+            out.peers[1] = p1;
+        }
+    };
+
+    ws.ts_status_hook = MockHook.hook;
+
+    const running_st = try ws.evalStr("(ts/status)");
+    try std.testing.expectEqualStrings("running", running_st.symbol);
+
+    const peers_val = try ws.evalStr("(ts/peers)");
+    try std.testing.expectEqual(ValueTag.pair, @as(ValueTag, peers_val));
+
+    var buf: [128]u8 = undefined;
+    const peers_str = ws.arena.formatValue(peers_val, &buf);
+    try std.testing.expectEqualStrings("(\"macbook\" \"linux-server\")", peers_str);
+
+    const ssh_res = try ws.evalStr("(ssh/connect \"macbook\")");
+    try std.testing.expectEqualStrings("connecting to macbook...", ssh_res.string);
 }

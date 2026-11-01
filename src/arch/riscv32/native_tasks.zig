@@ -50,13 +50,13 @@ extern fn nih_user_probe_trampoline() callconv(.c) void;
 extern fn nih_user_probe_body() callconv(.c) void;
 
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
+const native_sqld = @hasDecl(options, "sqld") and options.sqld;
 extern fn nih_rust_native_fixture() callconv(.c) u32;
 extern fn nih_rust_task_entry(u32) callconv(.c) i32;
 var rust_task_pass: u32 = 0;
 pub fn rustTaskPass() bool {
     return @atomicLoad(u32, &rust_task_pass, .acquire) == 1;
 }
-
 const normal_boot = @import("native_options").boot_fast;
 const wasm_task_enabled = @hasDecl(options, "wasm_task") and options.wasm_task;
 const leased_stack = @import("leased_stack.zig");
@@ -89,6 +89,7 @@ const Owner = struct {
     worker_reaped: [2]bool = .{ false, false },
     timer_interrupts: u32 = 0,
     graphics_task: ?scheduler.TaskHandle = null,
+    sqld_task: if (native_sqld) ?scheduler.TaskHandle else void = if (native_sqld) null else {},
     /// Protected task exited by a contained fault. Bootstrap reaps it after
     /// the ledger drain. This is not an extra scheduler slot.
     faulted: ?scheduler.TaskHandle = null,
@@ -322,6 +323,21 @@ pub fn prepare(hart: u32, stack_min: u32, stack_max: u32, gp: u32) bool {
     owner.lifecycle = add(hart, 2, .initial_lifecycle) orelse return false;
     owner.ready = true;
     return true;
+}
+
+// CPU0 bootstrap's synchronous renderer. Both calls require MIE=0; the
+// assembly bridge enables interrupts only after moving to the admitted stack.
+pub inline fn beginForegroundStack(low: u32, high: u32) ?runtime_module.Image {
+    if (asm volatile ("csrr %[v], mstatus"
+        : [v] "=r" (-> u32),
+    ) & 8 != 0 or !owners[0].ready) return null;
+    return owners[0].runtime.beginStackSwitch(owners[0].bootstrap, low, high);
+}
+pub inline fn endForegroundStack(original: runtime_module.Image) bool {
+    if (asm volatile ("csrr %[v], mstatus"
+        : [v] "=r" (-> u32),
+    ) & 8 != 0) return false;
+    return owners[0].runtime.endStackSwitch(owners[0].bootstrap, original);
 }
 
 pub fn ready(hart: u32) bool {
@@ -561,6 +577,9 @@ fn publish(hart: u32, selected: context.TaskContext) context.TaskContext {
     for ([_]scheduler.TaskHandle{ owner.bootstrap, owner.workers[0], owner.workers[1], owner.lifecycle }) |handle| {
         if (owner.runtime.policy.snapshot(handle)) |snapshot| total += snapshot.runtime_ticks;
     }
+    if (native_sqld) if (owner.sqld_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
+        total += snapshot.runtime_ticks;
+    };
     if (owner.graphics_task) |handle| if (owner.runtime.policy.snapshot(handle)) |snapshot| {
         total += snapshot.runtime_ticks;
     };
@@ -995,4 +1014,40 @@ fn admitProbe(hart: u32, case_id: u32) ?scheduler.TaskHandle {
     if (!memory.reusable.openTask(hart, key(handle))) return null;
     owner.protected_task = handle;
     return handle;
+}
+
+extern fn nih_sqld_native_task(u32) callconv(.c) i32;
+extern fn nih_sqld_native_prepare(u32, u32) callconv(.c) void;
+pub noinline fn startSqld() linksection(".flash.sqldtext") bool {
+    const owner = &owners[0];
+    const bottom: u32 = 0x483c0000;
+    const top: u32 = bottom + 65536;
+    @memset(@as([*]u8, @ptrFromInt(bottom))[0..65536], 0xa5);
+    const frame: *context.IntegerContext = @ptrFromInt(top - 128);
+    context.initialize(frame, .{ .entry = @intFromPtr(&nih_sqld_native_task), .argument = 0, .trampoline = @intFromPtr(&nih_native_task_trampoline), .global_pointer = owner.gp });
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    }
+    const handle = owner.runtime.add(0, .{ .frame = frame, .state = initial_state, .stack_min = bottom + 256, .stack_max = top }) orelse return false;
+    if (!memory.reusable.openTask(0, key(handle))) return false;
+    owner.sqld_task = handle;
+    nih_sqld_native_prepare(control.encodeHandle(owner.bootstrap), control.encodeHandle(handle));
+    return true;
+}
+pub fn wakeSqld(bits: u32) void {
+    const previous = asm volatile ("csrrci %[v],mstatus,8"
+        : [v] "=r" (-> u32),
+        :
+        : .{ .memory = true });
+    defer {
+        if (previous & 8 != 0) asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+    }
+    if (bits & 3 != 0) if (owners[0].sqld_task) |handle| {
+        _ = owners[0].runtime.policy.notify(handle, bits & 3);
+    };
+    if (bits & 4 != 0) _ = owners[0].runtime.policy.notify(owners[0].bootstrap, 4);
 }

@@ -1,0 +1,221 @@
+test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) ...
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=0, size=16)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 3696
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=0, size=20)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 2379
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=0, size=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 1836
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=0, size=28)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 1320
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=0, size=64)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 282 != 285
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=16)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 3672
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=20)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 2436
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 1725
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=28)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 1200 != 1380
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=32)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 900 != 1020
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=44)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 504 != 540
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=52)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 378 != 390
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='山', axis=1, size=60)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 282 != 288
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=16)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 2048
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=20)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 1326
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 1020
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=28)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 730
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=32)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 576
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=0, size=36)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 456
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=16)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 2040
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=20)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 1363
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=24)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 975
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=28)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 759
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=32)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 580
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=36)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 400 != 450
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=48)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 225 != 252
+
+======================================================================
+FAIL: test_pages_fill_the_available_cells_at_every_font_size_and_axis (regression.DeviceReader) (char='a', axis=1, size=56)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "tools/xy_tab5_reader_test.py", line 121, in test_pages_fill_the_available_cells_at_every_font_size_and_axis
+    self.assertEqual(self.state(4),expected)
+AssertionError: 168 != 180
+
+----------------------------------------------------------------------
+Ran 1 test in 0.155s
+
+FAILED (failures=27)

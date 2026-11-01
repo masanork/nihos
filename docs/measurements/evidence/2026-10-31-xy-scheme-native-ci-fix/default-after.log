@@ -1,0 +1,100 @@
+Activating ESP-IDF 5.4
+Setting IDF_PATH to '/Users/masanork/esp32/esp-idf-v5.4.4'.
+* Checking python version ... 3.9.6
+* Checking python dependencies ... OK
+* Deactivating the current ESP-IDF environment (if any) ... OK
+* Establishing a new ESP-IDF environment ... OK
+* Identifying shell ... bash
+* Detecting outdated tools in system ... OK - no outdated tools found
+* Shell completion ... Autocompletion code generated
+Executing action: bootloader
+Running ninja in directory /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader
+Executing "ninja bootloader"...
+[0/1] Re-running CMake...
+-- Building ESP-IDF components for target esp32p4
+-- Project sdkconfig file /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/sdkconfig
+Loading defaults file /private/tmp/nihos-xy-scheme-callback/ports/esp32p4-native/sdkconfig.defaults...
+Loading defaults file /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/xy.defaults...
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/riscv/ld/rom.api.ld
+-- USING O3
+-- App "nihos_native_loader" version: 03ef7fca-dirty
+-- Adding linker script /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/esp-idf/esp_system/ld/memory.ld
+-- Adding linker script /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/esp-idf/esp_system/ld/sections.ld.in
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.api.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.rvfp.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.wdt.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.systimer.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.version.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.newlib.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/soc/esp32p4/ld/esp32p4.peripherals.ld
+-- Components: app_trace app_update bootloader bootloader_support bt cmock console cxx driver efuse esp-tls esp_adc esp_app_format esp_bootloader_format esp_coex esp_common esp_driver_ana_cmpr esp_driver_cam esp_driver_dac esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_i2s esp_driver_isp esp_driver_jpeg esp_driver_ledc esp_driver_mcpwm esp_driver_parlio esp_driver_pcnt esp_driver_ppa esp_driver_rmt esp_driver_sdio esp_driver_sdm esp_driver_sdmmc esp_driver_sdspi esp_driver_spi esp_driver_touch_sens esp_driver_tsens esp_driver_uart esp_driver_usb_serial_jtag esp_eth esp_event esp_gdbstub esp_hal_ieee802154 esp_hid esp_http_client esp_http_server esp_https_ota esp_https_server esp_hw_support esp_lcd esp_local_ctrl esp_mm esp_netif esp_netif_stack esp_partition esp_phy esp_pm esp_psram esp_ringbuf esp_rom esp_security esp_system esp_timer esp_vfs_console esp_wifi espcoredump esptool_py fatfs freertos hal heap http_parser idf_test ieee802154 json log lwip main mbedtls mqtt newlib nvs_flash nvs_sec_provider openthread partition_table protobuf-c protocomm pthread riscv rt sdmmc soc spi_flash spiffs tcp_transport ulp unity usb vfs wear_levelling wifi_provisioning wpa_supplicant
+-- Component paths: /Users/masanork/esp32/esp-idf-v5.4.4/components/app_trace /Users/masanork/esp32/esp-idf-v5.4.4/components/app_update /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader_support /Users/masanork/esp32/esp-idf-v5.4.4/components/bt /Users/masanork/esp32/esp-idf-v5.4.4/components/cmock /Users/masanork/esp32/esp-idf-v5.4.4/components/console /Users/masanork/esp32/esp-idf-v5.4.4/components/cxx /Users/masanork/esp32/esp-idf-v5.4.4/components/driver /Users/masanork/esp32/esp-idf-v5.4.4/components/efuse /Users/masanork/esp32/esp-idf-v5.4.4/components/esp-tls /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_adc /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_app_format /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_bootloader_format /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_coex /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_common /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_ana_cmpr /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_cam /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_dac /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_gpio /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_gptimer /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_i2c /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_i2s /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_isp /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_jpeg /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_ledc /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_mcpwm /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_parlio /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_pcnt /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_ppa /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_rmt /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_sdio /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_sdm /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_sdmmc /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_sdspi /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_spi /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_touch_sens /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_tsens /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_uart /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_driver_usb_serial_jtag /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_eth /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_event /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_gdbstub /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_hal_ieee802154 /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_hid /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_http_client /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_http_server /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_https_ota /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_https_server /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_hw_support /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_lcd /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_local_ctrl /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_mm /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_netif /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_netif_stack /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_partition /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_phy /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_pm /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_psram /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_ringbuf /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_security /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_system /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_timer /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_vfs_console /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_wifi /Users/masanork/esp32/esp-idf-v5.4.4/components/espcoredump /Users/masanork/esp32/esp-idf-v5.4.4/components/esptool_py /Users/masanork/esp32/esp-idf-v5.4.4/components/fatfs /Users/masanork/esp32/esp-idf-v5.4.4/components/freertos /Users/masanork/esp32/esp-idf-v5.4.4/components/hal /Users/masanork/esp32/esp-idf-v5.4.4/components/heap /Users/masanork/esp32/esp-idf-v5.4.4/components/http_parser /Users/masanork/esp32/esp-idf-v5.4.4/components/idf_test /Users/masanork/esp32/esp-idf-v5.4.4/components/ieee802154 /Users/masanork/esp32/esp-idf-v5.4.4/components/json /Users/masanork/esp32/esp-idf-v5.4.4/components/log /Users/masanork/esp32/esp-idf-v5.4.4/components/lwip /private/tmp/nihos-xy-scheme-callback/ports/esp32p4-native/main /Users/masanork/esp32/esp-idf-v5.4.4/components/mbedtls /Users/masanork/esp32/esp-idf-v5.4.4/components/mqtt /Users/masanork/esp32/esp-idf-v5.4.4/components/newlib /Users/masanork/esp32/esp-idf-v5.4.4/components/nvs_flash /Users/masanork/esp32/esp-idf-v5.4.4/components/nvs_sec_provider /Users/masanork/esp32/esp-idf-v5.4.4/components/openthread /Users/masanork/esp32/esp-idf-v5.4.4/components/partition_table /Users/masanork/esp32/esp-idf-v5.4.4/components/protobuf-c /Users/masanork/esp32/esp-idf-v5.4.4/components/protocomm /Users/masanork/esp32/esp-idf-v5.4.4/components/pthread /Users/masanork/esp32/esp-idf-v5.4.4/components/riscv /Users/masanork/esp32/esp-idf-v5.4.4/components/rt /Users/masanork/esp32/esp-idf-v5.4.4/components/sdmmc /Users/masanork/esp32/esp-idf-v5.4.4/components/soc /Users/masanork/esp32/esp-idf-v5.4.4/components/spi_flash /Users/masanork/esp32/esp-idf-v5.4.4/components/spiffs /Users/masanork/esp32/esp-idf-v5.4.4/components/tcp_transport /Users/masanork/esp32/esp-idf-v5.4.4/components/ulp /Users/masanork/esp32/esp-idf-v5.4.4/components/unity /Users/masanork/esp32/esp-idf-v5.4.4/components/usb /Users/masanork/esp32/esp-idf-v5.4.4/components/vfs /Users/masanork/esp32/esp-idf-v5.4.4/components/wear_levelling /Users/masanork/esp32/esp-idf-v5.4.4/components/wifi_provisioning /Users/masanork/esp32/esp-idf-v5.4.4/components/wpa_supplicant
+-- Configuring done (2.8s)
+-- Generating done (0.3s)
+-- Build files have been written to: /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader
+[1/4] Performing build step for 'bootloader'
+[0/1] Re-running CMake...
+-- Building ESP-IDF components for target esp32p4
+-- Project sdkconfig file /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/sdkconfig
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/riscv/ld/rom.api.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/soc/esp32p4/ld/esp32p4.peripherals.ld
+-- Bootloader project name: "bootloader" version: 1
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.api.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.rvfp.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.wdt.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.systimer.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.version.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.newlib.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom/esp32p4/ld/esp32p4.rom.newlib.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader/subproject/main/ld/esp32p4/bootloader.ld
+-- Adding linker script /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader/subproject/main/ld/esp32p4/bootloader.rom.ld
+-- Components: bootloader bootloader_support efuse esp_app_format esp_bootloader_format esp_common esp_hw_support esp_rom esp_security esp_system esptool_py freertos hal log main micro-ecc newlib partition_table region_protect riscv soc spi_flash
+-- Component paths: /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader_support /Users/masanork/esp32/esp-idf-v5.4.4/components/efuse /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_app_format /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_bootloader_format /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_common /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_hw_support /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_rom /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_security /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_system /Users/masanork/esp32/esp-idf-v5.4.4/components/esptool_py /Users/masanork/esp32/esp-idf-v5.4.4/components/freertos /Users/masanork/esp32/esp-idf-v5.4.4/components/hal /Users/masanork/esp32/esp-idf-v5.4.4/components/log /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader/subproject/main /Users/masanork/esp32/esp-idf-v5.4.4/components/bootloader/subproject/components/micro-ecc /Users/masanork/esp32/esp-idf-v5.4.4/components/newlib /Users/masanork/esp32/esp-idf-v5.4.4/components/partition_table /private/tmp/nihos-xy-scheme-callback/ports/esp32p4-native/bootloader_components/region_protect /Users/masanork/esp32/esp-idf-v5.4.4/components/riscv /Users/masanork/esp32/esp-idf-v5.4.4/components/soc /Users/masanork/esp32/esp-idf-v5.4.4/components/spi_flash
+-- Configuring done (2.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/bootloader
+[1/2] cd /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/bootloader/esp-idf/esptool_py && /Users/masanork/.espressif/python_env/idf5.4_py3.9_env/bin/python /Users/masanork/esp32/esp-idf-v5.4.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x2000 /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/bootloader/bootloader.bin
+Bootloader binary size 0x4f20 bytes. 0x10e0 bytes (18%) free.
+[2/4] No install step for 'bootloader'
+[3/4] Completed 'bootloader'
+Executing action: partition-table
+Running ninja in directory /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader
+Executing "ninja partition-table"...
+[1/1] cd /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/esp-idf/partition_table && /opt/homebrew/bin/cmake -E echo "Partition table binary generated. Contents:" && /opt/homebrew/bin/cmake -E echo "*******************************************************************************" && /Users/masanork/.espressif/python_env/idf5.4_py3.9_env/bin/python /Users/masanork/esp32/esp-idf-v5.4.4/components/partition_table/gen_esp32part.py -q --offset 0x8000 --flash-size 16MB -- /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader/partition_table/partition-table.bin && /opt/homebrew/bin/cmake -E echo "*******************************************************************************"
+Partition table binary generated. Contents:
+*******************************************************************************
+# ESP-IDF Partition Table
+# Name, Type, SubType, Offset, Size, Flags
+nvs,data,nvs,0x9000,24K,
+phy_init,data,phy,0xf000,4K,
+factory,app,factory,0x10000,4M,
+*******************************************************************************
+
+Partition Table build complete. To flash, run:
+ idf.py partition-table-flash
+or
+ idf.py -p PORT partition-table-flash
+or
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash 0x8000 build/native-device-network-devices-camera/loader/partition_table/partition-table.bin
+or from the "/private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader" directory
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+
+Bootloader build complete. To flash, run:
+ idf.py bootloader-flash
+or
+ idf.py -p PORT bootloader-flash
+or
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x2000 build/native-device-network-devices-camera/loader/bootloader/bootloader.bin
+or from the "/private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/loader" directory
+ python -m esptool --chip esp32p4 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+esptool.py v4.12.0
+Creating esp32p4 image...
+Merged 6 ELF sections
+Successfully created esp32p4 image.
+esptool.py v4.12.0
+SHA digest in image updated
+Wrote 0x3670d0 bytes to file /private/tmp/nihos-xy-scheme-callback/build/native-device-network-devices-camera/nihos-native-flash.bin, ready to flash to offset 0x0
+Native image audit passed: SRAM runtime, approved Flash code/tables, known ROM ABI, no RTOS symbols
+Private network integration receipt retained; credentials withheld

@@ -1,0 +1,406 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4fc0420c
+Core1 Saved PC:0x4fc058d8
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbd8
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_CPU_CLOCK status=00000001 error_code=00000000 pc=40000fe4 source=00000001 cpll_mhz=00000168 before_mhz=00000059 after_mhz=00000167 mem_mhz=000000b4 apb_mhz=0000005a ctrl0=00000000 ctrl1=00000001 ctrl2=00010000 rom_mhz=00000168
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001452 probe=40000188 mapping=40000bb2 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d30 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000d05d bus=00010001 command=00010001 sctrl=02f7c679 cmd=8cfc0000 ddr=00003023 dll_cache=00000021 dll_command=00000021 dqs0=00010001 dqs1=00010001
+NIHOS_NATIVE_PSRAM_TUNING status=00000001 stage=00000004 phase_mask=0000000f phase=00000000 delay_mask=1fffffc0 delay=00000011 repetitions=00000064 reads=000121a0 writes=00000020 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000001 mhz=00000190 reused=00000001 divider=00000099 error_code=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000030 mr4=00000020 mr8=0000004b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=0001229e
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=0002eabb
+NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000003 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=00000000 phy_trim=00000000 phy_status=00000000 scanout=00000000 backlight=00000000
+NIHOS_NATIVE_DISPLAY_PINS initial_pins=00000003 failed_pins=00000000 recovery_pulses=00000000
+NIHOS_NATIVE_BOOT_TIME stage=00000003 elapsed_us=00032951
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000303 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_DISPLAY_SOURCE sram=00000000 source=48030000 dma_source=48030200 dma_control=001e1b41 word=00000000
+NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001
+NIHOS_NATIVE_DISPLAY_TIMING pixel_hz=04c4b400 refresh_millihz=0000ea4e htotal=00000322 vtotal=0000067f
+NIHOS_NATIVE_DISPLAY_LEASE lease_start=00000000 lease_bytes=00000000 nodes=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000005 elapsed_us=00144992
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000007 elapsed_us=0015db79
+NIHOS_NATIVE_UI_START frames=0000000b clock_hz=000f4240 sources=00000001 view=00000000 progress=00000009 target=00000055
+Wi-Fi starting (exclusive SDIO, lease maintenance enabled)
+Wi-Fi unconfigured: waiting for settings
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000004 elapsed_us=001a0765
+NIHOS_NATIVE_BOOT_TIME stage=00000006 elapsed_us=001b95ed
+NIHOS_NATIVE_CONSOLE status=00000001 columns=00000050 rows=00000016 log_bytes=00000800 dropped_low=00000781 input=00000001
+NIHOS_NATIVE_CONSOLE_STYLE cell_width=0000000f cell_height=0000001e palette=00000004 foreground=000007e8 accent=000005a6 background=00001082 font=00000001
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=00000021 clock_hz=000f4240 sources=00000001 view=00000000 progress=00000015 target=000000ff
+NIHOS_NATIVE_DISPLAY_IRQ_PASS frames=00000024 fault=00000000 event=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000
+NIHOS_NATIVE_TOUCH_INPUT status=00000001 panel=00000003 width=000002d0 height=00000500 slots=0000000a polls=00000000 fresh=00000000 errors=00000000 error_code=00000000 max_poll_us=000009b1
+NIHOS_NATIVE_POINTER down=00000000 move=00000000 up=00000000 cancel=00000000 multi=00000000 overflow=00000000 quadrants=00000000 queued=00000000
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000000 initialized=00000000 stage=00000000 fault=00000000 uploaded=00000000 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26103140 rtc_raw_time=00012842 year=000007ea month=0000000a day=0000001f hour=00000001 minute=0000001c second=0000002a ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_NETWORK phase=00000002 station=00000000 error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000000 tx=00000000 polls=00000001 max_poll_us=0000004d renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000000 commands=00000000 events=00000000 advertisements=00000000 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000025 ticks0=00000016 ticks1=00000016
+NIHOS_NORMAL_FS status=00000001 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=00000000 reads=00000000 yields=00000000
+NIHOS_NATIVE_TOUCH_UI available=00000001 sources=00000011 x=00000460 y=00000010 width=00000090 height=00000040
+NIHOS_NORMAL_FS status=00000004 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=fffffefa reads=00000001 yields=00000001
+SD unavailable. Enter :storage to retry.
+NIHOS_NATIVE_UI_SETTLED frames=00000074 progress=000000ff target=000000ff
+
+xy / *scratch* [RAM]
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_STATE revision=00000001 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=0000007b input_bytes=00000000 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000002 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000000b bytes=00000005 cursor=00000005 fnv=3d16aec7 mode=00000000 frames=0000007f input_bytes=00000006 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000003 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000000c bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000000 frames=00000081 input_bytes=00000009 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000004 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000000e bytes=00000006 cursor=00000005 fnv=ed204695 mode=00000000 frames=00000084 input_bytes=0000000a pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000005 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000000f bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000000 frames=00000087 input_bytes=0000000b pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000006 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000011 bytes=0000000c cursor=0000000b fnv=99b26f0c mode=00000000 frames=0000008b input_bytes=00000012 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000007 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000012 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000000 frames=0000008d input_bytes=00000013 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000008 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000012 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000000 frames=00000090 input_bytes=00000014 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000009 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000013 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000001 frames=00000093 input_bytes=00000014 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000a stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000018 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000002 frames=00000098 input_bytes=00000019 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000b stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000018 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000002 frames=0000009b input_bytes=0000001a pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000c stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000019 bytes=00000005 cursor=00000004 fnv=3d16aec7 mode=00000000 frames=0000009e input_bytes=0000001a pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000d stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000029 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000a2 input_bytes=00000022 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000e stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000029 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000a5 input_bytes=00000023 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000f stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000002a bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000a8 input_bytes=00000023 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000010 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000002f bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000ad input_bytes=00000027 pending_utf8=00000000 status=00000005 buffer_kind=00000001 buffer_bytes=00000800 buffer_hash=af4e9dcd
+NIHOS_NATIVE_XY_RENDER frames=00000011 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000034 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000b1 input_bytes=0000002c pending_utf8=00000000 status=00000008 buffer_kind=00000001 buffer_bytes=00000800 buffer_hash=af4e9dcd
+NIHOS_NATIVE_XY_RENDER frames=00000012 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000035 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000b5 input_bytes=0000002d pending_utf8=00000000 status=00000000 buffer_kind=00000001 buffer_bytes=00000800 buffer_hash=20b69703
+NIHOS_NATIVE_XY_RENDER frames=00000013 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000035 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000b9 input_bytes=0000002e pending_utf8=00000000 status=00000000 buffer_kind=00000001 buffer_bytes=00000800 buffer_hash=20b69703
+NIHOS_NATIVE_XY_RENDER frames=00000014 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000036 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000bd input_bytes=0000002e pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000015 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000036 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000c0 input_bytes=0000002f pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000016 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000037 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000c3 input_bytes=0000002f pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000017 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000003c bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000c7 input_bytes=00000033 pending_utf8=00000000 status=00000005 buffer_kind=00000002 buffer_bytes=000000a5 buffer_hash=06e7371f
+NIHOS_NATIVE_XY_RENDER frames=00000018 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000041 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000cb input_bytes=00000038 pending_utf8=00000000 status=00000008 buffer_kind=00000002 buffer_bytes=000000a5 buffer_hash=06e7371f
+NIHOS_NATIVE_XY_RENDER frames=00000019 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000042 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000ce input_bytes=00000039 pending_utf8=00000000 status=00000000 buffer_kind=00000002 buffer_bytes=000000a5 buffer_hash=06e7371f
+NIHOS_NATIVE_XY_RENDER frames=0000001a stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000042 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000d2 input_bytes=0000003a pending_utf8=00000000 status=00000000 buffer_kind=00000002 buffer_bytes=000000a5 buffer_hash=06e7371f
+NIHOS_NATIVE_XY_RENDER frames=0000001b stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000043 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000d5 input_bytes=0000003a pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001c stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000043 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000d8 input_bytes=0000003b pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001d stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000044 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000db input_bytes=0000003b pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001e stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000004b bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000df input_bytes=00000041 pending_utf8=00000000 status=00000005 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=b91d7df5
+NIHOS_NATIVE_XY_RENDER frames=0000001f stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000050 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000e2 input_bytes=00000046 pending_utf8=00000000 status=00000008 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=b91d7df5
+NIHOS_NATIVE_XY_RENDER frames=00000020 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000051 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000e6 input_bytes=00000047 pending_utf8=00000000 status=00000000 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=395e5b7f
+NIHOS_NATIVE_XY_RENDER frames=00000021 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000051 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=000000ea input_bytes=00000048 pending_utf8=00000000 status=00000000 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=395e5b7f
+NIHOS_NATIVE_XY_RENDER frames=00000022 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000052 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000ed input_bytes=00000048 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000023 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000052 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=000000f0 input_bytes=00000049 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000024 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000053 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000f4 input_bytes=00000049 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000025 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000063 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000f6 input_bytes=00000059 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000026 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000073 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000fa input_bytes=00000069 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000027 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000083 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=000000fd input_bytes=00000079 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000028 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000093 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000100 input_bytes=00000088 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000029 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000093 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000103 input_bytes=00000089 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002a stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000094 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000106 input_bytes=00000089 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002b stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000009b bytes=0000000f cursor=0000000e fnv=6cd77203 mode=00000000 frames=00000109 input_bytes=0000008f pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002c stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000009c bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000010d input_bytes=00000090 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002d stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000009c bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000110 input_bytes=00000091 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002e stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000009d bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000113 input_bytes=00000091 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000002f stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000ad bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000116 input_bytes=000000a1 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000030 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000bc bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000119 input_bytes=000000af pending_utf8=00000000 status=00000006 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000031 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000bc bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000011c input_bytes=000000b0 pending_utf8=00000000 status=00000006 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000032 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000bd bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=0000011f input_bytes=000000b0 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000033 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000cd bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000123 input_bytes=000000c0 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000034 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000d3 bytes=0000000e cursor=0000000d fnv=6aa4e727 mode=00000000 frames=00000126 input_bytes=000000c5 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000035 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000d4 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000129 input_bytes=000000c6 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000036 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000d4 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000012c input_bytes=000000c7 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000037 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000d5 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=0000012f input_bytes=000000c7 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000038 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000e5 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000132 input_bytes=000000d7 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000039 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000f5 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000136 input_bytes=000000e7 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003a stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000105 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000138 input_bytes=000000f7 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003b stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000113 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000013c input_bytes=00000104 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003c stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000113 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000013e input_bytes=00000105 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003d stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000114 bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=00000141 input_bytes=00000105 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003e stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000011b bytes=0000000e cursor=0000000d fnv=488a6e24 mode=00000000 frames=00000144 input_bytes=0000010b pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000003f stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000011c bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000148 input_bytes=0000010c pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000040 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000011c bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=0000014a input_bytes=0000010d pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000041 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000011d bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000001 frames=0000014d input_bytes=0000010d pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000042 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000012d bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=00000151 input_bytes=0000011c pending_utf8=00000000 status=00000005 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=443b621a
+NIHOS_NATIVE_XY_RENDER frames=00000043 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_TOUCH_INPUT status=00000001 panel=00000003 width=000002d0 height=00000500 slots=0000000a polls=00000069 fresh=00000000 errors=00000000 error_code=00000000 max_poll_us=000009b1
+NIHOS_NATIVE_POINTER down=00000000 move=00000000 up=00000000 cancel=00000000 multi=00000000 overflow=00000000 quadrants=00000000 queued=00000000
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000024 initialized=00000000 stage=00000004 fault=00000000 uploaded=00000a20 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26103140 rtc_raw_time=00012846 year=000007ea month=0000000a day=0000001f hour=00000001 minute=0000001c second=0000002e ina_present=00000001 bus_uv=007b36f8 shunt_uv_x10=00000019 shunt_negative=00000000 imu_chip=00000024 imu_initialized=00000000 errors=00000000 samples=00000005
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_NETWORK phase=00000003 station=0000000c error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=0000036c tx=000000b2 polls=00000038 max_poll_us=00001c85 renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=0000000d bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000003 commands=00000006 events=00000013 advertisements=0000000d malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000152 ticks0=0000020c ticks1=0000020c
+NIHOS_NATIVE_XY_STATE revision=0000012d bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000003 frames=00000155 input_bytes=0000011d pending_utf8=00000000 status=00000005 buffer_kind=00000003 buffer_bytes=000000b4 buffer_hash=443b621a
+NIHOS_NATIVE_XY_RENDER frames=00000044 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000012e bytes=0000000d cursor=0000000c fnv=1101f0f2 mode=00000000 frames=00000158 input_bytes=0000011d pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000045 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x40009f5c
+Core1 Saved PC:0x4ff06960
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbd8
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_CPU_CLOCK status=00000001 error_code=00000000 pc=40000fe4 source=00000001 cpll_mhz=00000168 before_mhz=00000059 after_mhz=00000167 mem_mhz=000000b4 apb_mhz=0000005a ctrl0=00000000 ctrl1=00000001 ctrl2=00010000 rom_mhz=00000168
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001452 probe=40000188 mapping=40000bb2 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d30 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000d05d bus=00010001 command=00010001 sctrl=02f7c679 cmd=8cfc0000 ddr=00003023 dll_cache=00000021 dll_command=00000021 dqs0=00010001 dqs1=00010001
+NIHOS_NATIVE_PSRAM_TUNING status=00000001 stage=00000004 phase_mask=0000000f phase=00000000 delay_mask=1fffffc0 delay=00000011 repetitions=00000064 reads=000121a0 writes=00000020 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000001 mhz=00000190 reused=00000001 divider=00000099 error_code=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000030 mr4=00000020 mr8=0000004b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=0001229e
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=0002ea78
+NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000003 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=00000000 phy_trim=00000000 phy_status=00000000 scanout=00000000 backlight=00000000
+NIHOS_NATIVE_DISPLAY_PINS initial_pins=00000003 failed_pins=00000000 recovery_pulses=00000000
+NIHOS_NATIVE_BOOT_TIME stage=00000003 elapsed_us=0003292a
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000305 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_DISPLAY_SOURCE sram=00000000 source=48030000 dma_source=48030200 dma_control=001e1b41 word=00000000
+NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001
+NIHOS_NATIVE_DISPLAY_TIMING pixel_hz=04c4b400 refresh_millihz=0000ea4e htotal=00000322 vtotal=0000067f
+NIHOS_NATIVE_DISPLAY_LEASE lease_start=00000000 lease_bytes=00000000 nodes=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000005 elapsed_us=00144978
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000007 elapsed_us=0015dafc
+NIHOS_NATIVE_UI_START frames=0000000b clock_hz=000f4240 sources=00000001 view=00000000 progress=00000009 target=00000055
+Wi-Fi starting (exclusive SDIO, lease maintenance enabled)
+Wi-Fi unconfigured: waiting for settings
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000004 elapsed_us=001a10af
+NIHOS_NATIVE_BOOT_TIME stage=00000006 elapsed_us=001ba110
+NIHOS_NATIVE_CONSOLE status=00000001 columns=00000050 rows=00000016 log_bytes=00000800 dropped_low=00000781 input=00000001
+NIHOS_NATIVE_CONSOLE_STYLE cell_width=0000000f cell_height=0000001e palette=00000004 foreground=000007e8 accent=000005a6 background=00001082 font=00000001
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=00000022 clock_hz=000f4240 sources=00000001 view=00000000 progress=00000015 target=000000ff
+NIHOS_NATIVE_DISPLAY_IRQ_PASS frames=00000025 fault=00000000 event=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000
+NIHOS_NATIVE_TOUCH_INPUT status=00000001 panel=00000003 width=000002d0 height=00000500 slots=0000000a polls=00000000 fresh=00000000 errors=00000000 error_code=00000000 max_poll_us=00000a31
+NIHOS_NATIVE_POINTER down=00000000 move=00000000 up=00000000 cancel=00000000 multi=00000000 overflow=00000000 quadrants=00000000 queued=00000000
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000000 initialized=00000000 stage=00000000 fault=00000000 uploaded=00000000 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26103140 rtc_raw_time=00012849 year=000007ea month=0000000a day=0000001f hour=00000001 minute=0000001c second=00000031 ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_NETWORK phase=00000002 station=00000000 error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000000 tx=00000000 polls=00000001 max_poll_us=0000004c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000000 commands=00000000 events=00000000 advertisements=00000000 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000025 ticks0=00000016 ticks1=00000016
+NIHOS_NORMAL_FS status=00000001 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=00000000 reads=00000000 yields=00000000
+NIHOS_NATIVE_TOUCH_UI available=00000001 sources=00000011 x=00000460 y=00000010 width=00000090 height=00000040
+NIHOS_NORMAL_FS status=00000004 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=fffffefa reads=00000001 yields=00000001
+SD unavailable. Enter :storage to retry.
+NIHOS_NATIVE_UI_SETTLED frames=00000075 progress=000000ff target=000000ff
+
+xy / *scratch* [RAM]
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_STATE revision=00000001 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=0000007c input_bytes=00000000 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000002 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x20c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff2e946
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbd8
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_CAMERA_BOOT flags=00000000 reason=00000017
+NIHOS_NATIVE_CPU_CLOCK status=00000001 error_code=00000000 pc=40000fe4 source=00000001 cpll_mhz=00000168 before_mhz=00000059 after_mhz=00000167 mem_mhz=000000b4 apb_mhz=0000005a ctrl0=00000000 ctrl1=00000001 ctrl2=00010000 rom_mhz=00000168
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40001452 probe=40000188 mapping=40000bb2 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000001 configuration=00008d30 identity=0000a0df bytes=02000000 transactions=00000004 mapped=02000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000d05d bus=00010001 command=00010001 sctrl=02f7c679 cmd=8cfc0000 ddr=00003023 dll_cache=00000021 dll_command=00000021 dqs0=00010001 dqs1=00010001
+NIHOS_NATIVE_PSRAM_TUNING status=00000001 stage=00000004 phase_mask=0000000f phase=00000000 delay_mask=1fffffc0 delay=00000011 repetitions=00000064 reads=00012160 writes=00000020 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000001 mhz=00000190 reused=00000001 divider=00000099 error_code=00000000
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000001 dref=00000007 mul=00000005 control=00000180 analog=76800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000001 mr0=00000030 mr4=00000020 mr8=0000004b addresses=00000019 passes=00000002 reads=00000032 writes=00000032 transactions=0001225e
+NIHOS_NATIVE_PSRAM_MAP status=00000001 failure=00000000 line_bytes=00000040 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=02000000 entries=00000400 cpu_checks=00000024 command_checks=00000024 transactions=00000048 syncs=00000005
+NIHOS_NATIVE_BOOT_TIME stage=00000001 elapsed_us=0002ea1f
+NIHOS_NATIVE_DISPLAY_PREP status=00000001 stage=00000003 error_code=00000000 panel=00000003 transactions=00000017 frame_start=48030000 frame_bytes=001c2000 reserve_bytes=001d0000 checksum=00000000 phy_trim=00000000 phy_status=00000000 scanout=00000000 backlight=00000000
+NIHOS_NATIVE_DISPLAY_PINS initial_pins=00000003 failed_pins=00000000 recovery_pulses=00000000
+NIHOS_NATIVE_BOOT_TIME stage=00000003 elapsed_us=000328c3
+NIHOS_NATIVE_DISPLAY_SCANOUT status=00000001 stage=00000005 error_code=00000000 panel=00000003 commands=00000022 last_command=00000029 frames=00000002 fault=00000000 event=00000000 backlight=00000001 dpi_mhz=00000050 lane_mbps=000003c0 cleanup=00000000 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000 start_code=00000000 prime_depth=00000302 bl_latch=00000001 bl_enable=00000001 bl_level=00000001 bl_mux=00001a00 bl_matrix=00000500 white=00000000
+NIHOS_NATIVE_DISPLAY_SOURCE sram=00000000 source=48030000 dma_source=48030200 dma_control=001e1b41 word=00000000
+NIHOS_NATIVE_DISPLAY_LAYOUT logical_width=00000500 logical_height=000002d0 rotation=00000001
+NIHOS_NATIVE_DISPLAY_TIMING pixel_hz=04c4b400 refresh_millihz=0000ea4e htotal=00000322 vtotal=0000067f
+NIHOS_NATIVE_DISPLAY_LEASE lease_start=00000000 lease_bytes=00000000 nodes=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000005 elapsed_us=00144944
+NIHOS_NATIVE_KEYBOARD status=00000002 firmware=00000000 mode=00000000 transactions=00000000 error_code=00000000 sources=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000007 elapsed_us=0015db4b
+NIHOS_NATIVE_UI_START frames=0000000b clock_hz=000f4240 sources=00000001 view=00000000 progress=00000009 target=00000055
+Wi-Fi starting (exclusive SDIO, lease maintenance enabled)
+Wi-Fi unconfigured: waiting for settings
+NIHOS_NATIVE_PSRAM_SMP status=00000001 rounds=00000001 owner_checks=00000030 peer_checks=00000030 command_checks=00000030 syncs=00000001
+NIHOS_NATIVE_BOOT_HEALTH cpu0_ticks=00000001 cpu1_ticks=00000001 ipi0=00000001 ipi1=00000001
+NIHOS_NATIVE_BOOT_TIME stage=00000004 elapsed_us=0019f1eb
+NIHOS_NATIVE_BOOT_TIME stage=00000006 elapsed_us=001b814d
+NIHOS_NATIVE_CONSOLE status=00000001 columns=00000050 rows=00000016 log_bytes=00000800 dropped_low=00000781 input=00000001
+NIHOS_NATIVE_CONSOLE_STYLE cell_width=0000000f cell_height=0000001e palette=00000004 foreground=000007e8 accent=000005a6 background=00001082 font=00000001
+NIHOS_NATIVE_UI_IO tx_dropped=00000000
+NIHOS_NATIVE_UI_READY frames=00000021 clock_hz=000f4240 sources=00000001 view=00000000 progress=00000018 target=000000ff
+NIHOS_NATIVE_DISPLAY_IRQ_PASS frames=00000024 fault=00000000 event=00000001 dsi_error0=00000000 dsi_error1=00000000 dma_error=00000000 bridge_error=00000000
+NIHOS_NATIVE_TOUCH_INPUT status=00000001 panel=00000003 width=000002d0 height=00000500 slots=0000000a polls=00000000 fresh=00000000 errors=00000000 error_code=00000000 max_poll_us=000009b2
+NIHOS_NATIVE_POINTER down=00000000 move=00000000 up=00000000 cancel=00000000 multi=00000000 overflow=00000000 quadrants=00000000 queued=00000000
+NIHOS_NATIVE_DEVICE_SERVICE available=00000007 requested=00000000 i2s_owner=00000000 pinned=00000000 workspace=00000000
+NIHOS_NATIVE_IMU chip=00000000 initialized=00000000 stage=00000000 fault=00000000 uploaded=00000000 valid=00000000 samples=00000000 acc_x=00000000 acc_y=00000000 acc_z=00000000 gyr_x=00000000 gyr_y=00000000 gyr_z=00000000 sensor_error=00000000 ready_status=00000000
+NIHOS_NATIVE_DEVICES rtc_present=00000001 rtc_valid=00000001 rtc_flags=00000025 rtc_control=00000000 rtc_error=00000000 rtc_raw_date=26103140 rtc_raw_time=00012855 year=000007ea month=0000000a day=0000001f hour=00000001 minute=0000001c second=00000037 ina_present=00000000 bus_uv=00000000 shunt_uv_x10=00000000 shunt_negative=00000000 imu_chip=00000000 imu_initialized=00000000 errors=00000000 samples=00000001
+NIHOS_NATIVE_NTP phase=00000000 attempts=00000000 replies=00000000 rejected=00000000 failures=00000000 server=00000000 stratum=00000000 rtt_us=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_RTC_SYNC applied=00000000 failures=00000000 error_code=00000000 unix_high=00000000 unix_low=00000000
+NIHOS_NATIVE_NETWORK phase=00000002 station=00000000 error_code=00000000 ip=00000000 linklocal=00000000 echo_requests=00000000 rx=00000000 tx=00000000 polls=00000001 max_poll_us=0000004c renewals=00000000 reconnects=00000000 acquisitions=00000000 failures=00000000 disconnect_reason=00000000 failed_station=00000000
+NIHOS_NATIVE_CONNECTIVITY configured=00000000 capabilities=00000000 bluetooth_status=00000000
+NIHOS_NATIVE_BLE phase=00000000 commands=00000000 events=00000000 advertisements=00000000 malformed=00000000 status=00000000 timeouts=00000000
+NIHOS_NATIVE_NETWORK_UI frames=00000025 ticks0=00000016 ticks1=00000016
+NIHOS_NORMAL_FS status=00000001 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=00000000 reads=00000000 yields=00000000
+NIHOS_NATIVE_TOUCH_UI available=00000001 sources=00000011 x=00000460 y=00000010 width=00000090 height=00000040
+NIHOS_NORMAL_FS status=00000004 epoch=00000001 kind=00000000 requests=00000000 completed=00000000 bytes=00000000 crc=00000000 eof=00000000 error_code=fffffefa reads=00000001 yields=00000001
+SD unavailable. Enter :storage to retry.
+NIHOS_NATIVE_UI_SETTLED frames=00000073 progress=000000ff target=000000ff
+
+xy / *scratch* [RAM]
+NIHOS_NATIVE_XY_READY document_bytes=00001000 undo_ops=00000100 workspace_bytes=000096d0 persistent=00000000 unicode_raster=00000001
+NIHOS_NATIVE_XY_STATE revision=00000001 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=0000007a input_bytes=00000000 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000002 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000001 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=0000007d input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000003 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000002 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=00000080 input_bytes=00000001 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000004 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000012 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=00000083 input_bytes=00000011 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000005 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000022 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=00000086 input_bytes=00000021 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000006 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000032 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=00000089 input_bytes=00000031 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000007 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000042 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=0000008d input_bytes=00000041 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000008 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000052 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000001 frames=0000008f input_bytes=00000051 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000009 stack_used=00010970 failed=00000000 font=00000000 size=00000018 axis=00000000 foreground=001c1c1e background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000054 bytes=00000000 cursor=00000000 fnv=811c9dc5 mode=00000000 frames=00000093 input_bytes=00000052 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000a stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000005b bytes=00000010 cursor=00000010 fnv=5f6e53d5 mode=00000000 frames=0000009d input_bytes=00000062 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000c stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000062 bytes=00000020 cursor=00000020 fnv=469ba529 mode=00000000 frames=000000a1 input_bytes=00000072 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000d stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000069 bytes=00000030 cursor=00000030 fnv=d31cef2f mode=00000000 frames=000000a5 input_bytes=00000082 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000e stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000075 bytes=00000040 cursor=00000040 fnv=122898bf mode=00000000 frames=000000a9 input_bytes=00000092 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000000f stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000007a bytes=0000004f cursor=0000004f fnv=deec19a4 mode=00000000 frames=000000ad input_bytes=000000a2 pending_utf8=00000001 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000010 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000007f bytes=0000005e cursor=0000005e fnv=14606790 mode=00000000 frames=000000b1 input_bytes=000000b0 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000011 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=0000007f bytes=0000005e cursor=0000005e fnv=14606790 mode=00000000 frames=000000b5 input_bytes=000000b1 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000012 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000080 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000b8 input_bytes=000000b1 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000013 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=00000090 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000bc input_bytes=000000c1 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000014 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000a0 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000c0 input_bytes=000000d1 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000015 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000a3 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000000 frames=000000c5 input_bytes=000000d3 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000016 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000001 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000a3 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000000 frames=000000d0 input_bytes=000000d4 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000018 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000001 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000a4 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000d3 input_bytes=000000d4 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=00000019 stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000001 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000b4 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000d7 input_bytes=000000e4 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001a stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000001 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000c4 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000001 frames=000000db input_bytes=000000f4 pending_utf8=00000000 status=00000000 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001b stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000001 foreground=00223344 background=00faf6ee
+NIHOS_NATIVE_XY_STATE revision=000000c9 bytes=0000005e cursor=0000005e fnv=14606790 mode=00000000 frames=000000e0 input_bytes=000000f8 pending_utf8=00000000 status=00000005 buffer_kind=00000000 buffer_bytes=00000000 buffer_hash=811c9dc5
+NIHOS_NATIVE_XY_RENDER frames=0000001c stack_used=00010970 failed=00000000 font=00000001 size=00000024 axis=00000000 foreground=00223344 background=00faf6ee
