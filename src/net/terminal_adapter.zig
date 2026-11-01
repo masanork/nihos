@@ -123,6 +123,7 @@ pub const SshTerminal = struct {
     }
 
     pub fn getView(self: *SshTerminal) TermView {
+        // SAFETY: nih_ssh_get_view immediately populates all fields of TermView.
         var view: TermView = undefined;
         nih_ssh_get_view(self.raw, &view);
         return view;

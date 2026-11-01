@@ -53,7 +53,7 @@ pub const SSH_MSG_CHANNEL_FAILURE = 100;
 pub const Aes128Ctr = struct {
     ctx: @TypeOf(Aes128.initEnc(@as([16]u8, @splat(0)))),
     iv: [16]u8,
-    keystream: [16]u8 = undefined,
+    keystream: [16]u8 = @splat(0),
     offset: u8 = 16,
 
     pub fn init(key: [16]u8, iv: [16]u8) Aes128Ctr {
