@@ -1,5 +1,11 @@
 # ESP-AT client controller
 
+`tcp_wire.zig` provides a bounded IPv4/TCP packet codec for future use by the
+ESP-Hosted P4 network path. It validates IPv4 and TCP checksums and rejects IP
+fragments; it does not provide a TCP connection, retransmission, socket API,
+native service integration, or a working SSH transport. The normal hosted
+network service does not yet call it.
+
 `esp_at.zig` decodes the bounded passive-socket/BLE receive profile.
 `at_commands.zig` encodes a closed set of typed commands, escaping quoted
 strings and rejecting control-character injection. `at_controller.zig`

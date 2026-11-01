@@ -183,6 +183,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_transport_module })).step);
     const ssh_socket_pump_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_socket_pump.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_socket_pump_module })).step);
+    const tcp_wire_module = b.createModule(.{ .root_source_file = b.path("src/net/tcp_wire.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tcp_wire_module })).step);
     const tailscale_module = b.createModule(.{ .root_source_file = b.path("src/net/tailscale.zig"), .target = target, .optimize = optimize });
     tailscale_module.addImport("terminal_adapter", terminal_adapter_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = tailscale_module })).step);
