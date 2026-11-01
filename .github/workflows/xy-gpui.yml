@@ -49,7 +49,7 @@ jobs:
   gpui:
     name: Shared animation and GPUI host
     needs: firmware
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 25
     env:
       RUSTUP_TOOLCHAIN: '1.98.1'
