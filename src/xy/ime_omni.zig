@@ -126,7 +126,9 @@ const RomajiEntry = struct {
     katakana: []const u8,
 };
 
-const romaji_table = [_]RomajiEntry{
+// Iterate through the address of this table below: iterating by value can
+// materialize an anonymous SRAM copy despite the explicit Flash section.
+const romaji_table linksection(if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__DATA_CONST,__const" else ".rodata") = [_]RomajiEntry{
     // 3-letter combinations
     .{ .romaji = "kya", .hiragana = "きゃ", .katakana = "キャ" },
     .{ .romaji = "kyu", .hiragana = "きゅ", .katakana = "キュ" },
@@ -305,7 +307,7 @@ pub const RomajiAutomaton = struct {
     }
 
     /// Feed a lowercase ASCII character and return any emitted kana bytes (up to 2 syllables, e.g. `"んか"` or `"っか"`).
-    pub fn feed(self: *RomajiAutomaton, ch: u8, katakana: bool) RomajiFeedResult {
+    pub fn feed(self: *RomajiAutomaton, ch: u8, katakana: bool) linksection(code_section) RomajiFeedResult {
         var res = RomajiFeedResult{};
 
         // Rule 1: If `'n'` is pending and `ch` cannot continue an `n*` syllable (`na..no`, `nya..nyo`, `nn`, `n'`),
@@ -335,7 +337,7 @@ pub const RomajiAutomaton = struct {
 
         const cur = self.pendingSlice();
         // Exact match check
-        for (romaji_table) |entry| {
+        for (&romaji_table) |entry| {
             if (std.mem.eql(u8, cur, entry.romaji)) {
                 const kana = if (katakana) entry.katakana else entry.hiragana;
                 @memcpy(res.emitted_buf[res.emitted_len .. res.emitted_len + kana.len], kana);
@@ -346,7 +348,7 @@ pub const RomajiAutomaton = struct {
         }
 
         // Prefix check: can `cur` still grow into a valid `romaji_table` entry?
-        for (romaji_table) |entry| {
+        for (&romaji_table) |entry| {
             if (std.mem.startsWith(u8, entry.romaji, cur)) {
                 return res;
             }
@@ -356,7 +358,7 @@ pub const RomajiAutomaton = struct {
         self.len = 0;
         self.pending[0] = ch;
         self.len = 1;
-        for (romaji_table) |entry| {
+        for (&romaji_table) |entry| {
             if (std.mem.eql(u8, self.pendingSlice(), entry.romaji)) {
                 const kana = if (katakana) entry.katakana else entry.hiragana;
                 @memcpy(res.emitted_buf[res.emitted_len .. res.emitted_len + kana.len], kana);
@@ -445,7 +447,7 @@ pub const OmniIme = struct {
         return false;
     }
 
-    pub fn classifyPrefix(self: *const OmniIme) struct { kind: PrefixKind, prefix_char: u8, body: []const u8 } {
+    pub fn classifyPrefix(self: *const OmniIme) linksection(code_section) struct { kind: PrefixKind, prefix_char: u8, body: []const u8 } {
         const raw = self.reading_buf[0..self.reading_len];
         if (raw.len == 0) return .{ .kind = .kanji, .prefix_char = 0, .body = "" };
         const first = raw[0];
@@ -474,14 +476,14 @@ pub const OmniIme = struct {
         };
     }
 
-    fn isBuiltinPrefixTrigger(ch: u8) bool {
+    fn isBuiltinPrefixTrigger(ch: u8) linksection(code_section) bool {
         return switch (ch) {
             '?', '~', '&', '@', ':', '(' => true,
             else => false,
         };
     }
 
-    fn isCustomPrefixTrigger(self: *const OmniIme, ch: u8) bool {
+    fn isCustomPrefixTrigger(self: *const OmniIme, ch: u8) linksection(code_section) bool {
         for (self.custom_prefixes) |slot| {
             if (slot.active and slot.prefix_char == ch) return true;
         }
@@ -503,7 +505,7 @@ pub const OmniIme = struct {
     }
 
     /// Synchronize the `Document`'s non-destructive `PreeditOverlay` with the current `OmniIme` state.
-    pub fn syncDocumentOverlay(self: *const OmniIme, doc: anytype) !void {
+    pub fn syncDocumentOverlay(self: *const OmniIme, doc: anytype) linksection(code_section) !void {
         if (self.phase == .idle) {
             doc.preedit.clear();
             return;
@@ -561,7 +563,7 @@ pub const OmniIme = struct {
         try self.syncDocumentOverlay(doc);
     }
 
-    fn triggerConversion(self: *OmniIme, doc: anytype, provider: OmniProvider) !void {
+    fn triggerConversion(self: *OmniIme, doc: anytype, provider: OmniProvider) linksection(code_section) !void {
         // Flush any trailing 'n' -> 'ん' before querying
         if (!isRawPrefixKind(self.classifyPrefix().kind)) {
             if (self.romaji.flushTrailingN(false)) |hatsuon| {
@@ -594,7 +596,7 @@ pub const OmniIme = struct {
         try self.syncDocumentOverlay(doc);
     }
 
-    fn commitSelected(self: *OmniIme, doc: anytype, provider: OmniProvider) !void {
+    fn commitSelected(self: *OmniIme, doc: anytype, provider: OmniProvider) linksection(code_section) !void {
         var commit_buf: [256]u8 = undefined;
         var commit_len: usize = 0;
 

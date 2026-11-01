@@ -231,7 +231,7 @@ XY_LEARNING_METHODS = {
 # IME entry points the workspace routes keys through. The candidate
 # minibuffer formatter is deliberately not approved: the device renderer
 # does not draw candidates yet, so it must not be linked into the image.
-XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'feed', 'clear', 'flushTrailingN', 'append'}
+XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'isBuiltinPrefixTrigger', 'triggerConversion', 'feed', 'clear', 'flushTrailingN', 'append'}
 XY_DICT_METHODS = {'init', 'lookup', 'commonPrefixSearch', 'omniProvider', 'omniQuery'}
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
@@ -242,16 +242,17 @@ def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
     render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
-    document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines|setPreedit|commitPreedit|deleteBackwardGrapheme)', name)
+    document_helper = re.fullmatch(r'xy\.document\.(?:nextClusterEnd|prevClusterStart)', name)
+    document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines|moveGraphemes|setPreedit|commitPreedit|deleteBackwardGrapheme|deleteForwardGrapheme)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
     lesson_helper = re.fullmatch(r'learning_view\.(?:render|label)__func_[0-9]+', name)
     soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|layout|contains|visible|defaultOrientation)(?:__func_[0-9]+)?', name)
-    ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+)(?:__func_[0-9]+)?', name)
+    ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+?)(?:__func_[0-9]+)?', name)
     ime_helper = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:isBuiltinPrefixTrigger|isRawPrefixKind)(?:__func_[0-9]+)?', name)
     dict_match = re.fullmatch(r'(?:xy\.)?dict\.(?:NfstDict|MeosDict)\.(\w+)(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(document or document_helper or learning_allowed or soft_keyboard or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
@@ -279,6 +280,20 @@ def audit_xy_plot_table(symbols, sizes, ro_start, ro_data, resident_rodata, requ
             'xy sine table outside declared readonly Flash storage')
     table = ro_data[start - ro_start:start - ro_start + size]
     require(table not in resident_rodata, 'xy sine table has an anonymous SRAM copy')
+    return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
+
+
+def audit_xy_romaji_table(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
+    names = [name for name in ('xy.ime_omni.romaji_table', 'ime_omni.romaji_table') if name in symbols]
+    if not required and not names:
+        return None
+    require(len(names) == 1, 'missing or competing xy romaji table storage')
+    name = names[0]
+    start, size = symbols[name], sizes.get(name)
+    require(size == 3288 and start % 4 == 0 and ro_start <= start <= ro_start + len(ro_data) - size,
+            'xy romaji table outside declared readonly Flash storage')
+    table = ro_data[start - ro_start:start - ro_start + size]
+    require(table not in resident_rodata, 'xy romaji table has an anonymous SRAM copy')
     return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
 
 
@@ -1110,6 +1125,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_functions = audit_xy_functions(functions, xy_span)
         plot_table = audit_xy_plot_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
                                          any(name.endswith('Runtime.applyApp') for name in xy_functions))
+        romaji_table = audit_xy_romaji_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
+                                             any(name.endswith('RomajiAutomaton.feed') for name in xy_functions))
         base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
@@ -1117,6 +1134,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         xy_report = {'start': hex(xy_start), 'end': hex(xy_ro + len(xy_data)), 'code_bytes': len(xy_code), 'rodata_bytes': len(xy_data), 'functions': xy_functions, 'foreground_only': True, 'heap_allocated': 'nih_xy_render' in xy_functions, 'render_stack_bytes': 524288 if 'nih_xy_render' in xy_functions else 0}
         if plot_table is not None:
             xy_report['plot_table'] = plot_table
+        if romaji_table is not None:
+            xy_report['romaji_table'] = romaji_table
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')

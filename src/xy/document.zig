@@ -74,7 +74,7 @@ pub inline fn isGraphemeContinuation(cp: u21) bool {
 }
 
 /// Returns the byte length of the extended grapheme cluster starting at `text[offset]`.
-pub fn nextClusterEnd(text: []const u8, offset: usize) Error!usize {
+pub fn nextClusterEnd(text: []const u8, offset: usize) linksection(mutation_section) Error!usize {
     if (offset >= text.len) return text.len;
     const len0 = std.unicode.utf8ByteSequenceLength(text[offset]) catch return error.InvalidUtf8;
     if (offset + len0 > text.len) return error.InvalidUtf8;
@@ -102,7 +102,7 @@ pub fn nextClusterEnd(text: []const u8, offset: usize) Error!usize {
 }
 
 /// Returns the byte start of the extended grapheme cluster immediately preceding `offset`.
-pub fn prevClusterStart(text: []const u8, offset: usize) Error!usize {
+pub fn prevClusterStart(text: []const u8, offset: usize) linksection(mutation_section) Error!usize {
     if (offset == 0) return 0;
     if (offset > text.len) return error.OutOfBounds;
 
@@ -208,7 +208,7 @@ pub fn Document(
         }
 
         /// Move cursor by `delta` extended grapheme clusters (negative = left, positive = right).
-        pub fn moveGraphemes(self: *Self, delta: i32) Error!u32 {
+        pub fn moveGraphemes(self: *Self, delta: i32) linksection(mutation_section) Error!u32 {
             var pos: usize = self.cursor;
             if (delta > 0) {
                 var rem: usize = @intCast(delta);
@@ -365,7 +365,7 @@ pub fn Document(
         }
 
         /// Delete one full extended grapheme cluster before the cursor (`Backspace`).
-        pub fn deleteBackwardGrapheme(self: *Self) Error!bool {
+        pub fn deleteBackwardGrapheme(self: *Self) linksection(mutation_section) Error!bool {
             if (self.cursor == 0) return false;
             const start: u32 = @intCast(try prevClusterStart(self.slice(), self.cursor));
             const del_len = self.cursor - start;
@@ -374,7 +374,7 @@ pub fn Document(
         }
 
         /// Delete one full extended grapheme cluster after the cursor (`Delete`).
-        pub fn deleteForwardGrapheme(self: *Self) Error!bool {
+        pub fn deleteForwardGrapheme(self: *Self) linksection(mutation_section) Error!bool {
             if (self.cursor >= self.len) return false;
             const end: u32 = @intCast(try nextClusterEnd(self.slice(), self.cursor));
             const del_len = end - self.cursor;
@@ -414,7 +414,7 @@ pub fn Document(
         }
 
         /// Set or update the non-destructive SKK preedit overlay at the current cursor.
-        pub fn setPreedit(self: *Self, phase: PreeditPhase, text: []const u8) Error!void {
+        pub fn setPreedit(self: *Self, phase: PreeditPhase, text: []const u8) linksection(mutation_section) Error!void {
             if (text.len > self.preedit.bytes.len) return error.PreeditFull;
             if (!std.unicode.utf8ValidateSlice(text)) return error.InvalidUtf8;
             self.preedit.phase = phase;

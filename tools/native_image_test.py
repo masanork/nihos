@@ -11,6 +11,15 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_romaji_table_must_be_in_flash_without_sram_copy(self):
+        name, start = 'xy.ime_omni.romaji_table', 0x40070000
+        table = bytes(range(256)) * 12 + bytes(range(216))
+        self.assertEqual(MODULE.audit_xy_romaji_table({name: start}, {name: 3288}, start, table, b'', True)['bytes'], 3288)
+        for symbols, sizes, resident in [({}, {}, b''), ({name: 0x4ff10000}, {name: 3288}, b''),
+                                         ({name: start}, {name: 3284}, b''), ({name: start}, {name: 3288}, table)]:
+            with self.subTest(symbols=symbols, sizes=sizes), self.assertRaises(ValueError):
+                MODULE.audit_xy_romaji_table(symbols, sizes, start, table, resident, True)
+
     def test_xy_sine_table_requires_flash_storage_without_anonymous_sram_copy(self):
         name, start = 'xy.plot_config.sine', 0x40070000
         table = bytes(range(256)) * 2
@@ -70,6 +79,8 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('soft_keyboard.visible'))
         self.assertFalse(MODULE.xy_function('xy.soft_keyboard.calibrate'))
         self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.handleKey'))
+        self.assertTrue(MODULE.xy_function('xy.ime_omni.OmniIme.triggerConversion__func_78'))
+        self.assertFalse(MODULE.xy_function('xy.ime_omni.OmniIme.triggerConversion__func_bad'))
         self.assertTrue(MODULE.xy_function('ime_omni.RomajiAutomaton.feed'))
         self.assertTrue(MODULE.xy_function('xy.ime_omni.CandidateList.append'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.imeRoute'))
