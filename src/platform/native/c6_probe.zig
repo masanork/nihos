@@ -675,8 +675,15 @@ pub const OtaInfoReport = struct {
 };
 var ota_info_exchange: hosted.c6_ota_info_exchange.Exchange = undefined;
 var ota_info_guard: hosted.c6_ota_info_exchange.ReadOnlyStream(@TypeOf(hosted_stream)) = undefined;
+fn traceOtaInfo(stage: u8) void {
+    for ("NIHOS_C6_OTA_INFO_STAGE ") |byte| _ = nih_rom_putc(byte);
+    _ = nih_rom_putc(stage);
+    _ = nih_rom_putc('\r');
+    _ = nih_rom_putc('\n');
+}
 noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
     report.stage = 1;
+    traceOtaInfo('1');
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
     host.io.delay(20_000);
@@ -684,20 +691,30 @@ noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
     host.io.delay(2_000_000);
     if (clock_failed) return error.Clock;
     report.stage = 2;
+    traceOtaInfo('2');
     try host.prepare(true);
     report.stage = 3;
+    traceOtaInfo('3');
     try host.identify();
     report.stage = 4;
+    traceOtaInfo('4');
     try host.enableFunction();
     try host.writeDoorbell(1, 0x8c, 1);
     report.stage = 5;
+    traceOtaInfo('5');
     const start = clock.counter() orelse return error.Clock;
     // The fixture creates one exchange after reset, so the nonce is never
     // reused on a live stream. A longer-lived owner must allocate fresh nonces.
     ota_info_exchange = try hosted.c6_ota_info_exchange.Exchange.init(0x12345678, start, start + 30_000_000);
+    traceOtaInfo('6');
+    var previous_state = ota_info_exchange.state;
     while (true) {
         const now = clock.counter() orelse return error.Clock;
         try ota_info_exchange.step(&ota_info_guard, now);
+        if (ota_info_exchange.state != previous_state) {
+            traceOtaInfo('A' + @as(u8, @intCast(@backingInt(ota_info_exchange.state))));
+            previous_state = ota_info_exchange.state;
+        }
         if (ota_info_exchange.state == .complete) {
             report.status = 1;
             report.stage = 6;
@@ -708,6 +725,7 @@ noinline fn exerciseOtaInfo(clock: timers.Timer, report: *OtaInfoReport) !void {
     }
 }
 pub fn runOtaInfo(clock: timers.Timer) OtaInfoReport {
+    traceOtaInfo('0');
     host = .{ .io = .{ .clock = clock } };
     hosted_stream = .{ .host = &host };
     ota_info_guard = .{ .inner = &hosted_stream };
