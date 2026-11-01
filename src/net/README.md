@@ -17,6 +17,13 @@ The owner must queue incoming frames during a send, invalidate on an ambiguous
 handoff or epoch change, and retain the tuple during TIME_WAIT. This has only
 host fixture coverage and is not yet integrated with the native network owner.
 
+`hosted_tcp_service.zig` wraps that connection in Hosted station frames and
+binds handles and pending TX to the network owner's lease/reset epoch. It
+rejects ambiguous partial sends and requires the caller to queue RX while a
+frame is staged. The OpenSSH/libslirp host fixture exercises this boundary;
+normal `network_service.zig` does not yet call it. It is not a socket table or
+a qualified DMA, Wi-Fi, reconnect, or device implementation.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.

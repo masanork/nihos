@@ -2,11 +2,15 @@
 const connect = @import("tcp_connect.zig");
 const tcp = @import("tcp_stream.zig");
 const wait = @import("tcp_time_wait.zig");
-const link_core = @import("tcp_link.zig");
+const hosted = @import("hosted.zig");
+const service_core = @import("hosted_tcp_service.zig");
 var opening: connect.Connect = .{};
 var stream: ?tcp.Stream = null;
 var time_wait: ?wait.TimeWait = null;
-var link: link_core.Link = .{};
+var service: service_core.Service = .{};
+var service_handle: ?service_core.Handle = null;
+var hosted_sequence: u16 = 0;
+var staged_length: usize = 0;
 var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
 
@@ -75,39 +79,60 @@ export fn tcp_probe_closed(now: u64) bool {
 /// Test-only Ethernet adapter. Production must obtain the lease and epoch from
 /// the network owner and route ARP requests, TCP frames and link resets there.
 export fn tcp_link_begin(port: u16) bool {
-    link.begin(.{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = guest_mac, .epoch = 1 }, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
+    service.sync(.{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = guest_mac, .epoch = 1 }) catch return false;
+    service_handle = service.open(.{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
     return true;
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
-    const frame = (link.poll(1, now) catch return 0) orelse return 0;
-    if (cap < frame.len) return 0;
-    @memcpy(out[0..frame.len], frame);
-    return frame.len;
+    const handle = service_handle orelse return 0;
+    const tx = (service.tx(handle, hosted_sequence, now) catch return 0) orelse return 0;
+    if (tx.newly_staged) hosted_sequence +%= 1;
+    staged_length = tx.bytes.len;
+    const ethernet = tx.bytes[12..];
+    if (cap < ethernet.len) return 0;
+    @memcpy(out[0..ethernet.len], ethernet);
+    return ethernet.len;
 }
 export fn tcp_link_sent(now: u64) bool {
-    link.sent(1, now) catch return false;
+    const handle = service_handle orelse return false;
+    service.sent(handle, staged_length, now) catch return false;
+    staged_length = 0;
     return true;
 }
 export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
-    _ = link.receive(1, now, frame[0..len]) catch return false;
+    const handle = service_handle orelse return false;
+    var envelope: [1512]u8 = @splat(0);
+    const bytes = hosted.frame(&envelope, hosted.station_interface, 0, frame[0..len]) catch return false;
+    var decoder: hosted.Decoder = .{};
+    for (bytes) |byte| {
+        if (decoder.push(byte) catch return false) |decoded| {
+            _ = service.receive(handle, decoded, now) catch return false;
+        }
+    }
     return true;
 }
 export fn tcp_link_ready() bool {
-    return link.ready();
+    const handle = service_handle orelse return false;
+    return service.ready(handle) catch false;
 }
 export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) usize {
-    return link.write(1, bytes[0..len], now, now +| 12000) catch 0;
+    const handle = service_handle orelse return 0;
+    return service.write(handle, bytes[0..len], now, now +| 12000) catch 0;
 }
 export fn tcp_link_read(out: [*]u8, cap: usize) isize {
-    return @intCast(link.read(1, out[0..cap]) catch return -1);
+    const handle = service_handle orelse return -1;
+    return @intCast(service.read(handle, out[0..cap]) catch return -1);
 }
 export fn tcp_link_close(now: u64) bool {
-    link.closeWrite(1, now, now +| 12000) catch return false;
+    const handle = service_handle orelse return false;
+    service.closeWrite(handle, now, now +| 12000) catch return false;
     return true;
 }
 export fn tcp_link_closed(now: u64) bool {
-    if (!link.closeHandshakeComplete()) return false;
+    const handle = service_handle orelse return false;
+    if (!(service.closeComplete(handle) catch return false)) return false;
     if (link_time_wait == null) {
+        const link = if (service.link) |*value| value else return false;
         const s = if (link.stream) |*value| value else return false;
         link_time_wait = wait.TimeWait.begin(s, now, 2000) catch return false;
     }

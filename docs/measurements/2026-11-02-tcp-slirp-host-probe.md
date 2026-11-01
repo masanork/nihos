@@ -33,6 +33,11 @@ resolve ARP and progress the TCP connection. The fixture continues to provide
 frame I/O, DHCP-like lease values and serialization; no normal device service
 has adopted this owner.
 
+The subsequent host run also routes frames through `hosted_tcp_service.zig`
+and the Hosted encoder/decoder before handing Ethernet to libslirp. Separate
+tests cover lease-epoch invalidation, staged TX, backpressure and ambiguous
+partial sends. This does not exercise an SDIO transport or live DHCP client.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 
