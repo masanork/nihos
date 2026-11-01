@@ -98,3 +98,31 @@ and the complete 16 MiB matched the immediately preceding backup SHA-256
 Evidence: `/private/tmp/nihos-c6-ota-preflight-physical-20261101-2sec/`.
 This is one physical preflight success and does not prove the reset delay was
 the sole cause of earlier failures, or that an OTA write or new C6 boot works.
+
+## Update fixture: device gate and host-only transfer checks
+
+The explicit update fixture P4 image SHA-256
+`79ccccdbc26582b5608e902657cce9e4009418fbe32cb81f53fac4f3093e79cc`
+was checked before one physical warm boot under exclusive writer/serial leases.
+It computed the expected C6 image hash, identified the Hosted peer and printed
+`NIHOS_C6_OTA_READY`. After a two-second no-command interval, an intentionally
+invalid newline was sent. It reported `InvalidToken`, `status=0`, `stage=6`
+and `acknowledged_bytes=0`; no Begin/Write/End was requested by this code path.
+P4 flash was restored and the full 16 MiB verified against that run's backup
+SHA-256 `0a21266492da4c6f3e643ce481de3b723948a3871d59216b5d3c53c4e3c80ee0`.
+Evidence is private under `/private/tmp/nihos-c6-ota-gate-physical-20261101/`.
+This proves the invalid-start path for that image, not a successful C6 OTA or
+boot of the new firmware.
+
+The update-only linker layout keeps the CPU0 and IRQ0 stacks at 8 KiB each;
+CPU1 is parked and its unused normal and IRQ stacks are 1 KiB each. The P4
+SRAM audit reports 27,008 bytes of remaining heap reservation (floor 16 KiB).
+A separate checker verifies all four stack boundary sizes; mutating the CPU1
+stack boundary in the ELF was rejected. This structural check is not a full
+call-chain stack proof. The user requested no further device access while
+travelling, so further work after this run was host-only.
+
+The host pump exercised a synthetic image of exactly 1,079,120 bytes, checking
+all bytes and acknowledgements across every 384-byte chunk; it also checked a
+lost Write response causes terminal timeout with no retry. This is a transport
+model, not device transfer evidence. The C6 firmware has still not been updated.
