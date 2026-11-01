@@ -2,17 +2,17 @@
   "license": "CC0-1.0",
   "upstream": "https://github.com/masanork/gjs",
   "fonttools": "4.60.2",
-  "library_sha256": "b880baf129ec4f36c1791d55aafb42b2a7e9f067c67874baae20e4641ce2b19f",
+  "library_sha256": "296bd3810edab58207405a467d9faf2fbd74dea82acbd9c588171575ec0c342c",
   "faces": {
     "BunsenMincho-Regular.ttf": {
-      "sha256": "2c813d32f9bbc4db062c31ad144d95a6aec4f25e30896242842e0e74ed92b730",
+      "sha256": "f20f775dc3cd20b4825b2cbb19475daada02d82d5ae6bb876cfc9efc21b41b9b",
       "source_sha256": "a8e2846e4f3628817acbec46f438797f85f7d83947c34cb2aad91c008b1d865f",
-      "bytes": 1152104
+      "bytes": 1152708
     },
     "BunsenGothic-Regular.ttf": {
-      "sha256": "0804dce2a54cbfaaa025946a70975afd2724808edb302059b2cc2a4b8b68aafe",
+      "sha256": "24b7f04f06826034aad5b7bfd9b5f77f242231636394cac2eb29c4a0355f21a7",
       "source_sha256": "dd6a5054a708720249c016235dab4bccf6e1e1a68f58bb191cd134dac4582ae6",
-      "bytes": 1069164
+      "bytes": 1069764
     }
   },
   "Mincho_missing": [],
