@@ -2,7 +2,7 @@
 
 Date: 2026-11-01
 
-Status: resolved on RV32 native emulator; 4 upstream-facing WAMR fixes identified, isolated, and verified clean under GCC `-fsanitize=alignment`. Ready for review and upstreaming.
+Status: resolved on RV32 native emulator; 4 upstream-facing WAMR fixes isolated and verified under GCC `-fsanitize=alignment`. Merged with latest `main` (commit 45877e1e with PRs #108, #103, #101) and regression corpus 100% PASS. Ready for layered landing.
 
 ## Resume point
 
@@ -11,7 +11,9 @@ Status: resolved on RV32 native emulator; 4 upstream-facing WAMR fixes identifie
 - Worktree: `/private/tmp/nihos-rust-sdk-integration-20261030`
 - Branch: `codex/rust-sdk-integration-20261030`
 - Base commit before handoff: `fdbfbec5`
-- Handoff commit: `ddbe01e0`
+- Alignment fix commit: `79481cef`
+- Merge commit with latest main: `93dc3875`
+- Backup branch: `backup/rust-sdk-integration-before-main-merge`
 - Pinned WAMR: `WAMR-2.4.5`, commit `25bd7eb63e828e4bd242cc9b38d260b4b31c6605`
 - The main worktree at `/Users/masanork/repo/nihos` was not modified by this investigation.
 
@@ -168,3 +170,21 @@ AArch64 UBSan had already reported misaligned `WASMInterpFrame`/`WASMBranchBlock
 - Build/log artifacts in this worktree are evidence, not tracked release artifacts.
 - Do not merge the experimental WAMR patch to `main` as-is.
 - Do not reset or clean the main worktree; it contains unrelated concurrent work.
+
+## Main merge and Layered landing plan
+
+### Merge verification status (2026-11-01)
+- Merged `origin/main` (`45877e1e`) cleanly into `codex/rust-sdk-integration-20261030` (`93dc3875`).
+- Conflicts resolved across console session (`src/console/session.zig`), native tasks (`src/arch/riscv32/native_tasks.zig`), diagnostic UI (`src/platform/native/diagnostic_ui.zig`), main entry (`src/platform/native/main.zig`), build scripts (`tools/build-native-elf.sh`), linker scripts (`src/platform/native/esp32p4.ld`), image checks (`tools/check-native-image.py`, `tools/native_image_test.py`), and asset manifests (`src/graphics/*.json`).
+- WAMR RV32 alignment suite (`probes/wamr-rv32/run-alignment-corpus.sh`) PASSED 100% on the merged tree (both unsanitized and `-fsanitize=alignment` matrices across all 6 session scenarios, plus negative controls).
+- Suite regression test suites (`native_checks_test.py`, `native_image_test.py`, `native_jpeg_test.py`, `license_assets_test.py`, `native_photo_manifest_test.py`) PASSED.
+
+### Layered landing sequence
+1. **Phase 1: WAMR RV32 Alignment & ABI fixes**
+   - Isolate the 4 upstream-compatible patches in `probes/wamr-rv32/patches/`.
+   - Update `tools/build-native-elf.sh` and Wasm build profile options.
+   - Document Rust SDK target specification (`--compress-relocations`, stack & memory limits).
+   - Land directly on `main` closing Issue #104.
+2. **Phase 2: xy Integration (Exclusive Session Handoff)**
+   - Wire launcher/shortcut in xy workspace to invoke the Wasm session with exclusive display/input ownership.
+   - Restore xy workspace cleanly upon session return (`q` / `Esc`).
