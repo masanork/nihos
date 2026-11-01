@@ -105,3 +105,27 @@ boot remain unobserved. Before any later valid-token run, device write ownership
 current P4 baseline and candidate identities must be freshly checked; a timeout
 after a request means the C6 operation's state is unknown and must not be
 blindly retried. Readback/recovery of this C6 remains unproven.
+
+## Hosted 2.13.1 compatibility (host-only)
+
+The peer *currently running before the update* determines the OTA sequence.
+Hosted 1.4.1 changes the boot slot and schedules reboot in End; the 2.13.1
+source completes the image in End and requires separate Activate RPC 266 /
+response 522. `Client` supports the latter only when explicitly selected;
+`Session` still defaults to accepting 1.4.1 only and requires an explicit
+`allow_213` opt-in for an observed 2.13.1 peer. Other versions fail before
+Begin. The first write is 384 bytes and includes the 288-byte image and app
+headers expected by the 2.13.1 validity check; shorter images fail before Begin.
+The write-blocked simulation wrapper rejects Activate as well as Begin/Write/End.
+These are host and RV32 compile-path changes. A separate, explicitly opted-in
+recovery fixture has been built, but has not been run on hardware; 2.13.1 OTA
+and recovery are not device-qualified. The normal update fixture does not
+opt in.
+
+The pinned 2.13.1 upstream Activate handler can respond success in certain
+invalid states. The candidate correction and baseline-negative-control host
+harness are in `ports/esp-hosted-c6-ota-activation/`; the HTTPS/Network Split
+candidate does not yet automatically include this correction. Activation error
+or response loss can still leave boot selection uncertain because the timer is
+created after the boot partition is switched. Never infer successful reboot from
+an Activate response alone, and never auto-replay an uncertain operation.

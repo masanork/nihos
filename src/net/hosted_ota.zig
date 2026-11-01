@@ -8,12 +8,14 @@ const wire = @import("hosted.zig");
 pub const slot_size = 1536 * 1024;
 pub const chunk_size = 384; // Fits the existing <=512-byte Hosted frame path.
 pub const Error = wire.Error || error{ InvalidImage, DigestMismatch, WrongState, UidExhausted };
-pub const Phase = enum { begin, write, end, complete, failed };
+pub const Activation = enum { legacy_automatic, explicit_rpc };
+pub const Phase = enum { begin, write, end, activate, complete, failed };
 
 pub const Client = struct {
     image: []const u8,
     digest: [32]u8,
     phase: Phase = .begin,
+    activation: Activation = .legacy_automatic,
     offset: usize = 0,
     uid: u32,
     sequence: u16,
@@ -39,6 +41,12 @@ pub const Client = struct {
     pub fn next(self: *Client) Error![]const u8 {
         if (self.pending_id != null or self.phase == .complete or self.phase == .failed) return error.WrongState;
         if (self.uid == std.math.maxInt(u32)) return error.UidExhausted;
+        // Hosted 2.13 validates the complete 24-byte image header, 8-byte
+        // first segment header and 256-byte app descriptor on first Write.
+        if (self.phase == .begin and self.activation == .explicit_rpc and self.image.len < 288) {
+            self.fail();
+            return error.InvalidImage;
+        }
         if (self.phase == .end) {
             var actual: [32]u8 = undefined;
             std.crypto.hash.sha2.Sha256.hash(self.image, &actual, .{});
@@ -57,6 +65,7 @@ pub const Client = struct {
                 break :blk 273;
             },
             .end => 274,
+            .activate => 266,
             else => return error.WrongState,
         };
         var payload: [480]u8 = undefined;
@@ -95,7 +104,8 @@ pub const Client = struct {
                 self.offset += self.pending_len;
                 if (self.offset == self.image.len) self.phase = .end;
             },
-            .end => self.phase = .complete, // Accepted, not proof of reboot/health.
+            .end => self.phase = if (self.activation == .explicit_rpc) .activate else .complete,
+            .activate => self.phase = .complete, // Accepted, not proof of reboot/health.
             else => {
                 self.fail();
                 return error.WrongState;

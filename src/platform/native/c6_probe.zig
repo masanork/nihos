@@ -517,6 +517,8 @@ var ota_preflight_stage: u32 = 0;
 noinline fn exerciseOtaPreflight(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaPreflight {
     const started = clock.counter() orelse return error.Clock;
     try ota_update_guard.session.initInPlace(image, hash, started, started + 30_000_000);
+    const root = @import("root");
+    ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
     ota_preflight_stage = 1;
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
@@ -576,6 +578,7 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
     try ota_update_guard.initInPlace(image, hash, started, started + 600_000_000);
     const root = @import("root");
     const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
+    ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
     if (simulation) {
         ota_fake = .{ .image = image };
         ota_safe = .{ .inner = &hosted_stream };

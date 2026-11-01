@@ -16,6 +16,7 @@ pub const Session = struct {
     transfer: ?pump.Pump = null,
     deadline: u64,
     last_now: u64,
+    allow_213: bool = false,
     rx: [512]u8 = undefined,
 
     /// Hash and header are checked before any interaction with the device.
@@ -36,6 +37,7 @@ pub const Session = struct {
         self.transfer = null;
         self.deadline = deadline;
         self.last_now = now;
+        self.allow_213 = false;
     }
     pub fn step(self: *Session, stream: anytype, now: u64) !void {
         if (self.state == .failed or self.state == .complete) return error.WrongState;
@@ -53,8 +55,12 @@ pub const Session = struct {
             if (count > self.rx.len) return error.InvalidBuffer;
             for (self.rx[0..count]) |byte| if (try self.decoder.push(byte)) |frame| try self.client.receive(frame, now);
             if (self.client.phase == .done and self.decoder.used == 0) {
-                if (self.client.peer_chip != 13 or !self.client.version_known or
-                    !std.mem.eql(u32, &self.client.version, &.{ 1, 4, 1 })) return error.UnsupportedPeer;
+                if (self.client.peer_chip != 13 or !self.client.version_known) return error.UnsupportedPeer;
+                if (std.mem.eql(u32, &self.client.version, &.{ 1, 4, 1 })) {
+                    self.ota_client.activation = .legacy_automatic;
+                } else if (self.allow_213 and std.mem.eql(u32, &self.client.version, &.{ 2, 13, 1 })) {
+                    self.ota_client.activation = .explicit_rpc;
+                } else return error.UnsupportedPeer;
                 self.ota_client.uid = self.client.uid;
                 self.ota_client.sequence = self.client.sequence;
                 self.transfer = try pump.Pump.init(self.ota_client, now, self.deadline);

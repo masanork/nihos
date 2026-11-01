@@ -54,7 +54,7 @@ test "simulation physical transport blocks all OTA request IDs" {
     var safe: fake.NoOtaStream(CounterStream) = .{ .inner = &inner };
     var message: [128]u8 = undefined;
     var frame: [160]u8 = undefined;
-    for ([_]u32{ 272, 273, 274 }) |id| {
+    for ([_]u32{ 266, 272, 273, 274 }) |id| {
         const payload = try wire.request(&message, id, 1, &.{});
         const packet = try wire.frame(&frame, 3, 0, payload);
         try std.testing.expectError(error.PersistentWriteForbidden, safe.send(packet));

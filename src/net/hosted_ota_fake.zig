@@ -81,7 +81,7 @@ pub fn NoOtaStream(comptime Stream: type) type {
                 }
             }
             const command = id orelse return error.Malformed;
-            if (command >= 272 and command <= 274) return error.PersistentWriteForbidden;
+            if (command == 266 or (command >= 272 and command <= 274)) return error.PersistentWriteForbidden;
             return self.inner.send(frame);
         }
     };
