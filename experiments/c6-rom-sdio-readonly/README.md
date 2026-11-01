@@ -26,15 +26,19 @@ The fixture has not been audited for every failure cleanup path.
 Use ESP-IDF v5.4.4 and a clean checkout of
 [esp-serial-flasher](https://github.com/espressif/esp-serial-flasher) at
 `ddf3cdd8fa87f3d26b42f1b8ad94bbbb67745f50` (Apache-2.0). Copy this directory
-outside the source tree, apply `manual-boot-strap.patch` to that separate
+outside the source tree, apply `rom-readonly.patch` to that separate
 checkout, and symlink it as `components/esp-serial-flasher` in the copy. The
 patch makes `GPIO_NUM_NC` mean that the boot strap is controlled externally;
-it avoids driving an unrelated P4 GPIO. Then build with IDF component manager
+it avoids driving an unrelated P4 GPIO. It also corrects the loader security
+decoder to test odd parity of `flash_crypt_cnt` instead of `key_purposes`.
+Run `python3 check-security-parity.py PATH_TO_PATCHED_CHECKOUT` to exercise the
+actual decoder across all 256 counter values and four key-purpose patterns.
+The same test fails against the uncorrected pinned source. Then build with IDF component manager
 disabled using `IDF_COMPONENT_MANAGER=0 idf.py build`. Do not use generated
 flash commands as an authorization to install it.
 
-The 2026-11-01 local build produced a 295,440-byte P4 app with SHA-256
-`6efc3e884e8f97f3f267ced53d1e32edf6c97cba786e9b49e2236457805b4e86`.
+The 2026-11-01 local build produced a 295,408-byte P4 app with SHA-256
+`e4a41bb2bd61bea8bac6a03ec43d1702aaeab1dec03dd322c7173017a112c7c7`.
 Binary identity may vary with build path and tools. This result is compilation
 only; no C6 bootloader, partition, eFuse or flash bytes were read.
 
