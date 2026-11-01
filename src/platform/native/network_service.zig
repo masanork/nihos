@@ -16,9 +16,13 @@ extern fn nih_c6_reset(u32) callconv(.c) void;
 var host = sd.Controller(pads.Bus){ .io = .{} };
 var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
 const TimeClient = hosted.sntp.Engine(".flash.text.time");
+const c6_offload = @hasDecl(network_config, "c6_time_offload") and network_config.c6_time_offload;
+const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test;
+const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
     time: TimeClient = .{},
     client: hosted.Client = .{},
+    offload: Offload = if (c6_offload) .{} else {},
     configuration: hosted.Configuration = .{},
     ble: hosted.ble.Client = .{},
     ble_output: [32]u8 = @splat(0),
@@ -36,6 +40,7 @@ var decoder: *hosted.wire.Decoder = undefined;
 const InitialTemplate = struct {
     time: TimeClient = .{},
     client: hosted.Client = .{},
+    offload: Offload = if (c6_offload) .{} else {},
     configuration: hosted.Configuration = .{},
     ble: hosted.ble.Client = .{},
     ble_output: [32]u8 = @splat(0),
@@ -59,6 +64,16 @@ var attempt_bound = false;
 var counted_renewals: u32 = 0;
 var test_renewed = false;
 var test_reset = false;
+var offload_active = false;
+var offload_epoch: u64 = 1;
+var offload_due: u64 = 0;
+var offload_sample: ?hosted.sntp.Sample = null;
+pub const TimeFaultReport = extern struct { stage: u32 = 0, dropped: u32 = 0, expired: u32 = 0 };
+var time_fault: TimeFaultReport = .{};
+pub fn timeFaultSnapshot() TimeFaultReport {
+    return time_fault;
+}
+var offload_report: hosted.sntp.Report = .{ .phase = 0, .attempts = 0, .replies = 0, .rejected = 0, .failures = 0, .server = 0, .stratum = 0, .rtt_us = 0, .unix_high = 0, .unix_low = 0 };
 pub const Report = extern struct {
     phase: u32 = 0,
     station: u32 = 0,
@@ -89,7 +104,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     state_storage = state;
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
-    client = &state.client;
+    client = if (c6_offload) &state.offload.station else &state.client;
     decoder = &state.decoder;
     clock = timer;
     configuration = &state.configuration;
@@ -98,6 +113,10 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     failures = 0;
     test_renewed = false;
     test_reset = false;
+    offload_epoch = 1;
+    offload_sample = null;
+    time_fault = .{};
+    offload_report = .{ .phase = 0, .attempts = 0, .replies = 0, .rejected = 0, .failures = 0, .server = 0, .stratum = 0, .rtt_us = 0, .unix_high = 0, .unix_low = 0 };
     const now = clock.counter() orelse return stop(error.Clock, null);
     pads.useClock(clock);
     nih_c6_pads_init();
@@ -115,8 +134,17 @@ fn startAttempt(now: u64) void {
     decoder.reset();
     state_storage.ble = .{};
     state_storage.ble_length = 0;
-    client.beginDual(configuration.get(), now, network_config.ipv6);
-    client.keep_serving = true;
+    offload_active = c6_offload and configuration.mode != .disabled;
+    offload_sample = null;
+    if (c6_offload and offload_active) {
+        offload_epoch = @max(offload_epoch, state_storage.offload.addresses.generation) +| 1;
+        state_storage.offload.begin(configuration.get(), offload_epoch, now, now +| 100_000_000) catch return stop(error.Stale, now);
+        offload_due = now;
+        offload_report.phase = @backingInt(hosted.sntp.Phase.waiting);
+    } else {
+        client.beginDual(configuration.get(), now, network_config.ipv6);
+        client.keep_serving = true;
+    }
     attempt_bound = false;
     counted_renewals = 0;
     ready_at = null;
@@ -133,6 +161,8 @@ fn collectRenewals() void {
 }
 fn stop(err: anyerror, now: ?u64) void {
     state_storage.time.disconnect();
+    offload_sample = null;
+    if (c6_offload and offload_active) state_storage.offload.invalidate();
     report.disconnect_reason = client.disconnect_reason;
     report.failed_station = @backingInt(client.phase);
     collectRenewals();
@@ -169,8 +199,13 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         try host.writeDoorbell(1, 0x8c, 1);
         // RPC timeouts start after enumeration, not during C6 reset.
         const join = client.join;
-        client.beginDual(join, clock.counter() orelse return error.Clock, network_config.ipv6);
-        client.keep_serving = true;
+        const start = clock.counter() orelse return error.Clock;
+        if (c6_offload and offload_active) {
+            try state_storage.offload.begin(join, offload_epoch, start, start +| 100_000_000);
+        } else {
+            client.beginDual(join, start, network_config.ipv6);
+            client.keep_serving = true;
+        }
         phase = .active;
         return;
     }
@@ -181,13 +216,30 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         }
     };
     if (now >= limit and client.phase != .done) return error.Timeout;
+    if (c6_offload and offload_active) try recoverC6TimeTimeout(now);
     const count = try transport.receive(&rx);
     report.rx +|= @intCast(count);
     for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
         if (frame.interface == 4) state_storage.ble.receiveHosted(frame.packet_type, frame.payload, now);
-        try client.receive(frame, clock.counter() orelse return error.Clock);
+        const received = clock.counter() orelse return error.Clock;
+        if (c6_offload and offload_active) {
+            try recoverC6TimeTimeout(received);
+            // Explicit test image only: drop the first time RPC's response,
+            // leaving unrelated station and BLE traffic untouched.
+            if (time_fault_test and time_fault.stage == 1 and frame.interface == 3) {
+                const rpc = try hosted.wire.rpc(frame.payload);
+                if ((rpc.kind == 2 and rpc.id == 644) or (rpc.kind == 3 and rpc.id == 788)) {
+                    time_fault.dropped +|= 1;
+                    continue;
+                }
+            }
+            try state_storage.offload.receive(frame, received);
+            try finishC6Time(received);
+        } else {
+            try client.receive(frame, received);
+        }
         collectRenewals();
-        if (frame.interface == 1) {
+        if (!offload_active and frame.interface == 1) {
             // DHCP expiry/disconnect is processed before exposing the frame.
             if (client.dhcp_client) |v4| if (v4.lease != null) state_storage.time.receive(frame.payload, now);
         }
@@ -197,6 +249,16 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
     if (ble.phase == .off and client.bluetooth_setup_done) ble.begin(if (client.bluetooth_ready) client.peer_capabilities else 0);
     ble.tick(stamp);
     if (stamp < client.started) return error.Clock;
+    if (c6_offload and offload_active and state_storage.offload.addresses.address != null) {
+        if (!attempt_bound) {
+            attempt_bound = true;
+            report.acquisitions +|= 1;
+        }
+        if (ready_at == null) ready_at = stamp;
+        if (ready_at) |since| if (stamp - since >= 30_000_000) {
+            failures = 0;
+        };
+    }
     if (client.dhcp_client) |*v4| if (v4.lease != null) {
         if (!attempt_bound) {
             attempt_bound = true;
@@ -211,14 +273,28 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
         }
     };
-    const bytes = try client.tx(stamp);
+    if (c6_offload and offload_active) try recoverC6TimeTimeout(stamp);
+    const bytes = if (c6_offload and offload_active)
+        if (state_storage.offload.phase == .ready and stamp < offload_due) &.{} else try state_storage.offload.tx(stamp)
+    else
+        try client.tx(stamp);
     if (bytes.len != 0) {
         const sent = try transport.send(bytes);
         if (sent != 0 and sent != bytes.len) return error.PartialPacket;
-        if (sent != 0) client.sent(clock.counter() orelse return error.Clock);
+        if (sent != 0) {
+            const sent_at = clock.counter() orelse return error.Clock;
+            if (c6_offload and offload_active) {
+                if (state_storage.offload.phase == .queued) offload_report.attempts +|= 1;
+                try state_storage.offload.sent(sent, sent_at);
+                if (time_fault_test and time_fault.stage == 0 and state_storage.offload.phase == .waiting) {
+                    time_fault.stage = 1;
+                    state_storage.offload.deadline = sent_at +| 3_000_000;
+                }
+            } else client.sent(sent_at);
+        }
         report.tx +|= @intCast(sent);
     } else {
-        if (try timePoll(stamp)) return;
+        if (!offload_active and try timePoll(stamp)) return;
         if (state_storage.ble_length == 0) {
             const command = ble.tx(stamp);
             if (command.len != 0) {
@@ -273,7 +349,9 @@ pub fn snapshot() Report {
     result.configured = @intFromBool(configuration.mode != .disabled);
     result.capabilities = client.peer_capabilities;
     result.bluetooth_status = client.bluetooth_status;
-    if (client.dhcp_client) |v4| {
+    if (c6_offload and offload_active) {
+        if (state_storage.offload.addresses.address) |address| result.ip = address.ip;
+    } else if (client.dhcp_client) |v4| {
         if (v4.lease) |lease| result.ip = lease.ip;
     }
     if (client.ipv6_client) |v6| {
@@ -331,11 +409,47 @@ noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
     }
     return true;
 }
+/// A missing time response must not reset an otherwise healthy station.
+/// Retired IDs remain distinct, so late time frames can be safely ignored.
+noinline fn recoverC6TimeTimeout(now: u64) linksection(".flash.text.time") !void {
+    if (!c6_offload or !offload_active) return;
+    const retry = now +| hosted.c6_time_policy.retry_unavailable;
+    if (try state_storage.offload.retireTimedOutTime(now, retry +| 100_000_000)) {
+        offload_report.failures +|= 1;
+        if (time_fault_test and time_fault.stage == 1) {
+            time_fault.stage = 2;
+            time_fault.expired +|= 1;
+        }
+        offload_sample = null;
+        offload_due = retry;
+    }
+}
+/// Publish only a current, correlated C6 sample. SNTP itself is unauthenticated.
+fn finishC6Time(now: u64) !void {
+    if (!c6_offload or !offload_active) return;
+    const exchange = &state_storage.offload;
+    if (exchange.phase != .done) return;
+    const decision = hosted.c6_time_policy.decide(exchange.sample, now);
+    if (decision.sample) |sample| {
+        offload_sample = sample;
+        offload_report.replies +|= 1;
+        const seconds = sample.unix_us / 1_000_000;
+        offload_report.unix_high = @truncate(seconds >> 32);
+        offload_report.unix_low = @truncate(seconds);
+    } else if (decision.rejected) offload_report.rejected +|= 1;
+    try exchange.nextSnapshot(now);
+    offload_due = now +| decision.delay;
+    exchange.deadline = offload_due +| 100_000_000;
+}
 pub fn timeSnapshot() hosted.sntp.Report {
+    if (c6_offload and offload_active) return offload_report;
     return state_storage.time.snapshot();
 }
 pub fn takeTime() ?hosted.sntp.Sample {
     const now = clock.counter() orelse return null;
+    if (c6_offload and offload_active) {
+        return hosted.c6_time_policy.take(&offload_sample, now, state_storage.offload.addresses.current(state_storage.offload.clock.generation) != null);
+    }
     return state_storage.time.take(now);
 }
 

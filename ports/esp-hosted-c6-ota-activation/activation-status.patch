@@ -1,0 +1,10 @@
+--- a/slave/main/slave_control.c
++++ b/slave/main/slave_control.c
+@@ -326,0 +327 @@
++			ret = ESP_ERR_INVALID_STATE;
+@@ -330,0 +332 @@
++			ret = ESP_ERR_INVALID_STATE;
+@@ -334,0 +337 @@
++			ret = ESP_ERR_INVALID_STATE;
+@@ -338,0 +342 @@
++			ret = ESP_ERR_INVALID_STATE;
