@@ -101,6 +101,10 @@ impl Bus {
         bus
     }
 
+    pub fn touch(&mut self, point: Option<(u16, u16)>) {
+        self.i2c.touch(point);
+    }
+
     pub fn framebuffer_byte(&self, offset: usize) -> u8 {
         assert!(offset < FB_SIZE);
         self.psram[self.translate_psram(FB_BASE + offset as u32)]

@@ -26,6 +26,7 @@ struct Workspace {
     emu_image: Option<Arc<RenderImage>>,
     emu_mode: bool,
     emu_portrait: bool,
+    emu_touch_down: bool,
     emu_powered: bool,
     emu_error: Option<String>,
     emu_session_label: Arc<RenderImage>,
@@ -108,6 +109,7 @@ impl Workspace {
         }
         cx.observe_window_activation(window, |this, window, cx| {
             if !window.is_window_active() {
+                this.touch_end();
                 this.core.focus_lost(this.now());
                 this.refresh_graph(window);
                 cx.notify();
@@ -151,6 +153,7 @@ impl Workspace {
             emu_image,
             emu_mode,
             emu_portrait: false,
+            emu_touch_down: false,
             emu_powered: true,
             emu_error,
             emu_session_label,
@@ -225,6 +228,29 @@ impl Workspace {
         }
     }
 
+    fn touch_at(&mut self, position: Point<Pixels>, window: &Window, start: bool) {
+        if !self.emu_powered || self.emulator.as_ref().is_none_or(|emu| emu.paused) {
+            return;
+        }
+        if !start && !self.emu_touch_down {
+            return;
+        }
+        if let Some(point) = touch_coordinates(position, window.viewport_size(), self.emu_portrait)
+        {
+            self.emu_touch_down = true;
+            if let Some(emu) = &mut self.emulator {
+                emu.bus.touch(Some(point));
+            }
+        }
+    }
+    fn touch_end(&mut self) {
+        if self.emu_touch_down {
+            self.emu_touch_down = false;
+            if let Some(emu) = &mut self.emulator {
+                emu.bus.touch(None);
+            }
+        }
+    }
     fn press(&mut self, key: Key, window: &mut Window, cx: &mut Context<Self>) {
         self.core.press(key, self.now());
         self.refresh_graph(window);
@@ -593,6 +619,32 @@ fn status_image(core: &mut Core, scale: f32, editor: bool) -> Arc<RenderImage> {
 fn shown(image: &Arc<RenderImage>, w: f32, h: f32) -> gpui::Img {
     img(image.clone()).w(px(w)).h(px(h))
 }
+// Invert the fit and framebuffer rotations to obtain physical panel coordinates.
+fn touch_coordinates(
+    position: Point<Pixels>,
+    viewport: Size<Pixels>,
+    portrait: bool,
+) -> Option<(u16, u16)> {
+    let (vw, vh): (f32, f32) = (viewport.width.into(), viewport.height.into());
+    let (w, h) = if portrait {
+        (720., 1280.)
+    } else {
+        (1280., 720.)
+    };
+    let fit = ((vw - 32.).max(1.) / w).min((vh - 80.).max(1.) / h);
+    let (px, py): (f32, f32) = (position.x.into(), position.y.into());
+    let x = (px - (vw - w * fit) / 2.) / fit;
+    let y = (py - (48. + (vh - 48. - h * fit) / 2.)) / fit;
+    if x < 0. || y < 0. || x >= w || y >= h {
+        return None;
+    }
+    let (lx, ly) = if portrait {
+        (y as u16, 719 - x as u16)
+    } else {
+        (x as u16, y as u16)
+    };
+    Some((ly, 1279 - lx))
+}
 // Rotate the displayed framebuffer clockwise; the guest orientation is unchanged.
 fn orient_frame(src: Vec<u8>, portrait: bool) -> (Vec<u8>, u32, u32) {
     let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
@@ -669,6 +721,7 @@ impl Render for Workspace {
                             )
                             .on_click(cx.listener(
                                 |this, _, window, cx| {
+                                    this.touch_end();
                                     this.emu_portrait = !this.emu_portrait;
                                     this.render_emulator_image(window);
                                     cx.notify();
@@ -685,6 +738,7 @@ impl Render for Workspace {
                                 },
                             )
                             .on_click(cx.listener(|this, _, _, cx| {
+                                this.touch_end();
                                 if this.emu_powered
                                     && let Some(emu) = &mut this.emulator
                                 {
@@ -704,6 +758,7 @@ impl Render for Workspace {
                             )
                             .on_click(cx.listener(
                                 |this, _, window, cx| {
+                                    this.touch_end();
                                     if this.emu_powered {
                                         this.emu_powered = false;
                                     } else if let Some(emu) = &mut this.emulator {
@@ -727,6 +782,7 @@ impl Render for Workspace {
                         .child(
                             control("emu-reset", &self.labels.emu_reset).on_click(cx.listener(
                                 |this, _, window, cx| {
+                                    this.touch_end();
                                     if this.emu_powered {
                                         if let Some(emu) = &mut this.emulator {
                                             match emu.reset() {
@@ -775,9 +831,35 @@ impl Render for Workspace {
                         } else if !self.emu_powered {
                             div().w(px(screen_w)).h(px(screen_h)).bg(rgb(0x000000))
                         } else if let Some(image) = &self.emu_image {
-                            div()
-                                .bg(rgb(0x000000))
-                                .child(shown(image, screen_w, screen_h))
+                            div().child(
+                                div()
+                                    .id("emu-screen")
+                                    .bg(rgb(0x000000))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, event: &MouseDownEvent, window, _| {
+                                            this.touch_at(event.position, window, true)
+                                        }),
+                                    )
+                                    .on_mouse_move(cx.listener(
+                                        |this, event: &MouseMoveEvent, window, _| {
+                                            this.touch_at(event.position, window, false)
+                                        },
+                                    ))
+                                    .on_mouse_up(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _: &MouseUpEvent, _, _| {
+                                            this.touch_end()
+                                        }),
+                                    )
+                                    .on_mouse_up_out(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _: &MouseUpEvent, _, _| {
+                                            this.touch_end()
+                                        }),
+                                    )
+                                    .child(shown(image, screen_w, screen_h)),
+                            )
                         } else {
                             div()
                         }),
@@ -983,6 +1065,31 @@ fn main() {
 mod emulator_display_tests {
     use super::*;
 
+    #[::core::prelude::v1::test]
+    fn touch_maps_display_rotation_to_physical_panel() {
+        let viewport = size(px(1312.), px(800.));
+        assert_eq!(
+            touch_coordinates(point(px(16.), px(64.)), viewport, false),
+            Some((0, 1279))
+        );
+        assert_eq!(
+            touch_coordinates(point(px(1295.), px(783.)), viewport, false),
+            Some((719, 0))
+        );
+        assert_eq!(
+            touch_coordinates(point(px(15.), px(64.)), viewport, false),
+            None
+        );
+        let viewport = size(px(752.), px(1360.));
+        assert_eq!(
+            touch_coordinates(point(px(16.), px(64.)), viewport, true),
+            Some((719, 1279))
+        );
+        assert_eq!(
+            touch_coordinates(point(px(735.), px(1343.)), viewport, true),
+            Some((0, 0))
+        );
+    }
     #[::core::prelude::v1::test]
     fn portrait_rotates_clockwise_without_losing_pixels() {
         let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
