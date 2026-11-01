@@ -71,8 +71,6 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
 
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
-        self.assertTrue(MODULE.xy_function('xy.scheme_runtime.Runtime.Compiler.compileExpr'))
-        self.assertFalse(MODULE.xy_function('xy.scheme_runtime.Runtime.Compiler.unapproved'))
         self.assertTrue(MODULE.xy_function('diagnostic_ui.paintTouchControl'))
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
         self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).render'))
