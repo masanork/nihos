@@ -20,6 +20,16 @@ outside interrupts. `Keyboard.poll` supplies bounded HID press events to
 same document/controller. The physical-keyboard path is active in xy mode;
 it does not depend on entering the diagnostic launcher.
 
+In the document, when the Tab5 keyboard is unavailable at session startup, a
+landscape touch keyboard appears below the text and status. It provides QWERTY,
+one-shot Shift, 123/ABC and shifted symbols, Space, Enter, Backspace, left and
+right, Esc and Hide. Hide is reversible by flicking up from the bottom edge;
+a downward flick dismisses it. The keyboard supports printable ASCII and the
+existing document/minibuffer input path. It does not yet provide Japanese IME,
+a touch caret, hold-to-repeat, portrait orientation, or hot-plug detection.
+The rendering and input paths have host coverage; physical touch and optical
+verification of this candidate remain outstanding.
+
 | Input | Normal xy action |
 | --- | --- |
 | Home: touch, arrows / Enter, `1`–`4`, `n`, `s` | Choose a book, document or settings |

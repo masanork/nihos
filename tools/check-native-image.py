@@ -236,12 +236,12 @@ XY_CATALOG_METHODS = {
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.renderInto)__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.printIntAny|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
     document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
     lesson_helper = re.fullmatch(r'learning_view\.(?:render|label)__func_[0-9]+', name)
-    soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|layout|contains|visible|defaultOrientation)(?:__func_[0-9]+)?', name)
+    soft_keyboard = re.fullmatch(r'(?:xy\.)?soft_keyboard\.(?:keyAt|keyAtState|layout|layoutState|contains|visible|defaultOrientation)(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
     return bool(document or learning_allowed or soft_keyboard or name in XY_RENDER_FUNCTIONS or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 

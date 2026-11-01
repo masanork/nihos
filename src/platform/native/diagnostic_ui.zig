@@ -390,7 +390,7 @@ pub noinline fn report(log: anytype) void {
 }
 // Keyboard setup runs after Flash mapping and display startup. Keep its
 // foreground-only code with the normal camera/device orchestration.
-pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
+pub noinline fn input(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else if (options.camera_id) ".flash.text.devices" else ".text") void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
     input_started = clock.timer().counter() orelse 0;
@@ -403,7 +403,6 @@ pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.t
         };
         if (hardware_ready) model.input_sources |= console.keys.capability(.tab5_keyboard);
     }
-    if (xy_workspace) scratch.setPhysicalKeyboard(hardware_ready);
     const values: extern struct { status: u32, firmware: u32, mode: u32, transactions: u32, error_code: u32, sources: u32 } = .{
         .status = if (hardware_ready) 1 else 2,
         .firmware = keyboard.report.firmware,
@@ -529,6 +528,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
+        scratch.setPhysicalKeyboard(hardware_ready);
         scratch.nav.home();
         scratch.vm.view.style.body_px = 32;
         scratch.vm.view.style.ruby_px = 16;

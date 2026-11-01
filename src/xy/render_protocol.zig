@@ -15,6 +15,7 @@ pub const Request = extern struct {
     status_length: usize,
     show_cursor: u32,
     reserved_bottom_px: u16 = 0,
+    keyboard: u8 = 0, // 0 hidden; 1 letters; 2 shifted letters; 3 symbols; 4 shifted symbols
     book_prose: u32 = 0,
     code_spans: ?[*]const @import("view_config").CodeSpan = null,
     code_count: usize = 0,
