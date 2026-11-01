@@ -36,8 +36,11 @@ class DeviceReader(unittest.TestCase):
     def key(self,key):self.vm.xy_tab5_key(ord(key) if isinstance(key,str) else key)
     def open(self,book,chapter=0):
         self.key(27);self.key(str(book+1))
-        for _ in range(chapter):self.key(129)
-        self.key(13);return self.render()
+        if chapter > 0:
+            self.key('c')
+            for _ in range(chapter):self.key(129)
+            self.key(13)
+        return self.render()
     def test_rom_pack_matches_each_source_section_and_ruby(self):
         source=json.loads((ROOT/'assets/xy/library.json').read_text())
         at=0
@@ -68,7 +71,7 @@ class DeviceReader(unittest.TestCase):
         home=self.render()
         self.vm.xy_tab5_touch(200,340);self.assertEqual(self.state(1),1)
         self.assertNotEqual(home,self.render())
-        self.vm.xy_tab5_touch(300,150);self.render();self.assertEqual(self.state(0),3)
+        self.assertEqual(self.state(0),3)
         end=self.state(4)
         self.vm.xy_tab5_touch(600,680);self.render();self.assertEqual(self.state(3),end)
         self.vm.xy_tab5_touch(1120,680);self.assertEqual(self.state(0),4)
@@ -157,7 +160,7 @@ class DeviceReader(unittest.TestCase):
                         if at==len(body):break
                         self.key(131);self.render();self.assertLess(pages,500)
     def test_touch_paginates_contents_beyond_first_eight_chapters(self):
-        self.key('4');self.render();self.vm.xy_tab5_touch(600,680)
+        self.key('4');self.render();self.key('c');self.render();self.vm.xy_tab5_touch(600,680)
         self.render();self.vm.xy_tab5_touch(300,150);self.render()
         self.assertEqual(self.state(2),8)
     def test_sideways_sicp_sections_page_without_missing_or_repeated_bytes(self):
@@ -189,5 +192,52 @@ class DeviceReader(unittest.TestCase):
         self.assertEqual((self.state(2),self.state(3)),(0,offsets[-1]))
         self.key(130);self.render()
         self.assertEqual((self.state(2),self.state(3)),(0,offsets[-2]))
+    def test_book_opens_directly_to_reading_and_shows_contents_only_when_requested(self):
+        self.key(27); self.render() # back to home
+        self.assertEqual(self.state(0), 1) # home
+        self.key('2'); self.render() # open Kusamakura
+        self.assertEqual(self.state(0), 3) # directly in reading, not chapters
+        self.assertEqual(self.state(1), 1) # book 1
+        self.assertEqual(self.state(2), 0) # chapter 0
+        self.assertEqual(self.state(3), 0) # offset 0
+        # Request table of contents explicitly via key 'c'
+        self.key('c'); self.render()
+        self.assertEqual(self.state(0), 2) # chapters
+        self.key(27); self.render() # Esc returns to home
+        self.assertEqual(self.state(0), 1)
+        # Touch opens directly to reading as well
+        self.vm.xy_tab5_touch(200, 340); self.render()
+        self.assertEqual(self.state(0), 3) # reading
+        # Touch table of contents button (x=880, y=680)
+        self.vm.xy_tab5_touch(880, 680); self.render()
+        self.assertEqual(self.state(0), 2) # chapters
+    def test_try_button_shown_only_for_sicp_pages_with_code(self):
+        # Kusamakura (book 1): can_try must always be 0
+        self.open(1)
+        self.assertEqual(self.state(10), 0)
+        self.key(131); self.render()
+        self.assertEqual(self.state(10), 0)
+        self.key('e'); self.render()
+        self.assertEqual(self.state(0), 3) # cannot enter examples when can_try is false
+        # SICP (book 2): section 1 (Expressions) has code examples
+        self.open(2, 1) # chapter 1 (Expressions)
+        has_code_page = False
+        no_code_page = False
+        length = next(r[4] for r in self.entries if r[0] == 2 and r[1] == 1 or True)
+        for _ in range(30):
+            can_try = self.state(10)
+            if can_try == 1:
+                has_code_page = True
+                # Press 'e' on code page opens examples
+                self.key('e'); self.render()
+                self.assertEqual(self.state(0), 6) # examples screen
+                self.key(27); self.render() # back to home/reading
+                break
+            else:
+                no_code_page = True
+            if self.state(4) >= self.state(9): break
+            self.key(131); self.render()
+        self.assertTrue(has_code_page)
+
 
 if __name__=='__main__':unittest.main()

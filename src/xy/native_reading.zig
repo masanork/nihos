@@ -116,13 +116,13 @@ fn label(instance: *Session, target: anytype, x: i32, y: i32, text: []const u8, 
         pen += @divTrunc(glyph.metrics.x_advance_26_6 + 32, 64);
     }
 }
-fn footer(instance: *Session, target: anytype, reading: bool) !void {
+fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !void {
     _ = target.fillRect(0, 648, 1280, 72, 0x2147);
     if (reading) {
         try label(instance, target, 24, 670, "ホーム", 24, 0xffff);
         try label(instance, target, 232, 670, "前へ", 24, 0xffff);
         try label(instance, target, 512, 670, "次へ", 24, 0xffff);
-        try label(instance, target, 680, 670, "Try", 20, 0xffff);
+        if (can_try) try label(instance, target, 680, 670, "Try", 20, 0xffff);
         try label(instance, target, 792, 670, "目次", 24, 0xffff);
         try label(instance, target, 1060, 670, "設定", 24, 0xffff);
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
@@ -153,7 +153,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
                 try label(instance, target, x + 24, y + 34, title, 28, if (nav.home_selection == i) 0xffff else 0x2147);
             }
             try label(instance, target, 48, 596, "本はオフラインで読めます。タッチでも選べます。", 24, 0x528a);
-            try footer(instance, target, false);
+            try footer(instance, target, false, false);
         },
         .chapters => {
             try label(instance, target, 48, 32, book_titles[nav.book], 32, 0x2147);
@@ -166,7 +166,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
                 if (i == nav.selected_chapter) _ = target.fillRect(32, y, 1216, 54, 0x2147);
                 try label(instance, target, 48, y + 12, e.title, 24, if (i == nav.selected_chapter) 0xffff else 0x2147);
             }
-            try footer(instance, target, false);
+            try footer(instance, target, false, false);
         },
         .settings => {
             try label(instance, target, 48, 40, "自分に合った読み心地に", 36, 0x2147);
@@ -177,7 +177,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             try label(instance, target, 160, 378, if (config.style.style_id == 0) "明朝    /  f でゴシックへ" else "ゴシック /  f で明朝へ", 32, 0x2147);
             try label(instance, target, 160, 478, "明るい紙面・暗い紙面 / t", 32, 0x2147);
             try label(instance, target, 160, 578, "設定を反映して戻る / Enter", 28, 0x2147);
-            try footer(instance, target, false);
+            try footer(instance, target, false, false);
         },
         .reading => {
             const e = try pack.chapter(nav.book, nav.chapter);
@@ -207,10 +207,17 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             read_request.ruby_count = page.count;
             try instance.render(&read_request);
             nav.end = nav.offset + @as(u32, @intCast(page.text.len));
+            var can_try = false;
             if (request.learning) |l| {
-                if (nav.book == 2) try l.setPage(nav.chapter, nav.offset, nav.end) else l.page_valid = false;
+                if (nav.book == 2) {
+                    try l.setPage(nav.chapter, nav.offset, nav.end);
+                    can_try = (try l.count()) > 0;
+                } else l.page_valid = false;
+            } else if (nav.book == 2 and page.code_count > 0) {
+                can_try = true;
             }
-            try footer(instance, target, true);
+            nav.can_try = can_try;
+            try footer(instance, target, true, can_try);
         },
         .credits => {
             const e = try pack.chapter(nav.book, nav.chapter);

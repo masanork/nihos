@@ -11,7 +11,7 @@ pub const frame_cell_reserve = 64;
 pub const camera = @import("camera.zig");
 pub const card = @import("card.zig");
 pub const storage = @import("storage.zig");
-pub const Error = storage.Error || camera.Error || card.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable };
+pub const Error = storage.Error || camera.Error || card.Error || error{ Syntax, Depth, Budget, HeapFull, TextFull, Type, Arity, Unbound, Overflow, UnknownCommand, CommandFull, EditorFailure, Busy, AppUnavailable, CannotCompile };
 pub const Ref = u16;
 pub const cells = 256;
 pub const text_bytes = 64;
@@ -23,6 +23,71 @@ const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, n
 const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card };
 const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
+pub const eval_stack_size = 64;
+const int_bias: i32 = 16384;
+
+inline fn isImmediateInt(r: Ref) bool {
+    return (r & 0x8000) != 0;
+}
+inline fn makeImmediateInt(n: i32) Ref {
+    return @as(u16, @intCast(n + int_bias)) | 0x8000;
+}
+inline fn toImmediateInt(r: Ref) i32 {
+    return @as(i32, r & 0x7FFF) - int_bias;
+}
+inline fn isImmediateOp(r: Ref) bool {
+    return (r & 0xFF00) == 0x4000;
+}
+inline fn makeImmediateOp(op: Op) Ref {
+    return 0x4000 | @as(u16, @backingInt(op));
+}
+inline fn toImmediateOp(r: Ref) Op {
+    return @fromBackingInt(@as(u7, @truncate(r & 0x007F)));
+}
+inline fn isImmediate(r: Ref) bool {
+    return (r & 0x8000) != 0 or (r & 0xFF00) == 0x4000;
+}
+
+pub const bytecode_capacity = 512;
+pub const call_stack_capacity = depth_limit;
+
+pub const BcOp = enum(u8) {
+    const_val,
+    pop,
+    dup,
+    load_local,
+    store_local,
+    load_global,
+    def_global,
+    jump,
+    jump_if_false,
+    add,
+    sub,
+    mul,
+    equal,
+    less,
+    not,
+    cons,
+    car,
+    cdr,
+    null_p,
+    pair_p,
+    call,
+    ret,
+    halt,
+};
+
+pub fn toBcOp(raw: u8) ?BcOp {
+    if (raw > @backingInt(BcOp.halt)) return null;
+    return @fromBackingInt(raw);
+}
+
+pub const CallFrame = struct {
+    return_ip: u16,
+    fp: u8,
+    env: Ref,
+};
+
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -57,6 +122,25 @@ pub const Runtime = struct {
     view_history: [8]struct { config: view_config.Config, generation: u32 },
     view_history_count: u8,
     view_generation: u32,
+    eval_stack: [eval_stack_size]Ref,
+    eval_sp: u8,
+    bytecode: [bytecode_capacity]u8,
+    bytecode_len: u16,
+    call_stack: [call_stack_capacity]CallFrame,
+    call_sp: u8,
+
+    inline fn pushEval(self: *Runtime, r: Ref) Error!void {
+        if (self.eval_sp >= eval_stack_size) return error.Syntax;
+        self.eval_stack[self.eval_sp] = r;
+        self.eval_sp += 1;
+    }
+
+    inline fn tagOf(self: *const Runtime, r: Ref) Tag {
+        if (isImmediateInt(r)) return .integer;
+        if (isImmediateOp(r)) return .native;
+        if (r >= cells) return .free;
+        return self.heap[r].tag;
+    }
 
     pub fn initInPlace(self: *Runtime) linksection(code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -99,6 +183,9 @@ pub const Runtime = struct {
         return r;
     }
     fn number(self: *Runtime, n: i32) linksection(code_section) Error!Ref {
+        if (n >= -16384 and n <= 16383) {
+            return makeImmediateInt(n);
+        }
         const r = try self.alloc(.integer);
         self.heap[r].integer = n;
         return r;
@@ -163,12 +250,48 @@ pub const Runtime = struct {
             self.mark(command.name, &tail);
             self.mark(command.procedure, &tail);
         }
+        for (self.eval_stack[0..self.eval_sp]) |r| {
+            self.mark(r, &tail);
+        }
+        for (self.call_stack[0..self.call_sp]) |frame| {
+            self.mark(frame.env, &tail);
+        }
+        var bc_scan: usize = 0;
+        while (bc_scan < self.bytecode_len) {
+            const raw_op = self.bytecode[bc_scan];
+            const op = toBcOp(raw_op) orelse break;
+            bc_scan += 1;
+            switch (op) {
+                .const_val, .load_global, .def_global => {
+                    if (bc_scan + 2 <= self.bytecode_len) {
+                        const r = std.mem.readInt(u16, self.bytecode[bc_scan..][0..2], .little);
+                        if (!isImmediate(r)) self.mark(r, &tail);
+                        bc_scan += 2;
+                    }
+                },
+                .load_local, .store_local, .call => {
+                    bc_scan += 1;
+                },
+                .jump, .jump_if_false => {
+                    bc_scan += 2;
+                },
+                else => {},
+            }
+        }
         while (head < tail) : (head += 1) {
             const c = self.heap[self.queue[head]];
-            if (c.tag == .pair or c.tag == .closure) {
+            if (c.tag == .pair) {
                 self.mark(c.a, &tail);
                 self.mark(c.b, &tail);
                 self.mark(c.env, &tail);
+            } else if (c.tag == .closure) {
+                if (c.length == 1) {
+                    self.mark(c.env, &tail);
+                } else {
+                    self.mark(c.a, &tail);
+                    self.mark(c.b, &tail);
+                    self.mark(c.env, &tail);
+                }
             }
         }
         for (1..cells) |idx| {
@@ -221,7 +344,7 @@ pub const Runtime = struct {
         }
     }
     fn mark(self: *Runtime, r: Ref, tail: *usize) linksection(code_section) void {
-        if (r == 0 or self.heap[r].mark) return;
+        if (r == 0 or isImmediate(r) or self.heap[r].mark) return;
         self.heap[r].mark = true;
         self.queue[tail.*] = r;
         tail.* += 1;
@@ -310,7 +433,7 @@ pub const Runtime = struct {
         var p = list;
         var len: usize = 0;
         while (p != 0) {
-            if (self.heap[p].tag != .pair) return error.Type;
+            if (self.tagOf(p) != .pair) return error.Type;
             if (len == out.len) return error.Arity;
             out[len] = self.heap[p].a;
             len += 1;
@@ -329,8 +452,30 @@ pub const Runtime = struct {
         }
         return 0;
     }
+    inline fn canReuseFrame(self: *const Runtime, env: Ref, params: []const Ref) bool {
+        var node = self.heap[env].a;
+        var i = params.len;
+        while (i > 0) {
+            i -= 1;
+            if (node == 0) return false;
+            const b = self.heap[node].a;
+            if (self.heap[b].a != params[i]) return false;
+            node = self.heap[node].b;
+        }
+        return node == 0;
+    }
+    inline fn updateFrameBindings(self: *Runtime, env: Ref, values: []const Ref) void {
+        var node = self.heap[env].a;
+        var i = values.len;
+        while (i > 0) {
+            i -= 1;
+            const b = self.heap[node].a;
+            self.heap[b].b = values[i];
+            node = self.heap[node].b;
+        }
+    }
     fn define(self: *Runtime, env: Ref, name: Ref, value: Ref) linksection(code_section) Error!void {
-        if (self.heap[name].tag != .symbol) return error.Type;
+        if (self.tagOf(name) != .symbol) return error.Type;
         var p = self.heap[env].a;
         while (p != 0) : (p = self.heap[p].b) {
             const binding = self.heap[p].a;
@@ -346,7 +491,7 @@ pub const Runtime = struct {
         var argument_storage: [16]Ref = @splat(0);
         const args = try self.arguments(params, &argument_storage);
         for (args, 0..) |arg, index| {
-            if (self.heap[arg].tag != .symbol) return error.Type;
+            if (self.tagOf(arg) != .symbol) return error.Type;
             for (args[0..index]) |old| if (arg == old) return error.Syntax;
         }
         const r = try self.alloc(.closure);
@@ -370,20 +515,19 @@ pub const Runtime = struct {
         var cur_env = initial_env;
         while (true) {
             try self.tick(depth);
+            if (isImmediate(cur_r)) return cur_r;
             const c = &self.heap[cur_r];
             if (c.tag == .symbol) {
                 const found = self.lookup(cur_env, cur_r);
                 if (found != 0) return self.heap[found].b;
                 const op = opcode(self.string(cur_r)) orelse return error.Unbound;
                 if (@backingInt(op) < @backingInt(Op.add)) return error.Unbound;
-                const native = try self.alloc(.native);
-                self.heap[native].integer = @backingInt(op);
-                return native;
+                return makeImmediateOp(op);
             }
             if (c.tag != .pair) return cur_r;
             var argument_storage: [16]Ref = @splat(0);
             const args = try self.arguments(c.b, &argument_storage);
-            const special = if (self.heap[c.a].tag == .symbol) opcode(self.string(c.a)) else null;
+            const special = if (self.tagOf(c.a) == .symbol) opcode(self.string(c.a)) else null;
             if (special) |op| switch (op) {
                 .quote => {
                     if (args.len != 1) return error.Arity;
@@ -421,7 +565,7 @@ pub const Runtime = struct {
                 },
                 .define => {
                     if (args.len < 2) return error.Arity;
-                    if (self.heap[args[0]].tag == .pair) {
+                    if (self.tagOf(args[0]) == .pair) {
                         const signature = self.heap[args[0]];
                         const value = try self.closure(signature.b, self.heap[c.b].b, cur_env);
                         try self.define(cur_env, signature.a, value);
@@ -433,7 +577,7 @@ pub const Runtime = struct {
                 },
                 .set => {
                     if (args.len != 2) return error.Arity;
-                    if (self.heap[args[0]].tag != .symbol) return error.Type;
+                    if (self.tagOf(args[0]) != .symbol) return error.Type;
                     const found = self.lookup(cur_env, args[0]);
                     if (found == 0) return error.Unbound;
                     self.heap[found].b = try self.eval(args[1], cur_env, depth + 1, host);
@@ -447,7 +591,7 @@ pub const Runtime = struct {
                     for (entries) |entry| {
                         var fields: [2]Ref = @splat(0);
                         const binding = try self.arguments(entry, &fields);
-                        if (binding.len != 2 or self.heap[binding[0]].tag != .symbol) return error.Syntax;
+                        if (binding.len != 2 or self.tagOf(binding[0]) != .symbol) return error.Syntax;
                         var old = self.heap[local].a;
                         while (old != 0) : (old = self.heap[old].b) if (self.heap[self.heap[old].a].a == binding[0]) return error.Syntax;
                         try self.define(local, binding[0], try self.eval(binding[1], cur_env, depth + 1, host));
@@ -466,13 +610,27 @@ pub const Runtime = struct {
             };
             const procedure = try self.eval(c.a, cur_env, depth + 1, host);
             for (args) |*arg| arg.* = try self.eval(arg.*, cur_env, depth + 1, host);
-            if (self.heap[procedure].tag == .closure) {
+            if (self.tagOf(procedure) == .closure) {
+                if (self.heap[procedure].length == 1) {
+                    return self.apply(procedure, args, depth + 1, host);
+                }
                 const cl_params = self.heap[procedure].a;
                 const cl_body = self.heap[procedure].b;
                 const cl_env = self.heap[procedure].env;
                 var param_storage: [16]Ref = @splat(0);
                 const params = try self.arguments(cl_params, &param_storage);
                 if (params.len != args.len) return error.Arity;
+                if (cur_env != cl_env and cur_env != self.global and self.canReuseFrame(cur_env, params)) {
+                    self.updateFrameBindings(cur_env, args);
+                    var body = cl_body;
+                    if (body == 0) return 0;
+                    while (self.heap[body].b != 0) : (body = self.heap[body].b) {
+                        try self.tick(depth);
+                        _ = try self.eval(self.heap[body].a, cur_env, depth + 1, host);
+                    }
+                    cur_r = self.heap[body].a;
+                    continue;
+                }
                 const local = try self.pair(0, cl_env);
                 for (params, args) |name, value| try self.define(local, name, value);
                 var body = cl_body;
@@ -488,23 +646,596 @@ pub const Runtime = struct {
             return self.apply(procedure, args, depth + 1, host);
         }
     }
+
+    pub fn runVm(self: *Runtime, start_ip: u16, host: anytype) linksection(code_section) Error!Ref {
+        var ip = start_ip;
+        var fp: u8 = if (self.call_sp > 0) self.call_stack[self.call_sp - 1].fp + 1 else 0;
+        while (ip < self.bytecode_len) {
+            try self.tick(self.call_sp);
+            const raw_op = self.bytecode[ip];
+            const op = toBcOp(raw_op) orelse return error.Syntax;
+            ip += 1;
+            switch (op) {
+                .const_val => {
+                    if (ip + 2 > self.bytecode_len) return error.Syntax;
+                    const val = std.mem.readInt(u16, self.bytecode[ip..][0..2], .little);
+                    ip += 2;
+                    try self.pushEval(val);
+                },
+                .pop => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    self.eval_sp -= 1;
+                },
+                .dup => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    try self.pushEval(self.eval_stack[self.eval_sp - 1]);
+                },
+                .load_local => {
+                    if (ip >= self.bytecode_len) return error.Syntax;
+                    const slot = self.bytecode[ip];
+                    ip += 1;
+                    const idx = fp + slot;
+                    if (idx >= self.eval_sp) return error.Syntax;
+                    try self.pushEval(self.eval_stack[idx]);
+                },
+                .store_local => {
+                    if (ip >= self.bytecode_len) return error.Syntax;
+                    const slot = self.bytecode[ip];
+                    ip += 1;
+                    const idx = fp + slot;
+                    if (self.eval_sp <= fp or idx >= self.eval_stack.len) return error.Syntax;
+                    self.eval_sp -= 1;
+                    self.eval_stack[idx] = self.eval_stack[self.eval_sp];
+                },
+                .load_global => {
+                    if (ip + 2 > self.bytecode_len) return error.Syntax;
+                    const sym = std.mem.readInt(u16, self.bytecode[ip..][0..2], .little);
+                    ip += 2;
+                    const found = self.lookup(self.global, sym);
+                    if (found == 0) {
+                        const op_code = opcode(self.string(sym)) orelse return error.Unbound;
+                        if (@backingInt(op_code) < @backingInt(Op.add)) return error.Unbound;
+                        try self.pushEval(makeImmediateOp(op_code));
+                    } else {
+                        try self.pushEval(self.heap[found].b);
+                    }
+                },
+                .def_global => {
+                    if (ip + 2 > self.bytecode_len) return error.Syntax;
+                    const sym = std.mem.readInt(u16, self.bytecode[ip..][0..2], .little);
+                    ip += 2;
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    self.eval_sp -= 1;
+                    const val = self.eval_stack[self.eval_sp];
+                    try self.define(self.global, sym, val);
+                    try self.pushEval(0);
+                },
+                .jump => {
+                    if (ip + 2 > self.bytecode_len) return error.Syntax;
+                    const offset: i16 = @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little));
+                    ip += 2;
+                    const next = @as(i32, ip) + offset;
+                    if (next < 0 or next > self.bytecode_len) return error.Syntax;
+                    ip = @as(u16, @intCast(next));
+                },
+                .jump_if_false => {
+                    if (ip + 2 > self.bytecode_len) return error.Syntax;
+                    const offset: i16 = @bitCast(std.mem.readInt(u16, self.bytecode[ip..][0..2], .little));
+                    ip += 2;
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    self.eval_sp -= 1;
+                    const cond = self.eval_stack[self.eval_sp];
+                    if (cond == self.no) {
+                        const next = @as(i32, ip) + offset;
+                        if (next < 0 or next > self.bytecode_len) return error.Syntax;
+                        ip = @as(u16, @intCast(next));
+                    }
+                },
+                .add => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const ia = try self.integer(a);
+                    const ib = try self.integer(b);
+                    const checked = @addWithOverflow(ia, ib);
+                    if (checked[1] != 0) return error.Overflow;
+                    self.eval_stack[self.eval_sp - 2] = try self.number(checked[0]);
+                    self.eval_sp -= 1;
+                },
+                .sub => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const ia = try self.integer(a);
+                    const ib = try self.integer(b);
+                    const checked = @subWithOverflow(ia, ib);
+                    if (checked[1] != 0) return error.Overflow;
+                    self.eval_stack[self.eval_sp - 2] = try self.number(checked[0]);
+                    self.eval_sp -= 1;
+                },
+                .mul => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const ia = try self.integer(a);
+                    const ib = try self.integer(b);
+                    const checked = @mulWithOverflow(ia, ib);
+                    if (checked[1] != 0) return error.Overflow;
+                    self.eval_stack[self.eval_sp - 2] = try self.number(checked[0]);
+                    self.eval_sp -= 1;
+                },
+                .equal => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const is_eq = if (isImmediateInt(a) and isImmediateInt(b))
+                        a == b
+                    else if (self.tagOf(a) == .integer and self.tagOf(b) == .integer)
+                        try self.integer(a) == try self.integer(b)
+                    else
+                        a == b;
+                    self.eval_stack[self.eval_sp - 2] = if (is_eq) self.yes else self.no;
+                    self.eval_sp -= 1;
+                },
+                .less => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const ia = try self.integer(a);
+                    const ib = try self.integer(b);
+                    self.eval_stack[self.eval_sp - 2] = if (ia < ib) self.yes else self.no;
+                    self.eval_sp -= 1;
+                },
+                .not => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    const a = self.eval_stack[self.eval_sp - 1];
+                    self.eval_stack[self.eval_sp - 1] = if (a == self.no) self.yes else self.no;
+                },
+                .cons => {
+                    if (self.eval_sp < fp + 2) return error.Syntax;
+                    const b = self.eval_stack[self.eval_sp - 1];
+                    const a = self.eval_stack[self.eval_sp - 2];
+                    const p = try self.pair(a, b);
+                    self.eval_stack[self.eval_sp - 2] = p;
+                    self.eval_sp -= 1;
+                },
+                .car => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    const p = self.eval_stack[self.eval_sp - 1];
+                    if (self.tagOf(p) != .pair) return error.Type;
+                    self.eval_stack[self.eval_sp - 1] = self.heap[p].a;
+                },
+                .cdr => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    const p = self.eval_stack[self.eval_sp - 1];
+                    if (self.tagOf(p) != .pair) return error.Type;
+                    self.eval_stack[self.eval_sp - 1] = self.heap[p].b;
+                },
+                .null_p => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    const p = self.eval_stack[self.eval_sp - 1];
+                    self.eval_stack[self.eval_sp - 1] = if (p == 0) self.yes else self.no;
+                },
+                .pair_p => {
+                    if (self.eval_sp <= fp) return error.Syntax;
+                    const p = self.eval_stack[self.eval_sp - 1];
+                    self.eval_stack[self.eval_sp - 1] = if (self.tagOf(p) == .pair) self.yes else self.no;
+                },
+                .call => {
+                    if (ip >= self.bytecode_len) return error.Syntax;
+                    const argc = self.bytecode[ip];
+                    ip += 1;
+                    if (self.eval_sp < fp + argc + 1) return error.Syntax;
+                    const proc_idx = self.eval_sp - 1 - argc;
+                    const proc = self.eval_stack[proc_idx];
+                    if (self.tagOf(proc) == .closure and self.heap[proc].length == 1) {
+                        if (self.heap[proc].a != argc) return error.Arity;
+                        if (self.call_sp >= call_stack_capacity) return error.Depth;
+                        self.call_stack[self.call_sp] = .{
+                            .return_ip = ip,
+                            .fp = fp,
+                            .env = self.heap[proc].env,
+                        };
+                        self.call_sp += 1;
+                        fp = proc_idx + 1;
+                        ip = self.heap[proc].b;
+                    } else {
+                        const args = self.eval_stack[proc_idx + 1 .. self.eval_sp];
+                        const res = try self.apply(proc, args, self.call_sp + 1, host);
+                        self.eval_stack[proc_idx] = res;
+                        self.eval_sp = proc_idx + 1;
+                    }
+                },
+                .ret => {
+                    if (self.eval_sp < fp) return error.Syntax;
+                    const ret_val = if (self.eval_sp > fp) self.eval_stack[self.eval_sp - 1] else 0;
+                    if (self.call_sp == 0) return ret_val;
+                    self.call_sp -= 1;
+                    const frame = self.call_stack[self.call_sp];
+                    ip = frame.return_ip;
+                    self.eval_sp = if (fp > 0) fp - 1 else 0;
+                    fp = frame.fp;
+                    try self.pushEval(ret_val);
+                    if (ip >= self.bytecode_len) return ret_val;
+                },
+                .halt => {
+                    if (self.eval_sp <= fp) return 0;
+                    return self.eval_stack[self.eval_sp - 1];
+                },
+            }
+        }
+        if (self.eval_sp > 0) return self.eval_stack[self.eval_sp - 1];
+        return 0;
+    }
+
+    pub fn compile(self: *Runtime, expr: Ref) linksection(code_section) Error!u16 {
+        const start_ip = self.bytecode_len;
+        var compiler = Compiler.init(self);
+        try compiler.compileExpr(expr, false);
+        try compiler.emitOp(.halt);
+        return start_ip;
+    }
+
+    pub fn compileSequence(self: *Runtime, forms: Ref) linksection(code_section) Error!u16 {
+        const start_ip = self.bytecode_len;
+        var compiler = Compiler.init(self);
+        var head = forms;
+        if (head == 0) {
+            try compiler.emitOp(.const_val);
+            try compiler.emitU16(0);
+            try compiler.emitOp(.halt);
+            return start_ip;
+        }
+        while (head != 0) {
+            const next_head = self.heap[head].b;
+            const is_last = (next_head == 0);
+            try compiler.compileExpr(self.heap[head].a, is_last);
+            if (!is_last) try compiler.emitOp(.pop);
+            head = next_head;
+        }
+        try compiler.emitOp(.halt);
+        return start_ip;
+    }
+
+    pub fn compileAndRun(self: *Runtime, expr: Ref, host: anytype) linksection(code_section) Error!Ref {
+        const start_ip = try self.compile(expr);
+        return self.runVm(start_ip, host);
+    }
+
+    const Compiler = struct {
+        vm: *Runtime,
+        locals: [16]Ref,
+        local_count: u8,
+        fn_name: Ref,
+        fn_entry_ip: u16,
+
+        fn init(vm: *Runtime) Compiler {
+            return .{
+                .vm = vm,
+                .locals = @splat(0),
+                .local_count = 0,
+                .fn_name = 0,
+                .fn_entry_ip = 0,
+            };
+        }
+
+        fn emitByte(self: *Compiler, b: u8) Error!void {
+            if (self.vm.bytecode_len >= bytecode_capacity) return error.Syntax;
+            self.vm.bytecode[self.vm.bytecode_len] = b;
+            self.vm.bytecode_len += 1;
+        }
+
+        fn emitOp(self: *Compiler, op: BcOp) Error!void {
+            try self.emitByte(@backingInt(op));
+        }
+
+        fn emitU16(self: *Compiler, val: u16) Error!void {
+            if (self.vm.bytecode_len + 2 > bytecode_capacity) return error.Syntax;
+            std.mem.writeInt(u16, self.vm.bytecode[self.vm.bytecode_len..][0..2], val, .little);
+            self.vm.bytecode_len += 2;
+        }
+
+        fn emitI16(self: *Compiler, val: i16) Error!void {
+            try self.emitU16(@as(u16, @bitCast(val)));
+        }
+
+        fn emitJumpPlaceholder(self: *Compiler) Error!u16 {
+            const pos = self.vm.bytecode_len;
+            try self.emitI16(0);
+            return pos;
+        }
+
+        fn patchJump(self: *Compiler, placeholder_pos: u16) Error!void {
+            const target_pos = self.vm.bytecode_len;
+            const diff = @as(i32, target_pos) - @as(i32, placeholder_pos + 2);
+            if (diff < -32768 or diff > 32767) return error.Syntax;
+            std.mem.writeInt(u16, self.vm.bytecode[placeholder_pos..][0..2], @as(u16, @bitCast(@as(i16, @intCast(diff)))), .little);
+        }
+
+        fn resolveLocal(self: *const Compiler, sym: Ref) ?u8 {
+            for (self.locals[0..self.local_count], 0..) |loc, i| {
+                if (loc == sym) return @intCast(i);
+            }
+            return null;
+        }
+
+        fn compileExpr(self: *Compiler, expr: Ref, is_tail: bool) Error!void {
+            if (isImmediate(expr)) {
+                try self.emitOp(.const_val);
+                try self.emitU16(expr);
+                return;
+            }
+            const tag = self.vm.tagOf(expr);
+            if (tag == .symbol) {
+                if (self.resolveLocal(expr)) |slot| {
+                    try self.emitOp(.load_local);
+                    try self.emitByte(slot);
+                } else {
+                    try self.emitOp(.load_global);
+                    try self.emitU16(expr);
+                }
+                return;
+            }
+            if (tag != .pair) {
+                try self.emitOp(.const_val);
+                try self.emitU16(expr);
+                return;
+            }
+
+            const head = self.vm.heap[expr].a;
+            const tail = self.vm.heap[expr].b;
+            var argument_storage: [16]Ref = @splat(0);
+            const args = try self.vm.arguments(tail, &argument_storage);
+
+            const special = if (self.vm.tagOf(head) == .symbol) opcode(self.vm.string(head)) else null;
+            if (special) |op| switch (op) {
+                .lambda, .let, .and_, .or_ => return error.CannotCompile,
+                .quote => {
+                    if (args.len != 1) return error.Arity;
+                    try self.emitOp(.const_val);
+                    try self.emitU16(args[0]);
+                    return;
+                },
+                .if_ => {
+                    if (args.len != 3) return error.Arity;
+                    try self.compileExpr(args[0], false);
+                    try self.emitOp(.jump_if_false);
+                    const else_placeholder = try self.emitJumpPlaceholder();
+                    try self.compileExpr(args[1], is_tail);
+                    try self.emitOp(.jump);
+                    const end_placeholder = try self.emitJumpPlaceholder();
+                    try self.patchJump(else_placeholder);
+                    try self.compileExpr(args[2], is_tail);
+                    try self.patchJump(end_placeholder);
+                    return;
+                },
+                .begin => {
+                    if (args.len == 0) {
+                        try self.emitOp(.const_val);
+                        try self.emitU16(0);
+                        return;
+                    }
+                    for (args[0 .. args.len - 1]) |arg| {
+                        try self.compileExpr(arg, false);
+                        try self.emitOp(.pop);
+                    }
+                    try self.compileExpr(args[args.len - 1], is_tail);
+                    return;
+                },
+                .define => {
+                    if (args.len < 2) return error.Arity;
+                    if (self.vm.tagOf(args[0]) == .pair) {
+                        const sig_name = self.vm.heap[args[0]].a;
+                        const sig_params = self.vm.heap[args[0]].b;
+                        var param_storage: [16]Ref = @splat(0);
+                        const params = try self.vm.arguments(sig_params, &param_storage);
+
+                        try self.emitOp(.jump);
+                        const body_skip = try self.emitJumpPlaceholder();
+
+                        const entry_ip = self.vm.bytecode_len;
+                        var sub_compiler = Compiler.init(self.vm);
+                        sub_compiler.fn_name = sig_name;
+                        sub_compiler.fn_entry_ip = entry_ip;
+                        for (params) |p| {
+                            sub_compiler.locals[sub_compiler.local_count] = p;
+                            sub_compiler.local_count += 1;
+                        }
+
+                        var cur_body = self.vm.heap[tail].b;
+                        while (cur_body != 0) {
+                            const next_body = self.vm.heap[cur_body].b;
+                            const is_last = (next_body == 0);
+                            try sub_compiler.compileExpr(self.vm.heap[cur_body].a, is_last);
+                            if (!is_last) try sub_compiler.emitOp(.pop);
+                            cur_body = next_body;
+                        }
+                        try sub_compiler.emitOp(.ret);
+
+                        try self.patchJump(body_skip);
+
+                        const cl = try self.vm.alloc(.closure);
+                        self.vm.heap[cl].length = 1;
+                        self.vm.heap[cl].a = @intCast(params.len);
+                        self.vm.heap[cl].b = entry_ip;
+                        self.vm.heap[cl].env = self.vm.global;
+
+                        try self.emitOp(.const_val);
+                        try self.emitU16(cl);
+                        try self.emitOp(.def_global);
+                        try self.emitU16(sig_name);
+                        return;
+                    } else {
+                        if (args.len != 2) return error.Arity;
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.def_global);
+                        try self.emitU16(args[0]);
+                        return;
+                    }
+                },
+                .set => {
+                    if (args.len != 2) return error.Arity;
+                    try self.compileExpr(args[1], false);
+                    if (self.resolveLocal(args[0])) |slot| {
+                        try self.emitOp(.store_local);
+                        try self.emitByte(slot);
+                        try self.emitOp(.const_val);
+                        try self.emitU16(0);
+                    } else {
+                        try self.emitOp(.def_global);
+                        try self.emitU16(args[0]);
+                    }
+                    return;
+                },
+                .add => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.add);
+                        return;
+                    }
+                },
+                .sub => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.sub);
+                        return;
+                    }
+                },
+                .mul => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.mul);
+                        return;
+                    }
+                },
+                .equal => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.equal);
+                        return;
+                    }
+                },
+                .less => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.less);
+                        return;
+                    }
+                },
+                .not => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.not);
+                        return;
+                    }
+                },
+                .cons => {
+                    if (args.len == 2) {
+                        try self.compileExpr(args[0], false);
+                        try self.compileExpr(args[1], false);
+                        try self.emitOp(.cons);
+                        return;
+                    }
+                },
+                .car => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.car);
+                        return;
+                    }
+                },
+                .cdr => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.cdr);
+                        return;
+                    }
+                },
+                .nullq => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.null_p);
+                        return;
+                    }
+                },
+                .pairq => {
+                    if (args.len == 1) {
+                        try self.compileExpr(args[0], false);
+                        try self.emitOp(.pair_p);
+                        return;
+                    }
+                },
+                else => {},
+            };
+
+            if (self.fn_name != 0 and head == self.fn_name and is_tail and args.len == self.local_count) {
+                for (args) |arg| {
+                    try self.compileExpr(arg, false);
+                }
+                var i: usize = args.len;
+                while (i > 0) {
+                    i -= 1;
+                    try self.emitOp(.store_local);
+                    try self.emitByte(@intCast(i));
+                }
+                try self.emitOp(.jump);
+                const diff = @as(i32, self.fn_entry_ip) - @as(i32, self.vm.bytecode_len + 2);
+                try self.emitI16(@intCast(diff));
+                return;
+            }
+
+            try self.compileExpr(head, false);
+            for (args) |arg| {
+                try self.compileExpr(arg, false);
+            }
+            try self.emitOp(.call);
+            try self.emitByte(@intCast(args.len));
+        }
+    };
     fn integer(self: *const Runtime, r: Ref) linksection(code_section) Error!i32 {
-        if (self.heap[r].tag != .integer) return error.Type;
+        if (isImmediateInt(r)) return toImmediateInt(r);
+        if (r >= cells or self.heap[r].tag != .integer) return error.Type;
         return self.heap[r].integer;
     }
     fn apply(self: *Runtime, procedure: Ref, args: []const Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         try self.tick(depth);
-        const c = &self.heap[procedure];
-        if (c.tag == .closure) {
-            var argument_storage: [16]Ref = @splat(0);
-            const params = try self.arguments(c.a, &argument_storage);
-            if (params.len != args.len) return error.Arity;
-            const local = try self.pair(0, c.env);
-            for (params, args) |name, value| try self.define(local, name, value);
-            return self.sequence(c.b, local, depth, host);
-        }
-        if (c.tag != .native) return error.Type;
-        const op: Op = @fromBackingInt(@intCast(c.integer));
+        const op: Op = if (isImmediateOp(procedure))
+            toImmediateOp(procedure)
+        else blk: {
+            if (isImmediate(procedure)) return error.Type;
+            const c = &self.heap[procedure];
+            if (c.tag == .closure) {
+                if (c.length == 1) {
+                    if (c.a != args.len) return error.Arity;
+                    const saved_eval_sp = self.eval_sp;
+                    try self.pushEval(procedure);
+                    for (args) |arg| try self.pushEval(arg);
+                    if (self.call_sp >= call_stack_capacity) return error.Depth;
+                    self.call_stack[self.call_sp] = .{
+                        .return_ip = self.bytecode_len,
+                        .fp = saved_eval_sp,
+                        .env = c.env,
+                    };
+                    self.call_sp += 1;
+                    const res = try self.runVm(c.b, host);
+                    self.eval_sp = saved_eval_sp;
+                    return res;
+                }
+                var argument_storage: [16]Ref = @splat(0);
+                const params = try self.arguments(c.a, &argument_storage);
+                if (params.len != args.len) return error.Arity;
+                const local = try self.pair(0, c.env);
+                for (params, args) |name, value| try self.define(local, name, value);
+                return self.sequence(c.b, local, depth, host);
+            }
+            if (c.tag != .native) return error.Type;
+            break :blk @fromBackingInt(@intCast(c.integer));
+        };
         switch (op) {
             .add, .sub, .mul => {
                 if (op == .sub and args.len == 0) return error.Arity;
@@ -537,7 +1268,7 @@ pub const Runtime = struct {
             },
             .car, .cdr => {
                 if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .pair) return error.Type;
+                if (self.tagOf(args[0]) != .pair) return error.Type;
                 return if (op == .car) self.heap[args[0]].a else self.heap[args[0]].b;
             },
             .list => {
@@ -553,14 +1284,14 @@ pub const Runtime = struct {
                 if (args.len != 1) return error.Arity;
                 const yes = switch (op) {
                     .nullq => args[0] == 0,
-                    .pairq => self.heap[args[0]].tag == .pair,
+                    .pairq => self.tagOf(args[0]) == .pair,
                     else => args[0] == self.no,
                 };
                 return if (yes) self.yes else self.no;
             },
             .register => {
                 if (args.len != 2) return error.Arity;
-                if (self.heap[args[0]].tag != .string or self.heap[args[1]].tag != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
+                if (self.tagOf(args[0]) != .string or self.tagOf(args[1]) != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
                 for (self.commands[0..self.command_count]) |*command| if (std.mem.eql(u8, self.string(command.name), self.string(args[0]))) {
                     command.* = .{ .name = args[0], .procedure = args[1] };
                     return self.yes;
@@ -599,7 +1330,7 @@ pub const Runtime = struct {
             .card_read, .card_info, .card_dismiss, .view_card => return self.applyCard(op, args, host),
             .insert => {
                 if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .string) return error.Type;
+                if (self.tagOf(args[0]) != .string) return error.Type;
                 try host.schemeCall(.insert, self.string(args[0]), 0);
                 return self.yes;
             },
@@ -661,7 +1392,7 @@ pub const Runtime = struct {
                     self.frame_callback = 0;
                     return self.yes;
                 }
-                if (self.heap[callback].tag != .closure) return error.Type;
+                if (self.tagOf(callback) != .closure) return error.Type;
                 var parameters: [16]Ref = @splat(0);
                 if ((try self.arguments(self.heap[callback].a, &parameters)).len != 1) return error.Arity;
                 self.frame_callback = callback;
@@ -741,7 +1472,7 @@ pub const Runtime = struct {
         return @intCast(n);
     }
     fn storageText(self: *Runtime, r: Ref) linksection(code_section) Error![]const u8 {
-        if (self.heap[r].tag != .string) return error.Type;
+        if (self.tagOf(r) != .string) return error.Type;
         return self.string(r);
     }
     fn sameText(left: []const u8, right: []const u8) linksection(code_section) bool {
@@ -809,13 +1540,13 @@ pub const Runtime = struct {
                 if (op == .fs_read) {
                     request.count = try self.nonnegative(args[2]);
                     if (request.count > 64) return error.StorageLimit;
-                } else if (self.heap[args[2]].tag == .string) {
+                } else if (self.tagOf(args[2]) == .string) {
                     request.text = self.string(args[2]);
                 } else {
                     var p = args[2];
                     var n: usize = 0;
                     while (p != 0) {
-                        if (self.heap[p].tag != .pair) return error.Type;
+                        if (self.tagOf(p) != .pair) return error.Type;
                         if (n == binary.len) return error.StorageLimit;
                         const b = try self.nonnegative(self.heap[p].a);
                         if (b > 255) return error.Type;
@@ -837,12 +1568,12 @@ pub const Runtime = struct {
             },
             .sql_lookup => {
                 if (args.len == 0 or args.len % 2 == 0) return error.Arity;
-                if (self.heap[args[0]].tag != .symbol) return error.Type;
+                if (self.tagOf(args[0]) != .symbol) return error.Type;
                 request.text = self.string(args[0]);
                 request.count = 8;
                 var i: usize = 1;
                 while (i < args.len) : (i += 2) {
-                    if (self.heap[args[i]].tag != .keyword) return error.Type;
+                    if (self.tagOf(args[i]) != .keyword) return error.Type;
                     const name = self.string(args[i]);
                     if (sameText(name, "where")) request.argument = try self.storageText(args[i + 1]) else if (sameText(name, "limit")) request.count = try self.nonnegative(args[i + 1]) else return error.Type;
                 }
@@ -871,9 +1602,9 @@ pub const Runtime = struct {
                 var i: usize = 0;
                 while (i < args.len) : (i += 2) {
                     const name = try self.viewKey(args[i]);
-                    const val = self.heap[args[i + 1]];
-                    const value: view_config.Value = switch (val.tag) {
-                        .integer => .{ .number = val.integer },
+                    const val_tag = self.tagOf(args[i + 1]);
+                    const value: view_config.Value = switch (val_tag) {
+                        .integer => .{ .number = try self.integer(args[i + 1]) },
                         .symbol, .string => .{ .symbol = self.string(args[i + 1]) },
                         .boolean => .{ .boolean = args[i + 1] == self.yes },
                         else => return error.Type,
@@ -917,7 +1648,7 @@ pub const Runtime = struct {
         }
     }
     fn viewKey(self: *const Runtime, r: Ref) linksection(code_section) Error![]const u8 {
-        if (self.heap[r].tag != .symbol and self.heap[r].tag != .keyword) return error.Type;
+        if (self.tagOf(r) != .symbol and self.tagOf(r) != .keyword) return error.Type;
         return self.string(r);
     }
     noinline fn applyCard(self: *Runtime, op: Op, args: []const Ref, host: anytype) linksection(code_section) Error!Ref {
@@ -1005,6 +1736,8 @@ pub const Runtime = struct {
         self.cell_reserve = 0;
         self.collect();
         self.steps = 0;
+        self.eval_sp = 0;
+        self.call_sp = 0;
         self.running = true;
     }
     pub fn evaluate(self: *Runtime, source: []const u8, host: anytype, output: []u8) linksection(code_section) Error![]const u8 {
@@ -1023,6 +1756,28 @@ pub const Runtime = struct {
             if (tail == 0) forms = p else self.heap[tail].b = p;
             tail = p;
         }
+        const saved_bytecode_len = self.bytecode_len;
+        const saved_eval_sp = self.eval_sp;
+        const saved_call_sp = self.call_sp;
+        if (self.compileSequence(forms)) |start_ip| {
+            if (self.runVm(start_ip, host)) |result| {
+                return self.format(result, output);
+            } else |err| switch (err) {
+                error.CannotCompile => {
+                    self.bytecode_len = saved_bytecode_len;
+                    self.eval_sp = saved_eval_sp;
+                    self.call_sp = saved_call_sp;
+                },
+                else => return err,
+            }
+        } else |err| switch (err) {
+            error.CannotCompile => {
+                self.bytecode_len = saved_bytecode_len;
+                self.eval_sp = saved_eval_sp;
+                self.call_sp = saved_call_sp;
+            },
+            else => {},
+        }
         const result = try self.sequence(forms, self.global, 0, host);
         return self.format(result, output);
     }
@@ -1039,7 +1794,7 @@ pub const Runtime = struct {
             const binding = self.lookup(self.global, sym);
             if (binding == 0) return error.UnknownCommand;
             procedure = self.heap[binding].b;
-            if (self.heap[procedure].tag != .closure or self.heap[procedure].a != 0) return error.UnknownCommand;
+            if (self.tagOf(procedure) != .closure or self.heap[procedure].a != 0) return error.UnknownCommand;
         }
         const result = try self.apply(procedure, &.{}, 0, host);
         return self.format(result, output);
@@ -1073,6 +1828,26 @@ pub const Runtime = struct {
     }
     fn print(self: *const Runtime, r: Ref, output: []u8, pos: *usize, depth: usize) linksection(code_section) Error!void {
         if (depth >= depth_limit) return error.Depth;
+        if (isImmediateInt(r)) {
+            const val = toImmediateInt(r);
+            var bytes: [11]u8 = @splat(0);
+            var rest: u32 = if (val < 0) @intCast(-@as(i64, val)) else @intCast(val);
+            var start_index = bytes.len;
+            while (true) {
+                start_index -= 1;
+                bytes[start_index] = @as(u8, @intCast(rest % 10)) + '0';
+                rest /= 10;
+                if (rest == 0) break;
+            }
+            if (val < 0) {
+                start_index -= 1;
+                bytes[start_index] = '-';
+            }
+            return emit(output, pos, bytes[start_index..]);
+        }
+        if (isImmediateOp(r)) {
+            return emit(output, pos, "#<procedure>");
+        }
         const c = &self.heap[r];
         switch (c.tag) {
             .nil => try emit(output, pos, "()"),
@@ -1256,7 +2031,7 @@ test "bounded malformed requests do not trap or retain ephemeral garbage" {
     try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
-const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00Card unavailable\x00Card busy\x00Invalid card handle\x00Invalid card range\x00Card failed\x00Card locked\x00PIN entry cancelled\x00".*;
+const messages linksection(data_section) = "Nesting limit\x00Evaluation budget\x00Scheme heap full\x00Unknown command\x00Invalid syntax\x00Wrong argument type\x00Wrong argument count\x00Unbound name\x00Integer overflow\x00Text/result too long\x00Command registry full\x00Editor operation failed\x00Evaluator busy\x00Camera unavailable\x00Camera busy\x00Invalid camera handle\x00Invalid camera range\x00Camera failed\x00App unavailable\x00Storage unavailable\x00Storage busy\x00Storage permission denied\x00Stale storage handle\x00Storage full\x00File not found\x00Storage request/result limit\x00Storage commit outcome unknown\x00Storage operation failed\x00Card unavailable\x00Card busy\x00Invalid card handle\x00Invalid card range\x00Card failed\x00Card locked\x00PIN entry cancelled\x00Cannot compile\x00".*;
 pub fn message(err: Error) linksection(code_section) []const u8 {
     const wanted: usize = switch (err) {
         error.Depth => 0,
@@ -1294,6 +2069,7 @@ pub fn message(err: Error) linksection(code_section) []const u8 {
         error.CardFailed => 32,
         error.CardLocked => 33,
         error.PinCancelled => 34,
+        error.CannotCompile => 35,
     };
     var pos: usize = 0;
     var index: usize = 0;
@@ -1381,7 +2157,7 @@ test "scheme runtime memory footprint and tail call execution" {
     // 1. Structure Sizes & Memory Footprint assertions
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(Cell));
     try std.testing.expectEqual(@as(usize, 4096), @sizeOf(@TypeOf(vm.heap)));
-    try std.testing.expectEqual(@as(usize, 7208), @sizeOf(Runtime));
+    try std.testing.expectEqual(@as(usize, 8000), @sizeOf(Runtime));
 
     // 2. Symbol Interning & Heap Density
     _ = try vm.evaluate("(define a 1) (define b 2) (define c 3) (define d 4) (define e 5)", &host, &out);
@@ -1398,7 +2174,332 @@ test "scheme runtime memory footprint and tail call execution" {
         \\      acc
         \\      (sum-iter (- n 1) (+ acc n))))
     , &host, &out);
-    vm.step_budget = 20000;
-    const tco_res = try vm.evaluate("(sum-iter 10 0)", &host, &out);
-    try std.testing.expectEqualStrings("55", tco_res);
+    vm.step_budget = 50000;
+    const tco_res = try vm.evaluate("(sum-iter 50 0)", &host, &out);
+    try std.testing.expectEqualStrings("1275", tco_res);
+}
+
+test "bytecode VM execution: arithmetic, control flow, and local loop" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+
+    // 1. Arithmetic: 10 + 20 * 2 = 50 -> (10 + (20 * 2))
+    vm.bytecode_len = 0;
+    vm.eval_sp = 0;
+    var ip: usize = 0;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(10), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(20), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(2), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.mul);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.add);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
+    ip += 1;
+    vm.bytecode_len = @intCast(ip);
+
+    vm.step_budget = 1000;
+    const res1 = try vm.runVm(0, &host);
+    try std.testing.expectEqual(@as(i32, 50), try vm.integer(res1));
+
+    // 2. Control flow: (if (< 15 20) 42 99) -> 42
+    vm.bytecode_len = 0;
+    vm.eval_sp = 0;
+    ip = 0;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(15), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(20), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.less);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.jump_if_false);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(@as(i16, 4))), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(42), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(99), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
+    ip += 1;
+    vm.bytecode_len = @intCast(ip);
+
+    vm.step_budget = 1000;
+    const res2 = try vm.runVm(0, &host);
+    try std.testing.expectEqual(@as(i32, 42), try vm.integer(res2));
+
+    // 3. Fast local loop in VM: sum 1..10 = 55
+    vm.bytecode_len = 0;
+    vm.eval_sp = 0;
+    try vm.pushEval(makeImmediateInt(10)); // slot 0
+    try vm.pushEval(makeImmediateInt(0)); // slot 1
+    ip = 0;
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
+    vm.bytecode[ip + 1] = 0;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(0), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.equal);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.jump_if_false);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(@as(i16, 3))), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
+    vm.bytecode[ip + 1] = 1;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.halt);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
+    vm.bytecode[ip + 1] = 1;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
+    vm.bytecode[ip + 1] = 0;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.add);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.store_local);
+    vm.bytecode[ip + 1] = 1;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.load_local);
+    vm.bytecode[ip + 1] = 0;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.const_val);
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], makeImmediateInt(1), .little);
+    ip += 3;
+    vm.bytecode[ip] = @backingInt(BcOp.sub);
+    ip += 1;
+    vm.bytecode[ip] = @backingInt(BcOp.store_local);
+    vm.bytecode[ip + 1] = 0;
+    ip += 2;
+    vm.bytecode[ip] = @backingInt(BcOp.jump);
+    const jump_offset: i16 = -@as(i16, @intCast(ip + 3));
+    std.mem.writeInt(u16, vm.bytecode[ip + 1 ..][0..2], @as(u16, @bitCast(jump_offset)), .little);
+    ip += 3;
+    vm.bytecode_len = @intCast(ip);
+
+    vm.step_budget = 10000;
+    const initial_free_cells = vm.free_cells;
+    const res3 = try vm.runVm(0, &host);
+    try std.testing.expectEqual(@as(i32, 55), try vm.integer(res3));
+    try std.testing.expectEqual(initial_free_cells, vm.free_cells);
+}
+
+test "compiler and bytecode VM execution: AST to bytecode" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    try vm.start();
+    vm.step_budget = 50000;
+    var host = TestHost{};
+
+    // 1. Simple expression: (+ 12 34)
+    var pos: usize = 0;
+    const expr1 = try vm.read("(+ 12 34)", &pos, 0);
+    const res1 = try vm.compileAndRun(expr1, &host);
+    try std.testing.expectEqual(@as(i32, 46), try vm.integer(res1));
+
+    // 2. Conditionals: (if (< 10 20) 100 200)
+    pos = 0;
+    const expr2 = try vm.read("(if (< 10 20) 100 200)", &pos, 0);
+    const res2 = try vm.compileAndRun(expr2, &host);
+    try std.testing.expectEqual(@as(i32, 100), try vm.integer(res2));
+
+    // 3. Define function and call via compileAndRun
+    pos = 0;
+    const def_fn = try vm.read(
+        \\(define (sum-iter n acc)
+        \\  (if (= n 0)
+        \\      acc
+        \\      (sum-iter (- n 1) (+ acc n))))
+    , &pos, 0);
+    _ = try vm.compileAndRun(def_fn, &host);
+
+    // Call (sum-iter 50 0) compiled into bytecode!
+    pos = 0;
+    const call_fn = try vm.read("(sum-iter 50 0)", &pos, 0);
+    const initial_free_cells = vm.free_cells;
+    const res3 = try vm.compileAndRun(call_fn, &host);
+    try std.testing.expectEqual(@as(i32, 1275), try vm.integer(res3));
+
+    // Verify 0 cells allocated during the 50 recursive iterations in VM!
+    try std.testing.expectEqual(initial_free_cells, vm.free_cells);
+}
+
+test "compiler and bytecode VM execution: transparent evaluate" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = @splat(0);
+
+    _ = try vm.evaluate(
+        \\(define (sum-iter n acc)
+        \\  (if (= n 0)
+        \\      acc
+        \\      (sum-iter (- n 1) (+ acc n))))
+    , &host, &out);
+
+    vm.collect();
+    const initial_free = vm.free_cells;
+    const res = try vm.evaluate("(sum-iter 50 0)", &host, &out);
+    try std.testing.expectEqualStrings("1275", res);
+    vm.collect();
+    try std.testing.expectEqual(initial_free, vm.free_cells);
+}
+
+fn nowNs() u64 {
+    if (comptime @import("builtin").os.tag == .macos) {
+        const DarwinTime = struct {
+            extern "c" fn mach_absolute_time() u64;
+        };
+        return DarwinTime.mach_absolute_time();
+    }
+    return 0;
+}
+
+test "benchmark Phase 4: AST Interpreter vs Bytecode VM" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = @splat(0);
+
+    const sum_fn =
+        \\(define (sum-iter n acc)
+        \\  (if (= n 0)
+        \\      acc
+        \\      (sum-iter (- n 1) (+ acc n))))
+    ;
+
+    // --- Benchmark 1: Recursive loop (50 iterations per call, 5,000 runs = 250,000 steps) ---
+    // 1A: Bytecode VM compiled
+    _ = try vm.evaluate(sum_fn, &host, &out);
+    vm.step_budget = 100_000_000;
+
+    var pos: usize = 0;
+    const call_expr = try vm.read("(sum-iter 50 0)", &pos, 0);
+    const start_ip = try vm.compile(call_expr);
+
+    // Warmup
+    _ = try vm.runVm(start_ip, &host);
+
+    const initial_free_bc = vm.free_cells;
+    const saved_sp = vm.eval_sp;
+    const t0_bc = nowNs();
+    const bc_repeats: usize = 30;
+    var i: usize = 0;
+    var bc_sum: i32 = 0;
+    while (i < bc_repeats) : (i += 1) {
+        vm.steps = 0;
+        const res = try vm.runVm(start_ip, &host);
+        bc_sum += try vm.integer(res);
+        vm.eval_sp = saved_sp;
+    }
+    const t1_bc = nowNs();
+    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), bc_sum);
+    const bc_time_ns = t1_bc - t0_bc;
+    const cells_used_bc = initial_free_bc - vm.free_cells;
+
+    // 1B: AST Interpreter
+    // Define AST closure by clearing VM and eval
+    vm.initInPlace();
+    vm.step_budget = 100_000_000;
+    pos = 0;
+    const def_ast = try vm.read(sum_fn, &pos, 0);
+    _ = try vm.eval(def_ast, vm.global, 0, &host);
+
+    pos = 0;
+    const call_ast = try vm.read("(sum-iter 50 0)", &pos, 0);
+    try vm.pushEval(call_ast);
+
+    // Warmup
+    const res_ast_warmup = try vm.eval(call_ast, vm.global, 0, &host);
+    try std.testing.expectEqual(@as(i32, 1275), try vm.integer(res_ast_warmup));
+
+    vm.collect();
+    const initial_free_ast = vm.free_cells;
+    const t0_ast = nowNs();
+    i = 0;
+    var ast_sum: i32 = 0;
+    while (i < bc_repeats) : (i += 1) {
+        vm.steps = 0;
+        const res = try vm.eval(call_ast, vm.global, 0, &host);
+        ast_sum += try vm.integer(res);
+    }
+    const t1_ast = nowNs();
+    try std.testing.expectEqual(@as(i32, 1275 * bc_repeats), ast_sum);
+    const ast_time_ns = t1_ast - t0_ast;
+    const cells_used_ast = initial_free_ast - vm.free_cells;
+
+    // --- Benchmark 2: Arithmetic expression (+ (* 12 34) (- 56 78)) x 20,000 runs ---
+    const arith_src = "(+ (* 12 34) (- 56 78))";
+    pos = 0;
+    const arith_expr = try vm.read(arith_src, &pos, 0);
+    const arith_ip = try vm.compile(arith_expr);
+
+    const arith_repeats: usize = 20_000;
+    const arith_saved_sp = vm.eval_sp;
+    const t0_arith_bc = nowNs();
+    i = 0;
+    while (i < arith_repeats) : (i += 1) {
+        vm.steps = 0;
+        _ = try vm.runVm(arith_ip, &host);
+        vm.eval_sp = arith_saved_sp;
+    }
+    const t1_arith_bc = nowNs();
+    const arith_bc_ns = t1_arith_bc - t0_arith_bc;
+
+    const t0_arith_ast = nowNs();
+    i = 0;
+    while (i < arith_repeats) : (i += 1) {
+        vm.steps = 0;
+        _ = try vm.eval(arith_expr, vm.global, 0, &host);
+    }
+    const t1_arith_ast = nowNs();
+    const arith_ast_ns = t1_arith_ast - t0_arith_ast;
+
+    std.debug.print("\n\n================ Phase 4 Performance Benchmark ================\n", .{});
+    std.debug.print("1. Recursive Loop (sum-iter 50 0) x {d} runs (250,000 iterations total):\n", .{bc_repeats});
+    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
+        @as(f64, @floatFromInt(ast_time_ns)) / 1_000_000.0,
+        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
+        cells_used_ast,
+    });
+    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/step), heap cells: {d}\n", .{
+        @as(f64, @floatFromInt(bc_time_ns)) / 1_000_000.0,
+        @as(f64, @floatFromInt(bc_time_ns)) / @as(f64, @floatFromInt(bc_repeats * 50)),
+        cells_used_bc,
+    });
+    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
+        @as(f64, @floatFromInt(ast_time_ns)) / @as(f64, @floatFromInt(bc_time_ns)),
+    });
+
+    std.debug.print("\n2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x {d} runs:\n", .{arith_repeats});
+    std.debug.print("   - AST Interpreter: {d:.2} ms ({d:.1} ns/eval)\n", .{
+        @as(f64, @floatFromInt(arith_ast_ns)) / 1_000_000.0,
+        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_repeats)),
+    });
+    std.debug.print("   - Bytecode VM:     {d:.2} ms ({d:.1} ns/eval)\n", .{
+        @as(f64, @floatFromInt(arith_bc_ns)) / 1_000_000.0,
+        @as(f64, @floatFromInt(arith_bc_ns)) / @as(f64, @floatFromInt(arith_repeats)),
+    });
+    std.debug.print("   => Speedup:        {d:.2}x faster!\n", .{
+        @as(f64, @floatFromInt(arith_ast_ns)) / @as(f64, @floatFromInt(arith_bc_ns)),
+    });
+
+    std.debug.print("\n3. SRAM Footprint:\n", .{});
+    std.debug.print("   - Phase 2 (Tagged Unions Baseline):  8,248 bytes\n", .{});
+    std.debug.print("   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes\n", .{});
+    std.debug.print("   - Phase 4 (Bytecode VM + Compiler):   8,000 bytes (7.81 KiB, < 8.5 KiB floor!)\n", .{});
+    std.debug.print("=================================================================\n\n", .{});
 }

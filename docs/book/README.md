@@ -21,6 +21,8 @@
 - [使えるメモリになるまで](ja/psram-and-evidence.md): PSRAMの段階的検証、実機識別失敗、address設定とcache同期の修正からSQL実行まで。
 - [既存のCライブラリを迎える](ja/c-library.md): SQLiteのallocator、owner、shutdown、メモリ不足からの回復とnative実行の範囲。
 - [重い計算をOSサービスにする](ja/pqc-service.md): PQC実験を題材に、入力snapshot、専用worker、取消し、回収失敗、SRAM・Flash配置を扱う発展事例。
+- [画像のデータから画面の画素へ](ja/image-pipeline.md): 圧縮、画素形式、stride、配置、合成と表示の境界。
+- [一段落の日本語を組み立てる](ja/text-layout.md): UTF-8、書記素、字形、行分割、ルビ、maskと画素。
 - [文字が画面に現れるまで](ja/drawing-text.md): ASCII grid、RGB565、部分更新、scroll、cacheとDMAの受渡し。四象限のタッチ実習と、明示的な離指・未更新sampleの区別。
 - [日本語フォントを載せる予算](ja/japanese-fonts.md): FreeType/HarfBuzz、複数session、extent group、確保失敗、hintingとRV32 stack、workerの寿命。
 - [文字を描くところから、編集する環境へ](ja/editing-environment.md): 一行ASCII編集、UTF-8と書記素、SKKの未確定入力、Undo、Display List、ページング式フォントとホスト予算。共通コアと実機統合を区別します。
