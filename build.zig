@@ -176,6 +176,26 @@ pub fn build(b: *std.Build) void {
     const suspend_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/suspend.zig"), .target = target, .optimize = optimize });
     suspend_module.addImport("lp_core", lp_core_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = suspend_module })).step);
+
+    // Japanese Dictionary benchmark & tests
+    const dict_module = b.createModule(.{ .root_source_file = b.path("src/xy/dict.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = dict_module })).step);
+
+    const conv_module = b.createModule(.{ .root_source_file = b.path("src/xy/conv.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = conv_module })).step);
+
+    const bench_dict_exe = b.addExecutable(.{
+        .name = "benchmark_dict",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/benchmark_dict.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    bench_dict_exe.root_module.addImport("dict", dict_module);
+    const run_bench_dict = b.addRunArtifact(bench_dict_exe);
+    const bench_dict_step = b.step("bench-dict", "Run MeOS vs nihos Japanese dictionary benchmark");
+    bench_dict_step.dependOn(&run_bench_dict.step);
 }
 
 fn appTestModule(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, path: []const u8, imports: []const std.Build.Module.Import) *std.Build.Module {
