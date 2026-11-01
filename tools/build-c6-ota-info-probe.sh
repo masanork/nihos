@@ -4,7 +4,6 @@ set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # This image never sends OTA write or activation requests.
 umask 077
-NIHOS_C6_PROTOCOL=hosted
 build_dir="$repo_root/build/c6-ota-info-probe"
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
