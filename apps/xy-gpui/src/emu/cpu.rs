@@ -19,6 +19,7 @@ pub struct Cpu {
     pub mhartid: u32,
 
     pub instructions_executed: u64,
+    pub fault: Option<String>,
 }
 
 impl Cpu {
@@ -37,6 +38,7 @@ impl Cpu {
             mip: 0,
             mhartid: 0,
             instructions_executed: 0,
+            fault: None,
         };
         // Initial stack pointer: 0x4ff6e000 (standard nihos stack top)
         cpu.x[2] = 0x4ff6_e000;
@@ -54,6 +56,20 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> bool {
+        if self.fault.is_some() {
+            return false;
+        }
+        bus.active_hart = self.mhartid as usize;
+        if self.instructions_executed & 63 == 0
+            && self.mstatus & 8 != 0
+            && let Some(line) = bus.pending_irq(self.mhartid as usize)
+        {
+            self.mepc = self.pc;
+            self.mcause = 0x8000_0000 | line;
+            self.mtval = 0;
+            self.mstatus = (self.mstatus & !(1 << 3)) | (1 << 7) | (3 << 11);
+            self.pc = self.mtvec & !0x3f;
+        }
         // Handle timer ticks periodically
         if self.instructions_executed & 0xff == 0 {
             bus.timer_ticks = bus.timer_ticks.wrapping_add(256);
@@ -63,7 +79,7 @@ impl Cpu {
         if (0x4fc0_0000..=0x4fc0_ffff).contains(&self.pc) {
             self.handle_rom_call(bus);
             self.instructions_executed += 1;
-            return true;
+            return self.fault.is_none();
         }
 
         // Fetch instruction (support 16-bit compressed or 32-bit standard)
@@ -72,13 +88,13 @@ impl Cpu {
             // Compressed 16-bit instruction (RVC)
             self.execute_c(raw16, bus);
             self.instructions_executed += 1;
-            return true;
+            return self.fault.is_none();
         }
 
         let inst = bus.read_u32(self.pc);
         self.execute_32(inst, bus);
         self.instructions_executed += 1;
-        true
+        self.fault.is_none()
     }
 
     fn execute_32(&mut self, inst: u32, bus: &mut Bus) {
@@ -407,7 +423,12 @@ impl Cpu {
                     self.set_reg(rd, old_val);
                 }
             }
-            _ => {}
+            _ => {
+                self.fault = Some(format!(
+                    "unsupported instruction {inst:#010x} at {:#010x}",
+                    self.pc
+                ))
+            }
         }
 
         self.pc = next_pc;
@@ -452,7 +473,12 @@ impl Cpu {
                     let addr = self.reg(rs1).wrapping_add(imm);
                     bus.write_u32(addr, self.reg(rs2));
                 }
-                _ => {}
+                _ => {
+                    self.fault = Some(format!(
+                        "unsupported compressed instruction {inst:#06x} at {:#010x}",
+                        self.pc
+                    ))
+                }
             },
             0b01 => match funct3 {
                 // C.NOP / C.ADDI
@@ -584,7 +610,12 @@ impl Cpu {
                         next_pc = self.pc.wrapping_add(imm as u32);
                     }
                 }
-                _ => {}
+                _ => {
+                    self.fault = Some(format!(
+                        "unsupported compressed instruction {inst:#06x} at {:#010x}",
+                        self.pc
+                    ))
+                }
             },
             0b10 => match funct3 {
                 // C.SLLI
@@ -638,7 +669,12 @@ impl Cpu {
                     let addr = self.reg(2).wrapping_add(imm);
                     bus.write_u32(addr, self.reg(rs2));
                 }
-                _ => {}
+                _ => {
+                    self.fault = Some(format!(
+                        "unsupported compressed instruction {inst:#06x} at {:#010x}",
+                        self.pc
+                    ))
+                }
             },
             _ => {}
         }
@@ -658,7 +694,8 @@ impl Cpu {
             0x344 => self.mip,
             0xf14 => self.mhartid,
             0x301 => 0x4014_1125, // misa: RV32IMAFC
-            0xc00 => (self.instructions_executed & 0xffff_ffff) as u32, // cycle
+            0xb00 | 0xc00 => self.instructions_executed as u32, // mcycle / cycle
+            0xb80 | 0xc80 => (self.instructions_executed >> 32) as u32,
             0xc01 => (bus.timer_ticks & 0xffff_ffff) as u32, // time
             _ => 0,
         }
@@ -698,6 +735,9 @@ impl Cpu {
             }
             // nih_rom_set_cpu1_entry
             0x4fc0_00a8 => {
+                if self.mhartid == 0 && self.reg(10) != 0 {
+                    bus.cpu1_entry = Some(self.reg(10));
+                }
                 self.set_reg(10, 0);
                 self.pc = self.reg(1);
             }
@@ -712,7 +752,7 @@ impl Cpu {
                 self.pc = self.reg(1);
             }
             _ => {
-                self.pc = self.reg(1);
+                self.fault = Some(format!("unsupported ROM call at {:#010x}", self.pc));
             }
         }
     }
