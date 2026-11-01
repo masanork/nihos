@@ -372,6 +372,8 @@ pub const Model = struct {
         }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| l.touch(&self.nav, x, y);
+        } else if (self.portrait_touch and self.nav.screen == .home) {
+            self.nav.touchPortraitHome(x, y);
         } else self.nav.touch(x, y, &self.vm.view);
         self.changed();
     }
@@ -1182,4 +1184,18 @@ test "portrait keyboard touches type and dismiss in document mode" {
     model.touchDown(g.width / 2, g.height - 4);
     model.touch(g.width / 2, g.height - 110);
     try std.testing.expect(model.softKeyboardVisible());
+}
+
+test "portrait home touch opens document and preserves portrait key input" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.home();
+    model.portrait_touch = true;
+    model.touchDown(navigation.State.portrait_home_x + 10, navigation.State.portrait_home_top + 10);
+    model.touch(navigation.State.portrait_home_x + 10, navigation.State.portrait_home_top + 10);
+    try std.testing.expectEqual(navigation.Screen.document, model.nav.screen);
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(10, g.top() + 10);
+    model.touch(10, g.top() + 10);
+    try std.testing.expectEqualStrings("q", model.doc.slice());
 }

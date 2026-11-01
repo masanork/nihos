@@ -43,10 +43,12 @@ pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool 
     const instance = &owner.renderer;
     if (request.navigation) |nav| {
         const pack = readingPack() catch return false;
-        reading.render(instance, request, pack) catch |err| {
+        (if (request.portrait != 0) reading.renderPortraitHome(instance, request) else reading.render(instance, request, pack)) catch |err| {
             nav.error_code = @intFromError(err);
             return false;
         };
+    } else if (request.portrait != 0) {
+        instance.renderPortrait(request) catch return false;
     } else instance.render(request) catch return false;
     return true;
 }
@@ -179,4 +181,30 @@ test "portrait document and keyboard render into the unrotated panel" {
     const pos = (@as(usize, g.top()) + 10) * 1440 + 10 * 2;
     try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, panel[pos..][0..2], .little));
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), panel[size..]);
+}
+
+test "portrait home paints the same cards that touch navigation selects" {
+    const std = @import("std");
+    const navmod = @import("navigation.zig");
+    const instance = try std.testing.allocator.create(reading.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    const pixels = try std.testing.allocator.alloc(u8, 720 * 1280 * 2 + 16);
+    defer std.testing.allocator.free(pixels);
+    @memset(pixels, 0xa5);
+    var nav = navmod.State{};
+    nav.home();
+    var config = @import("view_config").Config{};
+    var request = protocol.Request{ .workspace = instance, .navigation = &nav, .frame = pixels.ptr, .frame_length = pixels.len - 16, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0, .portrait = 1 };
+    try reading.renderPortraitHome(instance, &request);
+    const N = navmod.State;
+    const y = N.portrait_home_top + N.portrait_home_pitch + 5;
+    const x = N.portrait_home_x + 5;
+    const index = @as(usize, y) * 1440 + @as(usize, x) * 2;
+    try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, pixels[index..][0..2], .little));
+    nav.touchPortraitHome(x, y);
+    try std.testing.expectEqual(navmod.Screen.reading, nav.screen);
+    try std.testing.expectEqual(@as(u8, 0), nav.book);
+    try std.testing.expectError(error.UnsupportedOrientation, reading.renderPortraitHome(instance, &request));
+    try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
