@@ -1,0 +1,3 @@
+# Preserve exact upstream patch context and disabled source inputs.
+hosted-213-time.patch -whitespace
+unused-https/* -whitespace
