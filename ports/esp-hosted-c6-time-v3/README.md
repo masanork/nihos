@@ -71,7 +71,8 @@ proves an independent ROM recovery path.
 The application descriptor's version, project name and IDF version are
 self-reported metadata. The optional ELF hash is not the application binary's
 hash or a flash readback, and the 2.13.1 build configuration does not enable
-the full descriptor fields.
+the full descriptor fields. The [physical descriptor and rollback analysis](../../docs/measurements/2026-11-01-c6-app-description.md)
+records the reported fields and why they do not prove first-boot rollback.
 
 The P4 recognizes the 3.0.10 MCU RPC-v2 advertisement, echoes it only when
 advertised, rejects unsupported SDIO modes and accepts the time path only for
