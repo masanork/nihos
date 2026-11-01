@@ -74,6 +74,11 @@ var camera_provider: ?*const console.scratch.camera.Provider = null;
 pub inline fn bindCamera(provider: *const console.scratch.camera.Provider) void {
     camera_provider = provider;
 }
+var card_provider: ?*const console.scratch.card.Provider = null;
+pub inline fn bindCard(provider: *const console.scratch.card.Provider) void {
+    card_provider = provider;
+    if (session_active) scratch.card.provider = provider;
+}
 var xy_input_bytes: u32 = 0;
 var last_xy_input_bytes: u32 = 0;
 var last_xy_idle_report: u64 = 0;
@@ -528,6 +533,7 @@ noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xyt
         scratch.vm.view.style.body_px = 32;
         scratch.vm.view.style.ruby_px = 16;
         scratch.camera.provider = camera_provider;
+        scratch.card.provider = card_provider;
         scratch.storage_client.provider = if (storage_provider) |p| p.* else null;
         (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
     } else session.begin(SerialSink{});

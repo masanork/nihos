@@ -207,7 +207,7 @@ test "frame budget abort and heap pressure recover transactionally without reset
     live.active.clearFrame();
     _ = try live.runApp(&ws, &state, "(app/on-frame! (lambda (t) (work)))", &out);
     for (0..600) |_| try live.frame(&ws, &state);
-    _ = try live.runApp(&ws, &state, "(app/on-frame! (lambda (t) (define (loop) (loop)) (loop)))", &out);
+    _ = try live.runApp(&ws, &state, "(app/on-frame! (lambda (t) (define (loop) (+ 1 (loop))) (loop)))", &out);
     try std.testing.expectError(error.Depth, live.frame(&ws, &state));
     live.active.clearFrame();
     try std.testing.expectEqualStrings("42", try live.runApp(&ws, &state, "(+ 20 22)", &out));
