@@ -49,6 +49,12 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             try self.renderInto(request, target);
             try self.renderKeyboard(request, target);
         }
+        /// Portrait document rendering into the panel's unrotated 720x1280 surface.
+        pub fn renderPortrait(self: *@This(), request: *const protocol.Request) !void {
+            const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
+            try self.renderInto(request, target);
+            try self.renderKeyboard(request, target);
+        }
         pub fn renderLogical(self: *@This(), request: *const protocol.Request, width: u32, height: u32, stride: u32) !void {
             const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], width, height, stride) orelse return error.Geometry;
             try self.renderInto(request, target);
@@ -57,10 +63,12 @@ pub fn SizedSession(comptime page_capacity: usize) type {
         fn renderKeyboard(self: *@This(), request: *const protocol.Request, target: anytype) !void {
             if (request.keyboard == 0) return;
             const state = keyboard.State{ .symbols = request.keyboard >= 3, .shift = request.keyboard == 2 or request.keyboard == 4 };
-            _ = target.fillRect(0, keyboard.top, keyboard.space_width, keyboard.height, 0xce79);
+            const orientation: keyboard.Orientation = if (target.width == 720 and target.height == 1280) .portrait else .landscape;
+            const geometry = keyboard.geometry(orientation);
+            _ = target.fillRect(0, @intCast(geometry.top()), geometry.width, geometry.keyboardHeight(), 0xce79);
             var rects: [keyboard.max_keys]keyboard.KeyRect = undefined;
             const family = layout.ttf.Family{ .faces = self.faces[0..1] };
-            for (keyboard.layoutState(&rects, state)) |rect| {
+            for (keyboard.layoutIn(&rects, state, orientation)) |rect| {
                 const special = rect.label < 32 or rect.label == ' ';
                 const active = rect.label == keyboard.label_shift and state.shift;
                 _ = target.fillRect(@intCast(rect.x + 3), @intCast(rect.y + 3), rect.w - 6, rect.h - 6, if (active) 0x8d1f else if (special) 0xa534 else 0xffff);
