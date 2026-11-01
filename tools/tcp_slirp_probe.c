@@ -44,7 +44,7 @@ static ssize_t output(const void *data, size_t len, void *opaque) {
     if (ctx->count == 64 || len > sizeof(ctx->frames[0].data)) { ctx->overflow = true; return -1; }
     struct frame *f = &ctx->frames[ctx->count++]; f->len = len; memcpy(f->data, data, len); return (ssize_t)len;
 }
-static int add_fd(slirp_os_socket fd, int events, void *opaque) {
+static int add_fd(int fd, int events, void *opaque) {
     struct context *ctx = opaque;
     if (ctx->nfds == 128) { ctx->overflow = true; return -1; }
     unsigned i = ctx->nfds++; ctx->fds[i] = (struct pollfd){ .fd = fd };
