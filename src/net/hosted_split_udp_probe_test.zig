@@ -34,6 +34,7 @@ test "generation changes revoke prepared sends and received echoes" {
     var frame: [udp.ethernet_bytes]u8 = undefined;
     const packet = try s.prepare(&state, &frame, 1);
     try std.testing.expectEqual(udp.ethernet_bytes, packet.len);
+    try std.testing.expectEqual(probe.local_port, std.mem.readInt(u16, packet[34..36], .big));
     try std.testing.expectEqual(@as(u32, peer.ip), std.mem.readInt(u32, packet[30..34], .big));
     try std.testing.expectError(error.InvalidAttempt, s.prepare(&state, &frame, 0));
     try std.testing.expect(state.invalidate());
@@ -55,8 +56,9 @@ test "only current lease accepts the configured peer's echo" {
     var state = ready();
     const session = try probe.Session.open(&state, local, peer);
     var bytes: [udp.ethernet_bytes]u8 = undefined;
-    const packet = udp.packetAttempt(&bytes, peer.mac, peer.ip, local, session.address.ip, 44444, 3);
+    const packet = udp.packetAttemptFrom(&bytes, peer.mac, peer.ip, peer.port, local, session.address.ip, probe.local_port, 3);
     try std.testing.expectEqual(udp.Echo.long, try session.echo(&state, packet));
+    try std.testing.expectEqual(udp.Echo.none, udp.matchEcho(packet, local, session.address.ip, peer.mac, peer.ip, peer.port));
     bytes[51] ^= 1;
     try std.testing.expectEqual(udp.Echo.none, try session.echo(&state, packet));
     try std.testing.expect(state.invalidate());

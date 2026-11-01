@@ -80,7 +80,7 @@ test "zero credit retries only the unsent packet and accepts matching echo" {
     try o.step(&s, 3);
     try std.testing.expectEqual(mod.Phase.waiting, o.phase);
     var packet: [udp.ethernet_bytes]u8 = undefined;
-    const echo = udp.packetAttempt(&packet, peer.mac, peer.ip, local, e.addresses.address.?.ip, peer.port, 3);
+    const echo = udp.packetAttemptFrom(&packet, peer.mac, peer.ip, peer.port, local, e.addresses.address.?.ip, probe.local_port, 3);
     var encoded: [12 + udp.ethernet_bytes]u8 = undefined;
     s.input = try wire.frame(&encoded, wire.station_interface, 1, echo);
     for (4..10) |n| {

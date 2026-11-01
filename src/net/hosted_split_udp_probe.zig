@@ -6,6 +6,8 @@ const udp = @import("long_udp_probe.zig");
 
 pub const Error = error{ NoAddress, InvalidPeer, Stale, InvalidAttempt };
 pub const Peer = struct { ip: u32, mac: [6]u8, port: u16 };
+/// Pinned Hosted 3 C6 build forwards this UDP destination range to P4.
+pub const local_port: u16 = 49152;
 
 fn validMac(mac: [6]u8) bool {
     return mac[0] & 1 == 0 and !std.mem.allEqual(u8, &mac, 0);
@@ -41,11 +43,11 @@ pub const Session = struct {
     pub fn prepare(self: *const Session, state: *const split.State, out: *[udp.ethernet_bytes]u8, attempt: u8) Error![]const u8 {
         try self.check(state);
         if (attempt < 1 or attempt > 32) return error.InvalidAttempt;
-        return udp.packetAttempt(out, self.local_mac, self.address.ip, self.peer.mac, self.peer.ip, self.peer.port, attempt);
+        return udp.packetAttemptFrom(out, self.local_mac, self.address.ip, local_port, self.peer.mac, self.peer.ip, self.peer.port, attempt);
     }
 
     pub fn echo(self: *const Session, state: *const split.State, packet: []const u8) Error!udp.Echo {
         try self.check(state);
-        return udp.matchEcho(packet, self.local_mac, self.address.ip, self.peer.mac, self.peer.ip, self.peer.port);
+        return udp.matchEchoTo(packet, self.local_mac, self.address.ip, local_port, self.peer.mac, self.peer.ip, self.peer.port);
     }
 };
