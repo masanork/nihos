@@ -3,6 +3,11 @@
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 build_dir="$repo_root/build/c6-sdio-probe"
+if [ "${NIHOS_C6_LONG_DMA:-0}" != 0 ] &&
+   { [ "${NIHOS_C6_LONG_DMA:-0}" != 1 ] || [ "${NIHOS_C6_PROTOCOL:-at}" != hosted ]; }; then
+    echo "Long DMA diagnostic requires NIHOS_C6_LONG_DMA=1 and NIHOS_C6_PROTOCOL=hosted" >&2
+    exit 1
+fi
 if [ -n "${NIHOS_C6_WIFI_CONFIG:-}" ]; then
     # Private credentials and images never share the public AT-only directory.
     umask 077
@@ -12,6 +17,7 @@ if [ "${NIHOS_C6_PROTOCOL:-at}" = hosted ]; then
     umask 077
     build_dir="$repo_root/build/c6-hosted-probe"
     if [ "${NIHOS_C6_IPV6:-0}" = 1 ]; then build_dir="$repo_root/build/c6-ipv6-probe"; fi
+    if [ "${NIHOS_C6_LONG_DMA:-0}" = 1 ]; then build_dir="$repo_root/build/c6-hosted-long-probe"; fi
 fi
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
@@ -26,6 +32,19 @@ zig=$(sh "$repo_root/tools/bootstrap-zig.sh")
 . "$c6_sdk/export.sh" >/dev/null
 python=${NIHOS_IDF_PYTHON:-python}
 mkdir -p "$build_dir"
+"$python" - "$repo_root/probes/c6-sdio/esp32p4.ld" "$build_dir/probe.ld" "${NIHOS_C6_LONG_DMA:-0}" <<'PY'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text()
+if sys.argv[3] == '1':
+    for symbol in ('__stack1_top', '__irq_stack1_top'):
+        old = '. += 8192; ' + symbol
+        if text.count(old) != 1:
+            raise SystemExit('C6 linker stack template changed')
+        text = text.replace(old, '. += 0; ' + symbol)
+    text = '/* Long DMA profile: CPU1 parked; no private CPU1 stacks. */\n' + text
+Path(sys.argv[2]).write_text(text)
+PY
 "$python" "$repo_root/tools/c6-wifi-config.py" "$build_dir/wifi-config.zig" "${NIHOS_C6_WIFI_CONFIG:-}" "${NIHOS_C6_PROTOCOL:-at}"
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$build_dir/loader" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$build_dir/loader/sdkconfig" \
@@ -47,9 +66,13 @@ headers="$repo_root/.tools/zig-0.17.0/lib/libc/include"
 printf 'pub const normal_storage = false;\n' > "$build_dir/c6-options.zig"
 "$zig" build-exe -target riscv32-freestanding-none -mcpu="$cpu" -O safe -fllvm -fno-strip \
     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
-    -fentry=nih_native_start -T "$repo_root/probes/c6-sdio/esp32p4.ld" --gc-sections \
+    -fentry=nih_native_start -T "$build_dir/probe.ld" --gc-sections \
     "$repo_root/probes/c6-sdio/start.S" "$build_dir/pads.o" \
-    --dep c6_probe --dep timer_group --dep wifi_config -Mroot="$repo_root/probes/c6-sdio/main.zig" \
+    --dep c6_probe --dep timer_group --dep wifi_config --dep long_dma -Mroot="$repo_root/probes/c6-sdio/main.zig" \
+    --dep hosted_dma_bus --dep hosted_long_cache --dep long_udp_probe -Mlong_dma="$repo_root/probes/hosted-long-send/boot-bus.zig" \
+    -Mlong_udp_probe="$repo_root/src/net/long_udp_probe.zig" \
+    -Mhosted_dma_bus="$repo_root/src/net/hosted_dma_bus.zig" \
+    -Mhosted_long_cache="$repo_root/src/platform/native/hosted_long_cache.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mwifi_config="$build_dir/wifi-config.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -86,6 +109,9 @@ names = [
     'src/net/wifi_station.zig', 'tools/c6-wifi-config.py',
     'src/net/hosted.zig', 'src/net/hosted_station.zig', 'src/net/dhcp.zig',
     'src/net/ipv6.zig',
+    'probes/hosted-long-send/boot-bus.zig', 'src/net/hosted_dma_bus.zig',
+    'src/net/hosted_long_dma.zig', 'src/platform/native/hosted_long_cache.zig',
+    'src/net/hosted_tx_plan.zig', 'src/net/long_udp_probe.zig',
     'tools/check-c6-sdio-image.py', 'tools/check-c6-sram-boundary.py', 'tools/c6_image_test.py',
 ]
 def sha(path):
@@ -99,13 +125,15 @@ report = {
     'p4_sdk': git(sdk, 'rev-parse', 'HEAD'), 'p4_sdk_dirty': bool(git(sdk, 'status', '--porcelain')),
     'sources': {name: sha(root / name) for name in names},
     'artifacts': {name: sha(dest / name) for name in [
-        'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig',
+        'nihos-c6-probe.elf', 'nihos-c6-probe.bin', 'image-audit.json', 'loader/sdkconfig', 'probe.ld',
         'loader/bootloader/bootloader.bin', 'loader/partition_table/partition-table.bin',
     ]},
-    'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 512,
-                         'credit_limit': 64 if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 10, 'fresh_reset_required': True},
-    'protocol': 'hosted' if dest.name in ('c6-hosted-probe', 'c6-ipv6-probe') else 'at',
-    'ipv6_enabled': dest.name == 'c6-ipv6-probe',
+    'peer_assumptions': {'receive_buffer_bytes': 1536 if dest.name in ('c6-hosted-probe', 'c6-hosted-long-probe', 'c6-ipv6-probe') else 512,
+                         'credit_limit': 64 if dest.name in ('c6-hosted-probe', 'c6-hosted-long-probe', 'c6-ipv6-probe') else 10, 'fresh_reset_required': True},
+    'protocol': 'hosted' if dest.name in ('c6-hosted-probe', 'c6-hosted-long-probe', 'c6-ipv6-probe') else 'at',
+    'long_dma_enabled': dest.name == 'c6-hosted-long-probe',
+    'udp_probe_enabled': 'pub const udp_enabled = true;' in (dest / 'wifi-config.zig').read_text(),
+    'ipv6_enabled': 'pub const ipv6 = true;' in (dest / 'wifi-config.zig').read_text(),
     'wifi_enabled': dest.name != 'c6-sdio-probe',
     'private_artifacts': dest.name != 'c6-sdio-probe',
 }

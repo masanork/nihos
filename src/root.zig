@@ -221,6 +221,14 @@ test {
     _ = @import("net/ipv6_test.zig");
     _ = c6_sdio;
     _ = @import("net/c6_sdio_test.zig");
+    _ = @import("net/hosted_tx_plan_test.zig");
+    _ = @import("net/hosted_tx_staging_test.zig");
+    _ = @import("net/hosted_long_sender_test.zig");
+    _ = @import("net/hosted_long_dma_test.zig");
+    _ = @import("net/hosted_long_integration_test.zig");
+    _ = @import("net/hosted_dma_bus_test.zig");
+    _ = @import("net/long_udp_probe_test.zig");
+    _ = @import("platform/native/hosted_long_cache_test.zig");
     _ = @import("net/c6_link_test.zig");
     _ = esp32p4_sdio;
     _ = @import("soc/esp32p4/sdio_test.zig");

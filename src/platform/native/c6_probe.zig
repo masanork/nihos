@@ -16,29 +16,33 @@ extern fn nih_c6_pads_init() callconv(.c) void;
 extern fn nih_c6_reset(u32) callconv(.c) void;
 extern fn nih_c6_fourbit_pins() callconv(.c) void;
 extern fn nih_c6_power_enable() callconv(.c) u32;
+extern fn nih_c6_power_failure_detail() callconv(.c) u32;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
 extern fn nih_rom_cache_writeback(u32, u32, u32) callconv(.c) i32;
 extern fn nih_rom_cache_invalidate(u32, u32, u32) callconv(.c) i32;
 var dma_data: [512]u8 align(64) = @splat(0);
 var dma_descriptor: [16]u32 align(64) = @splat(0);
 var clock_failed = false;
-pub const Bus = struct {
+pub const ShortBus = struct {
     pub const shared_host = @hasDecl(options, "normal_storage") and options.normal_storage;
     lease: shared_api.Lease = .{},
     clock: timers.Timer = timers.Timer.fromGroup(0x500c2000, 0).?,
-    pub fn ownsSlot(self: Bus, slot: u32) bool {
+    pub fn setClock(self: *ShortBus, clock: timers.Timer) void {
+        self.clock = clock;
+    }
+    pub fn ownsSlot(self: ShortBus, slot: u32) bool {
         return slot == 1 and shared_api.owns(self.lease);
     }
-    pub fn read(self: Bus, offset: usize) u32 {
+    pub fn read(self: ShortBus, offset: usize) u32 {
         if (shared_host) return shared_api.read(self.lease, offset);
         return @as(*volatile u32, @ptrFromInt(sd.base + offset)).*;
     }
-    pub fn write(self: Bus, offset: usize, value: u32) void {
+    pub fn write(self: ShortBus, offset: usize, value: u32) void {
         if (shared_host) return shared_api.write(self.lease, offset, value);
         @as(*volatile u32, @ptrFromInt(sd.base + offset)).* = value;
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
     }
-    pub fn delay(self: Bus, microseconds: u32) void {
+    pub fn delay(self: ShortBus, microseconds: u32) void {
         if (clock_failed) return;
         const started = self.clock.counter() orelse {
             clock_failed = true;
@@ -53,10 +57,10 @@ pub const Bus = struct {
         }
         clock_failed = true;
     }
-    pub fn fourBitPins(_: Bus) void {
+    pub fn fourBitPins(_: ShortBus) void {
         nih_c6_fourbit_pins();
     }
-    pub fn prepareDma(self: Bus, writing: bool, source: []const u8, length: usize) ?u32 {
+    pub fn prepareDma(self: ShortBus, writing: bool, source: []const u8, length: usize) ?u32 {
         if (shared_host and !self.ownsSlot(1)) return null;
         if (length == 0 or length > 512 or length % 4 != 0) return null;
         // CPU0 display IRQs also use the ROM cache command engine. Serialize
@@ -78,7 +82,7 @@ pub const Bus = struct {
         asm volatile ("fence iorw, iorw" ::: .{ .memory = true });
         return @intFromPtr(&dma_descriptor);
     }
-    pub fn finishDma(self: Bus, writing: bool, destination: []u8) bool {
+    pub fn finishDma(self: ShortBus, writing: bool, destination: []u8) bool {
         if (shared_host and !self.ownsSlot(1)) return false;
         const previous = maskCache();
         defer restoreCache(previous);
@@ -91,7 +95,7 @@ pub const Bus = struct {
         }
         return true;
     }
-    pub fn releaseDma(_: Bus) bool {
+    pub fn releaseDma(_: ShortBus) bool {
         return releaseDmaBuffer();
     }
 };
@@ -109,6 +113,8 @@ fn releaseDmaBuffer() bool {
 pub fn releaseNormalDma() u32 {
     return @intFromBool(releaseDmaBuffer());
 }
+// Only an explicit diagnostic root selects a different DMA provider.
+pub const Bus = if (@hasDecl(@import("root"), "C6Bus")) @import("root").C6Bus(ShortBus) else ShortBus;
 
 fn maskCache() u32 {
     return asm volatile ("csrrci %[previous], mstatus, 8"
@@ -130,13 +136,28 @@ var hosted_decoder: hosted.wire.Decoder = .{};
 /// Bind the LL power shim's delay clock without starting/stopping a timer.
 /// The integrated owner and standalone fixture are mutually exclusive builds.
 pub fn useClock(clock: timers.Timer) void {
-    host.io.clock = clock;
+    host.io.setClock(clock);
     clock_failed = false;
 }
 pub fn clockFailed() bool {
     return clock_failed;
 }
 pub const Report = struct {
+    power_failure: u32 = 0,
+    short_sent: u32 = 0,
+    short_echo: u32 = 0,
+    long_echo: u32 = 0,
+    long_attempts: u32 = 0,
+    long_burst: u32 = 0,
+    long_settle_ms: u32 = 0,
+    long_final_wait_ms: u32 = 0,
+    long_echo_mask: u32 = 0,
+    echo_arp: u32 = 0,
+    long_logical: u32 = 0,
+    long_wire: u32 = 0,
+    long_hash: u32 = 0,
+    long_sent: u32 = 0,
+    long_dma_state: u32 = 0,
     status: u32 = 0,
     stage: u32 = 0,
     error_code: u32 = 0,
@@ -337,7 +358,8 @@ fn exercise(clock: timers.Timer, report: *Report, join: ?WifiJoin) !void {
 }
 
 pub fn run(clock: timers.Timer, join: ?WifiJoin) Report {
-    host = .{ .io = .{ .clock = clock } };
+    host = .{ .io = .{} };
+    host.io.setClock(clock);
     stream = .{ .host = &host };
     owner = .{};
     station = null;
@@ -363,7 +385,10 @@ export fn nih_c6_delay_us(value: u32) callconv(.c) void {
 noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Join, enable_ipv6: bool) !void {
     report.stage = 1;
     nih_c6_pads_init();
-    if (nih_c6_power_enable() != 1) return error.PowerEnable;
+    if (nih_c6_power_enable() != 1) {
+        report.power_failure = nih_c6_power_failure_detail();
+        return error.PowerEnable;
+    }
     host.io.delay(20_000);
     nih_c6_reset(1);
     host.io.delay(300_000);
@@ -403,6 +428,8 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
                 report.dhcp_server = lease.server;
                 report.dhcp_seconds = lease.seconds;
             }
+            if (@hasDecl(@import("root"), "C6LongProbe"))
+                try @import("root").C6LongProbe(&hosted_stream, &hosted_decoder, &hosted_client, hosted_client.mac_address, report.ip, hosted.wire.station_interface, hosted.wire.frame, hosted.wire.frameInPlace, clock, report);
             report.status = 1;
             report.stage = 12;
             return;
@@ -420,7 +447,8 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
 }
 
 pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Report {
-    host = .{ .io = .{ .clock = clock } };
+    host = .{ .io = .{} };
+    host.io.setClock(clock);
     hosted_stream = .{ .host = &host };
     hosted_client = .{};
     hosted_decoder = .{};
@@ -432,6 +460,9 @@ pub fn runHosted(clock: timers.Timer, join: hosted.Join, enable_ipv6: bool) Repo
     var report: Report = .{};
     exerciseHosted(clock, &report, join, enable_ipv6) catch |err| {
         report.error_code = @intFromError(err);
+        for ("NIHOS_C6_HOSTED_ERROR name=") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
         hosted_stream.invalidate();
     };
     report.hosted_phase = @backingInt(hosted_client.phase) + 1;
