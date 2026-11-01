@@ -1,3 +1,92 @@
+# nihos emulator window (experimental)
+
+The GPUI app opens a screen-focused emulator window with Portrait/Landscape,
+Pause/Resume, Power and Reset controls, plus New session (Cmd-N). The screen scales to the window.
+Pause stops guest execution while retaining RAM and the last frame; key input is
+ignored while paused. Reset clears the guest while preserving the paused state.
+Each new session is a separate process with its own CPU, RAM, input, display,
+and power/reset state; the title shows its process ID. It inherits the current
+working directory and loads the same firmware. Closing one session leaves the
+others running. No document or flash persistence is implemented. Each active
+session consumes CPU, so concurrent sessions can run more slowly; pause a session
+to stop its CPU work without discarding its state. Portrait rotates the
+host display clockwise; it does not change the guest's display orientation or
+input coordinates. Power off stops CPU execution and blanks the screen; power on
+and Reset reload the ELF into a new emulated machine. This model does not yet
+preserve flash or other storage across power cycles.
+
+The RV32 CPU and peripheral model is experimental, not a complete Tab5 emulator.
+Firmware is selected by `NIHOS_EMULATOR_ELF` if explicitly set, otherwise
+from the app bundle, then from `build/xy-emulator-firmware/nihos-native.elf`
+relative to the current directory. The packaging script bundles the fixture when
+present, so the resulting app can be started from Finder. Missing or invalid firmware is shown in the window. A candidate xy
+firmware has booted to its home and RAM document; ASCII navigation and editing
+have been demonstrated. IME, persistence, touch, full peripherals and physical
+Tab5 equivalence remain unqualified. Build and launch from the repository root.
+
+## Boot investigation
+
+Build the fixture and app with ESP-IDF 5.4.4 and the pinned Zig toolchain:
+no device is accessed or flashed. The workflow builds the same fixture and
+runs the splash, edit and dual-session tests on each relevant pull request:
+
+```sh
+sh tools/build-xy-emulator-fixture.sh
+sh tools/build-xy-gpui.sh
+open build/xy-gpui/xy-gpui.app
+NIHOS_EMU_TEST_ELF="$PWD/build/xy-emulator-firmware/nihos-native.elf" \
+  cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_splash -- --ignored --nocapture
+```
+
+The splash integration gate reaches `NIHOS_NATIVE_UI_START` and checks that
+the guest has completed at least two DMA frames and that the captured scanout
+contains multiple colors. The actual GPUI window has shown the splash and its
+progress on macOS. The model accepts a single valid 720x1280 RGB565 DW-GDMA
+descriptor targeting the DSI FIFO, snapshots its source, and supplies a delayed
+completion interrupt. Linked descriptors, other formats and peripherals are not
+implemented. DMA/DSI timing, FIFO depth and PHY lock are functional approximations,
+not hardware timing or qualification.
+
+The optional `two_sessions_boot_edit_and_reset_independently` integration test
+boots two guests concurrently, edits different documents, and verifies that a
+reset of one leaves the other's frame unchanged; it also checks that a paused
+machine does not execute instructions. In macOS window checks, two independent
+processes displayed `aa` and `bb` in separate documents, and resetting the
+second left the first unchanged. For the automation surface only, identical app
+binaries were placed in test bundles with distinct identifiers so the windows
+could be selected independently. Cmd-N was separately confirmed to launch a
+second process from the ordinary app. Pausing one session retained `bb`, ignored
+input while paused, and reported 0.3% CPU in one `ps` sample while the other
+running session reported 102.6%; this is a snapshot, not a benchmark.
+
+The optional `firmware_reaches_xy_ready` integration test reaches the xy home,
+sends `n` to open the document, and sends `X`, asserting that the guest consumes
+both bytes and that each action changes the DMA frame. On macOS, the window also
+showed the home and `abc` entered in the RAM document. Timer, IPI and CLIC models
+are bounded approximations, and the test does not qualify arbitrary input or
+other peripherals. Run it explicitly with the same environment variable above
+and replace the test filter with `firmware_reaches_xy_ready`.
+
+For the same candidate and 152 million CPU0 instructions on this host, a debug
+interpreter took 16.4 seconds to `XY_READY`; compiling just this crate with
+`opt-level=2` took 4.2 seconds. These are individual headless measurements, not
+an emulated-time or device-speed comparison. The dev profile now uses that
+crate-level optimization. CPU execution and frame conversion still run on the
+UI thread; responsive behavior under sustained load has not been qualified.
+
+Unsupported major opcodes, compressed opcodes and unmapped ROM calls stop the
+emulator with an address. This is not a complete ISA validation: some instruction
+subfields, CSRs and MMIO are still partial, and this must not be treated as a
+security boundary. The loader rejects malformed, out-of-range or overlapping ELF
+LOAD ranges rather than corrupting the image. The local MeOS Tab5 ELF uses overlapping virtual flash ranges and needs
+an ESP-IDF bootloader/flash MMU model; it is not bootable with this loader.
+A dynamic MeOS scanout and its descriptor formats also require validation.
+The original timing investigation used ELF SHA-256
+`6ad80119ae99d786456adcfbe32f2c9e6a201c92eaf7a48a2303bad1025e29f0`;
+the later main-based local fixture had SHA-256
+`aa56db600dc70de93c7ae1025bc679aa6402d6d9db341a5f74ec17bca7b8411d`.
+ELF hashes may differ by build path/toolchain; CI builds and tests its own image.
+
 # xy GPUI shared graphics prototype
 
 This is a real GPUI 0.2.2 window with two panes: an editable RAM xy buffer and
@@ -10,7 +99,7 @@ GPUI uses its own native macOS/Metal platform implementation.
 
 ```sh
 sh tools/build-xy-gpui.sh
-open build/xy-gpui/xy-gpui.app
+./build/xy-gpui/xy-gpui.app/Contents/MacOS/xy-gpui
 ```
 
 Validated with Rust 1.98.1 and the repository-pinned Zig compiler on macOS.
