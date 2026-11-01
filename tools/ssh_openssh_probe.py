@@ -65,6 +65,8 @@ def run():
         p.probe_auth_public.argtypes = [c.c_void_p, c.c_void_p]; p.probe_auth_public.restype = c.c_bool
         p.probe_auth.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_auth.restype = c.c_size_t
         p.probe_release.argtypes = []
+        p.probe_channel_action.argtypes = [c.c_uint8, c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_action.restype = c.c_size_t
+        p.probe_channel_receive.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_channel_receive.restype = c.c_ssize_t
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
@@ -161,24 +163,42 @@ def run():
                 while result[0] == 53: result = receive()
                 if result != b"\x34":
                     log.flush(); raise RuntimeError(f"authentication failed: {result.hex()}\n{(tmp / 'sshd.log').read_text()}")
-                send(b"\x5a" + string(b"session") + struct.pack(">III", 0, 65536, 32768))
-                result = receive()
-                assert result[0] == 91 and struct.unpack(">I", result[1:5])[0] == 0, result.hex()
-                server_channel = struct.unpack(">I", result[5:9])[0]
-                channel = struct.pack(">I", server_channel)
-                send(b"\x62" + channel + string(b"pty-req") + b"\x01" + string(b"xterm") + struct.pack(">IIII", 80, 24, 0, 0) + string(b"\x00"))
-                result = receive()
-                assert result == b"\x63" + struct.pack(">I", 0), result.hex()
-                send(b"\x62" + channel + string(b"exec") + b"\x01" + string(b"printf nihos_ssh_ok"))
+                def action(code, data=b""):
+                    out = c.create_string_buffer(1024)
+                    n = p.probe_channel_action(code, buffer(data), len(data), out, len(out))
+                    assert n, f"channel action {code} failed"
+                    send(out.raw[:n])
+                def channel_event():
+                    packet = receive()
+                    out = c.create_string_buffer(32768)
+                    event = p.probe_channel_receive(buffer(packet), len(packet), out, len(out))
+                    assert event >= 0, f"channel rejected {packet.hex()}"
+                    return event, out.raw[:max(0, event - 100)]
+                def wait_event(expected):
+                    for _ in range(12):
+                        event, _ = channel_event()
+                        if event == expected: return
+                        assert event == 4, event
+                    raise RuntimeError(f"channel event {expected} not received")
+                action(0); wait_event(1)
+                action(1); wait_event(2)
+                action(2); wait_event(3)
+                action(3, b"printf ni%s_ssh_ok hos\n")
                 output = b""
                 for _ in range(12):
-                    result = receive()
-                    if result[0] == 94:
-                        size = struct.unpack(">I", result[5:9])[0]
-                        output += result[9:9 + size]
+                    event, data = channel_event()
+                    if event >= 100: output += data
                     if b"nihos_ssh_ok" in output: break
                 assert b"nihos_ssh_ok" in output, output
-                print("OpenSSH KEX, host pin, public-key authentication and PTY command: OK")
+                action(3, b"exit\n")
+                for _ in range(24):
+                    event, _ = channel_event()
+                    if event == 6:
+                        action(5)
+                        break
+                else:
+                    raise RuntimeError("channel close not received")
+                print("OpenSSH KEX, host pin, public-key authentication and interactive PTY: OK")
         finally:
             server.terminate()
             try: server.wait(timeout=3)
