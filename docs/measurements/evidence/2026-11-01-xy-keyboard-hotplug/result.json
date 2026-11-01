@@ -1,0 +1,38 @@
+{
+  "commit": "d2284f9d1310155a800140565962597d65caca5c",
+  "candidate_sha256": {
+    "0x2000": "f59b0fe2929c0d49bfd61d3c4474b5ac649de90953d72e45656d3d71e4596ce6",
+    "0x8000": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
+    "0x10000": "420384e6f63f319f4aebd6a27dc28daee962a19408272e8fcdf89e69864cf58d"
+  },
+  "installed": true,
+  "restored": true,
+  "boot": true,
+  "document_render": true,
+  "touch_tested": true,
+  "optical_tested": false,
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": {
+    "0x2000": "bbdb5cf52e596868c6e4a56d60b316e2c0ef9d82887e0e3c35b75ed07230e0c8",
+    "0x8000": "ba8b75bd812bd5288090c2691d5cc6efba539455a7c3e2de50e94c18596523ac",
+    "0x10000": "30b95a08dc7554472651a6a6010598ade1f4de4d7ff9b9720e247fee17881e7a"
+  },
+  "install_attempted": true,
+  "portrait": 1,
+  "keyboard_probe": 1,
+  "hotplug_tested": true,
+  "scope": "one physical attach/detach cycle with synthetic q/w/e; serial n only; user reported display and operation OK",
+  "backup_lengths": {
+    "0x2000": 24576,
+    "0x8000": 32768,
+    "0x10000": 4952064
+  },
+  "user_report": {
+    "display_and_operation": "問題なかったよ。まだカナ漢字変換はできないけど、ちゃんと動いてた",
+    "source": "user message after interactive checkpoint"
+  }
+}

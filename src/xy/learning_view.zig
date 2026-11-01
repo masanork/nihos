@@ -13,7 +13,7 @@ fn label(instance: anytype, target: anytype, x: i32, y: i32, text: []const u8, s
     while (try iterator.next()) |cl| {
         if (cl.base_cp == '\n') break;
         const glyph = try instance.cache.getOrRender(family, 0, cl.base_cp, cl.ivs_cp, size, false, &instance.scratch);
-        if (pen + size > 1264) break;
+        if (pen + size > @as(i32, @intCast(target.width)) - 16) break;
         const mask = adapter.surface.Mask{ .bytes = glyph.alpha, .width = glyph.metrics.width, .height = glyph.metrics.height, .stride = glyph.metrics.width };
         const baseline = y + @divTrunc(@as(i32, size) * 880 + 512, 1024);
         _ = target.blit(mask, pen + glyph.metrics.left_px, baseline - glyph.metrics.top_px, color);
@@ -80,4 +80,67 @@ pub fn render(instance: anytype, request: *const protocol.Request, l: *learning.
         .{ .x = 470, .text = "Reset VM" },                               .{ .x = 720, .text = "Original" },
         .{ .x = 980, .text = if (l.editing_notes) "Code" else "Notes" },
     }) |button| try label(instance, target, button.x, 670, button.text, 22, 0xffff);
+}
+
+/// Portrait lessons use the same 720-wide surface and reserve a dock only when
+/// the workspace requests the on-screen keyboard.
+pub fn renderPortrait(instance: anytype, request: *const protocol.Request, l: *learning.Session, examples: bool) !void {
+    const target = adapter.surface.Surface.init(request.frame[0..request.frame_length], 720, 1280, 1440) orelse return error.Geometry;
+    if (examples) {
+        _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
+        try label(instance, target, 24, 32, "SICP / examples on this page", 28, 0x2147);
+        const count = try l.count();
+        if (count == 0) try label(instance, target, 24, 100, "No examples on this page.", 24, 0x528a);
+        const top = l.selected / 6 * 6;
+        var i: u32 = top;
+        while (i < @min(count, top + 6)) : (i += 1) {
+            const choice = (try l.choice(i)).?;
+            const y: i32 = 132 + @as(i32, @intCast(i - top)) * 120;
+            if (i == l.selected) _ = target.fillRect(24, y, 672, 104, 0x2147);
+            try label(instance, target, 36, y + 10, choice.id, 20, if (i == l.selected) 0xffff else 0x2147);
+            try label(instance, target, 36, y + 46, choice.code, 22, if (i == l.selected) 0xffff else 0x2147);
+        }
+        _ = target.fillRect(0, 1208, 720, 72, 0x2147);
+        try label(instance, target, 24, 1230, "Back / tap to choose", 22, 0xffff);
+        return;
+    }
+    const slot = l.slot() orelse return error.Range;
+    const doc = l.doc().?;
+    const snippet = try l.pack.snippet(slot.snippet);
+    var config = request.config.*;
+    config.style.axis = 0;
+    config.style.body_px = 25;
+    config.style.ruby_px = 8;
+    config.style.line_gap_px = 4;
+    config.style.style_id = 0;
+    var req = request.*;
+    req.navigation = null;
+    req.learning = null;
+    req.config = &config;
+    req.keyboard = 0;
+    req.book_prose = 0;
+    req.code_spans = null;
+    req.code_count = 0;
+    const dock_height: u16 = if (request.keyboard != 0) 320 else 0;
+    req.reserved_bottom_px = dock_height + 200;
+    req.text = doc.slice().ptr;
+    req.text_length = doc.len;
+    req.cursor = doc.cursor;
+    req.ruby_count = 0;
+    req.ruby_text_length = 0;
+    req.show_cursor = 1;
+    req.page_mode = 0;
+    const status = if (l.editing_notes) "Notes / RAM only" else snippet.id;
+    req.status = status.ptr;
+    req.status_length = status.len;
+    try instance.renderPortrait(&req);
+    const bottom: u32 = 1280 - dock_height;
+    const info_top: u32 = bottom - 200;
+    _ = target.fillRect(0, @intCast(info_top), 720, 128, 0xf7bd);
+    const state = if (!try l.supported(slot.snippet)) "Example not supported yet." else if (slot.result_len == 0) "Run to try your code. RAM only." else if (slot.result_revision != slot.code.revision) "Code changed since this result." else if (slot.failed) "Evaluation error." else "Result of your code:";
+    try label(instance, target, 24, @intCast(info_top + 16), state, 20, 0x2147);
+    try label(instance, target, 24, @intCast(info_top + 56), if (l.message_len != 0) l.message[0..l.message_len] else slot.result[0..slot.result_len], 22, if (slot.failed or l.message_len != 0) 0x9800 else 0x2147);
+    _ = target.fillRect(0, @intCast(bottom - 72), 720, 72, 0x2147);
+    for ([_]struct { x: i32, text: []const u8 }{ .{ .x = 8, .text = "Back" }, .{ .x = 152, .text = "Run" }, .{ .x = 296, .text = "Reset" }, .{ .x = 440, .text = "Original" }, .{ .x = 584, .text = if (l.editing_notes) "Code" else "Notes" } }) |button| try label(instance, target, button.x, @intCast(bottom - 48), button.text, 20, 0xffff);
+    try instance.renderKeyboard(request, target);
 }

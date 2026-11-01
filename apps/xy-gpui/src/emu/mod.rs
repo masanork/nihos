@@ -318,7 +318,23 @@ mod tests {
         b.send_key(b'B');
         b.step_frame(30_000_000);
         assert!(b.bus.keyboard_fifo.is_empty());
-        assert_ne!(a.bus.scanout, b.bus.scanout);
+        // Keyboard rendering can take longer than one fixed instruction budget.
+        // Wait for both sessions to present their distinct edits, with a bound.
+        for _ in 0..4 {
+            if a.bus.scanout != b.bus.scanout {
+                break;
+            }
+            a.step_frame(30_000_000);
+            b.step_frame(30_000_000);
+            assert!(
+                !a.paused && !b.paused,
+                "guest fault while waiting for edits"
+            );
+        }
+        assert!(
+            a.bus.scanout != b.bus.scanout,
+            "independent inputs did not produce distinct frames"
+        );
         let b_document = b.bus.scanout.clone();
         a.reset().unwrap();
         a.step_frame(5_000_000);
