@@ -10,7 +10,7 @@ sh "$root/probes/wamr-host/run-small.sh"
 out="$root/build/wamr-arena"
 mkdir -p "$out"
 "$zig" test -O ReleaseSafe --dep buddy_heap -Mroot="$root/probes/wamr-arena/arena.zig" -fPIC -Mbuddy_heap="$root/src/kernel/buddy_heap.zig"
-"$zig" build-obj -fPIC -O ReleaseSafe -femit-bin="$out/arena.o" --dep buddy_heap -Mroot="$root/probes/wamr-arena/arena.zig" -fPIC -Mbuddy_heap="$root/src/kernel/buddy_heap.zig"
+"$zig" build-obj -fPIC -fcompiler-rt -O ReleaseSafe -femit-bin="$out/arena.o" --dep buddy_heap -Mroot="$root/probes/wamr-arena/arena.zig" -fPIC -Mbuddy_heap="$root/src/kernel/buddy_heap.zig"
 cmake -S "$root/probes/wamr-quota" -B "$out" -DWAMR_ROOT_DIR="$base" -DCMAKE_BUILD_TYPE=Release -DNIHOS_WAMR_BUDDY=ON -DNIHOS_ARENA_OBJ="$out/arena.o"
 cmake --build "$out" --parallel 4
 module="$root/build/rust-wasm-small/wasm32-unknown-unknown/release/nihos_rust_wasm_probe.wasm"
