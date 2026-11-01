@@ -23,6 +23,31 @@ const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, n
 const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card };
 const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
+pub const eval_stack_size = 64;
+const int_bias: i32 = 16384;
+
+inline fn isImmediateInt(r: Ref) bool {
+    return (r & 0x8000) != 0;
+}
+inline fn makeImmediateInt(n: i32) Ref {
+    return @as(u16, @intCast(n + int_bias)) | 0x8000;
+}
+inline fn toImmediateInt(r: Ref) i32 {
+    return @as(i32, r & 0x7FFF) - int_bias;
+}
+inline fn isImmediateOp(r: Ref) bool {
+    return (r & 0xFF00) == 0x4000;
+}
+inline fn makeImmediateOp(op: Op) Ref {
+    return 0x4000 | @as(u16, @backingInt(op));
+}
+inline fn toImmediateOp(r: Ref) Op {
+    return @fromBackingInt(@as(u7, @truncate(r & 0x007F)));
+}
+inline fn isImmediate(r: Ref) bool {
+    return (r & 0x8000) != 0 or (r & 0xFF00) == 0x4000;
+}
+
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -57,6 +82,15 @@ pub const Runtime = struct {
     view_history: [8]struct { config: view_config.Config, generation: u32 },
     view_history_count: u8,
     view_generation: u32,
+    eval_stack: [eval_stack_size]Ref,
+    eval_sp: u8,
+
+    inline fn tagOf(self: *const Runtime, r: Ref) Tag {
+        if (isImmediateInt(r)) return .integer;
+        if (isImmediateOp(r)) return .native;
+        if (r >= cells) return .free;
+        return self.heap[r].tag;
+    }
 
     pub fn initInPlace(self: *Runtime) linksection(code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -99,6 +133,9 @@ pub const Runtime = struct {
         return r;
     }
     fn number(self: *Runtime, n: i32) linksection(code_section) Error!Ref {
+        if (n >= -16384 and n <= 16383) {
+            return makeImmediateInt(n);
+        }
         const r = try self.alloc(.integer);
         self.heap[r].integer = n;
         return r;
@@ -163,6 +200,9 @@ pub const Runtime = struct {
             self.mark(command.name, &tail);
             self.mark(command.procedure, &tail);
         }
+        for (self.eval_stack[0..self.eval_sp]) |r| {
+            self.mark(r, &tail);
+        }
         while (head < tail) : (head += 1) {
             const c = self.heap[self.queue[head]];
             if (c.tag == .pair or c.tag == .closure) {
@@ -221,7 +261,7 @@ pub const Runtime = struct {
         }
     }
     fn mark(self: *Runtime, r: Ref, tail: *usize) linksection(code_section) void {
-        if (r == 0 or self.heap[r].mark) return;
+        if (r == 0 or isImmediate(r) or self.heap[r].mark) return;
         self.heap[r].mark = true;
         self.queue[tail.*] = r;
         tail.* += 1;
@@ -310,7 +350,7 @@ pub const Runtime = struct {
         var p = list;
         var len: usize = 0;
         while (p != 0) {
-            if (self.heap[p].tag != .pair) return error.Type;
+            if (self.tagOf(p) != .pair) return error.Type;
             if (len == out.len) return error.Arity;
             out[len] = self.heap[p].a;
             len += 1;
@@ -329,8 +369,30 @@ pub const Runtime = struct {
         }
         return 0;
     }
+    inline fn canReuseFrame(self: *const Runtime, env: Ref, params: []const Ref) bool {
+        var node = self.heap[env].a;
+        var i = params.len;
+        while (i > 0) {
+            i -= 1;
+            if (node == 0) return false;
+            const b = self.heap[node].a;
+            if (self.heap[b].a != params[i]) return false;
+            node = self.heap[node].b;
+        }
+        return node == 0;
+    }
+    inline fn updateFrameBindings(self: *Runtime, env: Ref, values: []const Ref) void {
+        var node = self.heap[env].a;
+        var i = values.len;
+        while (i > 0) {
+            i -= 1;
+            const b = self.heap[node].a;
+            self.heap[b].b = values[i];
+            node = self.heap[node].b;
+        }
+    }
     fn define(self: *Runtime, env: Ref, name: Ref, value: Ref) linksection(code_section) Error!void {
-        if (self.heap[name].tag != .symbol) return error.Type;
+        if (self.tagOf(name) != .symbol) return error.Type;
         var p = self.heap[env].a;
         while (p != 0) : (p = self.heap[p].b) {
             const binding = self.heap[p].a;
@@ -346,7 +408,7 @@ pub const Runtime = struct {
         var argument_storage: [16]Ref = @splat(0);
         const args = try self.arguments(params, &argument_storage);
         for (args, 0..) |arg, index| {
-            if (self.heap[arg].tag != .symbol) return error.Type;
+            if (self.tagOf(arg) != .symbol) return error.Type;
             for (args[0..index]) |old| if (arg == old) return error.Syntax;
         }
         const r = try self.alloc(.closure);
@@ -370,20 +432,19 @@ pub const Runtime = struct {
         var cur_env = initial_env;
         while (true) {
             try self.tick(depth);
+            if (isImmediate(cur_r)) return cur_r;
             const c = &self.heap[cur_r];
             if (c.tag == .symbol) {
                 const found = self.lookup(cur_env, cur_r);
                 if (found != 0) return self.heap[found].b;
                 const op = opcode(self.string(cur_r)) orelse return error.Unbound;
                 if (@backingInt(op) < @backingInt(Op.add)) return error.Unbound;
-                const native = try self.alloc(.native);
-                self.heap[native].integer = @backingInt(op);
-                return native;
+                return makeImmediateOp(op);
             }
             if (c.tag != .pair) return cur_r;
             var argument_storage: [16]Ref = @splat(0);
             const args = try self.arguments(c.b, &argument_storage);
-            const special = if (self.heap[c.a].tag == .symbol) opcode(self.string(c.a)) else null;
+            const special = if (self.tagOf(c.a) == .symbol) opcode(self.string(c.a)) else null;
             if (special) |op| switch (op) {
                 .quote => {
                     if (args.len != 1) return error.Arity;
@@ -421,7 +482,7 @@ pub const Runtime = struct {
                 },
                 .define => {
                     if (args.len < 2) return error.Arity;
-                    if (self.heap[args[0]].tag == .pair) {
+                    if (self.tagOf(args[0]) == .pair) {
                         const signature = self.heap[args[0]];
                         const value = try self.closure(signature.b, self.heap[c.b].b, cur_env);
                         try self.define(cur_env, signature.a, value);
@@ -433,7 +494,7 @@ pub const Runtime = struct {
                 },
                 .set => {
                     if (args.len != 2) return error.Arity;
-                    if (self.heap[args[0]].tag != .symbol) return error.Type;
+                    if (self.tagOf(args[0]) != .symbol) return error.Type;
                     const found = self.lookup(cur_env, args[0]);
                     if (found == 0) return error.Unbound;
                     self.heap[found].b = try self.eval(args[1], cur_env, depth + 1, host);
@@ -447,7 +508,7 @@ pub const Runtime = struct {
                     for (entries) |entry| {
                         var fields: [2]Ref = @splat(0);
                         const binding = try self.arguments(entry, &fields);
-                        if (binding.len != 2 or self.heap[binding[0]].tag != .symbol) return error.Syntax;
+                        if (binding.len != 2 or self.tagOf(binding[0]) != .symbol) return error.Syntax;
                         var old = self.heap[local].a;
                         while (old != 0) : (old = self.heap[old].b) if (self.heap[self.heap[old].a].a == binding[0]) return error.Syntax;
                         try self.define(local, binding[0], try self.eval(binding[1], cur_env, depth + 1, host));
@@ -466,13 +527,24 @@ pub const Runtime = struct {
             };
             const procedure = try self.eval(c.a, cur_env, depth + 1, host);
             for (args) |*arg| arg.* = try self.eval(arg.*, cur_env, depth + 1, host);
-            if (self.heap[procedure].tag == .closure) {
+            if (self.tagOf(procedure) == .closure) {
                 const cl_params = self.heap[procedure].a;
                 const cl_body = self.heap[procedure].b;
                 const cl_env = self.heap[procedure].env;
                 var param_storage: [16]Ref = @splat(0);
                 const params = try self.arguments(cl_params, &param_storage);
                 if (params.len != args.len) return error.Arity;
+                if (cur_env != cl_env and cur_env != self.global and self.canReuseFrame(cur_env, params)) {
+                    self.updateFrameBindings(cur_env, args);
+                    var body = cl_body;
+                    if (body == 0) return 0;
+                    while (self.heap[body].b != 0) : (body = self.heap[body].b) {
+                        try self.tick(depth);
+                        _ = try self.eval(self.heap[body].a, cur_env, depth + 1, host);
+                    }
+                    cur_r = self.heap[body].a;
+                    continue;
+                }
                 const local = try self.pair(0, cl_env);
                 for (params, args) |name, value| try self.define(local, name, value);
                 var body = cl_body;
@@ -489,22 +561,28 @@ pub const Runtime = struct {
         }
     }
     fn integer(self: *const Runtime, r: Ref) linksection(code_section) Error!i32 {
-        if (self.heap[r].tag != .integer) return error.Type;
+        if (isImmediateInt(r)) return toImmediateInt(r);
+        if (r >= cells or self.heap[r].tag != .integer) return error.Type;
         return self.heap[r].integer;
     }
     fn apply(self: *Runtime, procedure: Ref, args: []const Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         try self.tick(depth);
-        const c = &self.heap[procedure];
-        if (c.tag == .closure) {
-            var argument_storage: [16]Ref = @splat(0);
-            const params = try self.arguments(c.a, &argument_storage);
-            if (params.len != args.len) return error.Arity;
-            const local = try self.pair(0, c.env);
-            for (params, args) |name, value| try self.define(local, name, value);
-            return self.sequence(c.b, local, depth, host);
-        }
-        if (c.tag != .native) return error.Type;
-        const op: Op = @fromBackingInt(@intCast(c.integer));
+        const op: Op = if (isImmediateOp(procedure))
+            toImmediateOp(procedure)
+        else blk: {
+            if (isImmediate(procedure)) return error.Type;
+            const c = &self.heap[procedure];
+            if (c.tag == .closure) {
+                var argument_storage: [16]Ref = @splat(0);
+                const params = try self.arguments(c.a, &argument_storage);
+                if (params.len != args.len) return error.Arity;
+                const local = try self.pair(0, c.env);
+                for (params, args) |name, value| try self.define(local, name, value);
+                return self.sequence(c.b, local, depth, host);
+            }
+            if (c.tag != .native) return error.Type;
+            break :blk @fromBackingInt(@intCast(c.integer));
+        };
         switch (op) {
             .add, .sub, .mul => {
                 if (op == .sub and args.len == 0) return error.Arity;
@@ -537,7 +615,7 @@ pub const Runtime = struct {
             },
             .car, .cdr => {
                 if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .pair) return error.Type;
+                if (self.tagOf(args[0]) != .pair) return error.Type;
                 return if (op == .car) self.heap[args[0]].a else self.heap[args[0]].b;
             },
             .list => {
@@ -553,14 +631,14 @@ pub const Runtime = struct {
                 if (args.len != 1) return error.Arity;
                 const yes = switch (op) {
                     .nullq => args[0] == 0,
-                    .pairq => self.heap[args[0]].tag == .pair,
+                    .pairq => self.tagOf(args[0]) == .pair,
                     else => args[0] == self.no,
                 };
                 return if (yes) self.yes else self.no;
             },
             .register => {
                 if (args.len != 2) return error.Arity;
-                if (self.heap[args[0]].tag != .string or self.heap[args[1]].tag != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
+                if (self.tagOf(args[0]) != .string or self.tagOf(args[1]) != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
                 for (self.commands[0..self.command_count]) |*command| if (std.mem.eql(u8, self.string(command.name), self.string(args[0]))) {
                     command.* = .{ .name = args[0], .procedure = args[1] };
                     return self.yes;
@@ -599,7 +677,7 @@ pub const Runtime = struct {
             .card_read, .card_info, .card_dismiss, .view_card => return self.applyCard(op, args, host),
             .insert => {
                 if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .string) return error.Type;
+                if (self.tagOf(args[0]) != .string) return error.Type;
                 try host.schemeCall(.insert, self.string(args[0]), 0);
                 return self.yes;
             },
@@ -661,7 +739,7 @@ pub const Runtime = struct {
                     self.frame_callback = 0;
                     return self.yes;
                 }
-                if (self.heap[callback].tag != .closure) return error.Type;
+                if (self.tagOf(callback) != .closure) return error.Type;
                 var parameters: [16]Ref = @splat(0);
                 if ((try self.arguments(self.heap[callback].a, &parameters)).len != 1) return error.Arity;
                 self.frame_callback = callback;
@@ -741,7 +819,7 @@ pub const Runtime = struct {
         return @intCast(n);
     }
     fn storageText(self: *Runtime, r: Ref) linksection(code_section) Error![]const u8 {
-        if (self.heap[r].tag != .string) return error.Type;
+        if (self.tagOf(r) != .string) return error.Type;
         return self.string(r);
     }
     fn sameText(left: []const u8, right: []const u8) linksection(code_section) bool {
@@ -809,13 +887,13 @@ pub const Runtime = struct {
                 if (op == .fs_read) {
                     request.count = try self.nonnegative(args[2]);
                     if (request.count > 64) return error.StorageLimit;
-                } else if (self.heap[args[2]].tag == .string) {
+                } else if (self.tagOf(args[2]) == .string) {
                     request.text = self.string(args[2]);
                 } else {
                     var p = args[2];
                     var n: usize = 0;
                     while (p != 0) {
-                        if (self.heap[p].tag != .pair) return error.Type;
+                        if (self.tagOf(p) != .pair) return error.Type;
                         if (n == binary.len) return error.StorageLimit;
                         const b = try self.nonnegative(self.heap[p].a);
                         if (b > 255) return error.Type;
@@ -837,12 +915,12 @@ pub const Runtime = struct {
             },
             .sql_lookup => {
                 if (args.len == 0 or args.len % 2 == 0) return error.Arity;
-                if (self.heap[args[0]].tag != .symbol) return error.Type;
+                if (self.tagOf(args[0]) != .symbol) return error.Type;
                 request.text = self.string(args[0]);
                 request.count = 8;
                 var i: usize = 1;
                 while (i < args.len) : (i += 2) {
-                    if (self.heap[args[i]].tag != .keyword) return error.Type;
+                    if (self.tagOf(args[i]) != .keyword) return error.Type;
                     const name = self.string(args[i]);
                     if (sameText(name, "where")) request.argument = try self.storageText(args[i + 1]) else if (sameText(name, "limit")) request.count = try self.nonnegative(args[i + 1]) else return error.Type;
                 }
@@ -871,9 +949,9 @@ pub const Runtime = struct {
                 var i: usize = 0;
                 while (i < args.len) : (i += 2) {
                     const name = try self.viewKey(args[i]);
-                    const val = self.heap[args[i + 1]];
-                    const value: view_config.Value = switch (val.tag) {
-                        .integer => .{ .number = val.integer },
+                    const val_tag = self.tagOf(args[i + 1]);
+                    const value: view_config.Value = switch (val_tag) {
+                        .integer => .{ .number = try self.integer(args[i + 1]) },
                         .symbol, .string => .{ .symbol = self.string(args[i + 1]) },
                         .boolean => .{ .boolean = args[i + 1] == self.yes },
                         else => return error.Type,
@@ -917,7 +995,7 @@ pub const Runtime = struct {
         }
     }
     fn viewKey(self: *const Runtime, r: Ref) linksection(code_section) Error![]const u8 {
-        if (self.heap[r].tag != .symbol and self.heap[r].tag != .keyword) return error.Type;
+        if (self.tagOf(r) != .symbol and self.tagOf(r) != .keyword) return error.Type;
         return self.string(r);
     }
     noinline fn applyCard(self: *Runtime, op: Op, args: []const Ref, host: anytype) linksection(code_section) Error!Ref {
@@ -1039,7 +1117,7 @@ pub const Runtime = struct {
             const binding = self.lookup(self.global, sym);
             if (binding == 0) return error.UnknownCommand;
             procedure = self.heap[binding].b;
-            if (self.heap[procedure].tag != .closure or self.heap[procedure].a != 0) return error.UnknownCommand;
+            if (self.tagOf(procedure) != .closure or self.heap[procedure].a != 0) return error.UnknownCommand;
         }
         const result = try self.apply(procedure, &.{}, 0, host);
         return self.format(result, output);
@@ -1073,6 +1151,26 @@ pub const Runtime = struct {
     }
     fn print(self: *const Runtime, r: Ref, output: []u8, pos: *usize, depth: usize) linksection(code_section) Error!void {
         if (depth >= depth_limit) return error.Depth;
+        if (isImmediateInt(r)) {
+            const val = toImmediateInt(r);
+            var bytes: [11]u8 = @splat(0);
+            var rest: u32 = if (val < 0) @intCast(-@as(i64, val)) else @intCast(val);
+            var start_index = bytes.len;
+            while (true) {
+                start_index -= 1;
+                bytes[start_index] = @as(u8, @intCast(rest % 10)) + '0';
+                rest /= 10;
+                if (rest == 0) break;
+            }
+            if (val < 0) {
+                start_index -= 1;
+                bytes[start_index] = '-';
+            }
+            return emit(output, pos, bytes[start_index..]);
+        }
+        if (isImmediateOp(r)) {
+            return emit(output, pos, "#<procedure>");
+        }
         const c = &self.heap[r];
         switch (c.tag) {
             .nil => try emit(output, pos, "()"),
@@ -1381,7 +1479,7 @@ test "scheme runtime memory footprint and tail call execution" {
     // 1. Structure Sizes & Memory Footprint assertions
     try std.testing.expectEqual(@as(usize, 16), @sizeOf(Cell));
     try std.testing.expectEqual(@as(usize, 4096), @sizeOf(@TypeOf(vm.heap)));
-    try std.testing.expectEqual(@as(usize, 7208), @sizeOf(Runtime));
+    try std.testing.expectEqual(@as(usize, 7336), @sizeOf(Runtime));
 
     // 2. Symbol Interning & Heap Density
     _ = try vm.evaluate("(define a 1) (define b 2) (define c 3) (define d 4) (define e 5)", &host, &out);
@@ -1398,7 +1496,7 @@ test "scheme runtime memory footprint and tail call execution" {
         \\      acc
         \\      (sum-iter (- n 1) (+ acc n))))
     , &host, &out);
-    vm.step_budget = 20000;
-    const tco_res = try vm.evaluate("(sum-iter 10 0)", &host, &out);
-    try std.testing.expectEqualStrings("55", tco_res);
+    vm.step_budget = 50000;
+    const tco_res = try vm.evaluate("(sum-iter 50 0)", &host, &out);
+    try std.testing.expectEqualStrings("1275", tco_res);
 }

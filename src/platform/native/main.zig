@@ -1562,6 +1562,9 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         ui.report(&logger);
         ui.liveReport(&logger, true);
         if (options.camera_jpeg) ui.bindCamera(&@import("camera_jpeg.zig").provider);
+        if (comptime @hasDecl(options, "xy_workspace") and options.xy_workspace) {
+            ui.bindCard(&@import("xy_card_provider.zig").provider);
+        }
         if (!ui.startSession(&logger)) fail("launcher startup");
     }
     if (options.boot_test != 0) {
