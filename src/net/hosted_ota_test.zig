@@ -112,3 +112,52 @@ test "OTA request protobuf bytes match independent Hosted 1.4.1 protobuf-c" {
         try std.testing.expectEqualSlices(u8, vector[3], result[12..]);
     }
 }
+
+test "Hosted 2.13 End requires Activate before completion" {
+    const bytes = image();
+    var client = try ota.Client.init(&bytes, digest(&bytes), 0, 0);
+    client.activation = .explicit_rpc;
+    var reply_bytes: [128]u8 = undefined;
+    _ = try client.next();
+    try std.testing.expect(try client.receive(.{ .interface = 3, .payload = try response(&reply_bytes, 528, client.uid, &.{}) }));
+    while (client.phase == .write) {
+        _ = try client.next();
+        try std.testing.expect(try client.receive(.{ .interface = 3, .payload = try response(&reply_bytes, 529, client.uid, &.{}) }));
+    }
+    _ = try client.next();
+    try std.testing.expect(try client.receive(.{ .interface = 3, .payload = try response(&reply_bytes, 530, client.uid, &.{}) }));
+    try std.testing.expectEqual(ota.Phase.activate, client.phase);
+    const activation = try client.next();
+    try std.testing.expectEqual(@as(u32, 266), client.pending_id.?);
+    try std.testing.expect(activation.len <= 512);
+    try std.testing.expect(try client.receive(.{ .interface = 3, .payload = try response(&reply_bytes, 522, client.uid, &.{}) }));
+    try std.testing.expectEqual(ota.Phase.complete, client.phase);
+}
+
+test "failed 2.13 activation never reports completed" {
+    const bytes = image();
+    var client = try ota.Client.init(&bytes, digest(&bytes), 0, 0);
+    client.activation = .explicit_rpc;
+    client.phase = .activate;
+    _ = try client.next();
+    var response_bytes: [128]u8 = undefined;
+    try std.testing.expectError(error.Rejected, client.receive(.{ .interface = 3, .payload = try response(&response_bytes, 522, client.uid, &.{ 8, 1 }) }));
+    try std.testing.expectEqual(ota.Phase.failed, client.phase);
+}
+
+test "2.13 rejects an image too short for first-write validation before Begin" {
+    const bytes = image();
+    const too_short = bytes[0..287];
+    var client = try ota.Client.init(too_short, digest(too_short), 0, 0);
+    client.activation = .explicit_rpc;
+    try std.testing.expectError(error.InvalidImage, client.next());
+    try std.testing.expectEqual(ota.Phase.failed, client.phase);
+    try std.testing.expect(client.pending_id == null);
+}
+
+test "2.13 Activate protobuf matches independently generated protobuf-c" {
+    var out: [64]u8 = undefined;
+    const packet = try wire.request(&out, 266, 12, &.{});
+    const expected = [_]u8{ 0x08, 0x01, 0x10, 0x8a, 0x02, 0x18, 0x0c, 0xd2, 0x10, 0x00 };
+    try std.testing.expectEqualSlices(u8, &expected, packet[12..]);
+}

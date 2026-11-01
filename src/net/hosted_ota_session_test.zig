@@ -99,3 +99,28 @@ test "in-place initialization checks candidate before touching transport" {
     h[0] ^= 1;
     try std.testing.expectError(error.DigestMismatch, s.initInPlace(&b, h, 1, 100));
 }
+
+test "2.13 activation is opt-in and version mismatch cannot send Begin" {
+    var b: [384]u8 = @splat(0);
+    @memcpy(b[0..40], &candidate());
+    var s = try start(&b);
+    var f: Fake = .{};
+    s.client.phase = .done;
+    s.client.peer_chip = 13;
+    s.client.version_known = true;
+    s.client.version = .{ 2, 13, 1 };
+    try std.testing.expectError(error.UnsupportedPeer, s.step(&f, 1));
+    try std.testing.expectEqual(@as(usize, 0), f.sent);
+    s = try start(&b);
+    s.allow_213 = true;
+    s.client.phase = .done;
+    s.client.peer_chip = 13;
+    s.client.version_known = true;
+    s.client.version = .{ 2, 13, 1 };
+    try s.step(&f, 1);
+    try std.testing.expectEqual(session.State.transfer, s.state);
+    try std.testing.expectEqual(@import("hosted_ota.zig").Activation.explicit_rpc, s.transfer.?.client.activation);
+    var now: u64 = 2;
+    while (s.state != .complete) : (now += 1) try s.step(&f, now);
+    try std.testing.expectEqual(@as(usize, 4), f.sent);
+}
