@@ -10,8 +10,12 @@ working directory and loads the same firmware. Closing one session leaves the
 others running. No document or flash persistence is implemented. Each active
 session consumes CPU, so concurrent sessions can run more slowly; pause a session
 to stop its CPU work without discarding its state. Portrait rotates the
-host display clockwise; it does not change the guest's display orientation or
-input coordinates. Power off stops CPU execution and blanks the screen; power on
+host display counterclockwise; it does not change the guest's display orientation or
+input coordinates. Mouse press, drag and release on the screen simulate one
+ST7123 touch contact; coordinates follow the displayed rotation. The Tab5
+keyboard I2C bus is modeled as disconnected, so firmware can detect its
+absence. The host rotation control remains manual. Input is
+released on focus loss, rotation, pause, power off, or reset. Power off stops CPU execution and blanks the screen; power on
 and Reset reload the ELF into a new emulated machine. This model does not yet
 preserve flash or other storage across power cycles.
 
@@ -21,14 +25,15 @@ from the app bundle, then from `build/xy-emulator-firmware/nihos-native.elf`
 relative to the current directory. The packaging script bundles the fixture when
 present, so the resulting app can be started from Finder. Missing or invalid firmware is shown in the window. A candidate xy
 firmware has booted to its home and RAM document; ASCII navigation and editing
-have been demonstrated. IME, persistence, touch, full peripherals and physical
+have been demonstrated. Single-contact touch is modeled; IME, persistence,
+multi-touch, full peripherals and physical
 Tab5 equivalence remain unqualified. Build and launch from the repository root.
 
 ## Boot investigation
 
 Build the fixture and app with ESP-IDF 5.4.4 and the pinned Zig toolchain:
 no device is accessed or flashed. The workflow builds the same fixture and
-runs the splash, edit and dual-session tests on each relevant pull request:
+runs the splash, touch, edit and dual-session tests on each relevant pull request:
 
 ```sh
 sh tools/build-xy-emulator-fixture.sh
