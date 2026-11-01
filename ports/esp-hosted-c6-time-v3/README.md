@@ -57,8 +57,9 @@ reset. `sh ports/esp-hosted-c6-time-v3/check-ota-info-wire.sh` verifies the
 C-generated fixture consumed by its Zig tests. This is an API and wire test;
 the request and decoder also compiled for the P4 RV32 target. A separate
 `tools/build-c6-ota-info-probe.sh` builds a P4 diagnostic that performs the
-Hosted handshake and this one query. Its stream guard admits only the exact
-handshake configuration, version and Bluetooth setup, and this CustomRpc;
+Hosted handshake, reads the standard application descriptor and then makes
+this one query. Its stream guard admits only the exact handshake configuration,
+version, read-only descriptor and Bluetooth setup, and this CustomRpc;
 it rejects OTA Begin, Write, End, Activate and other CustomRpc IDs. It does
 not authorize a C6 OTA. There is not yet a device UI or a 3.x physical capture.
 In a [physical negative test](../../docs/measurements/2026-11-01-c6-ota-info-negative.md),
@@ -67,6 +68,10 @@ Values are self-reported by the running C6 application; this service is absent f
 currently installed 2.13.1 image and cannot establish its actual partition
 layout before the first update. Neither a reported layout nor a security flag
 proves an independent ROM recovery path.
+The application descriptor's version, project name and IDF version are
+self-reported metadata. The optional ELF hash is not the application binary's
+hash or a flash readback, and the 2.13.1 build configuration does not enable
+the full descriptor fields.
 
 The P4 recognizes the 3.0.10 MCU RPC-v2 advertisement, echoes it only when
 advertised, rejects unsupported SDIO modes and accepts the time path only for

@@ -4,8 +4,9 @@ const std = @import("std");
 const station = @import("hosted_station.zig");
 const wire = @import("hosted.zig");
 const info = @import("hosted_c6_ota_info.zig");
+const app = @import("hosted_c6_app_desc.zig");
 
-pub const State = enum { handshake, queued, waiting, complete, failed };
+pub const State = enum { handshake, desc_queued, desc_waiting, desc_received, queued, waiting, complete, failed };
 
 /// Defense in depth for the diagnostic's physical stream: only handshake,
 /// Bluetooth controller setup and the read-only OTA-info CustomRpc may leave.
@@ -55,7 +56,7 @@ pub fn ReadOnlyStream(comptime Stream: type) type {
                 if (kind != 1 or uid == null or uid == 0 or id == null or body_id != id) return error.Malformed;
                 const value = body orelse return error.Malformed;
                 switch (id.?) {
-                    350 => if (value.len != 0) return error.Malformed,
+                    267, 350 => if (value.len != 0) return error.Malformed,
                     387 => {
                         const feature = try wire.integer(value, 1);
                         const action = try wire.integer(value, 2);
@@ -86,6 +87,8 @@ pub const Exchange = struct {
     deadline: u64,
     last_now: u64,
     ack_status: ?u32 = null,
+    description: ?app.Description = null,
+    desc_uid: u32 = 0,
 
     pub fn init(nonce: u32, now: u64, deadline: u64) error{InvalidArgument}!Exchange {
         if (nonce == 0 or deadline <= now) return error.InvalidArgument;
@@ -107,6 +110,12 @@ pub const Exchange = struct {
         for (self.rx[0..count]) |byte| if (try self.decoder.push(byte)) |frame| {
             if (self.state == .handshake) {
                 try self.client.receive(frame, now);
+            } else if (self.state == .desc_waiting and frame.interface == 3) {
+                const rpc = try wire.rpc(frame.payload);
+                if (rpc.kind == 2 and rpc.id == app.response_id and rpc.uid == self.desc_uid) {
+                    self.description = try app.parse(rpc, self.desc_uid);
+                    self.state = .desc_received;
+                }
             } else if (self.state == .waiting and frame.interface == 3) {
                 const rpc = try wire.rpc(frame.payload);
                 if (rpc.kind == 2 and rpc.id == 644 and rpc.uid == self.query.uid) {
@@ -127,10 +136,18 @@ pub const Exchange = struct {
             const current = std.mem.eql(u32, &self.client.version, &.{ 3, 0, 10 }) and
                 self.client.peer_rpc_version == 2 and self.client.peer_mode == 1 and self.client.peer_sdio_buffer_blocks != null;
             if (!old and !current) return error.UnsupportedPeer;
-            if (self.client.uid == std.math.maxInt(u32)) return error.UidExhausted;
+            if (self.client.uid >= std.math.maxInt(u32) - 1) return error.UidExhausted;
+            self.desc_uid = self.client.uid + 1;
             var payload: [100]u8 = undefined;
-            const request = try self.query.start(&payload, self.client.uid + 1, self.nonce, now, self.deadline);
+            const request = try wire.request(&payload, app.request_id, self.desc_uid, &.{});
             const frame = try wire.frame(&self.output, 3, self.client.sequence, request);
+            self.output_len = frame.len;
+            self.state = .desc_queued;
+        }
+        if (self.state == .desc_received and self.decoder.used == 0) {
+            var payload: [100]u8 = undefined;
+            const request = try self.query.start(&payload, self.desc_uid + 1, self.nonce, now, self.deadline);
+            const frame = try wire.frame(&self.output, 3, self.client.sequence +% 1, request);
             self.output_len = frame.len;
             self.state = .queued;
         }
@@ -141,10 +158,10 @@ pub const Exchange = struct {
                 if (sent != 0 and sent != frame.len) return error.PartialPacket;
                 if (sent != 0) self.client.sent(now);
             }
-        } else if (self.state == .queued) {
+        } else if (self.state == .queued or self.state == .desc_queued) {
             const sent = try stream.send(self.output[0..self.output_len]);
             if (sent != 0 and sent != self.output_len) return error.PartialPacket;
-            if (sent != 0) self.state = .waiting;
+            if (sent != 0) self.state = if (self.state == .desc_queued) .desc_waiting else .waiting;
         }
     }
 };
