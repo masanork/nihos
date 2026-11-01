@@ -50,6 +50,11 @@ The latest host probe also routes received frames through a four-frame
 station ARP processing, overflow isolation and connection-generation changes.
 The host probe does not establish physical SDIO buffering or concurrency safety.
 
+The Hosted TCP service now limits each write to 446 bytes and rejects frames
+over 512 bytes, matching the normal C6 short-send size bound. A host test
+checks a maximum-sized data frame against the SDIO transfer planner; it does
+not execute a physical SDIO transaction.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 

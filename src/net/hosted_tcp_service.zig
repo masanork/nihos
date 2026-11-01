@@ -9,6 +9,10 @@ const connect = @import("tcp_connect.zig");
 pub const Error = hosted.Error || tcp.Error || error{ NoLease, StaleHandle, EpochExhausted, PartialFrame };
 pub const Handle = struct { generation: u64, id: u64 };
 pub const Tx = struct { bytes: []const u8, newly_staged: bool };
+// Normal C6 ProfileStream sends one complete Hosted frame, at most 512 bytes.
+// Current TCP data packets use 12 Hosted + 14 Ethernet + 20 IPv4 + 20 TCP bytes.
+pub const max_frame = 512;
+pub const max_write = max_frame - 12 - 14 - 20 - 20;
 pub const Service = struct {
     lease: ?arp.Lease = null,
     generation: u64 = 0,
@@ -66,6 +70,7 @@ pub const Service = struct {
         }
         const ethernet = (link.poll(handle.generation, now) catch |err| return self.fail(err)) orelse return null;
         const frame = hosted.frame(&self.frame, hosted.station_interface, sequence, ethernet) catch |err| return self.fail(err);
+        if (frame.len > max_frame) return self.fail(error.FrameTooLarge);
         self.frame_len = frame.len;
         return .{ .bytes = self.frame[0..self.frame_len], .newly_staged = true };
     }
@@ -95,7 +100,7 @@ pub const Service = struct {
         return (try self.get(handle)).ready();
     }
     pub fn write(self: *Service, handle: Handle, bytes: []const u8, now: u64, deadline: u64) Error!usize {
-        return (try self.get(handle)).write(handle.generation, bytes, now, deadline);
+        return (try self.get(handle)).write(handle.generation, bytes[0..@min(bytes.len, max_write)], now, deadline);
     }
     pub fn read(self: *Service, handle: Handle, out: []u8) Error!usize {
         return (try self.get(handle)).read(handle.generation, out);
@@ -125,6 +130,23 @@ pub const Service = struct {
         return err;
     }
 };
+
+test "large writes fit the normal short Hosted transport" {
+    var service: Service = .{};
+    const lease = arp.Lease{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 }, .epoch = 7 };
+    try service.sync(lease);
+    const handle = try service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 123, 0, 5000);
+    const link = &service.link.?;
+    link.resolver.state = .resolved;
+    link.resolver.resolved_mac = .{ 0x52, 0x54, 0, 0, 0, 2 };
+    link.state = .active;
+    link.stream = @import("tcp_stream.zig").Stream.init(.{ .local = .{ .address = lease.ip, .port = 50001 }, .remote = .{ .address = lease.gateway, .port = 22 }, .send_next = 1, .receive_next = 1, .remote_window = 4096, .remote_mss = 1460 });
+    const input: [600]u8 = @splat(0x5a);
+    try std.testing.expectEqual(@as(usize, max_write), try service.write(handle, &input, 1, 5000));
+    const frame = (try service.tx(handle, 1, 1)).?;
+    try std.testing.expectEqual(@as(usize, max_frame), frame.bytes.len);
+    _ = try @import("c6_sdio.zig").plan(frame.bytes.len);
+}
 
 test "lease change and ambiguous transmit invalidate handles and frames" {
     var service: Service = .{};

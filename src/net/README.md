@@ -20,7 +20,9 @@ host fixture coverage and is not yet integrated with the native network owner.
 `hosted_tcp_service.zig` wraps that connection in Hosted station frames and
 binds handles and pending TX to the network owner's lease/reset epoch. It
 rejects ambiguous partial sends and requires the caller to queue RX while a
-frame is staged. The OpenSSH/libslirp host fixture exercises this boundary;
+frame is staged. Writes accept at most 446 bytes, leaving room for the
+current headers in the normal short SDIO path's 512-byte Hosted frame limit;
+callers must retry any remaining bytes. The OpenSSH/libslirp host fixture exercises this boundary;
 normal `network_service.zig` does not yet call it. It is not a socket table or
 a qualified DMA, Wi-Fi, reconnect, or device implementation.
 
