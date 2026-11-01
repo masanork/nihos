@@ -79,6 +79,12 @@ esac
 if [ "$wasm_session_test" = true ] && [ "$wasm_task" != true ]; then
     echo "WASM_SESSION_TEST requires the headless emulator WASM_TASK profile" >&2; exit 1
 fi
+wasm_align_san=${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}
+case "$wasm_align_san" in 0) wasm_align_san=false; wamr_compile_dir="$repo_root/build/wamr-rv32-compile" ;; 1) wasm_align_san=true; wamr_compile_dir="$repo_root/build/wamr-rv32-align-compile" ;; *) echo "WASM_ALIGN_SAN must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_align_san" = true ] && [ "$wasm_session_test" != true ]; then echo "WASM_ALIGN_SAN requires headless WASM_SESSION_TEST" >&2; exit 1; fi
+wasm_align_negative=${NIHOS_NATIVE_WASM_ALIGN_NEGATIVE:-0}
+case "$wasm_align_negative" in 0) wasm_align_negative=false ;; 1) wasm_align_negative=true ;; *) echo "WASM_ALIGN_NEGATIVE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$wasm_align_negative" = true ] && [ "$wasm_align_san" != true ]; then echo "WASM_ALIGN_NEGATIVE requires WASM_ALIGN_SAN" >&2; exit 1; fi
 wasm_interactive=${NIHOS_NATIVE_WASM_INTERACTIVE:-0}
 case "$wasm_interactive" in 0) wasm_interactive=false ;; 1) wasm_interactive=true ;; *) echo "WASM_INTERACTIVE must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$wasm_interactive" = true ] && [ "$wasm_session_test" != true ]; then
@@ -560,6 +566,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_session_test = %s;\n' "$wasm_session_test"
     printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
     printf 'pub const wasm_interactive_repeat = %s;\n' "$wasm_repeat"
+    printf 'pub const wasm_alignment_negative = %s;\n' "$wasm_align_negative"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
@@ -661,12 +668,24 @@ if [ "$wasm" = true ]; then
     riscv_cc_path=$(command -v "$riscv_cc") || { echo "Set NIHOS_RISCV_CC" >&2; exit 1; }
     riscv_prefix=${riscv_cc_path%gcc}
     for tool in ld objcopy; do [ -x "$riscv_prefix$tool" ] || { echo "Missing matching $tool" >&2; exit 1; }; done
-    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
+    NIHOS_ZIG="$zig" NIHOS_RISCV_CC="$riscv_cc_path" NIHOS_WAMR_RV32_ALIGN_SAN="${NIHOS_NATIVE_WASM_ALIGN_SAN:-0}" sh "$repo_root/probes/wamr-rv32/run-compile.sh"
     NIHOS_ZIG="$zig" sh "$repo_root/probes/wamr-arena/run-rv32.sh"
     "$riscv_prefix"ld -m elf32lriscv -r --whole-archive \
-        "$repo_root/build/wamr-rv32-compile/libwamr-rv32-compile.a" --no-whole-archive \
+        "$wamr_compile_dir/libwamr-rv32-compile.a" --no-whole-archive \
         -o "$build_dir/wamr-combined.o"
     cp "$repo_root/build/wamr-arena-rv32/arena.o" "$build_dir/wamr_arena.o"
+    if [ "$wasm_align_san" = true ]; then
+        python3 "$repo_root/probes/wamr-rv32/readonly-ubsan.py" "$riscv_prefix"objdump "$riscv_prefix"objcopy "$build_dir/wamr-combined.o"
+        "$riscv_cc_path" -c -Os -ffreestanding -fno-builtin -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+            "$repo_root/probes/wamr-rv32/ubsan_alignment.c" -o "$build_dir/wamr_align_handler.o"
+        set -- "$@" "$build_dir/wamr_align_handler.o"
+        if [ "$wasm_align_negative" = true ]; then
+            "$riscv_cc_path" -c -Os -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -march=rv32imac_zicsr_zifencei -mabi=ilp32 \
+                -fsanitize=alignment -fno-sanitize-recover=alignment "$repo_root/probes/wamr-rv32/ubsan_alignment_negative.c" -o "$build_dir/wamr_c_align_negative.o"
+            python3 "$repo_root/probes/wamr-rv32/readonly-ubsan.py" "$riscv_prefix"objdump "$riscv_prefix"objcopy "$build_dir/wamr_c_align_negative.o"
+            set -- "$@" "$build_dir/wamr_c_align_negative.o"
+        fi
+    fi
     RUSTFLAGS='-C link-arg=-zstack-size=16384 -C link-arg=--initial-memory=65536 -C link-arg=--max-memory=65536' \
         CARGO_TARGET_DIR="$build_dir/rust-wasm-target" cargo build --locked --release \
         --target wasm32-unknown-unknown --manifest-path "$repo_root/probes/rust-wasm/Cargo.toml"

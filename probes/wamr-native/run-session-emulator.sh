@@ -2,7 +2,7 @@
 # Common Session with synchronous frame RPC to the real scheduled WAMR worker.
 set -eu
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
-out="$root/build/wasm-session-emulator"
+out=${NIHOS_WASM_SESSION_OUT:-"$root/build/wasm-session-emulator"}
 riscv_cc=${NIHOS_RISCV_CC:-riscv32-esp-elf-gcc}
 python=${NIHOS_IDF_PYTHON:-python3}
 loader="$root/build/native-emulator/loader"

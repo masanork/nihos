@@ -1562,6 +1562,7 @@ fn qualificationSoak(sd_crc: u32, display_panel: u32) noreturn {
     }
 }
 
+extern fn nih_wamr_alignment_negative() callconv(.c) u32;
 fn normalReady() noreturn {
     const started = ui.timer().counter() orelse fail("boot health clock");
     while (@atomicLoad(u32, &progress[1], .acquire) == 0) {
@@ -1593,6 +1594,11 @@ fn normalReady() noreturn {
         logger.record("NIHOS_NATIVE_NORMAL_READY", null, .{"wait_us"}, &ready);
     }
     if (normal_storage) normal_fs.begin(storageClient());
+    if (options.wasm_alignment_negative) {
+        print("NIHOS_WAMR_ALIGN_NEGATIVE_BEGIN\n");
+        _ = nih_wamr_alignment_negative();
+        fail("alignment negative did not trap");
+    }
     if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
     if (options.wasm_interactive) {
         if (!@import("wasm_session_fixture.zig").interactiveBegin(&logger)) fail("Wasm interactive init");
