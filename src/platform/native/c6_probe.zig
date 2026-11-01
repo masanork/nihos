@@ -677,12 +677,17 @@ var ota_update_guard: hosted.ota_guard.Guard = undefined;
 var ota_fake: hosted.ota_fake.Fake = undefined;
 var ota_safe: hosted.ota_fake.NoOtaStream(@TypeOf(hosted_stream)) = undefined;
 var ota_update_stage: u32 = 0;
+fn printOtaHex(value: u32) void {
+    const digits = "0123456789abcdef";
+    for (0..8) |index| _ = nih_rom_putc(digits[(value >> @as(u5, @intCast(28 - index * 4))) & 15]);
+}
 noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]u8) !OtaUpdate {
     const started = clock.counter() orelse return error.Clock;
     try ota_update_guard.initInPlace(image, hash, started, started + 600_000_000);
     const root = @import("root");
     const simulation = @hasDecl(root, "C6OtaSimulation") and root.C6OtaSimulation;
     ota_update_guard.session.allow_213 = @hasDecl(root, "C6OtaAllow213") and root.C6OtaAllow213;
+    if (@hasDecl(root, "C6OtaRequiredPeer")) ota_update_guard.session.required_peer = root.C6OtaRequiredPeer;
     if (simulation) {
         ota_fake = .{ .image = image };
         ota_safe = .{ .inner = &hosted_stream };
@@ -723,6 +728,18 @@ noinline fn exerciseOtaUpdate(clock: timers.Timer, image: []const u8, hash: [32]
                 if (simulation) for ("NIHOS_C6_OTA_SIMULATED\r\n") |byte| {
                     _ = nih_rom_putc(byte);
                 };
+                if (@hasDecl(root, "C6OtaRequiredPeer")) {
+                    const peer = &ota_update_guard.session.client;
+                    for ("NIHOS_C6_OTA_ORIGIN chip=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.peer_chip);
+                    for (" major=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[0]);
+                    for (" minor=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[1]);
+                    for (" patch=") |byte| _ = nih_rom_putc(byte);
+                    printOtaHex(peer.version[2]);
+                    for ("\r\n") |byte| _ = nih_rom_putc(byte);
+                }
                 for ("NIHOS_C6_OTA_READY\r\n") |byte| _ = nih_rom_putc(byte);
                 announced = true;
             }

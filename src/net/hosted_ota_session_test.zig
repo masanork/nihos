@@ -124,3 +124,32 @@ test "2.13 activation is opt-in and version mismatch cannot send Begin" {
     while (s.state != .complete) : (now += 1) try s.step(&f, now);
     try std.testing.expectEqual(@as(usize, 4), f.sent);
 }
+test "required origin version rejects both downgrade and upgrade mismatches before Begin" {
+    var bytes: [384]u8 = @splat(0);
+    @memcpy(bytes[0..40], &candidate());
+    for ([_]struct { peer: [3]u32, required: [3]u32 }{
+        .{ .peer = .{ 1, 4, 1 }, .required = .{ 2, 13, 1 } },
+        .{ .peer = .{ 2, 13, 1 }, .required = .{ 1, 4, 1 } },
+    }) |case| {
+        var s = try start(&bytes);
+        var stream: Fake = .{};
+        s.allow_213 = true;
+        s.required_peer = case.required;
+        s.client.phase = .done;
+        s.client.peer_chip = 13;
+        s.client.version_known = true;
+        s.client.version = case.peer;
+        try std.testing.expectError(error.UnsupportedPeer, s.step(&stream, 1));
+        try std.testing.expectEqual(@as(usize, 0), stream.sent);
+        try std.testing.expectEqual(session.State.failed, s.state);
+    }
+}
+test "required origin is reset on reinitialization" {
+    const bytes = candidate();
+    var digest_bytes: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(&bytes, &digest_bytes, .{});
+    var s = try start(&bytes);
+    s.required_peer = .{ 2, 13, 1 };
+    try s.initInPlace(&bytes, digest_bytes, 0, 100);
+    try std.testing.expect(s.required_peer == null);
+}

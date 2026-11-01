@@ -1,10 +1,14 @@
 #!/bin/sh
-# Build the P4-side CPU0-only SDIO/AT fixture. Never opens a device or flashes.
+# Build the pinned 2.13.1 -> 1.4.1 P4 recovery fixture. Never opens a device or flashes.
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 # Explicit one-shot OTA fixture; the build never opens a device.
 : "${NIHOS_C6_OTA_IMAGE:?set path to the reviewed C6 app image}"
 : "${NIHOS_C6_OTA_SHA256:?set the reviewed C6 app SHA-256}"
+[ "$NIHOS_C6_OTA_SHA256" = 0ab00183efb3149b568d0968877f1a7718f7c79817748a8e5c0417957cbf5e3b ] || {
+    echo "only the reviewed C6 1.4.1 diagnostics digest is allowed" >&2
+    exit 1
+}
 NIHOS_C6_PROTOCOL=hosted
 umask 077
 build_dir="$repo_root/build/c6-ota-recovery-probe"

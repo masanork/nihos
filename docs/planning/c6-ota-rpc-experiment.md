@@ -115,7 +115,9 @@ response 522. `Client` supports the latter only when explicitly selected;
 `Session` still defaults to accepting 1.4.1 only and requires an explicit
 `allow_213` opt-in for an observed 2.13.1 peer. Other versions fail before
 Begin. The first write is 384 bytes and includes the 288-byte image and app
-headers expected by the 2.13.1 validity check; shorter images fail before Begin.
+headers needed by the conditional 2.13.1 validity check (enabled with IDF
+6.1 or later); shorter images conservatively fail before Begin. The current
+IDF 5.5.2 candidate compiles that particular check out.
 The write-blocked simulation wrapper rejects Activate as well as Begin/Write/End.
 These are host and RV32 compile-path changes. A separate, explicitly opted-in
 recovery fixture has been built, but has not been run on hardware; 2.13.1 OTA
@@ -129,3 +131,12 @@ candidate does not yet automatically include this correction. Activation error
 or response loss can still leave boot selection uncertain because the timer is
 created after the boot partition is switched. Never infer successful reboot from
 an Activate response alone, and never auto-replay an uncertain operation.
+
+## Time-candidate OTA preparation
+
+The explicitly pinned time-upgrade and 1.4.1-recovery fixtures require their
+respective starting peer versions before the token gate. The exact time image
+was exercised through a P4 in-memory responder on Tab5 with OTA commands blocked
+on the physical C6 stream; this is not an installation or recovery result.
+See `docs/measurements/2026-11-01-c6-time-ota-simulation.md` for artifacts,
+physical capture and remaining gates.

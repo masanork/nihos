@@ -9,7 +9,8 @@ pub const Fake = struct {
     used: usize = 0,
     offset: usize = 0,
     last_uid: u32 = 0,
-    phase: enum { begin, write, end, complete } = .begin,
+    phase: enum { begin, write, end, activate, complete } = .begin,
+    explicit_activation: bool = false,
     pub fn send(self: *Fake, frame: []const u8) !usize {
         if (frame.len < 24 or frame[0] != 3 or self.used != 0) return error.Malformed;
         var reader: wire.Reader = .{ .bytes = frame[24..] };
@@ -38,6 +39,10 @@ pub const Fake = struct {
             },
             .end => {
                 if (id != 274 or payload.len != 0) return error.Malformed;
+                self.phase = if (self.explicit_activation) .activate else .complete;
+            },
+            .activate => {
+                if (id != 266 or payload.len != 0) return error.Malformed;
                 self.phase = .complete;
             },
             .complete => return error.Malformed,

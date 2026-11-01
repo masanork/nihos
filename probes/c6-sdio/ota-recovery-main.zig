@@ -1,5 +1,6 @@
 //! Explicit one-shot recovery fixture for Hosted 1.4.1 or 2.13.1.
 pub const C6OtaAllow213 = true;
+pub const C6OtaRequiredPeer = [3]u32{ 2, 13, 1 };
 const std = @import("std");
 const c6 = @import("c6_probe");
 const timers = @import("timer_group");
