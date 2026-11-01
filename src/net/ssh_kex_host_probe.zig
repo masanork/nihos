@@ -1,6 +1,6 @@
 //! Host-only C ABI used by the local OpenSSH interoperability probe.
 const std = @import("std");
-const kex = @import("ssh_kex.zig");
+const handshake = @import("ssh_handshake.zig");
 const ssh = @import("ssh.zig");
 const stream = @import("ssh_stream.zig");
 const session = @import("ssh_session.zig");
@@ -8,16 +8,39 @@ var tx: ?ssh.Aes128Ctr = null;
 var tx_mac: [32]u8 = @splat(0);
 var rx: stream.Decoder = .{};
 var ssh_session: ?session.Session = null;
+var hs: ?handshake.Handshake = null;
 
-export fn probe_init(out: [*]u8, cap: usize, cookie: *const [16]u8) usize {
-    const result = kex.clientInit(out[0..cap], cookie.*) catch return 0;
+export fn probe_init(out: [*]u8, cap: usize, cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, banner_len: usize) usize {
+    hs = .{ .secret = secret.*, .pin = pin.* };
+    const h = if (hs) |*v| v else return 0;
+    h.serverBanner(banner[0..banner_len]) catch return 0;
+    const result = h.clientInit(out[0..cap], cookie.*) catch return 0;
     return result.len;
 }
-export fn probe_public(secret: *const [32]u8, out: *[32]u8) void {
-    out.* = std.crypto.dh.X25519.recoverPublicKey(secret.*);
+export fn probe_server_init(input: [*]const u8, len: usize, out: [*]u8, cap: usize) usize {
+    const h = if (hs) |*v| v else return 0;
+    h.serverInit(input[0..len]) catch return 0;
+    const payload = h.ecdhInit(out[0..cap]) catch return 0;
+    return payload.len;
 }
-export fn probe_finish(cb: [*]const u8, cb_len: usize, sb: [*]const u8, sb_len: usize, ci: [*]const u8, ci_len: usize, si: [*]const u8, si_len: usize, secret: *const [32]u8, pin: *const [32]u8, reply: [*]const u8, reply_len: usize, rx_sequence: u32) bool {
-    const keys = kex.finish(cb[0..cb_len], sb[0..sb_len], ci[0..ci_len], si[0..si_len], secret.*, pin.*, reply[0..reply_len]) catch return false;
+export fn probe_reply(input: [*]const u8, len: usize) bool {
+    const h = if (hs) |*v| v else return false;
+    var wrong = h.*;
+    wrong.pin[0] ^= 1;
+    if (wrong.serverReply(input[0..len])) |_| return false else |err| if (err != error.HostKeyMismatch) return false;
+    h.serverReply(input[0..len]) catch return false;
+    return true;
+}
+export fn probe_newkeys(out: [*]u8, cap: usize) usize {
+    const h = if (hs) |*v| v else return 0;
+    const payload = h.newKeys(out[0..cap]) catch return 0;
+    return payload.len;
+}
+export fn probe_activate(input: [*]const u8, len: usize, rx_sequence: u32) bool {
+    const h = if (hs) |*v| v else return false;
+    h.receiveNewKeys(input[0..len]) catch return false;
+    var keys = h.takeKeys() catch return false;
+    defer std.crypto.secureZero(u8, std.mem.asBytes(&keys));
     ssh_session = .{ .session_id = keys.exchange_hash };
     tx = ssh.Aes128Ctr.init(keys.key_client, keys.iv_client);
     tx_mac = keys.mac_client;

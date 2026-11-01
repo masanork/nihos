@@ -56,9 +56,11 @@ def run():
         lib = tmp / ("probe.dylib" if sys.platform == "darwin" else "probe.so")
         subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(lib), "src/net/ssh_kex_host_probe.zig"], cwd=ROOT, check=True)
         p = c.CDLL(str(lib))
-        p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p]; p.probe_init.restype = c.c_size_t
-        p.probe_public.argtypes = [c.c_void_p, c.c_void_p]
-        p.probe_finish.argtypes = [c.c_void_p, c.c_size_t] * 4 + [c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t, c.c_uint32]; p.probe_finish.restype = c.c_bool
+        p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
+        p.probe_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_server_init.restype = c.c_size_t
+        p.probe_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_reply.restype = c.c_bool
+        p.probe_newkeys.argtypes = [c.c_void_p, c.c_size_t]; p.probe_newkeys.restype = c.c_size_t
+        p.probe_activate.argtypes = [c.c_void_p, c.c_size_t, c.c_uint32]; p.probe_activate.restype = c.c_bool
         p.probe_pack.argtypes = [c.c_void_p, c.c_size_t, c.c_uint32, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_pack.restype = c.c_size_t
         p.probe_feed.argtypes = [c.c_void_p, c.c_size_t]; p.probe_feed.restype = c.c_ssize_t
         p.probe_payload.argtypes = [c.c_void_p, c.c_size_t]; p.probe_payload.restype = c.c_size_t
@@ -100,25 +102,25 @@ def run():
                     banner += exact(sock, 1)
                 server_banner = banner.rstrip(b"\r\n")
                 out = c.create_string_buffer(512)
-                size = p.probe_init(out, len(out), buffer(os.urandom(16)))
+                secret = buffer(os.urandom(32))
+                size = p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
                 assert size
                 client_init = out.raw[:size]
                 sock.sendall(clear_packet(client_init))
                 server_init = read_packet(sock)
                 assert server_init[0] == 20
-                secret = buffer(os.urandom(32)); public = c.create_string_buffer(32)
-                p.probe_public(secret, public)
-                sock.sendall(clear_packet(b"\x1e" + string(public.raw)))
+                ecdh = c.create_string_buffer(64)
+                size = p.probe_server_init(buffer(server_init), len(server_init), ecdh, len(ecdh))
+                assert size
+                sock.sendall(clear_packet(ecdh.raw[:size]))
                 reply = read_packet(sock)
-                assert reply[0] == 31
+                assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
                 newkeys = read_packet(sock)
-                assert newkeys == b"\x15"
-                args = [buffer(v) for v in (client_banner, server_banner, client_init, server_init)]
-                def finish(candidate_pin):
-                    return p.probe_finish(args[0], len(client_banner), args[1], len(server_banner), args[2], len(client_init), args[3], len(server_init), secret, buffer(candidate_pin), buffer(reply), len(reply), 3)
-                assert not finish(bytes(32)), "wrong host pin accepted"
-                assert finish(pin), "valid server proof rejected"
-                sock.sendall(clear_packet(b"\x15"))
+                key_message = c.create_string_buffer(8)
+                size = p.probe_newkeys(key_message, len(key_message))
+                assert size
+                sock.sendall(clear_packet(key_message.raw[:size]))
+                assert p.probe_activate(buffer(newkeys), len(newkeys), 3)
                 request_buffer = c.create_string_buffer(64)
                 request_len = p.probe_service(request_buffer, len(request_buffer))
                 assert request_len
