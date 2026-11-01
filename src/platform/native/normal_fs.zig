@@ -14,6 +14,7 @@ const abi = @import("normal_fs_abi.zig");
 const shared = @import("shared_sdmmc.zig");
 const host = @import("shared_sdmmc_abi.zig");
 const test_hooks = @import("normal_fs_test_hooks.zig");
+const sqld = @import("sqld_profile");
 const Atomic = std.atomic.Value;
 const Card = opaque {};
 const CardReport = extern struct { status: u32 = 0, generation: u32 = 0, sectors: u32 = 0, kind: u32 = 0, partition: u32 = 0, first: u32 = 0, count: u32 = 0, bytes: u32 = 0, crc: u32 = 0, repeated_crc: u32 = 0, file_name_crc: u32 = 0, reads: u32 = 0, destroyed: u32 = 0, charged: u32 = 0, cleared: u32 = 0, recovered: u32 = 0 };
@@ -76,6 +77,16 @@ const Backend = struct {
 const Owner = rpc.Owner(Backend);
 const Command = struct { client: u32 = 0, epoch: u32 = 0, length: u32 = 0, path: [512]u8 = @splat(0) };
 const State = struct {
+    raw_phase: Atomic(u32),
+    raw_owner: u32,
+    raw_op: u32,
+    raw_lba: u32,
+    raw_result: i32,
+    raw_admitted: bool,
+    raw_provision: bool,
+    raw_faulted: bool,
+    raw_deadline: u64,
+    raw_data: [512]u8,
     c_workspace: [32768]u8 align(8),
     owner: Owner,
     queues: rpc.Queues,
@@ -150,9 +161,10 @@ fn quarantine(s: *State) noreturn {
 }
 const Bus = struct {
     pub const shared_host = true;
+    pub const experimental_sd_write = sqld.enabled;
     lease: host.Lease = .{},
     pub fn ownsSlot(self: @This(), slot: u32) bool {
-        return slot == 0 and host.owns(self.lease);
+        return slot == 0 and self.lease.slot == 0 and host.owns(self.lease);
     }
     pub fn read(self: @This(), register: usize) u32 {
         return host.read(self.lease, register);
@@ -183,6 +195,32 @@ const Bus = struct {
             nih_rom_cache_writeback(1 << 4, physical(&s.dma_descriptor), 64) != 0) return null;
         barrier();
         return physical(&s.dma_descriptor);
+    }
+    // Write staging is not registered as a native storage operation. The
+    // shared host lease must remain held until DMA is stopped and fenced.
+    pub fn prepareWriteDma(self: @This(), source: *const [512]u8) ?u32 {
+        if (!self.ownsSlot(0)) return null;
+        const s = state() orelse return null;
+        const previous = mask();
+        defer restore(previous);
+        @memcpy(&s.dma_data, source);
+        s.dma_descriptor = @splat(0);
+        s.dma_descriptor[0] = (1 << 31) | (1 << 4) | (1 << 3) | (1 << 2);
+        s.dma_descriptor[1] = 512;
+        s.dma_descriptor[2] = physical(&s.dma_data);
+        if (nih_rom_cache_writeback(1 << 4, physical(&s.dma_data), 512) != 0 or
+            nih_rom_cache_writeback(1 << 4, physical(&s.dma_descriptor), 64) != 0) return null;
+        barrier();
+        return physical(&s.dma_descriptor);
+    }
+    pub fn finishWriteDma(self: @This()) bool {
+        if (!self.ownsSlot(0)) return false;
+        const s = state() orelse return false;
+        const previous = mask();
+        defer restore(previous);
+        barrier();
+        if (nih_rom_cache_invalidate(1 << 4, physical(&s.dma_descriptor), 64) != 0) return false;
+        return @as(*volatile u32, &s.dma_descriptor[0]).* & ((1 << 31) | (1 << 30)) == 0;
     }
     pub fn finishDma(_: @This(), destination: *[512]u8, length: u32) bool {
         const s = state() orelse return false;
@@ -390,6 +428,12 @@ fn stepOnce() callconv(.c) u32 {
         mount(s);
         worked = true;
     }
+    if (sqld.enabled and s.raw_phase.load(.acquire) == 1) {
+        s.raw_result = rawCommand(s);
+        s.raw_phase.store(2, .release);
+        nih_sqld_wake(2);
+        worked = true;
+    }
     const command = &s.active_command;
     if (s.commands.tryPopInto(command)) {
         s.report.bytes = 0;
@@ -405,8 +449,62 @@ fn stepOnce() callconv(.c) u32 {
     }
     return @intFromBool(worked);
 }
+// Hosted-only controller wiring for the production staging and host lease.
+// FAT remains read-only; the sqld profile owns a separate bounded block capability.
+const TestWriteBus = struct {
+    pub const shared_host = true;
+    pub const experimental_sd_write = true;
+    inner: Bus,
+    pub fn ownsSlot(self: @This(), slot: u32) bool {
+        return self.inner.ownsSlot(slot);
+    }
+    pub fn read(self: @This(), reg: usize) u32 {
+        return self.inner.read(reg);
+    }
+    pub fn write(self: @This(), reg: usize, value: u32) void {
+        self.inner.write(reg, value);
+    }
+    pub fn delay(self: @This(), us: u32) void {
+        self.inner.delay(us);
+    }
+    pub fn prepareWriteDma(self: @This(), source: *const [512]u8) ?u32 {
+        return self.inner.prepareWriteDma(source);
+    }
+    pub fn finishWriteDma(self: @This()) bool {
+        return self.inner.finishWriteDma();
+    }
+    pub fn releaseDma(self: @This()) bool {
+        return self.inner.releaseDma();
+    }
+};
+const TestProceed = struct {
+    pub fn stopReason(_: @This()) sd.StopReason {
+        return .none;
+    }
+};
+fn testWriteSector(lease: *const host.Lease, source: *const [512]u8, lba: u32) callconv(.c) u32 {
+    const s = state() orelse return 0;
+    var controller = sd.Controller(TestWriteBus){
+        .io = .{ .inner = .{ .lease = lease.* } },
+        .rca = s.card_controller.rca,
+        .sectors = s.card_controller.sectors,
+    };
+    controller.writeSectorControlled(lba, source, TestProceed{}) catch return 0;
+    return 1;
+}
+fn testWritePrepare(lease: *const host.Lease, source: *const [512]u8) callconv(.c) u32 {
+    return (Bus{ .lease = lease.* }).prepareWriteDma(source) orelse 0;
+}
+fn testWriteFinish(lease: *const host.Lease) callconv(.c) u32 {
+    return @intFromBool((Bus{ .lease = lease.* }).finishWriteDma());
+}
 comptime {
-    if (test_hooks.enabled) @export(&stepOnce, .{ .name = "nih_fs_test_step" });
+    if (test_hooks.enabled) {
+        @export(&stepOnce, .{ .name = "nih_fs_test_step" });
+        @export(&testWritePrepare, .{ .name = "nih_fs_test_write_prepare" });
+        @export(&testWriteFinish, .{ .name = "nih_fs_test_write_finish" });
+        @export(&testWriteSector, .{ .name = "nih_fs_test_write_sector" });
+    }
 }
 export fn nih_normal_fs_task(_: u32) callconv(.c) i32 {
     while (true) if (stepOnce() == 0) {
@@ -428,6 +526,7 @@ export fn nih_normal_fs_begin(client: u32) callconv(.c) void {
     const bytes: [*]u8 = @ptrFromInt(allocated);
     @memset(bytes[0..lease.bytes], 0);
     const s: *State = @ptrFromInt(allocated);
+    s.raw_phase = .init(0);
     s.parent = lease;
     s.client = client;
     s.context = null;
@@ -450,7 +549,7 @@ export fn nih_normal_fs_begin(client: u32) callconv(.c) void {
 }
 export fn nih_normal_fs_submit(client: u32, path: [*]const u8, length: u32) callconv(.c) u32 {
     const s = state() orelse return 0;
-    if (client != s.client or caller() != client or length > 512 or s.commands.countApprox() != 0 or
+    if (s.raw_admitted or client != s.client or caller() != client or length > 512 or s.commands.countApprox() != 0 or
         s.result_revision.load(.acquire) != s.consumed_revision) return 0;
     var command = Command{ .client = client, .epoch = s.report.generation, .length = length };
     if (length != 0) {
@@ -469,6 +568,7 @@ export fn nih_normal_fs_submit(client: u32, path: [*]const u8, length: u32) call
 export fn nih_normal_fs_poll(client: u32) callconv(.c) u32 {
     const s = state() orelse return 0;
     if (client != s.client or caller() != client) return 0;
+    if (sqld.enabled and s.raw_phase.load(.acquire) == 1 and calls.nowTicks() > s.raw_deadline) nih_sqld_wake(2);
     if (status(s) == .mounted and s.host_generation != host.generation()) nih_normal_fs_wake();
     const revision = s.result_revision.load(.acquire);
     if (revision == s.consumed_revision) return 0;
@@ -495,4 +595,93 @@ export fn nih_normal_fs_result(offset: u32, destination: [*]u8, capacity: u32) c
     const length = @min(capacity, s.report.bytes - offset);
     @memcpy(destination[0..length], s.result[offset..][0..length]);
     return length;
+}
+
+// Single copied slot: only the registered sqld owner may invoke this capability.
+extern fn nih_sqld_wake(u32) callconv(.c) void;
+export fn nih_normal_sqld_grant(principal: u32, owner: u32) callconv(.c) i32 {
+    if (comptime !sqld.enabled) return -13;
+    const s = state() orelse return -19;
+    if (caller() != s.client or principal != s.client or owner == 0 or s.raw_owner != 0) return -13;
+    s.raw_owner = owner;
+    return 0;
+}
+export fn nih_normal_sqld_io(op: u32, lba: u32, buffer: *[512]u8) callconv(.c) i32 {
+    if (comptime !sqld.enabled) return -13;
+    const s = state() orelse return -19;
+    if (caller() != s.raw_owner or s.raw_owner == 0) return -13;
+    if (s.raw_faulted or s.raw_phase.load(.acquire) != 0) return -5;
+    s.raw_op = op;
+    s.raw_lba = lba;
+    if (op == 2) s.raw_data = buffer.*;
+    s.raw_deadline = calls.nowTicks() + 1000;
+    s.raw_phase.store(1, .release);
+    nih_normal_fs_wake();
+    while (s.raw_phase.load(.acquire) == 1) {
+        if (calls.nowTicks() > s.raw_deadline) {
+            s.raw_faulted = true;
+            return -115;
+        }
+        _ = calls.waitEvents(2);
+    }
+    if (s.raw_result == 0 and (op == 0 or op == 1)) buffer.* = s.raw_data;
+    const result = s.raw_result;
+    s.raw_phase.store(0, .release);
+    return result;
+}
+fn rawCommand(s: *State) i32 {
+    if (comptime !sqld.enabled) return -13;
+    if (s.raw_faulted or s.card_controller.sectors == 0 or s.host_generation != host.generation()) return -19;
+    const cid = sd.crc32(std.mem.asBytes(&s.card_controller.cid));
+    if (s.raw_op == 0) {
+        @memset(&s.raw_data, 0);
+        std.mem.writeInt(u32, s.raw_data[0..4], @intCast(s.card_controller.sectors), .little);
+        std.mem.writeInt(u32, s.raw_data[4..8], cid, .little);
+        return 0;
+    }
+    if (s.raw_op == 4 or s.raw_op == 5) {
+        if (s.raw_lba != cid or s.card_controller.sectors < 10240) return -13;
+        if (s.raw_op == 5 and (sqld.provision_cid == 0 or sqld.provision_cid != cid)) return -13;
+        if (s.raw_op == 4) {
+            if (nih_storage_read(0, &s.raw_data) != 0 or
+                !std.mem.eql(u8, s.raw_data[400..408], "NIHSQLD1") or s.raw_data[450] != 0xda or
+                std.mem.readInt(u32, s.raw_data[454..458], .little) != 2048 or
+                std.mem.readInt(u32, s.raw_data[458..462], .little) != 8192 or
+                s.raw_data[510] != 0x55 or s.raw_data[511] != 0xaa) return -84;
+        }
+        // FAT is revoked before granting any raw write capability.
+        if (!unmount(s)) return -5;
+        s.raw_admitted = true;
+        s.raw_provision = s.raw_op == 5;
+        s.report.error_code = 0;
+        phase(s, .owned_store);
+        return 0;
+    }
+    if (s.raw_op == 1 or s.raw_op == 2) {
+        if (s.raw_lba != 0 and (s.raw_lba < 2048 or s.raw_lba >= 10240)) return -13;
+        if (s.raw_op == 2 and (!s.raw_admitted or (s.raw_lba == 0 and !s.raw_provision))) return -13;
+    } else if (s.raw_op != 3) return -22;
+    const lease = acquire(s) orelse return -16;
+    s.card_controller.io.lease = lease;
+    const success = blk: {
+        switch (s.raw_op) {
+            1 => s.card_controller.readSector(s.raw_lba, &s.raw_data) catch break :blk false,
+            2 => s.card_controller.writeSectorControlled(s.raw_lba, &s.raw_data, sd.Proceed{}) catch break :blk false,
+            3 => {
+                // CMD24 already drained DMA and waited DAT0/CMD13. Check the
+                // card's transfer-ready state again at each store barrier.
+                const r = s.card_controller.command(13, s.card_controller.rca) catch break :blk false;
+                if (r[0] & 0xfdff_e008 != 0 or r[0] & 0x100 == 0 or (r[0] >> 9) & 15 != 4) break :blk false;
+            },
+            else => break :blk false,
+        }
+        break :blk true;
+    };
+    const fenced = release(s, lease);
+    s.card_controller.io.lease = .{};
+    if (!success or !fenced or s.host_generation != host.generation()) {
+        s.raw_faulted = true;
+        return if (s.raw_op == 2 or s.raw_op == 3) -115 else -5;
+    }
+    return 0;
 }

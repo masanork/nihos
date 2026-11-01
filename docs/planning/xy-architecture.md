@@ -1,5 +1,8 @@
 # `xy` アーキテクチャと `src/graphics/ttf.zig` 設計仕様
 
+2026-10-31追記: [sqld・filesystem bindingの現状](sqld-xy-service.md)に、Macで通る
+SQL・本文保存・snapshot復元と、Tab5通常起動へ接続するための残りのgateを記した。
+
 2026年10月30日。統合環境 `xy` を `nihos`（Tab5実機）の専用ユーザーランドの中核としつつ、同じZigコア（`libxy`）をC ABI経由でmacOS/PC上のGPUI（Metal/Vulkan）バックエンドからも駆動できるデュアルターゲット構成として設計する。
 
 関連文書：
@@ -9,6 +12,62 @@
 - [Tab5 storage feasibility](tab5-storage-feasibility.md)
 
 ---
+
+## 起動面と操作体系（2026-10-31の方針確定）
+
+通常起動はスプラッシュから `xy` の作業バッファへ直接進む。独立したlauncher、
+ASCII shell、別エディタを日常操作の入口として増設せず、編集・読書・辞書・
+システム観察を同じバッファ、ミニバッファ、コマンド登録とScheme bindingへ集約する。
+文書内の統合環境名は `xy` とする。
+
+- 初期画面は短いヘッダと編集可能な `*scratch*`。常設のコマンド一覧や重複する
+  起動案内を置かず、説明は明示的に開くhelpバッファへ出す。
+- 既存エディタの通常操作と保存は共通Document APIへ収束させる。読み取り専用の
+  書籍・辞書・ログ・メモリ・タスク表示も同じ表示面のmodeとして扱う。
+- コマンド、keymap、hook、mode、選択範囲やS式の評価をSchemeから登録・変更する。
+  ボタン、キー操作、ミニバッファは同じコマンドを呼ぶ。全操作にS式の手入力を
+  要求せず、利用者が必要な箇所から環境を改造できるようにする。
+- Zig coreとsystem serviceが文書、組版、描画、入力、保存と資源管理を担い、
+  Schemeにはその操作APIを公開する。デバイスの生ポインタやDMA操作へ直結させる
+  ことを「全機能のbinding」とは呼ばない。
+
+boot/faultの診断記録と復旧経路は通常UIから独立して維持する。起動失敗時の復旧に
+Schemeの正常起動を前提とせず、常用shellを残すこととは分ける。移行中の既存shellは
+診断用の暫定入口であり、機能追加の主線にしない。
+
+現在の `scheme_bridge.zig` は固定フォームを扱う限定的なS式評価器、Document操作、
+表示設定、クエリhookのhost向け接続を持つ。一般の `define` / `lambda`、closure、
+macroによる拡張、実機のScheme VM、永続 `sqld` とU-mode隔離の接続が完成したという
+意味ではない。ネイティブの通常起動にはRAM上の `*scratch*` を接続した。
+[起動・編集・実機確認の範囲](../measurements/2026-10-31-xy-ram-startup.md)を参照。
+ネイティブのミニバッファには別モジュールの `scheme_runtime.zig` を接続し、
+`define` / lexical closure / コマンド登録・再定義とDocument操作を実機で確認した。
+[限定Schemeの範囲と検証](../measurements/2026-10-31-xy-scheme-runtime.md)を参照。
+初期表示は既存のASCIIラスタを使い、日本語字形・保存・macro・標準Scheme準拠、
+既存 `scheme_bridge.zig` とデスクトップC ABIの評価器統合は残る。
+`log` / `mem` / `tasks` は読み取り専用のシステムバッファとして開き、
+本文・カーソル・undoを保って戻れる。[実装と検証範囲](../measurements/2026-10-31-xy-system-buffers.md)を参照。
+
+現時点の通常起動での接続は次の通り。共通コアの存在と、各frontendからの接続完了を区別する。
+
+| 部分 | Tab5の通常 `*scratch*` | macOS Cocoa / C ABI | 共有状況 |
+| --- | --- | --- | --- |
+| UTF-8正本・書記素移動・undo | `scratch.Model.doc` | `scheme_bridge.XyWorkspace.doc` | 同じ `document.zig` の型を容量違いで利用 |
+| Scheme評価・コマンド登録 | `scheme_runtime.zig` | `live_workspace`から同じbounded runtime | VMを共有。host固有の保存・辞書bindingは別途接続 |
+| 組版・OpenType・ルビ | `render_session` / `viewport_layout` / `ttf` | 同じ共通sessionと字体 | native通常画面へ接続済み。全日本語収録を意味しない |
+| 通常画面の描画 | 完成RGB565から差分公開 | 完成RGB565からRGBA/BGRAへ展開 | 内容の画素を共有。GPUI実証ホストも同じ完成画素を受け取る |
+| 入力とウィンドウ | serial / HID / タッチ入口 | Cocoa / C ABI | OSごとのadapter |
+
+共通VM・native TrueType・完成フレーム転送はPR #87/#89で接続した。
+次は[アプリ更新・描画契約](xy-animation-runtime.md)とScheme callbackを接続し、
+hostの保存・辞書hookをnative側にも段階的に提供する。GPUI実証はCocoa版の全機能置換ではない。
+
+実装の直近の順序は、(1) 共通Documentを使うRAM上の `*scratch*` と入力・描画を
+通常起動へ接続、(2) ログ・メモリ・タスク観察をバッファとして公開、(3) 本格的な
+Scheme評価とコマンド登録・再定義・中断を接続、(4) 保存、読書、辞書を同じmode機構へ
+載せる。RAMでの起動経路はSQLite、辞書、IMEの全機能完成を待たずに進める。
+利用者のScheme定義でキー動作を変更でき、評価エラーや中断後にも本文と操作が残る
+ことを、programmableな環境になったかの受け入れ条件とする。
 
 ## 1. 設計原則とデュアルターゲット境界（`nihos` / `GPUI` 共通コア）
 
@@ -37,18 +96,29 @@ flowchart TD
     end
 
     subgraph Desktop["Target B: macOS / PC (Rust GPUI ホストシェル)"]
-        GPUI["GPUI Custom Element + GPU Texture Atlas (120fps Retina)"]
+        GPUI["GPUI Custom Element: completed frame texture upload (planned)"]
     end
 
-    M1 -- "8bpp α bitmap -> RGB565 Blit" --> FB
-    DL -- "C ABI Display List" --> GPUI
-    M1 -- "IVS/PUA/縦書き回転済み 8bpp α bitmap" --> GPUI
+    RGB["共通RGB565合成: 字形・ルビ・カーソル"]
+    M1 -- "8bpp α bitmap" --> RGB
+    DL --> RGB
+    RGB --> FB
+    RGB -- "RGB565 -> RGBA expansion only" --> GPUI
 ```
 
 - **Display List による分離**:
   組版エンジン（Module 2）の出力は、直接ピクセルを塗る副作用ではなく、`extern struct` で定義されたフラットな **Display List（配置済みの `GlyphKey` + 26.6固定小数点座標 `(x, y)` + 矩形/選択範囲/カーソル）** とする。
-- **Mac/PC（GPUI）とTab5での完全な組版・字形一致**:
-  macOS等のホスト環境でも、OS標準のCoreText等に丸投げするとBunsen 3レイヤ（本体・Ext・PUP）のIVS横断解決や、`vert` テーブルを持たないフォントの縦書き約物回転、グループルビの配置がTab5実機と乖離する。そのため、GPUIバックエンドでもグリフ解決・ベジェ縦書き変換・ラスタライズには共通の `src/graphics/ttf.zig` を使い、生成された 8bpp α ビットマップをGPUIのテクスチャアトラスへ供給する。
+- **Mac/PCとTab5での同一ピクセル出力**:
+  フォントの解決、26.6送り幅、組版、ラスタライズとRGB565合成を共通Zig側で行う。
+  Macは完成したRGB565をRGBAへ展開して転送し、ホストのフォント処理、追加の
+  alpha合成、補間拡大を対象画面へ適用しない。英数字は共通のSource Code Pro、
+  日本語はBunsenのフォールバックを利用する。Retinaでも1 target pixelを
+  1 backing pixelへ対応させる。GPUIは将来この完成フレームを受け取る側とする。
+  既存の操作ホストはCocoa。追加の[GPUI実証ホスト](../../apps/xy-gpui/README.md)では、
+  共通描画によるRAM編集ペインと動くグラフを実ウィンドウへ接続した。
+  Cocoa版のSQLite/source編集機能をすべて移したという意味ではない。
+  配置・glyph maskのC ABIは観測用に残すが、それだけでは合成結果の一致を保証しない。
+  [Macでの実装と検証](../measurements/2026-10-31-xy-pixel-host.md)を参照。
 
 ---
 

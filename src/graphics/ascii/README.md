@@ -67,3 +67,11 @@ The source's notice states:
 > Author: Daniel Hepper <daniel@hepper.net>
 > License: Public Domain
 > Based on font8x8.h from Marcel Sondaar (public domain IBM VGA fonts)
+
+## xy code face
+
+`SourceCodePro-Medium.ttf` retains the exact same pinned upstream bytes and
+OFL notice recorded above. The separate shared `graphics/code_font.zig` module
+uses these bytes with nihos's own `ttf.zig` rasterizer for xy. This does not
+change the generated diagnostic-console masks or make them platform-rendered.
+The Mac xy host and RGB565 reference path use the same font and renderer.

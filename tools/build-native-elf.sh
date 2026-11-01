@@ -11,6 +11,8 @@ esac
 build_dir=${2:-"$repo_root/build/native-$profile"}
 camera_id=${NIHOS_NATIVE_CAMERA_ID:-0}
 case "$camera_id" in 0) camera_id=false ;; 1) camera_id=true ;; *) echo "CAMERA_ID must be 0 or 1" >&2; exit 1 ;; esac
+camera_jpeg=${NIHOS_NATIVE_CAMERA_JPEG:-0}
+case "$camera_jpeg" in 0) camera_jpeg=false; camera_jpeg_cpp=0 ;; 1) camera_jpeg=true; camera_jpeg_cpp=1 ;; *) echo "CAMERA_JPEG must be 0 or 1" >&2; exit 1 ;; esac
 camera_id_cpp=0
 if [ "$camera_id" = true ]; then camera_id_cpp=1; fi
 camera_diagnostics=${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-$camera_id_cpp}
@@ -186,10 +188,16 @@ fi
 console_fault=${NIHOS_NATIVE_CONSOLE_FAULT:-0}
 case "$console_fault" in 0) console_fault=false ;; 1) console_fault=true ;; *) echo "CONSOLE_FAULT must be 0 or 1" >&2; exit 1 ;; esac
 console_live=${NIHOS_NATIVE_CONSOLE_LIVE:-0}
+xy_workspace=${NIHOS_NATIVE_XY_WORKSPACE:-0}
+xy_trace=${NIHOS_NATIVE_XY_TRACE:-0}
+case "$xy_trace" in 0) xy_trace=false; xy_trace_cpp=0 ;; 1) xy_trace=true; xy_trace_cpp=1 ;; *) echo "XY_TRACE must be 0 or 1" >&2; exit 1 ;; esac
+case "$xy_workspace" in 0) xy_workspace=false ;; 1) xy_workspace=true ;; *) echo "XY_WORKSPACE must be 0 or 1" >&2; exit 1 ;; esac
 keyboard_i2c=${NIHOS_NATIVE_KEYBOARD_I2C:-0}
 case "$console_live" in 0) console_live=false ;; 1) console_live=true ;; *) echo "CONSOLE_LIVE must be 0 or 1" >&2; exit 1 ;; esac
 case "$keyboard_i2c" in 0) keyboard_i2c=false ;; 1) keyboard_i2c=true ;; *) echo "KEYBOARD_I2C must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$console_live" = true ] && [ "$console" != true ]; then echo "Live UI requires CONSOLE=1" >&2; exit 1; fi
+if [ "$xy_workspace" = true ] && [ "$console_live" != true ]; then echo "xy workspace requires CONSOLE_LIVE=1" >&2; exit 1; fi
+if [ "$xy_trace" = true ] && [ "$xy_workspace" != true ]; then echo "XY_TRACE requires XY_WORKSPACE=1" >&2; exit 1; fi
 if [ "$console_fault" = true ] && [ "$console_live" != true ]; then echo "Fault fixture requires CONSOLE_LIVE=1" >&2; exit 1; fi
 if [ "$keyboard_i2c" = true ] && [ "$console_live" != true ]; then echo "Keyboard requires CONSOLE_LIVE=1" >&2; exit 1; fi
 canvas_offscreen=${NIHOS_NATIVE_CANVAS_OFFSCREEN:-0}
@@ -428,6 +436,9 @@ case "$normal_storage" in
     1) normal_storage=true; normal_storage_cpp=1 ;;
     *) echo "NORMAL_STORAGE must be 0 or 1" >&2; exit 1 ;;
 esac
+sqld=${NIHOS_NATIVE_SQLD:-0}
+case "$sqld" in 0) sqld=false; sqld_cpp=0 ;; 1) sqld=true; sqld_cpp=1 ;; *) echo "SQLD must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$sqld" = true ] && { [ "$normal_storage" != true ] || [ "$xy_workspace" != true ]; }; then echo "SQLD requires normal storage and xy" >&2; exit 1; fi
 if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
     echo "NORMAL_STORAGE requires ordinary integer device live-console boot; qualification/finite probes remain separate" >&2; exit 1
 fi
@@ -466,16 +477,29 @@ if [ "$pmp_probe" = true ]; then native_boot_dir="$native_boot_dir-pmp-probe"; f
 if [ "$camera_id" = true ]; then
     if [ "$camera_diagnostics" = true ]; then native_boot_dir="$native_boot_dir-camera-id"; else native_boot_dir="$native_boot_dir-camera"; fi
 fi
+if [ "$camera_jpeg" = true ]; then native_boot_dir="$native_boot_dir-jpeg"; fi
 if [ "$camera_ui_fixture" = true ]; then native_boot_dir="$native_boot_dir-camera-ui-fixture"; fi
+if [ "$xy_trace" = true ]; then native_boot_dir="$native_boot_dir-xy-trace"; fi
+if [ "$sqld" = true ]; then native_boot_dir="$native_boot_dir-sqld"; fi
+if [ "$camera_jpeg" = true ] && { [ "$camera_id" != true ] || [ "$camera_diagnostics" = true ]; }; then echo "CAMERA_JPEG requires normal CAMERA_ID" >&2; exit 1; fi
 network_json=
 if [ "$network" = true ]; then network_json=${NIHOS_C6_WIFI_CONFIG:-}; fi
 NIHOS_C6_IPV6=${NIHOS_C6_IPV6:-1} python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
-"$zig" cc -E -P -x c -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+xy_cpp=0
+if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then xy_cpp=1; fi
+if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$keypad_cpp" != 0 ]; }; then
+    echo "xy runtime requires the ordinary integer workspace/interactive emulator profile" >&2
+    exit 1
+fi
+"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
 {
+    printf 'pub const sqld = %s;\n' "$sqld"
     printf 'pub const normal_storage = %s;\n' "$normal_storage"
+    printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
+    printf 'pub const xy_trace = %s;\n' "$xy_trace"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"
     printf 'pub const boot_fast = %s;\n' "$boot_fast"
     printf 'pub const pmp_probe = %s;\n' "$pmp_probe"
@@ -483,6 +507,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     if [ "$profile" = emulator ]; then echo 'pub const emulator = true;'; else echo 'pub const emulator = false;'; fi
     printf 'pub const cpu_mhz: u32 = %s;\n' "$cpu_mhz"
     printf 'pub const devices = %s;\n' "$devices"
+    printf 'pub const camera_jpeg = %s;\n' "$camera_jpeg"
     printf 'pub const camera_id = %s;\n' "$camera_id"
     printf 'pub const camera_diagnostics = %s;\n' "$camera_diagnostics"
     printf 'pub const camera_ui_fixture = %s;\n' "$camera_ui_fixture"
@@ -559,7 +584,7 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
     if [ "$sdmmc" = true ] || [ "$normal_storage" = true ]; then sdmmc_pads=1; fi
     "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
         -O2 -std=gnu17 -ffreestanding -fno-builtin -fno-pic \
-        -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" \
+        -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SDMMC_PADS="$sdmmc_pads" -DNIH_NATIVE_XY_TRACE="$xy_trace_cpp" \
         -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" \
         -isystem "$headers/riscv-linux-any" \
         -I "$native_boot_dir/loader/config" \
@@ -594,9 +619,11 @@ if [ "$display" = true ] || [ "$psram_200" = true ]; then
             -I "$idf_path/components/esp_common/include" -I "$idf_path/components/esp_hw_support/include" \
             -o "$build_dir/camera_dma_test.o" "$repo_root/src/board/tab5/native_camera_dma_test.c"
         set -- "$@" "$build_dir/camera_dma_test.o"
-        for csi_file in native_csi_dma_config native_csi_dma_run native_csi_inflight_adapter native_camera_xclk native_camera_isp; do
+        csi_files="native_csi_dma_config native_csi_dma_run native_csi_inflight_adapter native_camera_xclk native_camera_isp"
+        if [ "$camera_jpeg" = true ]; then csi_files="$csi_files native_jpeg"; fi
+        for csi_file in $csi_files; do
             "$zig" cc -c -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" \
-                -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
+                -DNIH_NATIVE_CAMERA_JPEG="$camera_jpeg_cpp" -Os -std=gnu17 -ffreestanding -fno-builtin -fno-pic -ffunction-sections -fdata-sections \
                 -isystem "$headers/riscv32-linux-musl" -isystem "$headers/generic-musl" -isystem "$headers/riscv-linux-any" \
                 -I "$native_boot_dir/loader/config" \
                 -I "$idf_path/components/hal/include" -I "$idf_path/components/hal/platform_port/include" \
@@ -831,6 +858,12 @@ if [ "$sqlite" = true ]; then
         python3 "$repo_root/tools/native-sqlite-manifest.py" "$build_dir" "$source_dir"
     fi
 fi
+if [ "$sqld" = true ]; then
+    python3 "$repo_root/tools/sqld_native_build.py" "$build_dir" > "$build_dir/sqld-build.json"
+    for unit in store runtime sqlite3 sqld sqlite_store_vfs sqld_native_allocator identity; do
+        set -- "$@" "$build_dir/sqld_$unit.o"
+    done
+fi
 if [ "$normal_storage" = true ]; then
     python3 "$repo_root/tools/normal_fs_build.py" "$build_dir" > "$build_dir/normal-fs-build.json"
     for unit in runtime guard unicode backend disk volume card native_disk strings identity; do
@@ -839,6 +872,28 @@ if [ "$normal_storage" = true ]; then
 fi
 # An empty expansion must not become a zig argument. Quoting it always would
 # pass that empty word; leaving it unquoted fails ShellCheck SC2086.
+if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then
+    python3 "$repo_root/tools/build-xy-reading-pack.py" "$build_dir/xy-reading.pack" > "$build_dir/xy-reading-build.json"
+    cat > "$build_dir/xy_reading_assets.S" <<EOF
+.section .flash.xyrodata.assets,"a",@progbits
+.balign 16
+.global nih_xy_reading_start
+nih_xy_reading_start:
+.incbin "$build_dir/xy-reading.pack"
+.global nih_xy_reading_end
+nih_xy_reading_end:
+EOF
+    "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$build_dir/xy_reading_assets.S" -o "$build_dir/xy_reading_assets.o"
+    set -- "$@" "$build_dir/xy_reading_assets.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
+        --dep view_config --dep surface --dep viewport_layout --dep rotated_surface -Mroot="$repo_root/src/xy/native_render_entry.zig" \
+        --dep view_config -Mviewport_layout="$repo_root/src/graphics/viewport_layout.zig" \
+        --dep surface -Mrotated_surface="$repo_root/src/graphics/rotated_surface.zig" \
+        -Mview_config="$repo_root/src/xy/view_config.zig" -Msurface="$repo_root/src/graphics/surface.zig" \
+        -femit-bin="$build_dir/xy_render.o"
+    "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/xy_render_stack.o"
+    set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o"
+fi
 if [ -n "$pmp_user_object" ]; then
     set -- "$pmp_user_object" "$@"
 fi
@@ -919,7 +974,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mtab5_display="$repo_root/src/board/tab5/display.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas -Mtext_console="$repo_root/src/console.zig" \
+    --dep view_config --dep canvas -Mtext_console="$repo_root/src/console.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     --dep canvas -Mboot_graphics="$repo_root/src/graphics/boot_graphics.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
@@ -957,6 +1012,7 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mraster_lease="$repo_root/src/graphics/raster_lease.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
+    -Mview_config="$repo_root/src/xy/view_config.zig" \
     -Msurface="$repo_root/src/graphics/surface.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfont_stack_lifetime="$repo_root/src/graphics/font_stack_lifetime.zig" \

@@ -1,0 +1,74 @@
+{
+  "source_commit": "2f7381c192222bb2e95ac9cb96f431291e7d1dc7",
+  "reader_base": "c85d7ed3ad162b7a9cd43b93b83f0a235313dbac",
+  "remote_main_at_end": "19b116b69622b44718cc126e12cb09dd6435500c",
+  "main_contains_reader": false,
+  "scope": "SICP structure, packaging, and catalogue; no learning UI or physical validation",
+  "tests": {
+    "structured_python": 12,
+    "structured_zig_fixture_included": 5,
+    "reader_python": 8,
+    "tab5_preview_python": 8,
+    "workspace_python": 16,
+    "native_image_python": 41,
+    "catalog_zig": 2,
+    "initial_release_safe_summary": "75/75 steps; 1017/1017 tests",
+    "committed_release_safe_summary": "Build Summary: 75/75 steps succeeded"
+  },
+  "native": {
+    "image_bytes": 3504560,
+    "image_sha256": "642b8c6c019ba240c12014216dff8742eac6f34677d3b75bfbb886a99df799dc",
+    "elf_sha256": "e3af6546e07e4c98a0c6e5723825a550571eabf949629e5daacda46a27b0aaaa",
+    "heap_bytes": 49344,
+    "xy_code_bytes": 60592,
+    "xy_rodata_bytes": 2948324,
+    "physical_validation": false
+  },
+  "pack": {
+    "version": 1,
+    "bytes": 2900967,
+    "sha256": "7a85065c0cb1ee3e1ed709244f0c303a95a4c044e67571306a2f3c2ea288f4c5",
+    "library_sha256": "e72156a79eb1122997c3d1a1fa736be78144fa92fa1d5142e6a62006b2011780",
+    "sections": [
+      3,
+      13,
+      3,
+      32
+    ],
+    "fonts": [
+      {
+        "offset": 1900,
+        "bytes": 1146288
+      },
+      {
+        "offset": 1148188,
+        "bytes": 1064060
+      }
+    ],
+    "learning": {
+      "offset": 2894708,
+      "bytes": 6259,
+      "sha256": "9d79eae143e4d79e0905a91815fd5f26a5c943f4b40d9671e5bb97f13682b2de"
+    }
+  },
+  "source_sha256": {
+    ".github/workflows/xy-mac.yml": "52828afdfde03eb6756749970dbe90d717f8a48a19bd745e137aca65c8f72237",
+    "assets/xy/fonts/manifest.json": "cccb192254bec04f93602faaf244fe271f47ba6f9693f5702a95ebebe3d23449",
+    "assets/xy/library.json": "e72156a79eb1122997c3d1a1fa736be78144fa92fa1d5142e6a62006b2011780",
+    "assets/xy/sicp-learning.json": "86c46510cc3e858be0b11647af8475bc0feb32e3a7a92e07394ffa37fc0c72b2",
+    "build.zig": "77cefd29caaa6cadee6411cbbf164b1342a317643df6c984ed4deb865312e354",
+    "src/xy/catalog.zig": "e76d48e19d8d14442f70f0f2f23fd998a59b92de0b69b90c4e8bbf95d088a24e",
+    "src/xy/learning_catalog.zig": "5d84364295f2c41f00fe9767961a7ddacf71788e32dc1d162a5c4d6addf3c23a",
+    "third_party/xy-reading/NOTICE.md": "6d8f0b78f99ec701b4369ddef3a355698d27e37acf33b814be7d869b6b8eaeb8",
+    "third_party/xy-reading/sicp-experiments.json": "0269947529759659b3621c8d8087657a41420135106b6c7a9bf0cd8cdc2d165d",
+    "tools/build-xy-mac.sh": "9a645f79c924347950fad7f1448f71e1af67b3462d9b0226fb3962d305fbb599",
+    "tools/build-xy-reading-pack.py": "a490a82bb9ecbe822f39b4da67840047e44b1572ad9f75d7a53bc93de1ce3aff",
+    "tools/fonts/build-xy-reader.py": "2f98078494e717b380a76b0629ee327bb3338fae03f54488f808ae6da0393bd5",
+    "tools/probes/xy_learning_catalog.zig": "b89064afd4b1431583d2bc4fd76c47dfa381fa2d631b489c7cda7f052d64b3e7",
+    "tools/xy-library.py": "d8c7f1d77241f767ea284c9cd872eb4e2f86c0a4af351deb46e70f55382c42ab",
+    "tools/xy_learning_pack.py": "ae4fa6c7b4c091c0a985d35ac3b6778b7bd76b384213c9623c2daf25bd86fb23",
+    "tools/xy_sicp.py": "0092a86c0a40d2b9943bb5a16518cbaaef4a16a05e6afb786b274bb8fdab042d",
+    "tools/xy_sicp_test.py": "9dc9fa609aa9fd5ccbc7d59576918262e12dc8801135ac1ad974962b96c408bf",
+    "tools/xy_tab5_reader_test.py": "17e28e631f0674eb44b2a5d2dccdf1db38179e61442e756d4b8a0cc282e5fdf3"
+  }
+}

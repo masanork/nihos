@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "source_base": "2784da074c074f3bf1cc3c7da1f5b0db129b9eb6",
+  "candidate": {
+    "partition-table.bin": "fabcbebf733457e9706b46544b2a1cb9672a8e1ce626f5dc7d7e6fb4738d5b0e",
+    "nihos-native.elf": "c66fa18ea123fa461640491d3c01e335edcdbed68075be2b8cba58e9800e85df",
+    "normal-fs-manifest.json": "77a5bc9076eba45fd09b06e8638c4ed9f693d1f0530f58150f81e4194eba6975",
+    "nihos-native.bin": "9aead0ed66ac9236085c16af5748d5075783cdc95c27c6f4fd38769b6952d7bb",
+    "sqld-manifest.json": "dde74c3ee95b3c2fac8bfde6c931bead7c0e9357569eb99b3b2655944a2d241a",
+    "image-audit.json": "697f0a2eaf38e0a60c6d4ccec6d7926b3d41f939aa9b1461ec58db8440060d4d",
+    "native_options.zig": "002cf21db0f6327d69175e311cd887f600ce768d8397a4adb16342e7780df30f",
+    "bootloader.bin": "2cd389577c8ab729c88b19c58d797b833c6dcb106fe7b4e6cdb1d780f51699e3"
+  },
+  "sqld": {
+    "identity": "1e312062ed64df3960aa545ceb902f0954f87aefd28e3da6d6bf9bf0df4d30a4",
+    "text_bytes": 563344,
+    "rodata_bytes": 89388,
+    "reservation": [
+      1210056704,
+      2097152
+    ],
+    "heap": [
+      1210318848,
+      1048576
+    ],
+    "stack": [
+      1211891712,
+      65536
+    ],
+    "media": [
+      2048,
+      8192
+    ],
+    "provision_cid": 0,
+    "physical_qualified": false
+  },
+  "observations": [
+    {
+      "name": "boot",
+      "phase": 2,
+      "error_code": 0,
+      "sectors": 30867456,
+      "cid_crc": 4111314636,
+      "generation": 40
+    },
+    {
+      "name": "default-conditional-durable-save",
+      "source": "(begin (if (= (car (car (sql/query \"SELECT count(*) FROM native_probe WHERE body='before'\"))) 1) (buffer/load! \"native-source.scm\") (car '())) (buffer/save! \"normal-proof.scm\"))",
+      "required_requests": 11,
+      "requests": 11,
+      "completed": 11,
+      "reads": 104,
+      "writes": 56,
+      "syncs": 2,
+      "generation": 41,
+      "stack_used": 9008,
+      "heap_used": 209856
+    },
+    {
+      "name": "boot",
+      "phase": 2,
+      "error_code": 0,
+      "sectors": 30867456,
+      "cid_crc": 4111314636,
+      "generation": 41
+    },
+    {
+      "name": "default-idle",
+      "frames": 615,
+      "ticks0": 1004,
+      "ticks1": 1004
+    }
+  ],
+  "physical_power_cut_tested": false,
+  "device": {
+    "mac": "e8:f6:0a:e2:e8:9c",
+    "chip": "ESP32-P4 (revision v1.3)",
+    "flash_id": 1589318
+  },
+  "backup_sha256": "735a78da2ec7d014bbd2625df72c9ba02955043835646739b2466753084b3c39",
+  "normal_default_proof": true
+}

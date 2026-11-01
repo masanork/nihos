@@ -59,6 +59,23 @@ pub noinline fn begin(core: u32) bool {
     return true;
 }
 
+// CPU0's owner retains this lease across frames. Publication is limited to the
+// synchronous render call; an IRQ may then validate its interrupted PSRAM SP.
+pub const foreground_bytes = 512 * 1024;
+var foreground_low: u32 = 0;
+var foreground_high: u32 = 0;
+pub inline fn beginForeground(stack: []u8) bool {
+    const low = @intFromPtr(stack.ptr);
+    if (@atomicLoad(u32, &foreground_high, .acquire) != 0 or stack.len != foreground_bytes or
+        low % 16 != 0 or low < 0x48030000 or low > 0x4a000000 - stack.len) return false;
+    foreground_low = @intCast(low);
+    @atomicStore(u32, &foreground_high, @intCast(low + stack.len), .release);
+    return true;
+}
+pub inline fn endForeground() void {
+    @atomicStore(u32, &foreground_high, 0, .release);
+}
+
 /// Permanent trap dispatcher only, with MIE clear. After completion the
 /// immutable samples stay published; later traps still validate bounds.
 pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
@@ -74,6 +91,31 @@ pub fn capture(core: u32, frame: u32, saved_sp: u32, irq_sp: u32) bool {
         const words: *const volatile [4]u32 = @ptrFromInt(low);
         for (words) |word| if (word != 0x67726166) return false;
         return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x48230100 and frame <= 0x48240000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x48230000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (@hasDecl(@import("native_options"), "sqld") and @import("native_options").sqld and core == 0 and frame >= 0x483c0100 and frame <= 0x483d0000 - 128) {
+        if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+        const words: *const volatile [4]u32 = @ptrFromInt(0x483c0000);
+        for (words) |word| if (word != 0xa5a5a5a5) return false;
+        const irq = layout.interrupt(0).?;
+        return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+    }
+    if (core == 0) {
+        const high = @atomicLoad(u32, &foreground_high, .acquire);
+        const low = foreground_low;
+        if (high != 0 and frame >= low + 256 and frame <= high - 128) {
+            if (frame % 16 != 0 or saved_sp != frame + 128) return false;
+            const words: *const volatile [4]u32 = @ptrFromInt(low);
+            for (words) |word| if (word != 0xa5a5a5a5) return false;
+            const irq = layout.interrupt(0).?;
+            return irq_sp >= irq.start + 16 and irq_sp < irq.end and irq_sp % 16 == 0;
+        }
     }
     if (owners[core].confirmed != 0) {
         var sample = layout.Samples{};

@@ -10,6 +10,9 @@
 //! - Uncommitted SKK input (`▽...` / `▼...`) is held in a non-destructive
 //!   preedit overlay and only enters the document and undo log upon commit.
 const std = @import("std");
+// Document mutations are foreground operations, including RAM learning drafts.
+// Keep their shared device implementation out of the resident SRAM heap.
+pub const mutation_section = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 
 pub const Error = error{
     InvalidUtf8,
@@ -28,7 +31,7 @@ pub const Range = struct {
     end: u32,
 };
 
-pub const RubySpan = struct {
+pub const RubySpan = extern struct {
     base_start: u32 = 0,
     base_end: u32 = 0,
     ruby_start: u32 = 0,
@@ -196,6 +199,14 @@ pub fn Document(
             self.active_group_id = 0;
         }
 
+        /// Explicitly discard bounded undo history without changing the text,
+        /// cursor, annotations, preedit or document revision.
+        pub fn forgetUndoHistory(self: *Self) void {
+            self.active_group_id = 0;
+            self.undo_count = 0;
+            self.undo_bytes_used = 0;
+        }
+
         /// Move cursor by `delta` extended grapheme clusters (negative = left, positive = right).
         pub fn moveGraphemes(self: *Self, delta: i32) Error!u32 {
             var pos: usize = self.cursor;
@@ -205,7 +216,7 @@ pub fn Document(
                     pos = try nextClusterEnd(self.slice(), pos);
                 }
             } else if (delta < 0) {
-                var rem: usize = @intCast(-delta);
+                var rem: usize = @intCast(-@as(i64, delta));
                 while (rem > 0 and pos > 0) : (rem -= 1) {
                     pos = try prevClusterStart(self.slice(), pos);
                 }
@@ -215,7 +226,7 @@ pub fn Document(
         }
 
         /// Move cursor by `delta` logical lines (`\n`-delimited), preserving grapheme column index.
-        pub fn moveLines(self: *Self, delta: i32) Error!u32 {
+        pub fn moveLines(self: *Self, delta: i32) linksection(mutation_section) Error!u32 {
             if (delta == 0) return self.cursor;
             const txt = self.slice();
 
@@ -230,7 +241,7 @@ pub fn Document(
 
             var target_line_start = line_start;
             if (delta < 0) {
-                var rem: usize = @intCast(-delta);
+                var rem: usize = @intCast(-@as(i64, delta));
                 while (rem > 0 and target_line_start > 0) : (rem -= 1) {
                     target_line_start -= 1; // step over '\n'
                     while (target_line_start > 0 and txt[target_line_start - 1] != '\n') : (target_line_start -= 1) {}
@@ -287,7 +298,7 @@ pub fn Document(
             del_len: u32,
             ins_bytes: []const u8,
             record_undo: bool,
-        ) Error!void {
+        ) linksection(mutation_section) Error!void {
             const ins_len: u32 = @intCast(ins_bytes.len);
             if (self.len - del_len + ins_len > max_bytes) return error.BufferFull;
 
@@ -342,7 +353,7 @@ pub fn Document(
         }
 
         /// Insert validated UTF-8 text at the current cursor position.
-        pub fn insertUtf8(self: *Self, text: []const u8) Error!void {
+        pub fn insertUtf8(self: *Self, text: []const u8) linksection(mutation_section) Error!void {
             if (text.len == 0) return;
             if (!std.unicode.utf8ValidateSlice(text)) return error.InvalidUtf8;
             // Disallow inserting an orphan variation selector/combining mark at offset 0
@@ -388,7 +399,7 @@ pub fn Document(
         }
 
         /// Revert the latest undo group atomically.
-        pub fn undo(self: *Self) Error!bool {
+        pub fn undo(self: *Self) linksection(mutation_section) Error!bool {
             if (self.undo_count == 0) return false;
             const target_group = self.undo_ops[self.undo_count - 1].group_id;
             while (self.undo_count > 0 and self.undo_ops[self.undo_count - 1].group_id == target_group) {
@@ -526,4 +537,15 @@ test "non-destructive SKK preedit overlay and ruby span shifting on edit" {
     try std.testing.expectEqualStrings("美しい日本", doc.slice());
     try std.testing.expectEqual(@as(u32, 9), doc.ruby_spans[0].base_start);
     try std.testing.expectEqual(@as(u32, 15), doc.ruby_spans[0].base_end);
+}
+
+test "extreme signed movements clamp without overflowing negation" {
+    var doc = Document(128, 8, 128, 1, 16){};
+    try doc.insertUtf8("葛\u{e0100}\nか\u{3099}");
+    _ = try doc.moveGraphemes(std.math.minInt(i32));
+    try std.testing.expectEqual(@as(u32, 0), doc.cursor);
+    _ = try doc.moveGraphemes(std.math.maxInt(i32));
+    try std.testing.expectEqual(doc.len, doc.cursor);
+    _ = try doc.moveLines(std.math.minInt(i32));
+    try std.testing.expect(doc.cursor < doc.len);
 }

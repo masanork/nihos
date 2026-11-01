@@ -100,6 +100,32 @@ test "paged checkpoint mounts metadata only and atomically spans multiple leaves
     try equal(@as(usize, 6 * 4096), reopened.mount_bytes);
 }
 
+test "owner restores a pinned volume as a new crash-safe generation" {
+    var backend = Backend{};
+    var device = Device{ .backend = &backend };
+    try baseline(&device);
+    var store = Store{};
+    try recover(&store, &device);
+    const pinned = try store.pin();
+    const object_pin = try store.pinObject(1);
+    try update(&store);
+    const generation = store.generation();
+    try expectError(error.InvalidReader, store.restore(object_pin));
+    try store.restore(pinned);
+    try equal(generation + 1, store.generation());
+    try object(&store, 1, &old_a);
+    try object(&store, checkpoint.leaf_entries + 1, &old_b);
+    try expectError(error.NotFound, store.get(2));
+    try store.release(pinned);
+    try expectError(error.InvalidReader, store.restore(pinned));
+    try store.release(object_pin);
+    backend.powerLoss();
+    var reopened = Store{};
+    try recover(&reopened, &device);
+    try equal(generation + 1, reopened.generation());
+    try object(&reopened, 1, &old_a);
+}
+
 test "checkpoint publication survives every sector and barrier cut with bounded mount IO" {
     var base = Backend{};
     var initial = Device{ .backend = &base };

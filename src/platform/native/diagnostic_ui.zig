@@ -56,14 +56,31 @@ const geometry = console.raster.Layout(face);
 const Text = console.Grid(geometry.columns, geometry.rows);
 // The normal storage image maps an additional read-only Flash span before
 // native startup. Keep larger font assets there when that span exists.
-const font_section = if (options.normal_storage and (face == .jetbrains or face == .source_code)) ".flash.fs.console" else ".flash.rodata.display";
+const font_section = if (xy_workspace and !options.normal_storage) ".flash.xyrodata" else if (options.normal_storage and (face == .jetbrains or face == .source_code)) ".flash.fs.console" else ".flash.rodata.display";
 const Renderer = console.raster.Renderer(font_section, face);
 // Unused tail of the existing private display reservation, not owner heaps.
 const renderer: *Renderer = @ptrFromInt(board.framebuffer + board.frame_bytes);
 const live_text: *Text = @ptrFromInt(board.framebuffer + board.frame_bytes + @sizeOf(Renderer));
 const Session = console.session;
+const xy_workspace = @hasDecl(options, "xy_workspace") and options.xy_workspace;
+const xy_trace = @hasDecl(options, "xy_trace") and options.xy_trace;
+var last_xy_trace_revision: u32 = 0;
+var storage_provider: ?*const console.scratch.scheme.storage.Provider = null;
+pub inline fn bindStorage(provider: *const console.scratch.scheme.storage.Provider) void {
+    storage_provider = provider;
+    if (session_active) scratch.storage_client.provider = provider.*;
+}
+var camera_provider: ?*const console.scratch.camera.Provider = null;
+pub inline fn bindCamera(provider: *const console.scratch.camera.Provider) void {
+    camera_provider = provider;
+}
+var xy_input_bytes: u32 = 0;
+var last_xy_input_bytes: u32 = 0;
+var last_xy_idle_report: u64 = 0;
 const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Model) - 1) & ~@as(usize, @alignOf(Session.Model) - 1);
 const session: *Session.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
+const scratch_offset = (session_offset + @sizeOf(Session.Model) + @alignOf(console.scratch.Model) - 1) & ~@as(usize, @alignOf(console.scratch.Model) - 1);
+const scratch: *console.scratch.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + scratch_offset);
 var camera_overlay: camera_preview.Overlay = .{};
 var camera_live: camera_preview.Live = .{};
 pub fn cameraLiveActive() bool {
@@ -104,7 +121,8 @@ const SerialSink = struct {
 /// full tail already belongs to the display lease, outside both owner heaps.
 /// No object in this range is a scanout/DMA source.
 pub fn serviceBacking(comptime bytes: usize) *align(64) [bytes]u8 {
-    const start = (board.framebuffer + board.frame_bytes + session_offset + @sizeOf(Session.Model) + 63) & ~@as(usize, 63);
+    const used = if (xy_workspace) scratch_offset + @sizeOf(console.scratch.Model) else session_offset + @sizeOf(Session.Model);
+    const start = (board.framebuffer + board.frame_bytes + used + 63) & ~@as(usize, 63);
     comptime {
         if (start + bytes > board.framebuffer + board.reserve_bytes)
             @compileError("console and network state exceed the reserved display tail");
@@ -121,6 +139,8 @@ var cpu_mhz: u32 = 0;
 comptime {
     if (session_offset + @sizeOf(Session.Model) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
         @compileError("console renderer exceeds private display tail");
+    if (xy_workspace and scratch_offset + @sizeOf(console.scratch.Model) > board.reserve_bytes - board.frame_bytes)
+        @compileError("xy workspace exceeds private display tail");
 }
 fn palette() console.raster.Palette {
     return @fromBackingInt(@intCast(options.console_palette));
@@ -313,7 +333,7 @@ fn status() boot.Status {
         .console => .ready,
     };
 }
-noinline fn drawDetails() bool {
+noinline fn drawDetails() linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!renderer_ready) {
         // Avoid a multi-kilobyte default-value constant in scarce SRAM.
         @memset(@import("std").mem.asBytes(renderer), 0);
@@ -363,7 +383,9 @@ pub noinline fn report(log: anytype) void {
     };
     log.record("NIHOS_NATIVE_CONSOLE_STYLE", null, .{ "cell_width", "cell_height", "palette", "foreground", "accent", "background", "font" }, &style);
 }
-pub noinline fn input(log: anytype) void {
+// Keyboard setup runs after Flash mapping and display startup. Keep its
+// foreground-only code with the normal camera/device orchestration.
+pub noinline fn input(log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     model.input_sources = console.keys.capability(.serial); // Independent of USB-A host.
     model.input_available = true;
     input_started = clock.timer().counter() orelse 0;
@@ -400,7 +422,7 @@ noinline fn action(value: console.keys.Action, source: console.keys.Source, modi
     log.record("NIHOS_NATIVE_DIAGNOSTIC_KEY", null, .{ "sequence", "source", "action", "modifiers", "usage", "accepted", "view", "stage", "frames" }, &values);
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (now - last_input < 10_000 or !model.input_available) return;
     last_input = now;
     if (options.devices) {
@@ -419,7 +441,16 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
             var event: pointer.Event = .{ .kind = .cancel };
             if (!nih_touch_pop(&event)) break;
             if (!available or model.failure_latched or event.at < input_started) continue;
+            if (xy_workspace and session_active and event.kind == .up) {
+                scratch.touch(event.x, event.y);
+                scratch.revision +%= 1;
+                continue;
+            }
             if (view_button.observe(event, pointer.view_button)) {
+                if (xy_workspace and session_active) {
+                    sessionKey(.escape, log);
+                    continue;
+                }
                 if (camera_overlay.state == .visible) {
                     camera_input_sequence +%= 1;
                     _ = camera_overlay.dismiss(camera_input_sequence);
@@ -431,8 +462,14 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         }
     }
     for (0..16) |_| {
-        const byte = nih_diagnostic_serial_read();
-        if (byte < 0) break;
+        const byte = Session.input.transportByte(nih_diagnostic_serial_read()) orelse break;
+        if (xy_workspace and session_active) {
+            if (xy_trace) xy_input_bytes +%= 1;
+            scratch.feedSerial(byte, now);
+            captureXySystem();
+            @atomicStore(u32, &dirty, 1, .release);
+            continue;
+        }
         var consumed = false;
         if (@hasDecl(options, "normal_storage") and options.normal_storage) {
             var command: ?storage_control.Command = null;
@@ -452,7 +489,7 @@ noinline fn poll(now: u64, log: anytype) linksection(if (options.camera_id) ".fl
         } else if (serial.feed(@intCast(byte), now)) |value| action(value, .serial, 0, @intCast(byte), log);
     }
     if (session_active) {
-        if (session_serial.expire(now)) |key| sessionKey(key, log);
+        if (xy_workspace) scratch.expireSerial(now) else if (session_serial.expire(now)) |key| sessionKey(key, log);
     } else if (serial.expire(now)) |value| action(value, .serial, 0, 0x1b, log);
     if (hardware_ready) {
         var events: [4]console.keyboard.Event = undefined;
@@ -477,19 +514,39 @@ pub fn startSession(log: anytype) bool {
     revision +%= 1;
     return service(log);
 }
-fn beginSession(log: anytype) void {
+// Session handoff runs after the mapped xy span is available, outside IRQs.
+noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xytext" else ".text") void {
     @memset(@import("std").mem.asBytes(session), 0);
-    session.begin(SerialSink{});
+    if (comptime xy_workspace) {
+        scratch.initInPlace();
+        scratch.nav.home();
+        scratch.vm.view.style.body_px = 32;
+        scratch.vm.view.style.ruby_px = 16;
+        scratch.camera.provider = camera_provider;
+        scratch.storage_client.provider = if (storage_provider) |p| p.* else null;
+        (SerialSink{}).write("\r\nxy / *scratch* [RAM]\r\n");
+    } else session.begin(SerialSink{});
     // Do not let a boot-time partial serial escape leak into the shell.
     session_serial = .{};
     session_hid = .{};
     session_active = true;
     session_pending = false;
-    const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
-    log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
+    if (comptime xy_workspace) {
+        const values: extern struct { document_bytes: u32, undo_ops: u32, workspace_bytes: u32, persistent: u32, unicode_raster: u32 } = .{ .document_bytes = 4096, .undo_ops = 256, .workspace_bytes = @sizeOf(console.scratch.Model), .persistent = 0, .unicode_raster = 1 };
+        log.record("NIHOS_NATIVE_XY_READY", null, .{ "document_bytes", "undo_ops", "workspace_bytes", "persistent", "unicode_raster" }, &values);
+    } else {
+        const values: extern struct { view: u32, line_bytes: u32, history_bytes: u32 } = .{ .view = @as(u32, @backingInt(session.view)), .line_bytes = @as(u32, session.line.len), .history_bytes = @as(u32, session.output.bytes.len) };
+        log.record("NIHOS_NATIVE_SESSION_READY", null, .{ "view", "line_bytes", "history_bytes" }, &values);
+    }
     @atomicStore(u32, &dirty, 1, .release);
 }
-noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else ".text") void {
+noinline fn sessionKey(key: Session.input.Key, log: anytype) linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
+    if (xy_workspace) {
+        scratch.handle(key);
+        captureXySystem();
+        @atomicStore(u32, &dirty, 1, .release);
+        return;
+    }
     const before = session.view;
     if (camera_live.state == .draining and camera_overlay.state == .idle) return;
     if (cameraLiveActive() and camera_overlay.state == .idle) {
@@ -607,13 +664,80 @@ fn sessionUsage(label: []const u8, capacity: u32, free: u32) void {
     session.number(SerialSink{}, capacity - free);
     session.write(SerialSink{}, "\r\n");
 }
-fn drawSession() bool {
+const xy_memory_header linksection(".flash.rodata.display") = "CPU0 owner only (bytes; excludes stacks/display):\n".*;
+const xy_tasks_header linksection(".flash.rodata.display") = "Published runtime counters (per-field snapshots):\n".*;
+const xy_tasks_footer linksection(".flash.rodata.display") = "Bootstrap/idle counters; not an application task list.\n".*;
+// One bounded capture on explicit open/refresh. Published task fields are not
+// an atomic scheduler dump; owner-local heaps do not include stacks/display.
+noinline fn captureXySystem() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") void {
+    if (scratch.vm.running) return;
+    scratch.replayInput();
+    switch (scratch.takeSystemRequest()) {
+        .none => return,
+        .log => {
+            scratch.snapshot.dropped = journal.dropped;
+            for (journal.spans()) |part| scratch.snapshot.write(part);
+        },
+        .memory => {
+            scratch.snapshot.write(&xy_memory_header);
+            scratch.snapshot.usage("SRAM boot arena", tasks.memory.localUsage());
+            scratch.snapshot.usage("PSRAM reusable heap", tasks.memory.reusable.localUsage());
+        },
+        .tasks => {
+            scratch.snapshot.write(&xy_tasks_header);
+            for (0..2) |index| scratch.snapshot.counters(@intCast(index), tasks.report(@intCast(index)));
+            scratch.snapshot.write(&xy_tasks_footer);
+        },
+    }
+}
+noinline fn traceScratch(log: anytype) linksection(".flash.xytext") void {
+    if (scratch.vm.running) return;
+    if (!xy_trace or (scratch.revision == last_xy_trace_revision and xy_input_bytes == last_xy_input_bytes)) return;
+    last_xy_trace_revision = scratch.revision;
+    last_xy_input_bytes = xy_input_bytes;
+    var fnv: u32 = 0x811c9dc5;
+    for (scratch.doc.slice()) |byte| fnv = (fnv ^ byte) *% 0x01000193;
+    var buffer_hash: u32 = 0x811c9dc5;
+    if (scratch.mode == .system) for (scratch.snapshot.slice()) |byte| {
+        buffer_hash = (buffer_hash ^ byte) *% 0x01000193;
+    };
+    const values: extern struct { revision: u32, bytes: u32, cursor: u32, fnv: u32, mode: u32, frames: u32, input_bytes: u32, pending_utf8: u32, status: u32, buffer_kind: u32, buffer_bytes: u32, buffer_hash: u32, tx_dropped: u32 } = .{ .revision = scratch.revision, .bytes = scratch.doc.len, .cursor = scratch.doc.cursor, .fnv = fnv, .mode = @backingInt(scratch.mode), .frames = runtime.snapshot().frames, .input_bytes = xy_input_bytes, .pending_utf8 = scratch.utf8_length, .status = @backingInt(scratch.status), .buffer_kind = if (scratch.mode == .system) @as(u32, @backingInt(scratch.snapshot.kind)) + 1 else 0, .buffer_bytes = if (scratch.mode == .system) @intCast(scratch.snapshot.length) else 0, .buffer_hash = buffer_hash, .tx_dropped = nih_diagnostic_serial_dropped() };
+    log.record("NIHOS_NATIVE_XY_STATE", null, .{ "revision", "bytes", "cursor", "fnv", "mode", "frames", "input_bytes", "pending_utf8", "status", "buffer_kind", "buffer_bytes", "buffer_hash", "tx_dropped" }, &values);
+    if (scratch.status == .scheme_result or scratch.status == .scheme_error) {
+        (SerialSink{}).write("\nNIHOS_NATIVE_XY_REPLY data=");
+        const digits = "0123456789abcdef";
+        for (scratch.reply[0..scratch.reply_length]) |b| (SerialSink{}).write(&.{ digits[b >> 4], digits[b & 15] });
+        (SerialSink{}).write("\n");
+    }
+    const graphics = @import("xy_render_runtime.zig");
+    const render_values: extern struct { frames: u32, stack_used: u32, failed: u32, font: u32, size: u32, axis: u32, foreground: u32, background: u32 } = .{ .frames = graphics.frames, .stack_used = graphics.stack_used, .failed = graphics.failed, .font = scratch.vm.view.style.style_id, .size = scratch.vm.view.style.body_px, .axis = scratch.vm.view.style.axis, .foreground = scratch.vm.view.appearance.foreground, .background = scratch.vm.view.appearance.background };
+    log.record("NIHOS_NATIVE_XY_RENDER", null, .{ "frames", "stack_used", "failed", "font", "size", "axis", "foreground", "background" }, &render_values);
+    const nav = &scratch.nav;
+    const reading_values: extern struct { screen: u32, book: u32, chapter: u32, offset: u32, end: u32, total: u32, error_code: u32 } = .{ .screen = @backingInt(nav.screen), .book = nav.book, .chapter = nav.chapter, .offset = nav.offset, .end = nav.end, .total = nav.text_length, .error_code = nav.error_code };
+    log.record("NIHOS_NATIVE_XY_READER", null, .{ "screen", "book", "chapter", "offset", "end", "total", "error_code" }, &reading_values);
+}
+noinline fn traceIdle(log: anytype, now: u64, scanout: u32, dma_error: u32) linksection(".flash.xytext") void {
+    if (now - last_xy_idle_report < 1_000_000) return;
+    last_xy_idle_report = now;
+    const graphics = @import("xy_render_runtime.zig");
+    const values: extern struct { render_frames: u32, scanout_frames: u32, published_bytes: u32, backing_payload: u32, backing_reserved: u32, dma_error: u32 } = .{ .render_frames = graphics.frames, .scanout_frames = scanout, .published_bytes = graphics.published_bytes, .backing_payload = graphics.backing_payload, .backing_reserved = graphics.backing_reserved, .dma_error = dma_error };
+    log.record("NIHOS_NATIVE_XY_IDLE", null, .{ "render_frames", "scanout_frames", "published_bytes", "backing_payload", "backing_reserved", "dma_error" }, &values);
+}
+noinline fn drawSession() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!renderer_ready) {
         @memset(@import("std").mem.asBytes(renderer), 0);
         renderer_ready = true;
     }
     if (renderer.moving() and !renderer.finish(frame(), 1440, palette())) return false;
     if (shown_session_view != session.view) renderer.invalidate();
+    if (xy_workspace) {
+        const graphics = @import("xy_render_runtime.zig");
+        if (!graphics.draw(scratch, frame())) return false;
+        if (graphics.published_bytes != 0 and !present()) return false;
+        shown_session_view = session.view;
+        shown_session_revision = scratch.revision;
+        return true;
+    }
     if (session.view == .logs) {
         console.snapshot.fill(live_text, &model, journal.spans(), journal.dropped);
         // The boot snapshot's controls no longer apply after session handoff.
@@ -623,10 +747,37 @@ fn drawSession() bool {
     } else session.render(live_text);
     if (!renderer.submit(frame(), 1440, live_text, palette()) or !presentDamage()) return false;
     shown_session_view = session.view;
-    shown_session_revision = session.revision;
+    shown_session_revision = if (xy_workspace) scratch.revision else session.revision;
     return true;
 }
-pub noinline fn service(log: anytype) bool {
+// Milestone drawing runs only after display/Flash startup, never in an IRQ.
+noinline fn updateSplash(selected: boot.Status, milestone: bool, controls: bool) linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
+    const painted = if (milestone)
+        boot.updateLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected)
+    else
+        boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected);
+    if (!painted) return false;
+    if (controls and !paintTouchControl()) return false;
+    inline for (boot.landscape_damage, 0..) |box, index| {
+        if (index != 2 or milestone) {
+            for (1280 - box.x - box.width..1280 - box.x) |y| {
+                const start = (y * 1440 + box.y * 2) & ~@as(usize, 63);
+                const end = (y * 1440 + (box.y + box.height) * 2 + 63) & ~@as(usize, 63);
+                if (!flushSpan(start, end)) return false;
+            }
+        }
+    }
+    if (controls and options.devices and touch_available and model.input_available and !model.failure_latched) {
+        const box = pointer.view_button;
+        for (1280 - box.x - box.width..1280 - box.x) |y| {
+            const start = (y * 1440 + box.y * 2) & ~@as(usize, 63);
+            const end = (y * 1440 + (box.y + box.height) * 2 + 63) & ~@as(usize, 63);
+            if (!flushSpan(start, end)) return false;
+        }
+    }
+    return true;
+}
+pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
     if (!options.console_live or !runtime.active()) return true;
     if (!clock_ready or rendering) return false;
     const observed = runtime.snapshot();
@@ -644,10 +795,18 @@ pub noinline fn service(log: anytype) bool {
     last_frame = observed.frames;
     const changed = @atomicRmw(u32, &dirty, .Xchg, 0, .acquire) != 0;
     if (session_active) {
-        if (changed or shown_session_view != session.view or shown_session_revision != session.revision or renderer.moving()) {
+        const repaint = if (xy_workspace) console.xy_presentation.needed(.{
+            .content = shown_session_revision != scratch.revision,
+            .view = shown_session_view != session.view,
+            .overwritten = camera_overlay.state == .repaint_pending or camera_overlay.state == .recovery_pending,
+            .background = changed,
+        }) else changed or shown_session_view != session.view or shown_session_revision != session.revision or renderer.moving();
+        if (comptime xy_trace) traceIdle(log, now, observed.frames, observed.dma_error);
+        if (repaint) {
             rendering = true;
             defer rendering = false;
             if (!drawSession()) return false;
+            if (comptime xy_trace) traceScratch(log);
             if (camera_overlay.repainted()) |result| {
                 const values: extern struct { kind: u32, sequence: u32, view: u32, line_bytes: u32, selected: u32, frames: u32 } = .{ .kind = switch (result) {
                     .dismissal => 1,
@@ -660,6 +819,8 @@ pub noinline fn service(log: anytype) bool {
             }
             return true;
         }
+        // Serial/no-op/read-only input still needs a state receipt, not a repaint.
+        if (comptime xy_trace) traceScratch(log);
         return true;
     }
     const selected = status();
@@ -692,10 +853,13 @@ pub noinline fn service(log: anytype) bool {
             if (!drawDetails()) return false;
             last_render = now;
         } else if (changed) @atomicStore(u32, &dirty, 1, .release);
-    } else if (full) {
+    } else if (full and shown_details) {
+        // Returning from diagnostics overwrote the whole splash.
         if (!boot.paintLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
-    } else if (progress != old_progress) {
-        if (!boot.recolorLandscapePlacedRgb565Le(".flash.rodata.boot_graphics", frame(), 720, 1280, 1440, progress, selected) or !paintTouchControl() or !present()) return false;
+    } else if (full or progress != old_progress) {
+        // A revision alone must not erase the same status label. Flush only
+        // modified regions rather than all 1.8 MiB on every dye step.
+        if (!updateSplash(selected, shown_status != selected, full)) return false;
     }
     shown_revision = revision;
     shown_status = selected;
@@ -757,7 +921,8 @@ pub fn timer() @import("timer_group").Timer {
     return clock.timer();
 }
 
-fn paintTouchControl() bool {
+// Foreground only, after the same Flash/display startup as updateSplash.
+noinline fn paintTouchControl() linksection(if (xy_workspace) ".flash.xytext" else if (options.camera_id) ".flash.text.devices" else ".text") bool {
     if (!options.devices or !touch_available or !model.input_available or model.failure_latched) return true;
     const box = pointer.view_button;
     return console.raster.paintControl(".flash.rodata.display", frame(), 1440, .{ .left = box.x, .top = box.y, .right = box.x + box.width, .bottom = box.y + box.height }, if (model.details) "SPLASH" else "LOGS", palette());

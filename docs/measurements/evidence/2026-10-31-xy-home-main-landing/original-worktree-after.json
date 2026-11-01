@@ -1,0 +1,15 @@
+{
+  "head": "1c7935aa2e50e28ba1d484d700957fa1782bdc13",
+  "status": " M src/graphics/ttf.zig\n M src/graphics/viewport_layout.zig\n M src/xy/scheme_bridge.zig\n M tools/xy_mac_host.m\n",
+  "diff_sha256": "42b7e0f2c45fa90abba961738caeb6762a51f7d7e663b6411392806ebefdbba1",
+  "files": {
+    "src/graphics/ttf.zig": "52fe3958c717ad6c9e65e72897afeb8ff07e6496157c00d1e9ab0c15e67eb3c5",
+    "src/graphics/viewport_layout.zig": "b53b09a2bbf9fccf7589b49f2925e8e97043c1243d56645ac38471b21ce5afa1",
+    "src/xy/scheme_bridge.zig": "01a39041a9cadfa24d179648b17800bb45681d51da9c3ad77423dc036140878d",
+    "tools/xy_mac_host.m": "9436893488f3342617155ad5b4046f4238009a8143d549730586f2eaff5ea19c"
+  },
+  "concurrent_content_changes": [],
+  "original_diff_abbreviation": 7,
+  "full_index_diff_sha256": "2a9351e10097896bbf2e7e529bc23a52d460b2d9ccfca279e357a2180ea81b3a",
+  "verification": "Original HEAD, status and all four file-content hashes match. The default diff hash changed because Git increased object-id abbreviation length; explicit original abbreviation reproduces the original diff hash."
+}

@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""Bounded synthetic RAM-workspace check under exclusive Tab5 ownership.
+
+--install explicitly replaces firmware. No SD formatting/writes or backups.
+Serial traces prove document state and completed repaint submission, not pixels.
+"""
+import argparse
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import shutil
+import subprocess
+import time
+import normal_fs_manifest
+from native_serial import capture_serial_class, disable_hangup
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('port')
+    parser.add_argument('build', type=Path)
+    parser.add_argument('output', type=Path)
+    parser.add_argument('--install', action='store_true')
+    parser.add_argument('--restore-from', type=Path, help='private complete 16 MiB backup; restore every modified Flash span')
+    parser.add_argument('--observe-seconds', type=int, default=0)
+    parser.add_argument('--demo', action='store_true', help='check Scheme view changes and load a Japanese sample into RAM; panel visibility needs manual confirmation')
+    args = parser.parse_args()
+    if not 0 <= args.observe_seconds <= 180:
+        parser.error('observe-seconds must be 0..180')
+    backup = args.restore_from.read_bytes() if args.restore_from else None
+    if backup is not None and len(backup) != 16 * 1024 * 1024:
+        parser.error('restore backup must be exactly 16 MiB')
+    build = args.build.resolve()
+    manifest = json.loads((build / 'normal-fs-manifest.json').read_text())
+    normal_fs_manifest.verify_files(build, manifest)
+    options = (build / 'native_options.zig').read_text()
+    if any(f'pub const {flag} = true;' not in options for flag in ('xy_workspace', 'xy_trace')):
+        raise ValueError('an xy trace candidate is required')
+    audit = json.loads((build / 'image-audit.json').read_text())
+    sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+    if audit['memory']['profile'] != 'device' or sha(build / 'nihos-native.elf') != audit['elf_sha256'] or sha(build / 'nihos-native.bin') != audit['image_sha256']:
+        raise ValueError('candidate identity mismatch')
+    runpy.run_path(str(ROOT / 'tools/check-native-image.py'))['audit']((build / 'nihos-native.elf').read_bytes(), (build / 'nihos-native.bin').read_bytes(), 'integer', 'device', normal_fs_manifest=manifest)
+    out = args.output.resolve()
+    out.mkdir(mode=0o700, parents=True, exist_ok=False)
+    frozen = out / 'candidate'
+    frozen.mkdir(mode=0o700)
+    paths = {'0x2000': build / 'loader/bootloader/bootloader.bin', '0x8000': build / 'loader/partition_table/partition-table.bin', '0x10000': build / 'nihos-native.bin'}
+    for address, path in list(paths.items()):
+        target = frozen / path.name
+        shutil.copyfile(path, target)
+        if sha(target) != sha(path):
+            raise RuntimeError('candidate changed while freezing')
+        paths[address] = target
+    for name in ('image-audit.json', 'nihos-native.elf', 'normal-fs-manifest.json', 'native_options.zig'):
+        shutil.copyfile(build / name, frozen / name)
+    shutil.copyfile(__file__, out / 'qualification-tool.py')
+    receipt = {'passed': False, 'evidence': 'physical Tab5 RAM workspace', 'source_base': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+        'installed': False, 'physical_pixel_comparison_tested': False, 'scheme_vm_tested': False,
+        'persistence_tested': False, 'cold_power_cycle_tested': False, 'observations': [],
+        'candidate': {p.name: sha(p) for p in frozen.iterdir()}}
+    save = lambda: (out / 'result.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    save()
+    import serial
+    import esptool
+    from esptool.reset import HardReset
+    spec = importlib.util.spec_from_file_location('usb_capture', ROOT / 'tools/capture-native-usb.py')
+    usb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(usb)
+    write_started = False
+    lock = os.open('/tmp/nihos-tab5-e8f60ae2e89c-write.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        owners = subprocess.run(['lsof', '-t', args.port, args.port.replace('/cu.', '/tty.')], capture_output=True, text=True)
+        if owners.returncode not in (0, 1) or owners.stdout.strip():
+            raise RuntimeError('serial ownership unavailable')
+        with capture_serial_class(serial.Serial)(args.port, 115200, timeout=.1, exclusive=True) as port:
+            disable_hangup(port)
+            import contextlib
+            with (out / 'identity.log').open('w') as log, contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
+                device = esptool.detect_chip(port=port, baud=115200)
+                mac = ':'.join(f'{n:02x}' for n in device.read_mac())
+                chip, flash = device.get_chip_description(), device.flash_id()
+            receipt['device'] = {'mac': mac, 'chip': chip, 'flash_id': flash}
+            if mac != 'e8:f6:0a:e2:e8:9c' or not chip.startswith('ESP32-P4') or flash >> 16 != 0x18:
+                raise RuntimeError('unexpected device; no writes permitted')
+            if args.install:
+                if backup is not None:
+                    partition = paths['0x8000'].read_bytes()
+                    if backup[0x8000:0x8000 + len(partition)] != partition:
+                        raise RuntimeError('partition table differs from backup; refusing write')
+                write_started = True
+                receipt['write_started'] = True
+                save()
+                usb.tool(port, out / 'install.log', 'write_flash', paths)
+                receipt['installed'] = True
+                save()
+            usb.tool(port, out / 'verify-before.log', 'verify_flash', paths)
+            with (out / 'capture.log').open('wb') as capture:
+                raw = bytearray()
+                def wait(predicate):
+                    deadline = time.monotonic() + 45
+                    while time.monotonic() < deadline:
+                        data = port.read(max(1, port.in_waiting))
+                        if data:
+                            raw.extend(data); capture.write(data); capture.flush()
+                        if b'NIHOS_NATIVE_FAIL' in raw:
+                            raise RuntimeError('native fault; retaining state')
+                        found = predicate(raw)
+                        if found is not None:
+                            return found
+                    raise TimeoutError('bounded xy phase timed out')
+                def record(data, marker):
+                    matches = re.findall(rb'(?m)^' + marker + rb' ([^\r\n]+)\r?\n', data)
+                    return {k.decode(): int(v, 16) for k, v in re.findall(rb'(\w+)=([0-9a-f]{8})(?:\s|$)', matches[-1])} if matches else None
+                def fnv(data):
+                    value = 0x811c9dc5
+                    for byte in data: value = ((value ^ byte) * 0x01000193) & 0xffffffff
+                    return value
+                def expect(label, text, cursor, mode=0, start=0, buffer_kind=0, buffer_hash=None):
+                    def matches(data):
+                        row = record(data[start:], b'NIHOS_NATIVE_XY_STATE')
+                        return row if row and row['bytes'] == len(text) and row['cursor'] == cursor and row['fnv'] == fnv(text) and row['mode'] == mode and row['frames'] > 0 and row['buffer_kind'] == buffer_kind and (not buffer_kind or row['buffer_bytes'] > 0) and (buffer_hash is None or row['buffer_hash'] == buffer_hash) else None
+                    row = wait(matches)
+                    receipt['observations'].append({'name': label, **row}); save()
+                    print(label + ': document and cursor matched', flush=True)
+                    return row
+                def boot(label):
+                    raw.clear(); port.reset_input_buffer(); port.dtr = False
+                    HardReset(port, uses_usb=True)()
+                    wait(lambda data: record(data, b'NIHOS_NATIVE_XY_READY'))
+                    if raw.count(b'ESP-ROM:esp32p4') != 1 or b'NIHOS_NATIVE_SESSION_READY' in raw:
+                        raise RuntimeError('unexpected boot or launcher handoff')
+                    # Home owns normal startup. Enter the RAM document explicitly.
+                    start = len(raw)
+                    port.write(b'n'); port.flush()
+                    expect(label, b'', 0, start=start)
+                def send(label, data, text, cursor, mode=0, buffer_kind=0, buffer_hash=None):
+                    start = len(raw)
+                    port.write(data); port.flush()
+                    return expect(label, text, cursor, mode, start, buffer_kind, buffer_hash)
+                boot('xy-boot')
+                original = b'ab\ncd'
+                send('serial-crlf', b'ab\r\ncd', original, 5)
+                send('left', b'\x1b[D', original, 4)
+                send('insert', b'X', b'ab\ncXd', 5)
+                send('undo', b'\x1a', original, 4)
+                cluster = '葛\U000e0100'.encode()
+                send('ivs-input', cluster, b'ab\nc' + cluster + b'd', 11)
+                send('cluster-delete', b'\x7f', original, 4)
+                send('minibuffer', b'\x1b', original, 4, 1)
+                send('help', b'help\r', original, 4, 2)
+                send('help-return', b'\x1b', original, 4)
+                send('literal-colon', b':storage', b'ab\nc:storaged', 12)
+                unchanged = b'ab\nc:storaged'
+                for kind, command in enumerate((b'log', b'mem', b'tasks'), 1):
+                    name = command.decode()
+                    send(name + '-minibuffer', b'\x1b', unchanged, 12, 1)
+                    row = send(name + '-open', command + b'\r', unchanged, 12, 3, kind)
+                    send(name + '-readonly', b'X\x7f\x1a\x04\r', unchanged, 12, 3, kind, row['buffer_hash'])
+                    send(name + '-refresh', b'\x0c', unchanged, 12, 3, kind)
+                    send(name + '-return', b'\x1b', unchanged, 12)
+                def evaluate(label, source, text=unchanged, cursor=12, mode=0, kind=0):
+                    send(label + '-minibuffer', b'\x1b', unchanged, 12, 1)
+                    return send(label, source + b'\r', text, cursor, mode, kind)
+                evaluate('scheme-closure-definition', b'(define stamp (let ((x "XY")) (lambda () (buffer/insert! x))))')
+                evaluate('scheme-closure-call', b'stamp', b'ab\nc:storageXYd', 14)
+                send('scheme-closure-undo', b'\x1a', unchanged, 12)
+                row = evaluate('scheme-depth-error', b'(define (loop) (loop)) (loop)')
+                if row['status'] != 6:
+                    raise RuntimeError('expected bounded Scheme error')
+                evaluate('scheme-after-error', b'(buffer/insert! "!")', b'ab\nc:storage!d', 13)
+                send('scheme-after-error-undo', b'\x1a', unchanged, 12)
+                evaluate('scheme-register', b'(command/register! "stamp" (lambda () (buffer/insert! "Z")))')
+                evaluate('scheme-replace-call', b'stamp', b'ab\nc:storageZd', 13)
+                send('scheme-replace-undo', b'\x1a', unchanged, 12)
+                evaluate('scheme-system-tasks', b'(system/tasks)', unchanged, 12, 3, 3)
+                send('scheme-system-return', b'\x1b', unchanged, 12)
+                receipt['scheme_vm_tested'] = True
+                save()
+                boot('warm-reset-empty-ram')
+                usb.tool(port, out / 'verify-after.log', 'verify_flash', paths)
+                if args.demo:
+                    boot('verified-demo-boot')
+                    text = b''
+                    def style(label, source, axis, size=36):
+                        send(label + '-minibuffer', b'\x1b', text, len(text), 1)
+                        start = len(raw)
+                        send(label, source + b'\r', text, len(text))
+                        def rendered(data):
+                            row = record(data[start:], b'NIHOS_NATIVE_XY_RENDER')
+                            return row if row and row['font'] == 1 and row['size'] == size and row['axis'] == axis and row['foreground'] == 0x223344 and row['background'] == 0xfaf6ee else None
+                        row = wait(rendered)
+                        if row['failed'] != 0 or not 0 < row['stack_used'] < audit['xy_scheme']['render_stack_bytes'] - 256:
+                            raise RuntimeError('render stack or repaint failure')
+                        receipt.setdefault('render_observations', []).append({'name': label, **row}); save()
+                    style('view-gothic-36', b"(view/set! #:font 'gothic #:size 36 #:foreground #x223344 #:background #xfaf6ee)", 0)
+                    text = '日本語表示 あいうえお\n青空文庫\n文字サイズ 36\n背景と文字の色を設定'.encode()
+                    send('japanese-serial-utf8', text, text, len(text))
+                    style('view-vertical', b"(view/set! #:direction 'vertical)", 1)
+                    style('view-horizontal', b"(view/set! #:direction 'horizontal)", 0)
+                    style('view-monospace-25', b"(view/set! #:size 25 #:line-gap 0 #:ruby-size 6)", 0, 25)
+                    line = b'\n(define (stamp) (buffer/insert! "Hello, xy!"))\nASCII: 0123456789 ilMW () []'
+                    text += line
+                    # The previous command ended with CR; send an explicit CRLF line break.
+                    send('ascii-monospace-sample', b'\r\n' + line[1:], text, len(text))
+                    receipt.update(view_settings_tested=True, unicode_input_tested=True, monospace_sample_tested=True, input_transport='serial UTF-8', demo_state_loaded=True, manual_visual_confirmation='pending')
+                    save()
+
+            print('DEMO_STATE_LOADED: common Source Code Pro 25px + Bunsen; panel confirmation pending', flush=True)
+            if args.observe_seconds:
+                deadline = time.monotonic() + args.observe_seconds
+                observation = bytearray()
+                while time.monotonic() < deadline:
+                    data = port.read(max(1, port.in_waiting))
+                    if data:
+                        observation.extend(data)
+                        with (out / 'observe.log').open('ab') as observe:
+                            observe.write(data)
+                    if b'NIHOS_NATIVE_FAIL' in observation:
+                        raise RuntimeError('native fault during observation')
+                idle = []
+                for line in observation.splitlines():
+                    if line.startswith(b'NIHOS_NATIVE_XY_IDLE '):
+                        idle.append({key.decode(): int(value, 16) for key, value in re.findall(rb'(\w+)=([0-9a-f]{8})(?:\s|$)', line)})
+                if len(idle) < 2 or any(row.get('dma_error') != 0 for row in idle) or idle[-1]['scanout_frames'] <= idle[0]['scanout_frames']:
+                    raise RuntimeError('idle scanout observations incomplete or faulted')
+                if len({row['render_frames'] for row in idle}) != 1:
+                    raise RuntimeError('xy repainted without foreground input during observation')
+                receipt['idle_observation'] = {'seconds': args.observe_seconds, 'records': len(idle), 'render_frames': idle[-1]['render_frames'], 'scanout_frame_delta': idle[-1]['scanout_frames'] - idle[0]['scanout_frames'], 'backing_payload': idle[-1]['backing_payload'], 'backing_reserved': idle[-1]['backing_reserved'], 'dma_error': 0}
+                save()
+            receipt['passed'] = True; save()
+            print('Physical xy boot/input/undo/help/warm-reset passed; no pixel or persistence claim', flush=True)
+    except BaseException as error:
+        receipt['passed'] = False; receipt['failure'] = str(error); save(); raise
+    finally:
+        try:
+            if write_started and backup is not None:
+                application_bytes = paths['0x10000'].stat().st_size
+                application_end = 0x10000 + ((application_bytes + 4095) & ~4095)
+                if application_end > 0x110000:
+                    raise RuntimeError('candidate exceeded restoration app bounds')
+                restore_dir = out / 'restore'
+                restore_dir.mkdir(mode=0o700)
+                restore_paths = {}
+                for address, end, name in ((0x2000, 0x8000, 'bootloader.bin'), (0x8000, 0x9000, 'partitions.bin'), (0x10000, application_end, 'application.bin')):
+                    target = restore_dir / name
+                    target.write_bytes(backup[address:end])
+                    restore_paths[hex(address)] = str(target)
+                python = __import__('sys').executable
+                command = [python, '-m', 'esptool', '--chip', 'esp32p4', '--port', args.port, '--baud', '460800', '--connect-attempts', '1']
+                receipt['restoration'] = {'attempted': True, 'backup_sha256': sha(args.restore_from), 'verified': False}
+                save()
+                try:
+                    for operation in ('write_flash', 'verify_flash'):
+                        arguments = [part for address, name in restore_paths.items() for part in (address, name)]
+                        with (out / ('restore-' + operation + '.log')).open('wb') as log:
+                            subprocess.run(command + [operation] + arguments, stdout=log, stderr=subprocess.STDOUT, timeout=120, check=True)
+                    receipt['restoration']['verified'] = True
+                    receipt['demo_left_visible'] = False
+                    save()
+                    print('Original Flash spans restored and verified', flush=True)
+                except BaseException as error:
+                    receipt['passed'] = False
+                    receipt['restoration']['error'] = str(error)
+                    save()
+                    raise
+        finally:
+            os.close(lock)
+
+
+if __name__ == '__main__':
+    main()

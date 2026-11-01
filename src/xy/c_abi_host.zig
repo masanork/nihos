@@ -15,6 +15,16 @@ pub const render_adapter = @import("render_adapter.zig");
 pub const scheme_bridge = render_adapter.scheme_bridge;
 pub const ime_omni = scheme_bridge.ime_omni;
 pub const ttf = viewport_layout.ttf;
+const native_session = @import("render_session.zig");
+const view_config = @import("view_config");
+const rom_mincho: []const u8 = @embedFile("fonts/mincho.ttf");
+const rom_gothic: []const u8 = @embedFile("fonts/gothic.ttf");
+// SAFETY: render APIs check readiness; init writes the whole owner-held cache.
+var g_render_session: native_session.SizedSession(1024) = undefined;
+var g_render_ready = false;
+var g_host_status: [256]u8 = @splat(0);
+var g_host_status_len: usize = 0;
+pub const pixel_transfer = @import("pixel_transfer");
 
 pub const PlacedGlyph = viewport_layout.PlacedGlyph;
 pub const GpuiGlyphQuad = render_adapter.GpuiGlyphQuad;
@@ -67,23 +77,77 @@ const ReaderAdapter = struct {
 // Bounded static instance for the C-ABI host session:
 // - 256 outline cache slots × 1024 CurvePoints
 // - 256 bitmap cache slots × (96 × 96) 8bpp pixels
-// - 16 KiB UTF-8 document buffer
+// - 4 KiB UTF-8 document buffer (same bound as canonical rendering)
 const HostCacheType = ttf.TwoTierCache(256, 1024, 256, 96 * 96);
-const HostWorkspaceType = scheme_bridge.XyWorkspace(16384, 64, 4096, 64, 1024);
+pub const live_workspace = @import("live_workspace.zig");
+const HostWorkspaceType = scheme_bridge.XyWorkspace(4096, 64, 4096, 64, 1024);
 
 var g_mincho_adapters: [4]ReaderAdapter = undefined;
-var g_mincho_faces: [4]ttf.Face = undefined;
+var g_mincho_faces: [5]ttf.Face = undefined;
 var g_mincho_count: usize = 0;
 
 var g_gothic_adapters: [4]ReaderAdapter = undefined;
-var g_gothic_faces: [4]ttf.Face = undefined;
+var g_gothic_faces: [5]ttf.Face = undefined;
 var g_gothic_count: usize = 0;
 
 var g_cache: HostCacheType = .{};
 var g_ws: HostWorkspaceType = .{};
+// SAFETY: every live API is guarded by g_live_ready; init writes runtime state.
+var g_live: live_workspace.Session(HostWorkspaceType) = undefined;
+var g_live_ready = false;
+const StorageCallback = *const fn (?*anyopaque, u32, u32, u32, u32, [*]const u8, u32, [*]const u8, u32, [*]u8, u32) callconv(.c) i32;
+var g_storage_callback: ?StorageCallback = null;
+var g_storage_context: ?*anyopaque = null;
+fn storageBridge(_: ?*anyopaque, request: live_workspace.scheme.storage.Request, output: []u8) live_workspace.scheme.storage.Error![]const u8 {
+    const cb = g_storage_callback orelse return error.StorageUnavailable;
+    const n = cb(g_storage_context, @backingInt(request.operation), request.handle, request.offset, request.count, request.text.ptr, @intCast(request.text.len), request.argument.ptr, @intCast(request.argument.len), output.ptr, @intCast(output.len));
+    if (n < 0) return switch (n) {
+        -16 => error.StorageBusy,
+        -13 => error.StorageDenied,
+        -9 => error.StorageStale,
+        -28 => error.StorageFull,
+        -2 => error.StorageNotFound,
+        -7, -22 => error.StorageLimit,
+        -115 => error.StorageOutcomeUnknown,
+        else => error.StorageFailed,
+    };
+    if (n > output.len) return error.StorageFailed;
+    return output[0..@intCast(n)];
+}
+fn legacySqlHook(_: *anyopaque, request: scheme_bridge.SqlQueryRequest, arena: *scheme_bridge.SexpArena) scheme_bridge.EvalError!scheme_bridge.Value {
+    var output: [1024]u8 = undefined;
+    const encoded = storageBridge(null, .{ .operation = .lookup, .text = request.table, .argument = request.where_clause, .count = @min(request.limit, 8) }, &output) catch return error.SqlUnavailable;
+    const owned = try arena.allocString(encoded);
+    var response_reader = scheme_bridge.Reader{ .src = owned, .arena = arena };
+    const result = (try response_reader.readExpr()) orelse return error.SqlUnavailable;
+    return arena.nodes[result];
+}
+pub export fn xy_host_set_storage_callback(context: ?*anyopaque, callback: ?StorageCallback) callconv(.c) void {
+    g_storage_context = context;
+    g_storage_callback = callback;
+    if (g_live_ready) g_live.storage_client.provider = .{ .context = null, .call = storageBridge };
+}
+var g_live_error: []const u8 = "";
+var g_render_error: []const u8 = "";
+var g_saved_doc: HostWorkspaceType.DocType = .{};
+var g_editing_source = false;
+const reader = @import("reader.zig");
+var g_reading = false;
+const learning = @import("learning_session.zig");
+// SAFETY: xy_host_live_init initializes this owner before any learning API.
+var g_learning: learning.Session = undefined;
+var g_learning_visible = false;
+var g_reader_section: ?u32 = null;
+var g_reader_next_section: ?u32 = null;
+var g_reader_offset: u32 = 0;
+var g_reader_codes: [64]viewport_layout.CodeSpan = undefined;
+var g_reader_code_count: usize = 0;
+var g_reader_saved_doc: HostWorkspaceType.DocType = .{};
+var g_reader_saved_ime: ime_omni.OmniIme = .{};
 var g_glyf_scratch: [16384]u8 = undefined;
 var g_placed_buf: [512]PlacedGlyph = undefined;
 var g_quads_buf: [512]GpuiGlyphQuad = undefined;
+var g_rgb565_transfer: [1280 * 720 * 2]u8 = @splat(0);
 // SAFETY: render_gpui assigns the complete minibuffer view before taking line().
 var g_mb_view: ime_omni.MinibufferView = undefined;
 
@@ -119,32 +183,56 @@ pub export fn xy_host_init(
     gothic_descs: ?[*]const CSliceReaderDesc,
     gothic_count: u32,
 ) callconv(.c) bool {
-    if (mincho_count == 0 or mincho_count > 4 or gothic_count > 4) return false;
-    g_ws = .{};
+    if (mincho_count > 4 or gothic_count > 4) return false;
+    g_render_ready = false;
+    if (!xy_host_live_init()) return false;
     g_cache = .{};
     g_mincho_count = 0;
     g_gothic_count = 0;
 
+    // Use the same embedded mono face in both targets; Japanese falls back to
+    // the paged Bunsen layers. No CoreText/AppKit glyphs enter this family.
+    const code_face = viewport_layout.code_font.face() catch return false;
+    g_mincho_faces[0] = code_face;
+    g_mincho_count = 1;
     for (0..mincho_count) |i| {
         g_mincho_adapters[i] = .{ .desc = mincho_descs[i] };
-        g_mincho_faces[i] = ttf.Face.init(g_mincho_adapters[i].toSliceReader()) catch return false;
+        g_mincho_faces[i + 1] = ttf.Face.init(g_mincho_adapters[i].toSliceReader()) catch return false;
         g_mincho_count += 1;
     }
 
     if (gothic_descs) |g_ptr| {
+        if (gothic_count > 0) {
+            g_gothic_faces[0] = code_face;
+            g_gothic_count = 1;
+        }
         for (0..gothic_count) |i| {
             g_gothic_adapters[i] = .{ .desc = g_ptr[i] };
-            g_gothic_faces[i] = ttf.Face.init(g_gothic_adapters[i].toSliceReader()) catch return false;
+            g_gothic_faces[i + 1] = ttf.Face.init(g_gothic_adapters[i].toSliceReader()) catch return false;
             g_gothic_count += 1;
         }
     }
 
-    var dummy: u8 = 0;
-    g_ws.ext_omni_provider = .{
-        .ctx = &dummy,
-        .queryFn = bridgeOmniQuery,
-        .learnFn = null,
-    };
+    g_render_session.init(ttf.SliceReader.fromSlice(&rom_mincho), ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
+    g_render_ready = true;
+    if (mincho_count > 0) g_render_session.external_mincho = .{ .faces = g_mincho_faces[0..g_mincho_count] };
+    if (gothic_count > 0) g_render_session.external_gothic = .{ .faces = g_gothic_faces[0..g_gothic_count] };
+    if (mincho_count == 0) {
+        g_mincho_faces[1] = ttf.Face.init(ttf.SliceReader.fromSlice(&rom_mincho)) catch return false;
+        g_mincho_count = 2;
+    }
+    if (gothic_count == 0) {
+        g_gothic_faces[0] = code_face;
+        g_gothic_faces[1] = ttf.Face.init(ttf.SliceReader.fromSlice(&rom_gothic)) catch return false;
+        g_gothic_count = 2;
+    }
+    return true;
+}
+
+pub export fn xy_host_set_status(text: [*]const u8, length: u32) callconv(.c) bool {
+    if (length > g_host_status.len or !@import("std").unicode.utf8ValidateSlice(text[0..length])) return false;
+    @memcpy(g_host_status[0..length], text[0..length]);
+    g_host_status_len = length;
     return true;
 }
 
@@ -177,17 +265,140 @@ pub export fn xy_host_eval(
     out_buf: [*]u8,
     out_cap: u32,
 ) callconv(.c) i32 {
+    if (g_reading and !@import("std").mem.startsWith(u8, sexp_ptr[0..sexp_len], "(view/set! ")) return -1;
     const val = g_ws.evalStr(sexp_ptr[0..sexp_len]) catch return -1;
     const formatted = g_ws.arena.formatValue(val, out_buf[0..out_cap]);
     return @intCast(formatted.len);
 }
 
+/// Initialize an editor session without requiring fonts (also used by the CLI).
+pub export fn xy_host_live_init() callconv(.c) bool {
+    g_ws = .{};
+    g_ws.sql_ctx = &g_ws;
+    g_ws.sql_query_hook = legacySqlHook;
+    g_ws.ext_omni_provider = .{ .ctx = &g_ws, .queryFn = bridgeOmniQuery, .learnFn = null };
+    g_live.init();
+    g_live.storage_client.provider = .{ .context = null, .call = storageBridge };
+    g_live_ready = true;
+    g_editing_source = false;
+    g_reading = false;
+    g_learning.initInPlace();
+    g_learning_visible = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
+    var out: [256]u8 = undefined;
+    _ = g_live.prepare(live_workspace.default_source, &out) catch return false;
+    g_live_error = "";
+    return g_live.activate();
+}
+pub export fn xy_host_default_source(out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (cap < live_workspace.default_source.len) return -1;
+    @memcpy(out[0..live_workspace.default_source.len], live_workspace.default_source);
+    return @intCast(live_workspace.default_source.len);
+}
+pub export fn xy_host_render_error(out: [*]u8, cap: u32) callconv(.c) u32 {
+    const n = @min(cap, g_render_error.len);
+    @memcpy(out[0..n], g_render_error[0..n]);
+    return @intCast(n);
+}
+pub export fn xy_host_live_error(out: [*]u8, cap: u32) callconv(.c) u32 {
+    const n = @min(cap, g_live_error.len);
+    @memcpy(out[0..n], g_live_error[0..n]);
+    return @intCast(n);
+}
+pub export fn xy_host_live_prepare(source: [*]const u8, len: u32) callconv(.c) bool {
+    if (!g_live_ready) return false;
+    var out: [256]u8 = undefined;
+    _ = g_live.prepare(source[0..len], &out) catch |err| {
+        g_live_error = live_workspace.scheme.message(err);
+        return false;
+    };
+    g_live_error = "";
+    return true;
+}
+pub export fn xy_host_live_activate() callconv(.c) bool {
+    return g_live_ready and g_live.activate();
+}
+pub export fn xy_host_live_discard() callconv(.c) void {
+    if (g_live_ready) g_live.discard();
+}
+pub export fn xy_host_live_run(source: [*]const u8, len: u32, named: bool, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready or g_reading) return -1;
+    const result = g_live.run(&g_ws, source[0..len], named, out[0..cap]) catch |err| {
+        g_live_error = live_workspace.scheme.message(err);
+        return -1;
+    };
+    g_live_error = "";
+    return @intCast(result.len);
+}
+/// Foreground app bridge: shares the live editor VM and its rollback boundary.
+pub fn appEvaluate(state: *live_workspace.scheme.plot_config.State, source: []const u8, output: []u8) live_workspace.scheme.Error![]const u8 {
+    if (!g_live_ready or g_reading) return error.AppUnavailable;
+    return g_live.runApp(&g_ws, state, source, output);
+}
+pub fn appFrame(state: *live_workspace.scheme.plot_config.State) live_workspace.scheme.Error!void {
+    if (!g_live_ready or g_reading) return error.AppUnavailable;
+    try g_live.frame(&g_ws, state);
+}
+pub fn appHasFrame() bool {
+    return g_live_ready and g_live.active.frame_callback != 0;
+}
+pub fn appStop() void {
+    if (g_live_ready) g_live.active.clearFrame();
+}
+pub fn documentRevision() u64 {
+    return g_ws.doc.revision;
+}
+pub fn editorViewGeneration() u32 {
+    return g_live.active.view_generation;
+}
+pub export fn xy_host_buffer_copy(out: [*]u8, cap: u32) callconv(.c) i32 {
+    const text = g_ws.doc.slice();
+    if (cap < text.len) return -1;
+    @memcpy(out[0..text.len], text);
+    return @intCast(text.len);
+}
+pub export fn xy_host_insert_text(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading) return false;
+    g_ws.doc.insertUtf8(text[0..len]) catch return false;
+    g_ws.layout_dirty = true;
+    return true;
+}
+pub export fn xy_host_buffer_replace(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading) return false;
+    _ = g_ws.doc.replaceRange(.{ .revision = g_ws.doc.revision, .start = 0, .end = g_ws.doc.len }, text[0..len]) catch return false;
+    g_ws.layout_dirty = true;
+    return true;
+}
+pub export fn xy_host_source_enter(source: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_editing_source or g_reading or len > 4096) return false;
+    var doc: HostWorkspaceType.DocType = .{};
+    doc.insertUtf8(source[0..len]) catch return false;
+    doc.cursor = 0;
+    doc.undo_count = 0;
+    doc.undo_bytes_used = 0;
+    g_saved_doc = g_ws.doc;
+    g_ws.doc = doc;
+    g_ws.layout_dirty = true;
+    g_editing_source = true;
+    return true;
+}
+pub export fn xy_host_source_leave() callconv(.c) void {
+    if (!g_editing_source) return;
+    g_ws.doc = g_saved_doc;
+    g_ws.layout_dirty = true;
+    g_editing_source = false;
+}
+
 pub export fn xy_host_handle_key(key: u8) callconv(.c) bool {
+    if (g_reading) return false;
     g_ws.handleKey(key) catch return false;
     return true;
 }
 
 pub export fn xy_host_feed_utf8_reading(utf8_ptr: [*]const u8, utf8_len: u32) callconv(.c) bool {
+    if (g_reading) return false;
     g_ws.ime.feedUtf8ToReading(&g_ws.doc, utf8_ptr[0..utf8_len]) catch return false;
     return true;
 }
@@ -197,7 +408,14 @@ pub export fn xy_host_cache_stats(out_outline_misses: *u32, out_bitmap_misses: *
     out_bitmap_misses.* = g_cache.bitmap_misses;
 }
 
+/// Atlas/placement inspection API. Pixel-exact hosts present render_rgba8 instead.
 /// Target B (GPUI C-ABI): Build `GpuiFrameDescriptor` and copy up to `max_quads` `GpuiGlyphQuad`s.
+fn effectiveAppearance(theme_id: u8) @import("view_config").Appearance {
+    var appearance = g_ws.appearance;
+    if (theme_id == 1 and g_ws.config_generation == 1) appearance = .{ .background = 0x121418, .foreground = 0xe6eaf0, .ruby_color = 0x8ab4f8, .cursor_color = 0xffa657, .status_background = 0x1e222a, .status_foreground = 0xa8dab5 };
+    return appearance;
+}
+
 pub export fn xy_host_render_gpui(
     theme_id: u8,
     out_frame: *GpuiFrameDescriptor,
@@ -214,10 +432,13 @@ pub export fn xy_host_render_gpui(
         fam,
         &g_glyf_scratch,
         &g_placed_buf,
-    ) catch return -1;
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -1;
+    };
 
     g_mb_view = g_ws.ime.formatMinibuffer();
-    const theme = if (theme_id == 1) ThemePalette.hacker_dark else ThemePalette.washi_light;
+    const theme = ThemePalette.fromAppearance(effectiveAppearance(theme_id));
     const cap = @min(@as(usize, max_quads), g_quads_buf.len);
     const frame = render_adapter.buildGpuiFrame(
         HostCacheType,
@@ -230,8 +451,11 @@ pub export fn xy_host_render_gpui(
         g_mb_view.line(),
         &g_glyf_scratch,
         out_quads[0..cap],
-    ) catch return -2;
-
+    ) catch |err| {
+        g_render_error = @errorName(err);
+        return -2;
+    };
+    g_render_error = "";
     out_frame.* = frame;
     const count: usize = @intCast(frame.quad_count);
     return @intCast(count);
@@ -245,38 +469,45 @@ pub export fn xy_host_render_rgb565(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
+    if (!g_render_ready) return -1;
     const total_bytes = @as(usize, stride) * @as(usize, height);
-    const surf = surface.Surface.init(fb_ptr[0..total_bytes], width, height, stride) orelse return -1;
-    const fam = activeFamily();
-    const placed = g_ws.renderDisplayList(
-        256,
-        4096,
-        1024,
-        HostCacheType,
-        &g_cache,
-        fam,
-        &g_glyf_scratch,
-        &g_placed_buf,
-    ) catch return -2;
-
-    const theme = if (theme_id == 1) ThemePalette.hacker_dark else ThemePalette.washi_light;
-    const stats = render_adapter.paintSurfaceRgb565(
-        HostCacheType,
-        surf,
-        &g_cache,
-        fam,
-        g_ws.style,
-        theme,
-        placed,
-        g_ws.doc.cursor,
-        true,
-        &g_glyf_scratch,
-    ) catch return -3;
-    return @intCast(stats.glyphs_blitted);
+    const config = view_config.Config{ .style = g_ws.style, .appearance = effectiveAppearance(theme_id) };
+    g_mb_view = g_ws.ime.formatMinibuffer();
+    const status = if (g_ws.ime.phase != .idle) g_mb_view.line() else if (g_host_status_len > 0) g_host_status[0..g_host_status_len] else g_mb_view.line();
+    const request = native_session.protocol.Request{
+        .workspace = &g_render_session,
+        .frame = fb_ptr,
+        .frame_length = total_bytes,
+        .config = &config,
+        .text = g_ws.doc.slice().ptr,
+        .text_length = g_ws.doc.len,
+        .cursor = g_ws.doc.cursor,
+        .status = status.ptr,
+        .status_length = status.len,
+        .show_cursor = @intFromBool(!g_reading),
+        .page_mode = @intFromBool(g_reading),
+        .book_prose = @intFromBool(g_reading and g_reader_section != null),
+        .code_spans = &g_reader_codes,
+        .code_count = if (g_reading) g_reader_code_count else 0,
+        .ruby_text = &g_ws.doc.ruby_arena,
+        .ruby_text_length = g_ws.doc.ruby_bytes_used,
+        .ruby_spans = &g_ws.doc.ruby_spans,
+        .ruby_count = g_ws.doc.ruby_count,
+    };
+    const rendering = if (g_learning_visible and width == 1280 and height == 720 and stride == 2560)
+        @import("learning_view.zig").render(&g_render_session, &request, &g_learning, false, true)
+    else
+        g_render_session.renderLogical(&request, width, height, stride);
+    rendering catch |err| {
+        g_render_error = @errorName(err);
+        return -2;
+    };
+    g_render_error = "";
+    return @intCast(g_render_session.glyphs);
 }
 
-/// Composite the Target B (`GpuiFrameDescriptor` + `GpuiGlyphQuad`) output directly into
-/// a 32-bit RGBA8888 buffer (`[R, G, B, A]` per pixel) for macOS CoreGraphics/Metal display.
+/// Present the canonical Target A framebuffer as opaque RGBA. GPUI or another
+/// host uploads these pixels without reshaping text or redoing alpha blending.
 pub export fn xy_host_render_rgba8(
     rgba_ptr: [*]u8,
     width: u32,
@@ -284,79 +515,252 @@ pub export fn xy_host_render_rgba8(
     stride: u32,
     theme_id: u8,
 ) callconv(.c) i32 {
-    // SAFETY: a nonnegative render_gpui result initializes the whole descriptor;
-    // the error return above any read prevents use of an incomplete frame.
-    var frame: GpuiFrameDescriptor = undefined;
-    const q_count = xy_host_render_gpui(theme_id, &frame, &g_quads_buf, g_quads_buf.len);
-    if (q_count < 0) return q_count;
-
-    const bg_r: u8 = @truncate(frame.bg_rgba8 >> 24);
-    const bg_g: u8 = @truncate(frame.bg_rgba8 >> 16);
-    const bg_b: u8 = @truncate(frame.bg_rgba8 >> 8);
-
-    // 1. Clear background
-    for (0..height) |y| {
-        const row = rgba_ptr[y * stride .. y * stride + width * 4];
-        var x: usize = 0;
-        while (x < width) : (x += 1) {
-            row[x * 4 + 0] = bg_r;
-            row[x * 4 + 1] = bg_g;
-            row[x * 4 + 2] = bg_b;
-            row[x * 4 + 3] = 255;
-        }
+    const pixel_count = @as(u64, width) * height;
+    if (width == 0 or height == 0 or pixel_count > g_rgb565_transfer.len / 2 or @as(u64, stride) < @as(u64, width) * 4) {
+        g_render_error = "InvalidFramebufferGeometry";
+        return -4;
     }
+    const native_stride = width * 2;
+    const count = xy_host_render_rgb565(&g_rgb565_transfer, width, height, native_stride, theme_id);
+    if (count < 0) return count;
+    const length = @as(usize, stride) * height;
+    pixel_transfer.rgba8(&g_rgb565_transfer, width, height, native_stride, rgba_ptr[0..length], stride) catch {
+        g_render_error = "InvalidFramebufferGeometry";
+        return -4;
+    };
+    return count;
+}
 
-    // 2. Blend each GpuiGlyphQuad's 8bpp alpha texture
-    const count: usize = @intCast(q_count);
-    for (g_quads_buf[0..count]) |quad| {
-        const gw: i32 = quad.glyph.bitmap_width;
-        const gh: i32 = quad.glyph.bitmap_height;
-        if (gw <= 0 or gh <= 0) continue;
-
-        const fg_r: u16 = @intCast((quad.rgba8_color >> 24) & 0xff);
-        const fg_g: u16 = @intCast((quad.rgba8_color >> 16) & 0xff);
-        const fg_b: u16 = @intCast((quad.rgba8_color >> 8) & 0xff);
-        const alpha_slice = quad.alpha_ptr[0..quad.alpha_len];
-
-        var sy: i32 = 0;
-        while (sy < gh) : (sy += 1) {
-            const dy = quad.glyph.bitmap_y_px + sy;
-            if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
-            var sx: i32 = 0;
-            while (sx < gw) : (sx += 1) {
-                const dx = quad.glyph.bitmap_x_px + sx;
-                if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
-                const a: u16 = alpha_slice[@as(usize, @intCast(sy)) * @as(usize, @intCast(gw)) + @as(usize, @intCast(sx))];
-                if (a == 0) continue;
-                const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
-                const inv: u16 = 255 - a;
-                rgba_ptr[off + 0] = @intCast((fg_r * a + @as(u16, rgba_ptr[off + 0]) * inv) / 255);
-                rgba_ptr[off + 1] = @intCast((fg_g * a + @as(u16, rgba_ptr[off + 1]) * inv) / 255);
-                rgba_ptr[off + 2] = @intCast((fg_b * a + @as(u16, rgba_ptr[off + 2]) * inv) / 255);
-                rgba_ptr[off + 3] = 255;
+/// Preserve the entire editable document, including its undo and ruby tables.
+pub export fn xy_host_reader_enter() callconv(.c) bool {
+    if (g_reading or g_editing_source or !g_render_ready) return false;
+    g_reader_saved_doc = g_ws.doc;
+    g_reader_saved_ime = g_ws.ime;
+    g_ws.ime = .{};
+    g_reading = true;
+    return true;
+}
+pub export fn xy_host_reader_leave() callconv(.c) void {
+    g_learning_visible = false;
+    if (!g_reading) return;
+    g_ws.doc = g_reader_saved_doc;
+    g_ws.ime = g_reader_saved_ime;
+    g_reading = false;
+    g_reader_section = null;
+    g_reader_next_section = null;
+    g_reader_code_count = 0;
+}
+/// Bind typography to the already verified SICP catalogue. Other books keep their font settings.
+pub export fn xy_host_reader_context(book: u32, section: u32, offset: u32) callconv(.c) bool {
+    if (!g_reading or book >= 4) return false;
+    if (book != 2) {
+        g_reader_next_section = null;
+        return true;
+    }
+    if (!g_learning.ready or g_learning.pack.style_count == 0) return false;
+    const sec = g_learning.pack.section(section) catch return false;
+    if (offset >= sec.text_bytes) return false;
+    g_reader_next_section = section;
+    g_reader_offset = offset;
+    return true;
+}
+/// Candidate is bounded by the caller. Return exact consumed UTF-8 bytes.
+/// Validate and fit before replacing the current page; failure leaves it intact.
+pub export fn xy_host_reader_load(text: [*]const u8, len: u32, readings: [*]const u8, reading_len: u32, spans: [*]const reader.RubySpan, span_count: u32) callconv(.c) i32 {
+    if (!g_reading or g_learning_visible or len == 0) return -1;
+    const body = text[0..len];
+    const ruby_text = readings[0..reading_len];
+    const annotations = spans[0..span_count];
+    reader.validate(body, ruby_text, annotations) catch return -2;
+    var style = g_ws.style;
+    const bar: u16 = @as(u16, style.body_px) + 2 * @as(u16, g_ws.appearance.status_padding);
+    if (style.viewport_height_px <= bar) return -3;
+    style.viewport_height_px -= bar;
+    var config = view_config.Config{ .style = style, .appearance = g_ws.appearance };
+    config.validate() catch return -3;
+    const normal = activeFamily();
+    const book_faces = [_]ttf.Face{ g_render_session.book_face, normal.faces[1] };
+    const family = if (g_reader_next_section != null) ttf.Family{ .faces = &book_faces, .code_faces = normal.faces } else normal;
+    if (g_reader_next_section != null) {
+        style.style_id = 2 + style.style_id * 2;
+        style.ruby_px = 0;
+        style.line_gap_px = @min(style.line_gap_px, @max(2, style.body_px / 5));
+    }
+    var codes: [64]viewport_layout.CodeSpan = undefined;
+    var code_count: usize = 0;
+    var end: usize = len;
+    var ann_buf: [64]viewport_layout.ruby.Annotation = undefined;
+    while (end > 0) {
+        if (g_reader_next_section != null) end = reader.closeWord(body, end);
+        var count: usize = 0;
+        var r_end: usize = 0;
+        for (annotations) |span| {
+            if (span.base_end > end) break;
+            ann_buf[count] = .{ .base = .{ .start = span.base_start, .end = span.base_end }, .ruby = .{ .start = span.ruby_start, .end = span.ruby_end } };
+            count += 1;
+            r_end = @max(r_end, span.ruby_end);
+        }
+        code_count = 0;
+        if (g_reader_next_section) |section| {
+            const final: u64 = @as(u64, g_reader_offset) + end;
+            if (final > (g_learning.pack.section(section) catch return -4).text_bytes) return -4;
+            while (g_learning.pack.styleOnPage(section, g_reader_offset, @intCast(final), @intCast(code_count)) catch return -4) |span| {
+                if (code_count == codes.len) return -4;
+                codes[code_count] = .{ .start = span.start, .end = span.end };
+                code_count += 1;
             }
         }
-    }
-
-    // 3. Draw caret rectangle
-    const cur_r: u8 = @truncate(frame.cursor_rgba8 >> 24);
-    const cur_g: u8 = @truncate(frame.cursor_rgba8 >> 16);
-    const cur_b: u8 = @truncate(frame.cursor_rgba8 >> 8);
-    var cy: i32 = 0;
-    while (cy < frame.cursor.height_px) : (cy += 1) {
-        const dy = frame.cursor.y_px + cy;
-        if (dy < 0 or dy >= @as(i32, @intCast(height))) continue;
-        var cx: i32 = 0;
-        while (cx < frame.cursor.width_px) : (cx += 1) {
-            const dx = frame.cursor.x_px + cx;
-            if (dx < 0 or dx >= @as(i32, @intCast(width))) continue;
-            const off = @as(usize, @intCast(dy)) * stride + @as(usize, @intCast(dx)) * 4;
-            rgba_ptr[off + 0] = cur_r;
-            rgba_ptr[off + 1] = cur_g;
-            rgba_ptr[off + 2] = cur_b;
-            rgba_ptr[off + 3] = 255;
+        const list = viewport_layout.layoutStyledParagraph(1024, 4096, 1024, native_session.Cache, &g_render_session.cache, family, style, body[0..end], ruby_text[0..r_end], ann_buf[0..count], &g_render_session.scratch, &g_render_session.placed, true, codes[0..code_count]) catch |err| switch (err) {
+            error.BlockFull, error.Capacity, error.SpanTooWide => {
+                end = reader.shorter(body, end, annotations) catch return -4;
+                continue;
+            },
+            else => {
+                g_render_error = @errorName(err);
+                return -4;
+            },
+        };
+        const fit = reader.visibleEnd(end, annotations, list, style);
+        if (fit < end) {
+            end = fit;
+            continue;
         }
+        var doc: HostWorkspaceType.DocType = .{};
+        doc.insertUtf8(body[0..end]) catch return -5;
+        for (annotations[0..count]) |span| {
+            doc.addRuby(span.base_start, span.base_end, ruby_text[span.ruby_start..span.ruby_end]) catch return -5;
+        }
+        doc.cursor = 0;
+        doc.forgetUndoHistory();
+        g_reader_section = g_reader_next_section;
+        g_reader_code_count = code_count;
+        @memcpy(g_reader_codes[0..code_count], codes[0..code_count]);
+        g_ws.doc = doc;
+        g_ws.layout_dirty = true;
+        return @intCast(end);
     }
+    return -6;
+}
 
-    return q_count;
+/// A host file load starts a fresh undo history and never consumes the old one.
+pub export fn xy_host_document_load(text: [*]const u8, len: u32) callconv(.c) bool {
+    if (g_reading or g_editing_source or len > 4096) return false;
+    var doc: HostWorkspaceType.DocType = .{};
+    doc.insertUtf8(text[0..len]) catch return false;
+    doc.forgetUndoHistory();
+    g_ws.doc = doc;
+    // A file replacement starts a new composition, retaining user IME settings.
+    g_ws.ime = .{ .mode = g_ws.ime.mode, .custom_prefixes = g_ws.ime.custom_prefixes };
+    g_ws.layout_dirty = true;
+    return true;
+}
+
+// Learning operations never swap or edit the reader/editor Document.
+pub export fn xy_host_learning_bind(data: [*]const u8, len: u32, library: [*]const u8, library_len: u32) callconv(.c) bool {
+    if (!g_live_ready) return false;
+    const pack = learning.catalog.Pack.init(data[0..len]) catch return false;
+    var digest: [32]u8 = undefined;
+    @import("std").crypto.hash.sha2.Sha256.hash(library[0..library_len], &digest, .{});
+    if (!pack.matchesLibrary(&digest)) return false;
+    g_learning.bind(data[0..len]) catch return false;
+    return true;
+}
+pub export fn xy_host_learning_page(section: u32, start: u32, end: u32) callconv(.c) i32 {
+    if (!g_reading or g_learning_visible) return -1;
+    g_learning.setPage(section, start, end) catch return -1;
+    return @intCast(g_learning.count() catch return -1);
+}
+fn learningCopy(text: []const u8, out: [*]u8, cap: u32) i32 {
+    if (text.len > cap) return -1;
+    @memcpy(out[0..text.len], text);
+    return @intCast(text.len);
+}
+pub export fn xy_host_learning_choice(ordinal: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const choice = (g_learning.choice(ordinal) catch return -1) orelse return -1;
+    return learningCopy(choice.code, out, cap);
+}
+pub export fn xy_host_learning_open(ordinal: u32) callconv(.c) bool {
+    if (!g_reading or !g_render_ready or g_learning_visible) return false;
+    g_learning.open(ordinal) catch return false;
+    g_learning_visible = true;
+    return true;
+}
+pub export fn xy_host_learning_leave() callconv(.c) void {
+    g_learning_visible = false;
+}
+pub export fn xy_host_learning_insert(text: [*]const u8, len: u32, replace: bool) callconv(.c) bool {
+    if (!g_learning_visible) return false;
+    if (replace) g_learning.replace(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    } else g_learning.insert(text[0..len]) catch |err| {
+        g_learning.notice(err);
+        return false;
+    };
+    return true;
+}
+pub export fn xy_host_learning_key(key: u8) callconv(.c) void {
+    if (!g_learning_visible) return;
+    const event: learning.navigation.Key = switch (key) {
+        13, 10 => .enter,
+        8, 127 => .backspace,
+        4 => .eof,
+        12 => .clear,
+        26 => .undo,
+        128 => .up,
+        129 => .down,
+        130 => .left,
+        131 => .right,
+        else => .{ .text = key },
+    };
+    var nav = learning.navigation.State{ .screen = .exercise };
+    g_learning.handle(&nav, event);
+}
+pub export fn xy_host_learning_action(action: u32) callconv(.c) i32 {
+    if (!g_learning_visible) return -1;
+    g_learning.message_len = 0;
+    switch (action) {
+        0 => g_learning.run() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
+        1 => g_learning.resetVm(),
+        2 => g_learning.restore() catch |err| {
+            g_learning.notice(err);
+            return -1;
+        },
+        3 => g_learning.editing_notes = !g_learning.editing_notes,
+        4 => {
+            _ = g_learning.doc().?.undo() catch |err| {
+                g_learning.notice(err);
+                return -1;
+            };
+        },
+        else => return -1,
+    }
+    const s = g_learning.slot() orelse return -1;
+    return if (action == 0 and s.failed) -1 else 0;
+}
+pub export fn xy_host_learning_copy(field: u32, out: [*]u8, cap: u32) callconv(.c) i32 {
+    if (!g_live_ready) return -1;
+    const s = g_learning.slot() orelse return -1;
+    const snippet = g_learning.pack.snippet(s.snippet) catch return -1;
+    const text = switch (field) {
+        0 => s.code.slice(),
+        1 => s.notes.slice(),
+        2 => s.result[0..s.result_len],
+        3 => snippet.id,
+        4 => g_learning.message[0..g_learning.message_len],
+        5 => snippet.reference_output,
+        else => return -1,
+    };
+    return learningCopy(text, out, cap);
+}
+
+/// Inspect the same attributed glyph positions used for page fitting and painting.
+pub export fn xy_host_reader_glyph(index: u32, out: *viewport_layout.PlacedGlyph) callconv(.c) bool {
+    if (!g_render_ready or index >= g_render_session.placed_count) return false;
+    out.* = g_render_session.placed[index];
+    return true;
 }

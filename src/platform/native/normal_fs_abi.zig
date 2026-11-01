@@ -1,6 +1,6 @@
 //! Trusted CPU0 foreground API. No hardware work follows from a request
 //! until the service task owns the host; all request bytes are copied.
-pub const Status = enum(u32) { off, starting, mounted, no_card, rejected, no_memory, quarantined };
+pub const Status = enum(u32) { off, starting, mounted, no_card, rejected, no_memory, quarantined, owned_store };
 pub const Report = extern struct {
     status: Status = .off,
     generation: u32 = 0,

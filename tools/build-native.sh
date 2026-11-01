@@ -16,12 +16,26 @@ if [ "$profile" = device ] && [ "$mode" = integer ] && [ "${NIHOS_NATIVE_QUALIFI
     export NIHOS_NATIVE_PSRAM_200="${NIHOS_NATIVE_PSRAM_200:-1}"
     export NIHOS_NATIVE_CONSOLE="${NIHOS_NATIVE_CONSOLE:-1}"
     export NIHOS_NATIVE_CONSOLE_LIVE="${NIHOS_NATIVE_CONSOLE_LIVE:-1}"
+    export NIHOS_NATIVE_KEYBOARD_I2C="${NIHOS_NATIVE_KEYBOARD_I2C:-1}"
     export NIHOS_NATIVE_NETWORK="${NIHOS_NATIVE_NETWORK:-1}"
+    # The ordinary device starts xy. Explicit camera qualification profiles
+    # keep their existing diagnostic UI unless xy is explicitly requested.
+    if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
+        export NIHOS_NATIVE_XY_WORKSPACE="${NIHOS_NATIVE_XY_WORKSPACE:-0}"
+    else
+        export NIHOS_NATIVE_XY_WORKSPACE="${NIHOS_NATIVE_XY_WORKSPACE:-1}"
+    fi
+    if [ "${NIHOS_NATIVE_XY_WORKSPACE}" = 1 ]; then
+        export NIHOS_NATIVE_CONSOLE_FONT="${NIHOS_NATIVE_CONSOLE_FONT:-1}"
+    fi
     # Explicit fixture builds retain their historical single-device profile.
     if [ "${NIHOS_NATIVE_AUDIO:-0}${NIHOS_NATIVE_MICROPHONE:-0}${NIHOS_NATIVE_RS485:-0}" = 000 ] && [ "${NIHOS_NATIVE_BOOT_TEST:-0}" = 0 ]; then
         export NIHOS_NATIVE_DEVICES="${NIHOS_NATIVE_DEVICES:-1}"
         if [ "${NIHOS_NATIVE_USB:-0}" = 0 ]; then
             export NIHOS_NATIVE_NORMAL_STORAGE="${NIHOS_NATIVE_NORMAL_STORAGE:-1}"
+            if [ "${NIHOS_NATIVE_NORMAL_STORAGE}" = 1 ] && [ "${NIHOS_NATIVE_XY_WORKSPACE}" = 1 ]; then
+                export NIHOS_NATIVE_SQLD="${NIHOS_NATIVE_SQLD:-1}"
+            fi
             if [ "${NIHOS_NATIVE_DEVICES:-0}" = 1 ] && [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 0 ] && [ "${NIHOS_NATIVE_CAMERA_ID+x}" != x ]; then
                 export NIHOS_NATIVE_CAMERA_ID=1
                 export NIHOS_NATIVE_CAMERA_DIAGNOSTICS="${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-0}"
@@ -42,7 +56,10 @@ if [ "${NIHOS_NATIVE_PMP_PROBE:-0}" = 1 ]; then build_dir="$build_dir-pmp-probe"
 if [ "${NIHOS_NATIVE_CAMERA_ID:-0}" = 1 ]; then
     if [ "${NIHOS_NATIVE_CAMERA_DIAGNOSTICS:-1}" = 1 ]; then build_dir="$build_dir-camera-id"; else build_dir="$build_dir-camera"; fi
 fi
+if [ "${NIHOS_NATIVE_CAMERA_JPEG:-0}" = 1 ]; then build_dir="$build_dir-jpeg"; fi
 if [ "${NIHOS_NATIVE_CAMERA_UI_FIXTURE:-0}" = 1 ]; then build_dir="$build_dir-camera-ui-fixture"; fi
+if [ "${NIHOS_NATIVE_XY_TRACE:-0}" = 1 ]; then build_dir="$build_dir-xy-trace"; fi
+if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then build_dir="$build_dir-sqld"; fi
 boot_dir="$build_dir/loader"
 case "$mode" in
     integer) ;;
@@ -67,10 +84,36 @@ defaults="$repo_root/ports/esp32p4-native/sdkconfig.defaults"
 if [ "$profile" = emulator ]; then
     defaults="$defaults;$repo_root/sdkconfig.emulator.defaults"
 fi
+if [ "$mode" = integer ] && { [ "${NIHOS_NATIVE_XY_WORKSPACE:-0}" = 1 ] || [ "${NIHOS_NATIVE_CANVAS_INTERACTIVE:-0}" = 1 ]; }; then
+    printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
+        "$repo_root/ports/esp32p4-native/partitions-xy.csv" > "$build_dir/xy.defaults"
+    defaults="$defaults;$build_dir/xy.defaults"
+fi
 if [ "$mode" = graphics ]; then
     printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
         "$repo_root/ports/esp32p4-native/partitions-graphics.csv" > "$build_dir/graphics.defaults"
     defaults="$defaults;$build_dir/graphics.defaults"
+fi
+if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then
+    printf 'CONFIG_PARTITION_TABLE_CUSTOM=y\nCONFIG_PARTITION_TABLE_CUSTOM_FILENAME="%s"\n' \
+        "$repo_root/ports/esp32p4-native/partitions-sqld.csv" > "$build_dir/sqld.defaults"
+    defaults="$defaults;$build_dir/sqld.defaults"
+fi
+# Defaults do not replace an existing sdkconfig. Keep clean and incremental builds identical.
+if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then selected_partitions="$repo_root/ports/esp32p4-native/partitions-sqld.csv";
+elif [ "${NIHOS_NATIVE_XY_WORKSPACE:-0}" = 1 ] || [ "${NIHOS_NATIVE_CANVAS_INTERACTIVE:-0}" = 1 ]; then selected_partitions="$repo_root/ports/esp32p4-native/partitions-xy.csv";
+else selected_partitions=; fi
+if [ -f "$boot_dir/sdkconfig" ] && [ -n "$selected_partitions" ]; then
+    "$python" - "$boot_dir/sdkconfig" "$selected_partitions" <<'PYCONFIG'
+import sys
+from pathlib import Path
+path=Path(sys.argv[1])
+keys=('CONFIG_PARTITION_TABLE_SINGLE_APP','CONFIG_PARTITION_TABLE_CUSTOM','CONFIG_PARTITION_TABLE_CUSTOM_FILENAME')
+lines=[line for line in path.read_text().splitlines() if not any(line.startswith(key+'=') or line.startswith('# '+key+' ') for key in keys)]
+lines+=['# CONFIG_PARTITION_TABLE_SINGLE_APP is not set','CONFIG_PARTITION_TABLE_CUSTOM=y','CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="'+sys.argv[2]+'"']
+path.write_text('\n'.join(lines)+'\n')
+PYCONFIG
+
 fi
 idf.py -C "$repo_root/ports/esp32p4-native" -B "$boot_dir" \
     -D IDF_TARGET=esp32p4 -D "SDKCONFIG=$boot_dir/sdkconfig" \
@@ -100,6 +143,7 @@ if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 9 ]; then set -- --none "$repo_root/src/grap
 if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/graphics/keypad_atlas.json"; fi
 if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
 if [ "${NIHOS_NATIVE_NORMAL_STORAGE:-0}" = 1 ]; then set -- "$@" --normal-fs "$build_dir/normal-fs-manifest.json"; fi
+if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then set -- "$@" --sqld "$build_dir/sqld-manifest.json"; fi
 "$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"

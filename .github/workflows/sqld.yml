@@ -1,0 +1,28 @@
+name: sqld checkpoint integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: sqld-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  storage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - name: Build the pinned SQLite service and checkpoint adapter
+        run: sh tools/build-sqld-host.sh
+      - name: Owner, queue, policy, restart and torn-write recovery
+        run: python3 tools/sqld_test.py -v
+      - name: Native allocator and OS initialization contract
+        run: python3 -m unittest discover -s tools -p sqld_allocator_test.py -v
+      - name: Owned SD capability, request copies and write bounds (modeled MMIO)
+        run: python3 tools/check-sqld-block.py
+      - name: RV32 service and store object boundary
+        run: sh tools/check-sqld-rv32.sh

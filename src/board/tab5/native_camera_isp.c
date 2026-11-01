@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "hal/isp_ll.h"
+#ifndef NIH_NATIVE_CAMERA_JPEG
+#define NIH_NATIVE_CAMERA_JPEG 0
+#endif
 #if defined(__riscv)
 __asm__(".global ISP\n.set ISP,0x500a1000\n");
 #endif
@@ -27,7 +30,7 @@ int32_t nih_camera_isp_start(void) {
     const hal_utils_clk_div_t div = { .integer = 1 };
     isp_ll_set_clock_div(&ISP, &div);
     const color_space_pixel_format_t raw = { .color_type_id = ISP_COLOR_RAW8 };
-    if (!isp_ll_set_input_data_color_format(&ISP, raw) || !isp_ll_set_output_data_color_format(&ISP, raw)) return -2;
+    if (!isp_ll_set_input_data_color_format(&ISP, raw) || !isp_ll_set_output_data_color_format(&ISP, (color_space_pixel_format_t){ .color_type_id = NIH_NATIVE_CAMERA_JPEG ? ISP_COLOR_RGB565 : ISP_COLOR_RAW8 })) return -2;
     isp_ll_clk_enable(&ISP, true);
     isp_ll_set_input_data_source(&ISP, ISP_INPUT_DATA_SOURCE_CSI);
     isp_ll_enable_line_start_packet_exist(&ISP, false);
@@ -39,7 +42,7 @@ int32_t nih_camera_isp_start(void) {
     isp_ll_enable(&ISP, true);
     if (!HP_SYS_CLKRST.peri_clk_ctrl25.reg_isp_clk_en || !ISP.clk_en.clk_en ||
         !ISP.cntl.isp_en || !ISP.cntl.mipi_data_en || ISP.cntl.isp_in_src != 0 ||
-        ISP.cntl.isp_data_type != 0 || ISP.cntl.isp_out_type != 0 ||
+        ISP.cntl.isp_data_type != 0 || ISP.cntl.isp_out_type != (NIH_NATIVE_CAMERA_JPEG ? 4 : 0) ||
         ISP.frame_cfg.hadr_num != 1279 || ISP.frame_cfg.vadr_num != 719) return -2;
     return 0;
 }
