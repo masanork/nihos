@@ -78,6 +78,41 @@ const Model = struct {
     }
 };
 
+const UnownedShared = struct {
+    pub const shared_host = true;
+    model: Model = .{},
+    pub fn ownsSlot(_: *@This(), _: u32) bool {
+        return false;
+    }
+    pub fn read(self: *@This(), offset: usize) u32 {
+        return self.model.read(offset);
+    }
+    pub fn write(self: *@This(), offset: usize, value: u32) void {
+        self.model.write(offset, value);
+    }
+    pub fn delay(self: *@This(), us: u32) void {
+        self.model.delay(us);
+    }
+    pub fn prepareDma(self: *@This(), writing: bool, source: []const u8, length: usize) ?u32 {
+        return self.model.prepareDma(writing, source, length);
+    }
+    pub fn finishDma(self: *@This(), writing: bool, destination: []u8) bool {
+        return self.model.finishDma(writing, destination);
+    }
+    pub fn releaseDma(_: *@This()) bool {
+        return true;
+    }
+};
+
+test "multi-block write rejects an unowned shared controller before MMIO" {
+    var io: UnownedShared = .{};
+    var host = sd.Controller(*UnownedShared){ .io = &io, .prepared = true, .selected = true, .four_bit = true };
+    const data: [1024]u8 = @splat(0);
+    try std.testing.expectError(error.NoOwnership, host.writeBlocks(0x1f400, &data));
+    try std.testing.expectEqual(@as(usize, 0), io.model.touches);
+    try std.testing.expect(!host.faulted);
+}
+
 fn setup(model: *Model) !sd.Controller(*Model) {
     var host = sd.Controller(*Model){ .io = model, .poll_limit = 3 };
     try host.prepare(true);
