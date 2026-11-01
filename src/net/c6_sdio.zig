@@ -50,17 +50,18 @@ pub fn ProfileStream(comptime Host: type, comptime credit_limit: u32) type {
             return transfer.logical;
         }
 
-        /// At most one C6 receive buffer per call. Zero credits means no
-        /// progress, not a retry loop; the AT owner's deadline still applies.
+        /// One complete transaction per call. Oversized packets are rejected
+        /// before touching the FIFO; separate writes are not one Hosted frame.
+        /// Zero credits means no progress; the owner's deadline still applies.
         pub fn send(self: *Self, source: []const u8) StreamError!usize {
             if (self.faulted) return error.Retired;
-            if (source.len == 0) return error.InvalidBuffer;
+            if (source.len == 0 or source.len > self.scratch.len) return error.InvalidBuffer;
             errdefer self.faulted = true;
             const total = ((try self.host.readWord(token_register)) >> 16) & credit_mask;
             const credits = (total -% self.sent_buffers) & credit_mask;
             if (credits > credit_limit) return error.CounterDiscontinuity;
             if (credits == 0) return 0;
-            const transfer = try plan(@min(source.len, 512));
+            const transfer = try plan(source.len);
             @memset(&self.scratch, 0);
             @memcpy(self.scratch[0..transfer.logical], source[0..transfer.logical]);
             try self.host.writeBytes(transfer.address, self.scratch[0..transfer.wire]);

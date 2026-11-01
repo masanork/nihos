@@ -72,7 +72,11 @@ test "credit exhaustion leaves TX and counters unchanged without blocking" {
     try std.testing.expectEqual(@as(u32, 0), stream.sent_buffers);
     host.credits = 2;
     const bytes: [1024]u8 = @splat(3);
-    try std.testing.expectEqual(@as(usize, 512), try stream.send(&bytes));
+    try std.testing.expectError(error.InvalidBuffer, stream.send(&bytes));
+    try std.testing.expectEqual(@as(usize, 0), host.fifo_calls);
+    try std.testing.expectEqual(@as(u32, 0), stream.sent_buffers);
+    try std.testing.expect(!stream.faulted);
+    try std.testing.expectEqual(@as(usize, 512), try stream.send(bytes[0..512]));
     try std.testing.expectEqual(@as(usize, 512), try stream.send(bytes[512..]));
     try std.testing.expectEqual(@as(usize, 0), try stream.send("abc"));
 }
