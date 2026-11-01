@@ -18,9 +18,11 @@ Priorities before adding more application services to C6:
 2. **Failure isolation and reconnection.** The opt-in native profile now
    retires timed-out time requests without resetting a live station, and ignores
    late acknowledgements/results that cannot match the current request. Host
-   tests cover queued and waiting timeouts and stale messages; physical timeout
-   injection and BLE/UI continuity are not yet demonstrated. Invalid responses,
-   partial transfers, disconnect, DHCP changes, and C6 restart still need
+   tests cover queued and waiting timeouts and stale messages. One Tab5
+   response-loss injection observed a timeout, retry, RTC update and BLE/UI
+   continuity without a station reset; see [the record](2026-11-01-c6-time-loss.md).
+   Invalid responses, partial transfers, disconnect, DHCP changes, and C6
+   restart still need
    separate classification and qualification; protocol errors may reset C6.
 3. **Measure the existing offload.** Compare factory/P4-SNTP and C6-SNTP under
    the same P4 feature profile, AP and workload. Record P4 busy time, polling,
