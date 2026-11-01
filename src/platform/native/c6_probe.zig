@@ -282,7 +282,7 @@ fn exercise(clock: timers.Timer, report: *Report, join: ?WifiJoin) !void {
     nih_c6_pads_init();
     host.io.delay(20_000);
     nih_c6_reset(1);
-    host.io.delay(2_000_000);
+    host.io.delay(300_000);
     if (clock_failed) return error.Clock;
     report.stage = 2;
     try host.prepare(true);
@@ -366,7 +366,7 @@ noinline fn exerciseHosted(clock: timers.Timer, report: *Report, join: hosted.Jo
     if (nih_c6_power_enable() != 1) return error.PowerEnable;
     host.io.delay(20_000);
     nih_c6_reset(1);
-    host.io.delay(2_000_000);
+    host.io.delay(300_000);
     if (clock_failed) return error.Clock;
     report.stage = 2;
     try host.prepare(true);

@@ -144,4 +144,9 @@ pub fn build(b: *std.Build) void {
     xy_render_adapter_module.addImport("surface", surface_module);
     xy_render_adapter_module.addImport("viewport_layout", viewport_layout_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_render_adapter_module })).step);
+    const lp_core_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/lp_core.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = lp_core_module })).step);
+    const suspend_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/suspend.zig"), .target = target, .optimize = optimize });
+    suspend_module.addImport("lp_core", lp_core_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = suspend_module })).step);
 }

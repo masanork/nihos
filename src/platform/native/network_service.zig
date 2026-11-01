@@ -19,11 +19,11 @@ const TimeClient = hosted.sntp.Engine(".flash.text.time");
 const State = struct {
     time: TimeClient = .{},
     client: hosted.Client = .{},
-    decoder: hosted.wire.Decoder = .{},
     configuration: hosted.Configuration = .{},
     ble: hosted.ble.Client = .{},
     ble_output: [32]u8 = @splat(0),
     ble_length: usize = 0,
+    decoder: hosted.wire.Decoder = .{},
 };
 pub const storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
@@ -33,7 +33,15 @@ var decoder: *hosted.wire.Decoder = undefined;
 // SAFETY: begin binds the exclusive PSRAM state before the first active poll.
 // Foreground-only reset templates share the already mapped read-only display tables.
 // Keep large decoder/State defaults out of resident SRAM.
-const initial_state linksection(".flash.rodata.display") = State{};
+const InitialTemplate = struct {
+    time: TimeClient = .{},
+    client: hosted.Client = .{},
+    configuration: hosted.Configuration = .{},
+    ble: hosted.ble.Client = .{},
+    ble_output: [32]u8 = @splat(0),
+    ble_length: usize = 0,
+};
+const initial_state linksection(".flash.rodata.display") = InitialTemplate{};
 // SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
 var rx: [512]u8 = @splat(0);
@@ -79,7 +87,8 @@ pub const Report = extern struct {
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
     state_storage = state;
-    @memcpy(@import("std").mem.asBytes(state), @import("std").mem.asBytes(&initial_state));
+    @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
+    state.decoder.reset();
     client = &state.client;
     decoder = &state.decoder;
     clock = timer;
@@ -103,7 +112,7 @@ fn startAttempt(now: u64) void {
     host_generation = 0;
     transport = .{ .host = &host };
     @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
-    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
+    decoder.reset();
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     client.beginDual(configuration.get(), now, network_config.ipv6);
@@ -131,7 +140,7 @@ fn stop(err: anyerror, now: ?u64) void {
     report.failures +|= 1;
     transport.invalidate();
     @memcpy(@import("std").mem.asBytes(client), @import("std").mem.asBytes(&initial_state.client));
-    @memcpy(@import("std").mem.asBytes(decoder), @import("std").mem.asBytes(&initial_state.decoder));
+    decoder.reset();
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     nih_c6_reset(0);

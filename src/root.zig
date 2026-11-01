@@ -38,6 +38,8 @@ pub const esp32p4_sdmmc = @import("soc/esp32p4/sdmmc.zig");
 pub const sdmmc_host = @import("io/sdmmc_host.zig");
 pub const esp32p4_psram_supply = @import("soc/esp32p4/psram_supply.zig");
 pub const esp32p4_psram_mapping = @import("soc/esp32p4/psram_mapping.zig");
+pub const esp32p4_lp_core = @import("soc/esp32p4/lp_core.zig");
+pub const esp32p4_suspend = @import("soc/esp32p4/suspend.zig");
 pub const page_pool = @import("kernel/page_pool.zig");
 pub const memory_broker = @import("kernel/memory_broker.zig");
 pub const development_memory = @import("kernel/development_memory.zig");
@@ -138,6 +140,8 @@ test {
     _ = sdmmc_host;
     _ = @import("io/sdmmc_shared_test.zig");
     _ = @import("soc/esp32p4/reset_capture.zig");
+    _ = esp32p4_lp_core;
+    _ = esp32p4_suspend;
     _ = esp32p4_psram_supply;
     _ = esp32p4_psram_mapping;
     _ = @import("soc/esp32p4/psram_mapping_test.zig");
