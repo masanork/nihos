@@ -18,6 +18,19 @@ test "in-place Hosted frames equal separate-buffer encoding" {
     try std.testing.expectError(error.Capacity, wire.frameInPlace(&tiny, 1, 0, 1));
 }
 
+test "Hosted framing overwrites the entire transmitted range" {
+    const payload: [128]u8 = @splat(0x37);
+    for ([_]usize{ 1, 64, 128 }) |length| {
+        var zero: [144]u8 = @splat(0);
+        var stale: [144]u8 = @splat(0xa5);
+        const expected = try wire.frame(&zero, wire.station_interface, 17, payload[0..length]);
+        const actual = try wire.frame(&stale, wire.station_interface, 17, payload[0..length]);
+        try std.testing.expectEqual(@as(usize, length + 12), actual.len);
+        try std.testing.expectEqualSlices(u8, expected, actual);
+        try std.testing.expect(std.mem.allEqual(u8, stale[actual.len..], 0xa5));
+    }
+}
+
 test "settings provider owns credentials and validates updates before replacing" {
     var config: station.Configuration = .{};
     var name = [_]u8{ 't', 'e', 's', 't' };
