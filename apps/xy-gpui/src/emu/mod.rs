@@ -7,11 +7,16 @@ pub mod elf;
 use bus::{Bus, FB_HEIGHT, FB_WIDTH};
 use cpu::Cpu;
 use elf::ElfLoader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct Emulator {
     pub bus: Bus,
     pub cpu: Cpu,
+    pub elf_path: PathBuf,
+    pub dict_path: Option<PathBuf>,
+    pub paused: bool,
+    pub total_steps: u64,
+    pub mips: f32,
 }
 
 impl Emulator {
@@ -19,23 +24,67 @@ impl Emulator {
         elf_path: impl AsRef<Path>,
         dict_path: Option<impl AsRef<Path>>,
     ) -> std::io::Result<Self> {
+        let elf_buf = elf_path.as_ref().to_path_buf();
+        let dict_buf = dict_path.as_ref().map(|p| p.as_ref().to_path_buf());
         let mut bus = Bus::new();
-        let entry_pc = ElfLoader::load_elf(&mut bus, elf_path)?;
+        let entry_pc = ElfLoader::load_elf(&mut bus, &elf_buf)?;
 
-        if let Some(dict) = dict_path {
+        if let Some(dict) = &dict_buf {
             // Flash offset 0x0061_0000 (after 6MB factory partition)
             let _ = ElfLoader::load_dictionary(&mut bus, dict, 0x0061_0000);
         }
 
         let cpu = Cpu::new(entry_pc);
-        Ok(Self { bus, cpu })
+        Ok(Self {
+            bus,
+            cpu,
+            elf_path: elf_buf,
+            dict_path: dict_buf,
+            paused: false,
+            total_steps: 0,
+            mips: 0.0,
+        })
+    }
+
+    /// Reset CPU and reload memory from ELF and dictionary.
+    pub fn reset(&mut self) -> std::io::Result<()> {
+        let mut bus = Bus::new();
+        let entry_pc = ElfLoader::load_elf(&mut bus, &self.elf_path)?;
+        if let Some(dict) = &self.dict_path {
+            let _ = ElfLoader::load_dictionary(&mut bus, dict, 0x0061_0000);
+        }
+        self.bus = bus;
+        self.cpu = Cpu::new(entry_pc);
+        self.total_steps = 0;
+        self.mips = 0.0;
+        Ok(())
     }
 
     /// Step execution for one display frame (~16.6 ms, e.g. 500,000 instructions).
     pub fn step_frame(&mut self, instructions: usize) {
+        if self.paused {
+            return;
+        }
+        let t0 = std::time::Instant::now();
         for _ in 0..instructions {
             self.cpu.step(&mut self.bus);
         }
+        let elapsed = t0.elapsed().as_secs_f32();
+        if elapsed > 0.0001 {
+            let current_mips = (instructions as f32 / elapsed) / 1_000_000.0;
+            self.mips = if self.mips == 0.0 {
+                current_mips
+            } else {
+                self.mips * 0.9 + current_mips * 0.1
+            };
+        }
+        self.total_steps += instructions as u64;
+    }
+
+    /// Single-step instruction execution (for debugging / inspection).
+    pub fn step_single(&mut self) {
+        self.cpu.step(&mut self.bus);
+        self.total_steps += 1;
     }
 
     /// Read raw RGB565 framebuffer from emulated PSRAM.

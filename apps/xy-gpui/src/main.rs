@@ -25,6 +25,7 @@ struct Workspace {
     emulator: Option<emu::Emulator>,
     emu_image: Option<Arc<RenderImage>>,
     emu_mode: bool,
+    emu_fit: bool,
 }
 impl Workspace {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -32,7 +33,6 @@ impl Workspace {
         let scale = window.scale_factor().min(2.);
         let width = (PANE_W * scale).round().clamp(240., 1280.) as u32;
         let height = (PANE_H * scale).round().clamp(180., 720.) as u32;
-        window.set_window_title("xy - GPUI");
         let focus = cx.focus_handle();
         window.focus(&focus);
         let editor = frame(core.bgra(true, width, height), width, height);
@@ -73,6 +73,13 @@ impl Workspace {
             ));
             emulator = Some(emu);
         }
+
+        let emu_mode = emulator.is_some();
+        if emu_mode {
+            window.set_window_title("nihOS - M5Stack Tab5 Emulator");
+        } else {
+            window.set_window_title("xy - GPUI");
+        }
         cx.observe_window_activation(window, |this, window, cx| {
             if !window.is_window_active() {
                 this.core.focus_lost(this.now());
@@ -108,7 +115,8 @@ impl Workspace {
             frames: 1,
             emulator,
             emu_image,
-            emu_mode: false,
+            emu_mode,
+            emu_fit: true,
         }
     }
     fn now(&self) -> u64 {
@@ -205,19 +213,28 @@ impl Workspace {
         }
         if self.emu_mode {
             if let Some(emu) = &mut self.emulator {
-                if let Some(c) = stroke.key_char.as_deref().and_then(|s| s.chars().next()) {
-                    let ascii = match c {
-                        '\r' | '\n' => b'\r',
-                        _ if c.is_ascii() => c as u8,
-                        _ => 0,
-                    };
-                    if ascii != 0 {
-                        emu.send_key(ascii);
+                match stroke.key.as_str() {
+                    "space" => emu.send_key(b' '),
+                    "enter" => emu.send_key(b'\r'),
+                    "backspace" => emu.send_key(8),
+                    "escape" => emu.send_key(0x1b),
+                    "tab" => emu.send_key(b'\t'),
+                    "left" => emu.send_key(0x02),
+                    "right" => emu.send_key(0x06),
+                    "up" => emu.send_key(0x10),
+                    "down" => emu.send_key(0x0e),
+                    _ => {
+                        if let Some(c) = stroke.key_char.as_deref().and_then(|s| s.chars().next()) {
+                            let ascii = match c {
+                                '\r' | '\n' => b'\r',
+                                _ if c.is_ascii() => c as u8,
+                                _ => 0,
+                            };
+                            if ascii != 0 {
+                                emu.send_key(ascii);
+                            }
+                        }
                     }
-                } else if stroke.key == "enter" {
-                    emu.send_key(b'\r');
-                } else if stroke.key == "backspace" {
-                    emu.send_key(8);
                 }
             }
             cx.stop_propagation();
@@ -413,6 +430,326 @@ fn shown(image: &Arc<RenderImage>, w: f32, h: f32) -> gpui::Img {
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.schedule(window, cx);
+
+        if self.emu_mode {
+            let emu = self.emulator.as_ref();
+            let is_paused = emu.is_some_and(|e| e.paused);
+            let mips = emu.map_or(0.0, |e| e.mips);
+            let (screen_w, screen_h) = if self.emu_fit {
+                (1024., 576.)
+            } else {
+                (1280., 720.)
+            };
+
+            return div()
+                .track_focus(&self.focus)
+                .on_key_down(cx.listener(Self::key_down))
+                .on_key_up(cx.listener(Self::key_up))
+                .size_full()
+                .flex()
+                .flex_col()
+                .bg(rgb(0x0e1015))
+                .text_color(rgb(0xe4e4e7))
+                .child(
+                    // Minimalist Top Toolbar
+                    div()
+                        .flex()
+                        .h(px(42.))
+                        .px_4()
+                        .items_center()
+                        .justify_between()
+                        .bg(rgb(0x16181f))
+                        .border_b_1()
+                        .border_color(rgb(0x262933))
+                        // Left: Machine Brand & Status Badge
+                        .child(
+                            div()
+                                .flex()
+                                .gap_3()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_size(px(14.))
+                                                .text_color(rgb(0xffffff))
+                                                .child("nihOS"),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_size(px(12.))
+                                                .text_color(rgb(0x71717a))
+                                                .child("ESP32-P4"),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_1p5()
+                                        .px_2()
+                                        .py_0p5()
+                                        .rounded_md()
+                                        .bg(if is_paused {
+                                            rgb(0x3f3f46)
+                                        } else {
+                                            rgb(0x143a22)
+                                        })
+                                        .child(div().size(px(6.)).rounded_full().bg(if is_paused {
+                                            rgb(0xeab308)
+                                        } else {
+                                            rgb(0x22c55e)
+                                        }))
+                                        .child(
+                                            div()
+                                                .text_size(px(11.))
+                                                .font_weight(FontWeight::MEDIUM)
+                                                .text_color(if is_paused {
+                                                    rgb(0xfde047)
+                                                } else {
+                                                    rgb(0x4ade80)
+                                                })
+                                                .child(if is_paused {
+                                                    "PAUSED".to_string()
+                                                } else {
+                                                    format!("{:.1} MIPS", mips)
+                                                }),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(11.))
+                                        .text_color(rgb(0x71717a))
+                                        .child("32MB PSRAM • XIP NFST"),
+                                ),
+                        )
+                        // Right: Minimal Controls
+                        .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    // Pause / Resume Button
+                                    div()
+                                        .id("emu-pause-btn")
+                                        .cursor_pointer()
+                                        .px_2p5()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0x27272a))
+                                        .hover(|s| s.bg(rgb(0x3f3f46)))
+                                        .text_size(px(12.))
+                                        .on_click(cx.listener(|this, _, _window, cx| {
+                                            if let Some(emu) = &mut this.emulator {
+                                                emu.paused = !emu.paused;
+                                            }
+                                            cx.notify();
+                                        }))
+                                        .child(if is_paused {
+                                            "▶ Resume"
+                                        } else {
+                                            "❚❚ Pause"
+                                        }),
+                                )
+                                .child(
+                                    // Step Button (single frame)
+                                    div()
+                                        .id("emu-step-btn")
+                                        .cursor_pointer()
+                                        .px_2p5()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0x27272a))
+                                        .hover(|s| s.bg(rgb(0x3f3f46)))
+                                        .text_size(px(12.))
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            let was_paused =
+                                                this.emulator.as_ref().is_some_and(|e| e.paused);
+                                            if let Some(emu) = &mut this.emulator {
+                                                emu.paused = false;
+                                            }
+                                            this.refresh_emulator(window);
+                                            if let Some(emu) = &mut this.emulator {
+                                                emu.paused = was_paused;
+                                            }
+                                            cx.notify();
+                                        }))
+                                        .child("⏭ Step"),
+                                )
+                                .child(
+                                    // Reset Button
+                                    div()
+                                        .id("emu-reset-btn")
+                                        .cursor_pointer()
+                                        .px_2p5()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0x27272a))
+                                        .hover(|s| s.bg(rgb(0x3f3f46)))
+                                        .text_size(px(12.))
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            if let Some(emu) = &mut this.emulator {
+                                                let _ = emu.reset();
+                                                emu.step_frame(1_000_000);
+                                            }
+                                            this.refresh_emulator(window);
+                                            cx.notify();
+                                        }))
+                                        .child("↻ Reset"),
+                                )
+                                .child(
+                                    // Fit / 1x Scale toggle
+                                    div()
+                                        .id("emu-scale-btn")
+                                        .cursor_pointer()
+                                        .px_2p5()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0x27272a))
+                                        .hover(|s| s.bg(rgb(0x3f3f46)))
+                                        .text_size(px(12.))
+                                        .on_click(cx.listener(|this, _, _window, cx| {
+                                            this.emu_fit = !this.emu_fit;
+                                            cx.notify();
+                                        }))
+                                        .child(if self.emu_fit { "⛶ 1x" } else { "⛶ Fit" }),
+                                )
+                                .child(
+                                    // Toggle to original xy workspace
+                                    div()
+                                        .id("emu-workspace-btn")
+                                        .cursor_pointer()
+                                        .px_2p5()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(rgb(0x1e3a5f))
+                                        .hover(|s| s.bg(rgb(0x2563eb)))
+                                        .text_size(px(12.))
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            this.emu_mode = false;
+                                            window.set_window_title("xy - GPUI");
+                                            cx.notify();
+                                        }))
+                                        .child("xy IDE ↗"),
+                                ),
+                        ),
+                )
+                // Center Screen Display
+                .child(
+                    div()
+                        .flex_1()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .p_4()
+                        .child(if let Some(emu_img) = &self.emu_image {
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .gap_3()
+                                .child(
+                                    // Bezel around display
+                                    div()
+                                        .border_2()
+                                        .border_color(rgb(0x27272a))
+                                        .rounded_lg()
+                                        .overflow_hidden()
+                                        .shadow_lg()
+                                        .bg(rgb(0x000000))
+                                        .child(shown(emu_img, screen_w, screen_h)),
+                                )
+                                .child(
+                                    // M5 Tab5 Bottom Buttons (A, B, C)
+                                    div()
+                                        .flex()
+                                        .gap_4()
+                                        .items_center()
+                                        .child(
+                                            div()
+                                                .id("btn-m5-a")
+                                                .px_4()
+                                                .py_1()
+                                                .rounded_md()
+                                                .bg(rgb(0x1a1d24))
+                                                .border_1()
+                                                .border_color(rgb(0x27272a))
+                                                .text_color(rgb(0x71717a))
+                                                .text_size(px(11.))
+                                                .cursor_pointer()
+                                                .hover(|s| {
+                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
+                                                })
+                                                .on_click(cx.listener(|this, _, _, _| {
+                                                    if let Some(emu) = &mut this.emulator {
+                                                        emu.send_key(b'a');
+                                                    }
+                                                }))
+                                                .child("Button A"),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("btn-m5-b")
+                                                .px_4()
+                                                .py_1()
+                                                .rounded_md()
+                                                .bg(rgb(0x1a1d24))
+                                                .border_1()
+                                                .border_color(rgb(0x27272a))
+                                                .text_color(rgb(0x71717a))
+                                                .text_size(px(11.))
+                                                .cursor_pointer()
+                                                .hover(|s| {
+                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
+                                                })
+                                                .on_click(cx.listener(|this, _, _, _| {
+                                                    if let Some(emu) = &mut this.emulator {
+                                                        emu.send_key(b'b');
+                                                    }
+                                                }))
+                                                .child("Button B"),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("btn-m5-c")
+                                                .px_4()
+                                                .py_1()
+                                                .rounded_md()
+                                                .bg(rgb(0x1a1d24))
+                                                .border_1()
+                                                .border_color(rgb(0x27272a))
+                                                .text_color(rgb(0x71717a))
+                                                .text_size(px(11.))
+                                                .cursor_pointer()
+                                                .hover(|s| {
+                                                    s.bg(rgb(0x27272a)).text_color(rgb(0xffffff))
+                                                })
+                                                .on_click(cx.listener(|this, _, _, _| {
+                                                    if let Some(emu) = &mut this.emulator {
+                                                        emu.send_key(b'c');
+                                                    }
+                                                }))
+                                                .child("Button C"),
+                                        ),
+                                )
+                        } else {
+                            div()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .gap_2()
+                                .text_color(rgb(0x71717a))
+                                .child("Firmware ELF not loaded")
+                                .child("Place nihos-native.elf into build/native-emulator/ to run")
+                        }),
+                );
+        }
+
         let paused = self.core.state().paused != 0;
         div()
             .track_focus(&self.focus)
@@ -492,28 +829,16 @@ impl Render for Workspace {
                             .rounded_md()
                             .overflow_hidden()
                             .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _window, cx| {
-                                this.emu_mode = !this.emu_mode;
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.emu_mode = true;
+                                window.set_window_title("nihOS - M5Stack Tab5 Emulator");
                                 cx.notify();
                             }))
                             .child(shown(&self.labels.emu_toggle, 100., 40.)),
                     )
                     .child(shown(&self.status, 320., 40.)),
             )
-            .child(if self.emu_mode {
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(if let Some(emu_img) = &self.emu_image {
-                        div()
-                            .border_2()
-                            .border_color(rgb(0x117733))
-                            .child(shown(emu_img, 1024., 576.))
-                    } else {
-                        div().child("Firmware ELF not loaded")
-                    })
-            } else {
+            .child(
                 div()
                     .flex()
                     .gap_4()
@@ -566,8 +891,8 @@ impl Render for Workspace {
                                     .child(shown(&self.graph, PANE_W, PANE_H)),
                             )
                             .child(shown(&self.labels.graph_help, 512., 28.)),
-                    )
-            })
+                    ),
+            )
             .child(shown(&self.labels.footer, 600., 28.))
     }
 }
