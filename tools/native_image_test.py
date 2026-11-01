@@ -11,6 +11,20 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_rust_session_flash_never_admits_irq_or_out_of_span_code(self):
+        boot = [('psram.probe', 0x40000120, 0x40000920),
+                ('psram_memory.prepare__func_1', 0x40000920, 0x40000a00)]
+        app = [('session.nih_app_session_start', 0x40000a00, 0x40000b00)]
+        args = (0x40000120, 0x40000b00, 0x4ff00000, 0x4ff28000)
+        MODULE.audit_boot_functions(boot + app, *args, rust_session_span=(0x40000a00, 0x40000b00))
+        with self.assertRaisesRegex(ValueError, 'unapproved Rust session'):
+            MODULE.audit_boot_functions(boot + [('nih_native_dispatch', 0x40000a00, 0x40000b00)],
+                                       *args, rust_session_span=(0x40000a00, 0x40000b00))
+        with self.assertRaisesRegex(ValueError, 'outside approved'):
+            MODULE.audit_boot_functions(boot, *args, rust_session_span=(0x40080000, 0x40080100))
+        with self.assertRaisesRegex(ValueError, 'unapproved Flash'):
+            MODULE.audit_boot_functions(boot + app, *args)
+
     def test_xy_sine_table_requires_flash_storage_without_anonymous_sram_copy(self):
         name, start = 'xy.plot_config.sine', 0x40070000
         table = bytes(range(256)) * 2

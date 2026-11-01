@@ -1,0 +1,5 @@
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=261728 free=239240 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok

@@ -1,0 +1,19 @@
+[package]
+name = "nihos-rust-app-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+native-task = ["nihos-app/native-task"]
+
+[dependencies]
+nihos-app = { path = "../../sdk/rust/nihos-app" }
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true

@@ -1,0 +1,7 @@
+temporary negative-control configuration: runtime=65536 linear=262144
+success=0 injected=0 attempts=74 runtime_peak=2581 linear_peak=65536
+runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+buddy_recovered=1 arena_reservation=327680
+initial_free_runtime=63360 initial_free_linear=253824
+peak_reserved_runtime=6208 peak_reserved_linear=131072
+conclusion: 64 KiB runtime backing recovers but does not run this fixture; restored to 128 KiB

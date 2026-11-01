@@ -1,0 +1,5 @@
+/private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_interp_classic.c:6835:13: runtime error: member access within misaligned address 0x000102581444 for type 'WASMBranchBlock' (aka 'struct WASMBranchBlock'), which requires 8 byte alignment
+0x000102581444: note: pointer points here
+  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+              ^ 
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /private/tmp/nihos-rust-sdk-integration-20261030/build/wamr-2.4.5/core/iwasm/interpreter/wasm_interp_classic.c:6835:13 

@@ -30,7 +30,7 @@ MEMORY {
 #endif
     descriptor (r) : ORIGIN = 0x40000020, LENGTH = 256
     flash_boot (rx) : ORIGIN = 0x40000120, LENGTH = 64K - 0x120
-#if NIH_NATIVE_SQLITE
+#if NIH_NATIVE_SQLITE || NIH_NATIVE_WASM
 #if NIH_NATIVE_FATFS_RPC
     flash_sql (rx) : ORIGIN = 0x40020000, LENGTH = 704K
 #else
@@ -57,6 +57,11 @@ SECTIONS
     .flash.boot : {
         __flash_boot_start = .;
         *(.flash.text.boot)
+#if !NIH_NATIVE_NORMAL_STORAGE
+        __flash_rust_app_start = .;
+        *(.flash.text.rust_app)
+        __flash_rust_app_end = .;
+#endif
         __flash_sdmmc_boot_start = .;
         *(.flash.text.sdboot)
         __flash_sdmmc_boot_end = .;
@@ -275,6 +280,12 @@ SECTIONS
     .flash.fstext : {
         __flash_fs_text_start = .;
         *normal_fs_*.o(.text .text.*)
+        __flash_rust_app_start = .;
+        *(.flash.text.rust_app)
+        *rust-fixture.o(.text .text.*)
+        *rust-session-adapter.o(.text .text.*)
+        *(.text.nih_rust_app_frame)
+        __flash_rust_app_end = .;
         . = ALIGN(128);
         __flash_fs_text_end = .;
     } > flash_fs
@@ -282,6 +293,8 @@ SECTIONS
         __flash_fs_rodata_start = .;
         KEEP(*(.normal_fs.identity))
         *normal_fs_*.o(.rodata .rodata.* .srodata .srodata.*)
+        *rust-fixture.o(.rodata .rodata.* .srodata .srodata.*)
+        *rust-session-adapter.o(.rodata .rodata.* .srodata .srodata.*)
         __flash_console_font_start = .;
         *(.flash.fs.console)
         __flash_console_font_end = .;
@@ -340,6 +353,56 @@ SECTIONS
 #endif
 #if NIH_NATIVE_NORMAL_STORAGE
     .stack_sizes 0 : { KEEP(*(.stack_sizes)) }
+#endif
+#if NIH_NATIVE_WASM
+    /* Experimental classic-interpreter fixture.  As with SQLite, keep the
+     * stock loader's second mapping contiguous from the records page. */
+    .flash.wasmpad : {
+        __flash_wasm_pad_start = .;
+        BYTE(0)
+        . = ORIGIN(flash_records) + LENGTH(flash_records);
+        __flash_wasm_pad_end = .;
+    } > flash_records
+    .flash.wasmtext : {
+        __flash_wasm_text_start = .;
+        *wamr-combined.o(.text .text.*)
+        *wamr_runner.o(.text .text.*)
+        *wamr_surface.o(.text .text.*)
+        *wamr_arena.o(.text .text.*)
+        *wamr_c_*.o(.text .text.*)
+        *wamr_stack.o(.text .text.*)
+        *package_ed25519.o(.text .text.*)
+        *boot_media.o(.text .text.*)
+        *(.text.compiler_rt.*)
+        . = ALIGN(16);
+        __flash_wasm_text_end = .;
+    } > flash_sql
+    .flash.wasmrodata : ALIGN(16) {
+        __flash_wasm_rodata_start = .;
+        *wamr-combined.o(.rodata .rodata.* .srodata .srodata.*)
+        *wamr_runner.o(.rodata .rodata.* .srodata .srodata.*)
+        *wamr_surface.o(.rodata .rodata.* .srodata .srodata.*)
+        *wamr_arena.o(.rodata .rodata.* .srodata .srodata.*)
+        *wamr_c_*.o(.rodata .rodata.* .srodata .srodata.*)
+        *package_ed25519.o(.rodata .rodata.* .srodata .srodata.*)
+        *boot_media.o(.rodata .rodata.* .srodata .srodata.*)
+        __flash_trust_journal_start = .;
+        *boot_trust.o(.flash.trust.journal)
+        __flash_trust_journal_end = .;
+        __flash_package_journal_start = .;
+        *boot_package.o(.flash.package.journal)
+        __flash_package_journal_end = .;
+        __flash_counter_fixture_start = .;
+        *boot_counter.o(.flash.counter.fixture)
+        __flash_counter_fixture_end = .;
+        __flash_root_fixture_start = .;
+        *boot_root.o(.flash.root.fixture)
+        __flash_root_fixture_end = .;
+        __flash_package_update_start = .;
+        *boot_update.o(.flash.package.update)
+        __flash_package_update_end = .;
+        __flash_wasm_rodata_end = .;
+    } > flash_sql
 #endif
     .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
     .fp_app : ALIGN(16) {
@@ -433,6 +496,10 @@ SECTIONS
 /* Keep the audited ROM ABI visible even when bounded live-console TX replaces
  * all ROM putc calls in this image. This does not link or execute ROM code. */
 nih_rom_putc = 0x4fc00054;
+#if NIH_NATIVE_WASM || NIH_NATIVE_RUST_SESSION_TEST
+/* ESP32-P4 ROM uart_rx_one_char, nonblocking fixture console receive. */
+PROVIDE(nih_rom_rx_one_char = 0x4fc00060);
+#endif
 nih_rom_get_cpu_ticks = 0x4fc00040;
 nih_rom_set_cpu_ticks = 0x4fc00044;
 PROVIDE(nih_rom_set_cpu1_entry = 0x4fc000a8);

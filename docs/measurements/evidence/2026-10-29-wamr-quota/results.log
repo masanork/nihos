@@ -1,0 +1,4 @@
+success=1 injected=0 attempts=58 runtime_peak=21714 linear_peak=65536 runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+success=0 injected=0 attempts=54 runtime_peak=2049 linear_peak=0 runtime_live=0 linear_live=0 runtime_blocks=0 linear_blocks=0
+WAMR allocation failure injection: 58/58 reclaimed; failed=58, continued=0
+Negative control: combined init with first allocation failure deadlocks (WAMR 2.4.5/macOS)

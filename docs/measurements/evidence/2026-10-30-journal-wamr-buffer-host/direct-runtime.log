@@ -1,0 +1,7 @@
+NIHOS_BOOT_BUFFER status=0 wasm_bytes=1211 services=1
+NIHOS_IMPORT_OWNER denied_service=1 inactive=1 mismatched=1 detached=1 calls=0 effective_services=1
+WAMR fixed-memory growth rejection: ok
+Wasm linear memory range=0..65536 bytes
+WAMR pool total=261728 free=239240 highmark=22488 bytes
+WAMR 16 trap/destroy cycles returned runtime pool to baseline: ok
+WAMR classic interpreter Rust app and bounds: ok

@@ -1,0 +1,3 @@
+1/2 module_policy.test.built-in and verified package trust are explicit...OK
+2/2 module_policy.test.identity ABI services quotas and digest fail closed...OK
+All 2 tests passed.
