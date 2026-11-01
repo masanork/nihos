@@ -153,3 +153,30 @@ test "native rotated scanout and desktop logical presentation match every pixel"
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), native[byte_count..]);
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), logical[byte_count..]);
 }
+
+test "portrait document and keyboard render into the unrotated panel" {
+    const std = @import("std");
+    const keyboard = @import("soft_keyboard.zig");
+    const instance = try std.testing.allocator.create(session.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    const size = 720 * 1280 * 2;
+    const panel = try std.testing.allocator.alloc(u8, size + 16);
+    defer std.testing.allocator.free(panel);
+    const logical = try std.testing.allocator.alloc(u8, size + 16);
+    defer std.testing.allocator.free(logical);
+    @memset(panel, 0xa5);
+    @memset(logical, 0xa5);
+    var config = @import("view_config").Config{};
+    const sample = "portrait keyboard / テスト";
+    const status = "xy / RAM";
+    var request = protocol.Request{ .workspace = instance, .frame = panel.ptr, .frame_length = size, .config = &config, .text = sample.ptr, .text_length = sample.len, .cursor = sample.len, .status = status.ptr, .status_length = status.len, .show_cursor = 1, .reserved_bottom_px = @intCast(keyboard.geometry(.portrait).keyboardHeight()), .keyboard = 1 };
+    try instance.renderPortrait(&request);
+    request.frame = logical.ptr;
+    try instance.renderLogical(&request, 720, 1280, 1440);
+    try std.testing.expectEqualSlices(u8, panel, logical);
+    const g = keyboard.geometry(.portrait);
+    const pos = (@as(usize, g.top()) + 10) * 1440 + 10 * 2;
+    try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, panel[pos..][0..2], .little));
+    try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), panel[size..]);
+}

@@ -1,7 +1,6 @@
 //! On-screen keyboard for the xy workspace.
 //!
-//! The workspace has one logical touch space of 1280x720. When no physical
-//! keyboard is present, this keyboard docks to the bottom of that space and
+//! The keyboard docks to the bottom of the logical viewport and
 //! turns touches into the same key events a HID keyboard produces, so the
 //! editor, minibuffer and the romaji IME core cannot tell the difference.
 //!
@@ -61,6 +60,24 @@ pub const label_symbols: u8 = 2;
 pub const label_left: u8 = 3;
 pub const label_right: u8 = 4;
 pub const State = struct { symbols: bool = false, shift: bool = false };
+pub const Orientation = enum { portrait, landscape };
+pub const Geometry = struct {
+    width: u32,
+    height: u32,
+    row_height: u32,
+    pub fn keyboardHeight(self: Geometry) u32 {
+        return rows * self.row_height;
+    }
+    pub fn top(self: Geometry) u32 {
+        return self.height - self.keyboardHeight();
+    }
+};
+pub fn geometry(orientation: Orientation) Geometry {
+    return switch (orientation) {
+        .landscape => .{ .width = 1280, .height = 720, .row_height = 72 },
+        .portrait => .{ .width = 720, .height = 1280, .row_height = 80 },
+    };
+}
 
 const row_letters = [3][]const u8{ "qwertyuiop", "asdfghjkl", "zxcvbnm" };
 
@@ -70,6 +87,10 @@ pub fn layout(buffer: []KeyRect) []KeyRect {
 }
 
 pub fn layoutState(buffer: []KeyRect, state: State) []KeyRect {
+    return layoutIn(buffer, state, .landscape);
+}
+pub fn layoutIn(buffer: []KeyRect, state: State, orientation: Orientation) []KeyRect {
+    const g = geometry(orientation);
     var count: usize = 0;
     const push = struct {
         fn add(out: []KeyRect, n: *usize, rect: KeyRect) void {
@@ -82,10 +103,10 @@ pub fn layoutState(buffer: []KeyRect, state: State) []KeyRect {
     const symbol_shift_rows = [3][]const u8{ "~`|^\\%+=_*", "<>\\\"'@#$&%", ".,?!:;{}[]" };
     const selected = if (state.symbols) (if (state.shift) symbol_shift_rows else symbol_rows) else row_letters;
     for (selected, 0..) |letters, row| {
-        const y = top + @as(u32, @intCast(row)) * row_height;
+        const y = g.top() + @as(u32, @intCast(row)) * g.row_height;
         // Half-key indent on the home row, like a physical keyboard.
-        const indent: u32 = if (row == 1) space_width / 20 else 0;
-        const usable = space_width - indent;
+        const indent: u32 = if (row == 1) g.width / 20 else 0;
+        const usable = g.width - indent;
         const key_width = usable / @as(u32, @intCast(letters.len + (if (row == 2) @as(usize, 1) else 0)));
         for (letters, 0..) |raw_letter, i| {
             const letter = if (!state.symbols and state.shift) std.ascii.toUpper(raw_letter) else raw_letter;
@@ -93,7 +114,7 @@ pub fn layoutState(buffer: []KeyRect, state: State) []KeyRect {
                 .x = indent + @as(u32, @intCast(i)) * key_width,
                 .y = y,
                 .w = key_width,
-                .h = row_height,
+                .h = g.row_height,
                 .action = .{ .char = letter },
                 .label = letter,
             });
@@ -102,24 +123,24 @@ pub fn layoutState(buffer: []KeyRect, state: State) []KeyRect {
             push(buffer, &count, .{
                 .x = indent + @as(u32, @intCast(letters.len)) * key_width,
                 .y = y,
-                .w = space_width - (indent + @as(u32, @intCast(letters.len)) * key_width),
-                .h = row_height,
+                .w = g.width - (indent + @as(u32, @intCast(letters.len)) * key_width),
+                .h = g.row_height,
                 .action = .backspace,
                 .label = label_backspace,
             });
         }
     }
     // Shared geometry is used for painting and hit testing.
-    const y = top + 3 * row_height;
-    const unit = space_width / 10;
-    push(buffer, &count, .{ .x = 0, .y = y, .w = unit, .h = row_height, .action = .escape, .label = label_escape });
-    push(buffer, &count, .{ .x = unit, .y = y, .w = unit, .h = row_height, .action = .shift, .label = label_shift });
-    push(buffer, &count, .{ .x = unit * 2, .y = y, .w = unit, .h = row_height, .action = .symbols, .label = label_symbols });
-    push(buffer, &count, .{ .x = unit * 3, .y = y, .w = unit * 3, .h = row_height, .action = .{ .char = ' ' }, .label = label_space });
-    push(buffer, &count, .{ .x = unit * 6, .y = y, .w = unit, .h = row_height, .action = .left, .label = label_left });
-    push(buffer, &count, .{ .x = unit * 7, .y = y, .w = unit, .h = row_height, .action = .right, .label = label_right });
-    push(buffer, &count, .{ .x = unit * 8, .y = y, .w = unit, .h = row_height, .action = .enter, .label = label_enter });
-    push(buffer, &count, .{ .x = unit * 9, .y = y, .w = unit, .h = row_height, .action = .dismiss, .label = label_dismiss });
+    const y = g.top() + 3 * g.row_height;
+    const unit = g.width / 10;
+    push(buffer, &count, .{ .x = 0, .y = y, .w = unit, .h = g.row_height, .action = .escape, .label = label_escape });
+    push(buffer, &count, .{ .x = unit, .y = y, .w = unit, .h = g.row_height, .action = .shift, .label = label_shift });
+    push(buffer, &count, .{ .x = unit * 2, .y = y, .w = unit, .h = g.row_height, .action = .symbols, .label = label_symbols });
+    push(buffer, &count, .{ .x = unit * 3, .y = y, .w = unit * 3, .h = g.row_height, .action = .{ .char = ' ' }, .label = label_space });
+    push(buffer, &count, .{ .x = unit * 6, .y = y, .w = unit, .h = g.row_height, .action = .left, .label = label_left });
+    push(buffer, &count, .{ .x = unit * 7, .y = y, .w = unit, .h = g.row_height, .action = .right, .label = label_right });
+    push(buffer, &count, .{ .x = unit * 8, .y = y, .w = unit, .h = g.row_height, .action = .enter, .label = label_enter });
+    push(buffer, &count, .{ .x = unit * 9, .y = y, .w = unit, .h = g.row_height, .action = .dismiss, .label = label_dismiss });
     return buffer[0..count];
 }
 
@@ -132,9 +153,13 @@ pub fn keyAt(x: u32, y: u32) ?Action {
 }
 
 pub fn keyAtState(x: u32, y: u32, state: State) ?Action {
-    if (x >= space_width or y < top or y >= space_height) return null;
+    return keyAtIn(x, y, state, .landscape);
+}
+pub fn keyAtIn(x: u32, y: u32, state: State, orientation: Orientation) ?Action {
+    const g = geometry(orientation);
+    if (x >= g.width or y < g.top() or y >= g.height) return null;
     var rects: [max_keys]KeyRect = undefined;
-    for (layoutState(&rects, state)) |rect| {
+    for (layoutIn(&rects, state, orientation)) |rect| {
         if (x >= rect.x and x < rect.x + rect.w and y >= rect.y and y < rect.y + rect.h) return rect.action;
     }
     return null;
@@ -142,7 +167,11 @@ pub fn keyAtState(x: u32, y: u32, state: State) ?Action {
 
 /// Whether a point falls inside the docked keyboard area at all.
 pub fn contains(x: u32, y: u32) bool {
-    return x < space_width and y >= top and y < space_height;
+    return containsIn(x, y, .landscape);
+}
+pub fn containsIn(x: u32, y: u32, orientation: Orientation) bool {
+    const g = geometry(orientation);
+    return x < g.width and y >= g.top() and y < g.height;
 }
 
 /// Visibility policy: physical keyboards win, dismissal sticks for the
@@ -162,14 +191,15 @@ pub const Gesture = enum { none, show, hide };
 /// points: flick up from the bottom edge to summon the keyboard, flick
 /// down across the keyboard to dismiss it. Anything else is a tap.
 pub fn edgeGesture(start_x: u32, start_y: u32, end_x: u32, end_y: u32) Gesture {
-    _ = start_x;
-    _ = end_x;
-    if (start_y >= space_height - edge_band and start_y >= end_y + swipe_min) return .show;
-    if (start_y >= top and end_y >= start_y + swipe_min) return .hide;
+    return edgeGestureIn(start_x, start_y, end_x, end_y, .landscape);
+}
+pub fn edgeGestureIn(start_x: u32, start_y: u32, end_x: u32, end_y: u32, orientation: Orientation) Gesture {
+    const g = geometry(orientation);
+    if (start_x >= g.width or end_x >= g.width or start_y >= g.height or end_y >= g.height) return .none;
+    if (start_y >= g.height - edge_band and start_y >= end_y + swipe_min) return .show;
+    if (start_y >= g.top() and end_y >= start_y + swipe_min) return .hide;
     return .none;
 }
-
-pub const Orientation = enum { portrait, landscape };
 
 /// Default orientation for a session: the keyboard accessory holds the
 /// device horizontally, so its presence makes landscape the basis.
@@ -231,4 +261,25 @@ test "every printable ASCII character is reachable in the keyboard layouts" {
         }
     }
     for (32..127) |c| try std.testing.expect(found[c]);
+}
+
+test "portrait and landscape layouts stay on screen and match touch hit testing" {
+    var rects: [max_keys]KeyRect = undefined;
+    for ([_]Orientation{ .landscape, .portrait }) |orientation| {
+        const g = geometry(orientation);
+        for ([_]State{ .{}, .{ .shift = true }, .{ .symbols = true }, .{ .symbols = true, .shift = true } }) |state| {
+            const keys = layoutIn(&rects, state, orientation);
+            for (keys, 0..) |key, i| {
+                try std.testing.expect(key.w >= 60 and key.h >= 72);
+                try std.testing.expect(key.x + key.w <= g.width and key.y >= g.top() and key.y + key.h <= g.height);
+                try std.testing.expectEqual(key.action, keyAtIn(key.x + key.w / 2, key.y + key.h / 2, state, orientation).?);
+                for (keys[i + 1 ..]) |other| {
+                    try std.testing.expect(key.x + key.w <= other.x or other.x + other.w <= key.x or key.y + key.h <= other.y or other.y + other.h <= key.y);
+                }
+            }
+        }
+        try std.testing.expectEqual(Gesture.show, edgeGestureIn(g.width / 2, g.height - 4, g.width / 2, g.height - 120, orientation));
+        try std.testing.expectEqual(Gesture.hide, edgeGestureIn(g.width / 2, g.top() + 10, g.width / 2, g.top() + 100, orientation));
+        try std.testing.expectEqual(Gesture.none, edgeGestureIn(g.width, g.height - 4, 0, g.height - 120, orientation));
+    }
 }

@@ -76,6 +76,7 @@ pub const Model = struct {
     soft_keyboard_dismissed: bool,
     soft_keyboard_context: u8,
     soft_keyboard_state: soft_keyboard.State,
+    portrait_touch: bool,
     /// Start point of the current touch, for edge-gesture recognition.
     touch_start_x: u32,
     touch_start_y: u32,
@@ -292,6 +293,10 @@ pub const Model = struct {
         return soft_keyboard.visible(self.physical_keyboard, context != 0, dismissed);
     }
 
+    pub fn touchOrientation(self: *const Model) soft_keyboard.Orientation {
+        return if (self.portrait_touch) .portrait else .landscape;
+    }
+
     pub fn touchDown(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
         self.touch_start_x = x;
         self.touch_start_y = y;
@@ -304,7 +309,7 @@ pub const Model = struct {
     fn touchGesture(self: *Model, x: u32, y: u32) bool {
         if (!self.touch_tracking) return false;
         self.touch_tracking = false;
-        switch (soft_keyboard.edgeGesture(self.touch_start_x, self.touch_start_y, x, y)) {
+        switch (soft_keyboard.edgeGestureIn(self.touch_start_x, self.touch_start_y, x, y, self.touchOrientation())) {
             .none => return false,
             .show => {
                 if (self.physical_keyboard or self.softKeyboardContext() == 0) return false;
@@ -329,13 +334,13 @@ pub const Model = struct {
         if (self.touchGesture(x, y)) return;
         if (self.softKeyboardVisible()) {
             if (tracked) {
-                const start = soft_keyboard.keyAtState(start_x, start_y, self.soft_keyboard_state);
-                const end = soft_keyboard.keyAtState(x, y, self.soft_keyboard_state);
-                if (start != null or end != null or soft_keyboard.contains(start_x, start_y)) {
+                const start = soft_keyboard.keyAtIn(start_x, start_y, self.soft_keyboard_state, self.touchOrientation());
+                const end = soft_keyboard.keyAtIn(x, y, self.soft_keyboard_state, self.touchOrientation());
+                if (start != null or end != null or soft_keyboard.containsIn(start_x, start_y, self.touchOrientation())) {
                     if (start == null or end == null or !std.meta.eql(start.?, end.?)) return;
                 }
             }
-            if (soft_keyboard.keyAtState(x, y, self.soft_keyboard_state)) |action| {
+            if (soft_keyboard.keyAtIn(x, y, self.soft_keyboard_state, self.touchOrientation())) |action| {
                 switch (action) {
                     .char => |byte| {
                         self.handle(.{ .text = byte });
@@ -363,7 +368,7 @@ pub const Model = struct {
                 }
                 return;
             }
-            if (soft_keyboard.contains(x, y)) return; // Gaps between keys.
+            if (soft_keyboard.containsIn(x, y, self.touchOrientation())) return; // Gaps between keys.
         }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| l.touch(&self.nav, x, y);
@@ -1154,4 +1159,27 @@ test "soft keyboard ignores a drag across different keys" {
     model.touchDown(10, soft_keyboard.top + 10);
     model.touch(10, soft_keyboard.top + 10);
     try std.testing.expectEqualStrings("q", model.doc.slice());
+}
+
+test "portrait keyboard touches type and dismiss in document mode" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .document;
+    model.portrait_touch = true;
+    var keys: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    for (soft_keyboard.layoutIn(&keys, model.soft_keyboard_state, .portrait)) |key| {
+        if (key.label == 'q') {
+            model.touchDown(key.x + key.w / 2, key.y + key.h / 2);
+            model.touch(key.x + key.w / 2, key.y + key.h / 2);
+            break;
+        }
+    }
+    try std.testing.expectEqualStrings("q", model.doc.slice());
+    const g = soft_keyboard.geometry(.portrait);
+    model.touchDown(g.width / 2, g.top() + 10);
+    model.touch(g.width / 2, g.top() + 110);
+    try std.testing.expect(!model.softKeyboardVisible());
+    model.touchDown(g.width / 2, g.height - 4);
+    model.touch(g.width / 2, g.height - 110);
+    try std.testing.expect(model.softKeyboardVisible());
 }
