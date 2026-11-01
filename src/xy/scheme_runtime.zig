@@ -23,6 +23,31 @@ const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, n
 const Op = enum { quote, if_, begin, define, lambda, set, let, and_, or_, add, sub, mul, equal, less, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card };
 const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00and\x00or\x00+\x00-\x00*\x00=\x00<\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
+pub const eval_stack_size = 64;
+const int_bias: i32 = 16384;
+
+inline fn isImmediateInt(r: Ref) bool {
+    return (r & 0x8000) != 0;
+}
+inline fn makeImmediateInt(n: i32) Ref {
+    return @as(u16, @intCast(n + int_bias)) | 0x8000;
+}
+inline fn toImmediateInt(r: Ref) i32 {
+    return @as(i32, r & 0x7FFF) - int_bias;
+}
+inline fn isImmediateOp(r: Ref) bool {
+    return (r & 0xFF00) == 0x4000;
+}
+inline fn makeImmediateOp(op: Op) Ref {
+    return 0x4000 | @as(u16, @backingInt(op));
+}
+inline fn toImmediateOp(r: Ref) Op {
+    return @fromBackingInt(@as(u8, @truncate(r & 0x00FF)));
+}
+inline fn isImmediate(r: Ref) bool {
+    return (r & 0x8000) != 0 or (r & 0xFF00) == 0x4000;
+}
+
 const Cell = struct {
     tag: Tag,
     mark: bool,
@@ -57,6 +82,15 @@ pub const Runtime = struct {
     view_history: [8]struct { config: view_config.Config, generation: u32 },
     view_history_count: u8,
     view_generation: u32,
+    eval_stack: [eval_stack_size]Ref,
+    eval_sp: u8,
+
+    inline fn tagOf(self: *const Runtime, r: Ref) Tag {
+        if (isImmediateInt(r)) return .integer;
+        if (isImmediateOp(r)) return .native;
+        if (r >= cells) return .free;
+        return self.heap[r].tag;
+    }
 
     pub fn initInPlace(self: *Runtime) linksection(code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -310,7 +344,7 @@ pub const Runtime = struct {
         var p = list;
         var len: usize = 0;
         while (p != 0) {
-            if (self.heap[p].tag != .pair) return error.Type;
+            if (self.tagOf(p) != .pair) return error.Type;
             if (len == out.len) return error.Arity;
             out[len] = self.heap[p].a;
             len += 1;
@@ -329,8 +363,30 @@ pub const Runtime = struct {
         }
         return 0;
     }
+    inline fn canReuseFrame(self: *const Runtime, env: Ref, params: []const Ref) bool {
+        var node = self.heap[env].a;
+        var i = params.len;
+        while (i > 0) {
+            i -= 1;
+            if (node == 0) return false;
+            const b = self.heap[node].a;
+            if (self.heap[b].a != params[i]) return false;
+            node = self.heap[node].b;
+        }
+        return node == 0;
+    }
+    inline fn updateFrameBindings(self: *Runtime, env: Ref, values: []const Ref) void {
+        var node = self.heap[env].a;
+        var i = values.len;
+        while (i > 0) {
+            i -= 1;
+            const b = self.heap[node].a;
+            self.heap[b].b = values[i];
+            node = self.heap[node].b;
+        }
+    }
     fn define(self: *Runtime, env: Ref, name: Ref, value: Ref) linksection(code_section) Error!void {
-        if (self.heap[name].tag != .symbol) return error.Type;
+        if (self.tagOf(name) != .symbol) return error.Type;
         var p = self.heap[env].a;
         while (p != 0) : (p = self.heap[p].b) {
             const binding = self.heap[p].a;
@@ -346,7 +402,7 @@ pub const Runtime = struct {
         var argument_storage: [16]Ref = @splat(0);
         const args = try self.arguments(params, &argument_storage);
         for (args, 0..) |arg, index| {
-            if (self.heap[arg].tag != .symbol) return error.Type;
+            if (self.tagOf(arg) != .symbol) return error.Type;
             for (args[0..index]) |old| if (arg == old) return error.Syntax;
         }
         const r = try self.alloc(.closure);
@@ -537,7 +593,7 @@ pub const Runtime = struct {
             },
             .car, .cdr => {
                 if (args.len != 1) return error.Arity;
-                if (self.heap[args[0]].tag != .pair) return error.Type;
+                if (self.tagOf(args[0]) != .pair) return error.Type;
                 return if (op == .car) self.heap[args[0]].a else self.heap[args[0]].b;
             },
             .list => {
@@ -553,14 +609,14 @@ pub const Runtime = struct {
                 if (args.len != 1) return error.Arity;
                 const yes = switch (op) {
                     .nullq => args[0] == 0,
-                    .pairq => self.heap[args[0]].tag == .pair,
+                    .pairq => self.tagOf(args[0]) == .pair,
                     else => args[0] == self.no,
                 };
                 return if (yes) self.yes else self.no;
             },
             .register => {
                 if (args.len != 2) return error.Arity;
-                if (self.heap[args[0]].tag != .string or self.heap[args[1]].tag != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
+                if (self.tagOf(args[0]) != .string or self.tagOf(args[1]) != .closure or self.heap[args[1]].a != 0 or self.string(args[0]).len == 0) return error.Type;
                 for (self.commands[0..self.command_count]) |*command| if (std.mem.eql(u8, self.string(command.name), self.string(args[0]))) {
                     command.* = .{ .name = args[0], .procedure = args[1] };
                     return self.yes;
@@ -815,7 +871,7 @@ pub const Runtime = struct {
                     var p = args[2];
                     var n: usize = 0;
                     while (p != 0) {
-                        if (self.heap[p].tag != .pair) return error.Type;
+                        if (self.tagOf(p) != .pair) return error.Type;
                         if (n == binary.len) return error.StorageLimit;
                         const b = try self.nonnegative(self.heap[p].a);
                         if (b > 255) return error.Type;
@@ -1073,6 +1129,26 @@ pub const Runtime = struct {
     }
     fn print(self: *const Runtime, r: Ref, output: []u8, pos: *usize, depth: usize) linksection(code_section) Error!void {
         if (depth >= depth_limit) return error.Depth;
+        if (isImmediateInt(r)) {
+            const val = toImmediateInt(r);
+            var bytes: [11]u8 = @splat(0);
+            var rest: u32 = if (val < 0) @intCast(-@as(i64, val)) else @intCast(val);
+            var start_index = bytes.len;
+            while (true) {
+                start_index -= 1;
+                bytes[start_index] = @as(u8, @intCast(rest % 10)) + '0';
+                rest /= 10;
+                if (rest == 0) break;
+            }
+            if (val < 0) {
+                start_index -= 1;
+                bytes[start_index] = '-';
+            }
+            return emit(output, pos, bytes[start_index..]);
+        }
+        if (isImmediateOp(r)) {
+            return emit(output, pos, "#<procedure>");
+        }
         const c = &self.heap[r];
         switch (c.tag) {
             .nil => try emit(output, pos, "()"),
