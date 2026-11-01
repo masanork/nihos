@@ -25,3 +25,19 @@ This observation is a single short run, not evidence of cold-power RTC
 retention, network interruption/recovery, long-term drift, or reduced P4 load.
 The physical candidate corresponds to the commit above; subsequent
 report-only changes do not change its source or binary.
+
+## Timeout-isolation candidate smoke
+
+A later single normal-boot smoke on the same date used P4 source commit
+`e1b1ac624261d6f247aaafd3150d7ca953fa1360` and app SHA-256
+`9c0855c74144302d94bb2bd1f61577738a5ce3dc9ebb12b34ffb9f3989332c90`, with
+the same opt-in profile. The P4 reported network ready, six time requests,
+one reply, one successful RTC update and zero RTC failures. The sample was
+`1793536179` (12:29:39 UTC). Valid RTC readbacks later advanced from 12:29:47
+to 12:29:53 UTC, alongside UI frame and both core tick counters. The P4 flash
+was restored and the complete 16 MiB verified against its pre-test backup.
+C6 firmware was not rewritten.
+
+This is a normal-path smoke, not a physical timeout or late-message injection.
+The timeout-isolation and stale-message cases are host-tested; BLE continuity,
+AP loss, and natural long-duration operation remain unqualified.
