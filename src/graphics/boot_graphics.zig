@@ -1,8 +1,16 @@
 //! Allocation-free boot inscription, independent of the display driver and FS.
 //! Progress is a colour animation value, never a boot-completion percentage.
 const std = @import("std");
+const builtin = @import("builtin");
 const assets = @import("boot/assets.zig");
 const Canvas = @import("canvas").Canvas;
+
+fn resolveSection(comptime sec: ?[]const u8) ?[]const u8 {
+    const name = sec orelse return null;
+    if (builtin.os.tag == .freestanding) return name;
+    if (builtin.object_format == .macho) return "__TEXT,__const";
+    return ".rodata";
+}
 
 pub const width: usize = 720;
 pub const height: usize = 1280;
@@ -114,10 +122,13 @@ fn paint(comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize,
     return @call(.always_inline, paintTo, .{ Canvas, section, framebuffer, surface_width, surface_height, stride, progress, status, layout, kind });
 }
 fn paintTo(comptime Target: type, comptime section: ?[]const u8, framebuffer: []u8, surface_width: usize, surface_height: usize, stride: usize, progress: u8, status: Status, layout: Layout, kind: Paint) bool {
-    const MaskStore = if (section) |name| struct {
-        const data linksection(name) = assets.masks.*;
+    const target_section = comptime resolveSection(section);
+    const AssetStore = comptime if (target_section) |name| struct {
+        const masks linksection(name) = assets.masks.*;
+        const sprites linksection(name) = assets.sprites;
     } else struct {
-        const data = assets.masks.*;
+        const masks = assets.masks.*;
+        const sprites = assets.sprites;
     };
     if (surface_width < width or surface_height < height) return false;
     const row_bytes = std.math.mul(usize, surface_width, 2) catch return false;
@@ -128,7 +139,7 @@ fn paintTo(comptime Target: type, comptime section: ?[]const u8, framebuffer: []
     const top = (surface_height - height) / 2;
     const bg = rgb565(background);
     if (kind == .full) canvas.fillRect(.{ .x = 0, .y = 0, .width = @intCast(surface_width), .height = @intCast(surface_height) }, bg);
-    for (assets.sprites) |sprite| {
+    for (&AssetStore.sprites) |sprite| {
         if (sprite.layout != layout) continue;
         if (kind == .dye and sprite.ink != .dye) continue;
         if (kind == .milestone and sprite.ink != .dye and sprite.status == 0) continue;
@@ -140,7 +151,7 @@ fn paintTo(comptime Target: type, comptime section: ?[]const u8, framebuffer: []
             .@"error" => vermilion,
         };
         var pixel: usize = 0;
-        for (MaskStore.data[sprite.offset..][0..sprite.length]) |run| {
+        for (AssetStore.masks[sprite.offset..][0..sprite.length]) |run| {
             const alpha = @as(u8, run >> 4) * 17;
             const count = @as(usize, run & 15) + 1;
             if (alpha != 0 or (kind == .milestone and sprite.status != 0)) {

@@ -905,7 +905,7 @@ fi
     -I "$repo_root/src/arch/riscv32" -I "$repo_root/src/kernel" \
     "$repo_root/src/platform/native/start.S" "$@" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring --dep suspend -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mpointer_input="$repo_root/src/input/pointer.zig" \
     -Mdevice_control="$repo_root/src/device/control.zig" \
     -Mstorage_control="$repo_root/src/storage/control.zig" \
@@ -937,8 +937,10 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mhosted_station="$repo_root/src/net/hosted_station.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
-    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input \
+    --dep canvas --dep native_options --dep timer_group --dep native_tasks --dep boot_i2c --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep pointer_input --dep device_control --dep storage_control --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep camera_preview --dep camera_input --dep suspend \
     -Mdisplay_service="$repo_root/src/platform/native/display_service.zig" \
+    -target riscv32-freestanding-none -mcpu="$cpu" -O small \
+    -Msuspend="$repo_root/src/soc/esp32p4/suspend.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \
     -Mcamera_preview="$repo_root/src/board/tab5/camera_preview.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O small \

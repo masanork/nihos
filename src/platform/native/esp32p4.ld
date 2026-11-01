@@ -118,6 +118,7 @@ SECTIONS
         *(.flash.rodata.display)
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)
+        *(.flash.rodata.camera)
 #if NIH_NATIVE_XY
         . = ALIGN(4);
 #endif
