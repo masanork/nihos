@@ -9,6 +9,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FactoryC6BoundaryTests(unittest.TestCase):
+    def test_time_fault_injection_requires_explicit_offload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for fault, offload, valid in [('0', '0', True), ('0', '1', True),
+                                           ('1', '0', False), ('1', '1', True), ('2', '1', False)]:
+                dest = Path(directory) / 'config.zig'
+                env = {**os.environ, 'NIHOS_C6_TIME_FAULT_TEST': fault,
+                       'NIHOS_C6_TIME_OFFLOAD': offload, 'NIHOS_C6_IPV6': '0'}
+                result = subprocess.run(['python3', str(ROOT / 'tools/c6-wifi-config.py'),
+                                         str(dest), '', 'hosted'], env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, valid)
+                if valid:
+                    self.assertIn('pub const c6_time_fault_test = ' + ('true' if fault == '1' else 'false') + ';', dest.read_text())
+
     def test_staging_audit_requires_plain_burst(self):
         with tempfile.TemporaryDirectory() as directory:
             for burst, interval, reverse, valid in [('1', '250', '0', True), ('0', '250', '0', False), ('1', '500', '0', False), ('1', '250', '1', False)]:

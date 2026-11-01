@@ -285,6 +285,10 @@ noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.dev
     network_report_at = now + 5_000_000;
     logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us", "renewals", "reconnects", "acquisitions", "failures", "disconnect_reason", "failed_station" }, &state);
     logger.record("NIHOS_NATIVE_CONNECTIVITY", null, .{ "configured", "capabilities", "bluetooth_status" }, &state);
+    if (@hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test) {
+        const fault = network.timeFaultSnapshot();
+        logger.record("NIHOS_NATIVE_C6_TIME_FAULT", null, .{ "stage", "dropped", "expired" }, &fault);
+    }
     const bluetooth = network.bluetoothSnapshot();
     logger.record("NIHOS_NATIVE_BLE", null, .{ "phase", "commands", "events", "advertisements", "malformed", "status", "timeouts" }, &bluetooth);
     const heartbeat = .{ .frames = display_service.runtime.snapshot().frames, .ticks0 = @atomicLoad(u32, &ticks[0], .acquire), .ticks1 = @atomicLoad(u32, &ticks[1], .acquire) };
