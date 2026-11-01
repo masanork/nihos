@@ -61,6 +61,7 @@ pub const State = struct {
     previous_count: u16 = 0,
     return_screen: Screen = .home,
     error_code: u32 = 0,
+    can_try: bool = false,
     card: CardViewData = .{},
 
     pub fn home(self: *State) linksection(section) void {
@@ -73,7 +74,8 @@ pub const State = struct {
         self.offset = 0;
         self.end = 0;
         self.previous_count = 0;
-        self.screen = .chapters;
+        self.can_try = false;
+        self.screen = .reading;
     }
     pub fn selectChapter(self: *State) linksection(section) void {
         self.chapter = self.selected_chapter;
@@ -158,7 +160,9 @@ pub const State = struct {
                         self.screen = .settings;
                     },
                     'i' => self.screen = .credits,
-                    'e' => self.screen = .examples,
+                    'e' => if (self.can_try) {
+                        self.screen = .examples;
+                    },
                     'h' => self.home(),
                     else => {},
                 },
@@ -214,7 +218,16 @@ pub const State = struct {
             if (x < 200) self.home() else if (self.screen == .chapters) {
                 if (x < 480) self.selected_chapter -|= 8 else if (x < 760) self.selected_chapter = @min(self.chapter_count[self.book] - 1, self.selected_chapter + 8);
             } else if (self.screen == .reading) {
-                if (x < 480) self.back() else if (x >= 680 and x < 760) self.screen = .examples else if (x < 760) self.next() else if (x < 1030) self.screen = .chapters else {
+                if (x < 480) {
+                    self.back();
+                } else if (self.can_try and x >= 680 and x < 760) {
+                    self.screen = .examples;
+                } else if (x < 760) {
+                    self.next();
+                } else if (x < 1030) {
+                    self.selected_chapter = self.chapter;
+                    self.screen = .chapters;
+                } else {
                     self.return_screen = .reading;
                     self.screen = .settings;
                 }
@@ -278,8 +291,7 @@ test "device navigation preserves reading position through home and settings" {
     var view = config.Config{};
     state.home();
     state.handle(.{ .text = '2' }, &view);
-    try std.testing.expectEqual(Screen.chapters, state.screen);
-    state.handle(.enter, &view);
+    try std.testing.expectEqual(Screen.reading, state.screen);
     state.end = 123;
     state.text_length = 999;
     state.handle(.right, &view);
@@ -289,6 +301,11 @@ test "device navigation preserves reading position through home and settings" {
     state.handle(.enter, &view);
     try std.testing.expectEqual(Screen.reading, state.screen);
     try std.testing.expectEqual(@as(u32, 123), state.offset);
+    state.handle(.{ .text = 'c' }, &view);
+    try std.testing.expectEqual(Screen.chapters, state.screen);
+    state.handle(.enter, &view);
+    try std.testing.expectEqual(Screen.reading, state.screen);
+    try std.testing.expectEqual(@as(u32, 0), state.offset);
     state.back();
     try std.testing.expectEqual(@as(u32, 0), state.offset);
     state.touch(200, 1000, &view); // left reading region
