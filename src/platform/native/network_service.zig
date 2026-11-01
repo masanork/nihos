@@ -17,6 +17,7 @@ var host = sd.Controller(pads.Bus){ .io = .{} };
 var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
 const TimeClient = hosted.sntp.Engine(".flash.text.time");
 const c6_offload = @hasDecl(network_config, "c6_time_offload") and network_config.c6_time_offload;
+const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test;
 const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
     time: TimeClient = .{},
@@ -67,6 +68,11 @@ var offload_active = false;
 var offload_epoch: u64 = 1;
 var offload_due: u64 = 0;
 var offload_sample: ?hosted.sntp.Sample = null;
+pub const TimeFaultReport = extern struct { stage: u32 = 0, dropped: u32 = 0, expired: u32 = 0 };
+var time_fault: TimeFaultReport = .{};
+pub fn timeFaultSnapshot() TimeFaultReport {
+    return time_fault;
+}
 var offload_report: hosted.sntp.Report = .{ .phase = 0, .attempts = 0, .replies = 0, .rejected = 0, .failures = 0, .server = 0, .stratum = 0, .rtt_us = 0, .unix_high = 0, .unix_low = 0 };
 pub const Report = extern struct {
     phase: u32 = 0,
@@ -109,6 +115,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     test_reset = false;
     offload_epoch = 1;
     offload_sample = null;
+    time_fault = .{};
     offload_report = .{ .phase = 0, .attempts = 0, .replies = 0, .rejected = 0, .failures = 0, .server = 0, .stratum = 0, .rtt_us = 0, .unix_high = 0, .unix_low = 0 };
     const now = clock.counter() orelse return stop(error.Clock, null);
     pads.useClock(clock);
@@ -217,6 +224,15 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         const received = clock.counter() orelse return error.Clock;
         if (c6_offload and offload_active) {
             try recoverC6TimeTimeout(received);
+            // Explicit test image only: drop the first time RPC's response,
+            // leaving unrelated station and BLE traffic untouched.
+            if (time_fault_test and time_fault.stage == 1 and frame.interface == 3) {
+                const rpc = try hosted.wire.rpc(frame.payload);
+                if ((rpc.kind == 2 and rpc.id == 644) or (rpc.kind == 3 and rpc.id == 788)) {
+                    time_fault.dropped +|= 1;
+                    continue;
+                }
+            }
             try state_storage.offload.receive(frame, received);
             try finishC6Time(received);
         } else {
@@ -270,6 +286,10 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             if (c6_offload and offload_active) {
                 if (state_storage.offload.phase == .queued) offload_report.attempts +|= 1;
                 try state_storage.offload.sent(sent, sent_at);
+                if (time_fault_test and time_fault.stage == 0 and state_storage.offload.phase == .waiting) {
+                    time_fault.stage = 1;
+                    state_storage.offload.deadline = sent_at +| 3_000_000;
+                }
             } else client.sent(sent_at);
         }
         report.tx +|= @intCast(sent);
@@ -396,6 +416,10 @@ noinline fn recoverC6TimeTimeout(now: u64) linksection(".flash.text.time") !void
     const retry = now +| hosted.c6_time_policy.retry_unavailable;
     if (try state_storage.offload.retireTimedOutTime(now, retry +| 100_000_000)) {
         offload_report.failures +|= 1;
+        if (time_fault_test and time_fault.stage == 1) {
+            time_fault.stage = 2;
+            time_fault.expired +|= 1;
+        }
         offload_sample = null;
         offload_due = retry;
     }
