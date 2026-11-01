@@ -37,9 +37,9 @@ the workspace SKK romaji-to-kana input path for both physical and touch keys.
 The native session does not yet bind a dictionary provider or render IME
 preedit/candidates, so kana-to-kanji interaction is not yet complete. A touch
 caret and hold-to-repeat are also pending. The portrait and input
-paths have host coverage; physical touch, optical review and real
-keyboard-present/absent startup verification of this candidate remain
-outstanding.
+paths have host coverage. One physical attach/detach and touch cycle was
+observed in the [hot-plug checkpoint](measurements/2026-11-01-xy-keyboard-hotplug.md);
+repeat, fault, cold-boot and broader physical qualification remain open.
 
 | Input | Normal xy action |
 | --- | --- |
