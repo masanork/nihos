@@ -638,14 +638,13 @@ fn touch_coordinates(
     if x < 0. || y < 0. || x >= w || y >= h {
         return None;
     }
-    let (lx, ly) = if portrait {
-        (y as u16, 719 - x as u16)
+    if portrait {
+        Some((x as u16, y as u16))
     } else {
-        (x as u16, y as u16)
-    };
-    Some((ly, 1279 - lx))
+        Some((y as u16, 1279 - x as u16))
+    }
 }
-// Rotate the displayed framebuffer clockwise; the guest orientation is unchanged.
+// Rotate the displayed framebuffer counterclockwise; the guest orientation is unchanged.
 fn orient_frame(src: Vec<u8>, portrait: bool) -> (Vec<u8>, u32, u32) {
     let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
     if !portrait {
@@ -655,7 +654,7 @@ fn orient_frame(src: Vec<u8>, portrait: bool) -> (Vec<u8>, u32, u32) {
     for y in 0..h {
         for x in 0..w {
             let from = (y * w + x) * 4;
-            let to = (x * h + (h - 1 - y)) * 4;
+            let to = ((w - 1 - x) * h + y) * 4;
             dst[to..to + 4].copy_from_slice(&src[from..from + 4]);
         }
     }
@@ -1083,25 +1082,25 @@ mod emulator_display_tests {
         let viewport = size(px(752.), px(1360.));
         assert_eq!(
             touch_coordinates(point(px(16.), px(64.)), viewport, true),
-            Some((719, 1279))
+            Some((0, 0))
         );
         assert_eq!(
             touch_coordinates(point(px(735.), px(1343.)), viewport, true),
-            Some((0, 0))
+            Some((719, 1279))
         );
     }
     #[::core::prelude::v1::test]
-    fn portrait_rotates_clockwise_without_losing_pixels() {
+    fn portrait_rotates_counterclockwise_without_losing_pixels() {
         let (w, h) = (emu::bus::FB_WIDTH, emu::bus::FB_HEIGHT);
         let mut pixels = vec![0; w * h * 4];
         pixels[..4].copy_from_slice(&[1, 2, 3, 4]);
         pixels[(w * h - 1) * 4..].copy_from_slice(&[5, 6, 7, 8]);
         let (rotated, rw, rh) = orient_frame(pixels, true);
         assert_eq!((rw, rh), (h as u32, w as u32));
-        assert_eq!(&rotated[(h - 1) * 4..h * 4], &[1, 2, 3, 4]);
+        assert_eq!(&rotated[(h - 1) * 4..h * 4], &[5, 6, 7, 8]);
         assert_eq!(
             &rotated[((w - 1) * h) * 4..((w - 1) * h + 1) * 4],
-            &[5, 6, 7, 8]
+            &[1, 2, 3, 4]
         );
     }
 }

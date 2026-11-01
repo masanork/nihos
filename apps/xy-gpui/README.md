@@ -10,7 +10,7 @@ working directory and loads the same firmware. Closing one session leaves the
 others running. No document or flash persistence is implemented. Each active
 session consumes CPU, so concurrent sessions can run more slowly; pause a session
 to stop its CPU work without discarding its state. Portrait rotates the
-host display clockwise; it does not change the guest's display orientation or
+host display counterclockwise; it does not change the guest's display orientation or
 input coordinates. Mouse press, drag and release on the screen simulate one
 ST7123 touch contact; coordinates follow the displayed rotation. Input is
 released on focus loss, rotation, pause, power off, or reset. Power off stops CPU execution and blanks the screen; power on
