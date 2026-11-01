@@ -94,6 +94,9 @@ origin, wraps the physical stream to reject every OTA operation, and switches
 to an in-memory responder for the transfer and explicit activation. The same
 write-blocking wrapper is used for the post-simulation physical handshake.
 This is a simulation even if exercised on Tab5; the C6 is not updated.
+The [Tab5 simulation record](../../docs/measurements/2026-11-01-hosted3-ota-simulation.md)
+documents a full transfer of the exact candidate against the P4 in-memory
+responder and a successful post-simulation 2.13.1 handshake.
 `sh ports/esp-hosted-c6-time-v3/test-full-candidate.sh CANDIDATE_BIN`
 separately hashes and transfers the exact candidate through the P4's OTA
 state machine and in-memory 2.13.1 responder on the host.
