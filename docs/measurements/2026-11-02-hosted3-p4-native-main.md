@@ -66,3 +66,33 @@ with C6 time offload and IPv6 disabled built and passed the native image audit.
 Each reported a 49,728-byte primary heap. These are build/audit results: the
 full default profile has not been run on hardware, and the diagnostic link
 with a temporarily relaxed heap assertion was never a product candidate.
+
+### XY-enabled physical smoke after placement change
+
+A separate Tab5 run exercised clean source commit
+`47f4fa45703a0dadc9cb1f376b6aa24e1bd35cbb` using native app SHA-256
+`3d225b2108127c8eaa9472e7268feefb5053235c87b8ced0ed4dfe66df3ea529`
+and loader SHA-256
+`121a7bef14eed3bb162d9ff45bdcbfb075eac7e8e8902234104ec627c933331e`.
+The network, devices, XY and C6 time offload were enabled; normal storage,
+SQLD, camera and IPv6 were disabled. The 3,897,600-byte app fit the existing
+4 MiB factory slot, and the installed partition table was preserved. The
+candidate passed its image audit with a 53,056-byte primary heap.
+
+The P4 reported XY ready with persistence disabled, one C6 time reply, one
+successful RTC update, and zero reported RTC failures. The time sample was
+Unix `1793569024` (2026-11-01 21:37:04 UTC); later valid RTC readbacks
+advanced from 21:37:13 to 21:37:19 UTC. BLE reported seven commands, 16
+advertisements, zero malformed events and zero timeouts. UI and both core
+counters advanced. This is a short foreground smoke, not a test of reconnect,
+XY input or persistence, or the complete default profile. C6 version is based
+on the preceding OTA/descriptor observation; no version or flash readback was
+captured in this run. SNTP remains unauthenticated.
+
+The P4 16 MiB backup and full restoration were verified against SHA-256
+`06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`.
+Raw capture SHA-256:
+`cd49b121d2d177e4ca891cebb7d202bbb56dc2e5eda0b1090af9049093cf4f9e`.
+Raw artifacts remain private in
+`/private/tmp/nihos-hosted3-main-xy-rtc-20261102/`. The original P4 app was
+reset after restoration but its boot was not captured; the RTC was left set.
