@@ -1,0 +1,29 @@
+{
+  "source_commit": "270e58763fdd16c3cab5c9b38137b926d2a4c2f3",
+  "p4_app_sha256": "66c8652d5fb59e0d04ce72e908bd2769d127fa7329561d7d152206949be3a490",
+  "p4_backup_sha256": "06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435",
+  "p4_full_flash_restored_and_verified": true,
+  "device_capture_sha256": "f5c9d9df1589c17b41bd77f9c29ba10f109b75785b065f225b4d9cdb4e1e6800",
+  "peer_capture_sha256": "52742ffe94c86b3325cd74f9ffd0d2bc177c63b99ade7914a11f3cea970c5953",
+  "device_report": {
+    "status": 1,
+    "stage": 12,
+    "error_code": 0,
+    "peer_chip": 13,
+    "fw_major": 3,
+    "fw_minor": 0,
+    "fw_patch": 10,
+    "long_sent": 1254,
+    "long_attempts": 1,
+    "long_echo": 1
+  },
+  "peer": {
+    "received_bytes": 1200,
+    "payload_sha256": "159b51633f1b15bf03362c09e230dc0fab18819b624f445e279959e4452b688c",
+    "payload_matches": true,
+    "source_port": 49152,
+    "source_ip_matches_p4_report": true,
+    "echoed_bytes": 1200
+  },
+  "scope": "single UDP diagnostic echo; no QUIC, TLS or iroh qualification"
+}

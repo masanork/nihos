@@ -69,8 +69,7 @@ printf 'pub const normal_storage = false;\n' > "$build_dir/c6-options.zig"
     -fentry=nih_native_start -T "$build_dir/probe.ld" --gc-sections \
     "$repo_root/probes/c6-sdio/start.S" "$build_dir/pads.o" \
     --dep c6_probe --dep timer_group --dep wifi_config --dep long_dma -Mroot="$repo_root/probes/c6-sdio/main.zig" \
-    --dep hosted_dma_bus --dep hosted_long_cache --dep long_udp_probe -Mlong_dma="$repo_root/probes/hosted-long-send/boot-bus.zig" \
-    -Mlong_udp_probe="$repo_root/src/net/long_udp_probe.zig" \
+    --dep hosted_dma_bus --dep hosted_long_cache --dep hosted_station -Mlong_dma="$repo_root/probes/hosted-long-send/boot-bus.zig" \
     -Mhosted_dma_bus="$repo_root/src/net/hosted_dma_bus.zig" \
     -Mhosted_long_cache="$repo_root/src/platform/native/hosted_long_cache.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

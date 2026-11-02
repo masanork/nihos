@@ -542,6 +542,98 @@ pub const TimeReport = struct {
     age_seconds: u32 = 0,
 };
 var hosted_time: hosted.c6_time_exchange.Exchange = .{};
+// SAFETY: the split UDP fixture initializes the owner before stepping it.
+var hosted_split_udp: hosted.split_udp_owner.Owner = undefined;
+
+/// Separate diagnostic: C6 owns DHCP, and one owner sends a single UDP frame.
+noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: hosted.Join) !void {
+    const config = @import("root").SplitUdpConfig;
+    report.stage = 1;
+    nih_c6_pads_init();
+    if (nih_c6_power_enable() != 1) {
+        report.power_failure = nih_c6_power_failure_detail();
+        return error.PowerEnable;
+    }
+    host.io.delay(20_000);
+    nih_c6_reset(1);
+    host.io.delay(2_000_000);
+    if (clock_failed) return error.Clock;
+    report.stage = 2;
+    try host.prepare(true);
+    report.stage = 3;
+    try host.identify();
+    report.stage = 4;
+    try host.enableFunction();
+    try host.writeDoorbell(1, 0x8c, 1);
+    report.stage = 5;
+    const started = clock.counter() orelse return error.Clock;
+    try hosted_time.begin(join, 1, started, started + 100_000_000);
+    while (true) {
+        const count = try hosted_stream.receive(&rx);
+        report.rx +|= @intCast(count);
+        for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
+            try hosted_time.receive(frame, clock.counter() orelse return error.Clock);
+        };
+        const now = clock.counter() orelse return error.Clock;
+        if (clock_failed or now < started) return error.Clock;
+        if (hosted_time.phase == .ready and hosted_decoder.used == 0) {
+            const address = hosted_time.addresses.address orelse return error.Stale;
+            report.ip = address.ip;
+            report.netmask = address.mask;
+            report.gateway = address.gateway;
+            report.stage = 6;
+            try hosted_split_udp.init(&hosted_time, &hosted_decoder, .{ .ip = config.udp_ip, .mac = config.udp_mac, .port = config.udp_port }, 1, now, @min(now + 20_000_000, hosted_time.deadline));
+            report.stage = 7;
+            defer {
+                report.long_sent = if (hosted_split_udp.sent_count == 1) @intCast(hosted_split_udp.output.len) else 0;
+                report.long_attempts = hosted_split_udp.sent_count;
+            }
+            while (hosted_split_udp.phase != .complete) {
+                try hosted_split_udp.step(&hosted_stream, clock.counter() orelse return error.Clock);
+                if (clock_failed) return error.Clock;
+                host.io.delay(100);
+            }
+            report.long_echo = 1;
+            report.status = 1;
+            report.stage = 12;
+            return;
+        }
+        const bytes = try hosted_time.tx(now);
+        if (bytes.len > 0) {
+            const sent = try hosted_stream.send(bytes);
+            try hosted_time.sent(sent, clock.counter() orelse return error.Clock);
+            report.tx +|= @intCast(sent);
+        }
+        host.io.delay(100);
+    }
+}
+
+pub fn runHostedSplitUdp(clock: timers.Timer, join: hosted.Join) Report {
+    host = .{ .io = .{} };
+    host.io.setClock(clock);
+    hosted_stream = .{ .host = &host };
+    hosted_decoder = .{};
+    hosted_time = .{};
+    clock_failed = false;
+    clock.start();
+    clock.disarm();
+    defer clock.stop();
+    var report: Report = .{};
+    exerciseHostedSplitUdp(clock, &report, join) catch |err| {
+        report.error_code = @intFromError(err);
+        for ("NIHOS_C6_SPLIT_UDP_ERROR name=") |byte| _ = nih_rom_putc(byte);
+        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
+        for ("\r\n") |byte| _ = nih_rom_putc(byte);
+        hosted_stream.invalidate();
+    };
+    report.fw_known = @intFromBool(hosted_time.station.version_known);
+    report.fw_major = hosted_time.station.version[0];
+    report.fw_minor = hosted_time.station.version[1];
+    report.fw_patch = hosted_time.station.version[2];
+    report.peer_chip = hosted_time.station.peer_chip;
+    report.connected_events = @intFromBool(hosted_time.station.connected);
+    return snapshot(report);
+}
 noinline fn exerciseHostedTime(clock: timers.Timer, report: *TimeReport, join: hosted.Join) !void {
     report.stage = 1;
     nih_c6_pads_init();
