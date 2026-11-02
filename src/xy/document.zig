@@ -127,15 +127,6 @@ pub fn isClusterBoundary(text: []const u8, offset: usize) bool {
     return cur == offset;
 }
 
-const UndoOp = struct {
-    group_id: u32 = 0,
-    pos: u32 = 0,
-    inserted_len: u32 = 0,
-    deleted_offset: u32 = 0,
-    deleted_len: u32 = 0,
-    cursor_before: u32 = 0,
-};
-
 pub fn Document(
     comptime max_bytes: usize,
     comptime max_undo_ops: usize,
@@ -145,6 +136,15 @@ pub fn Document(
 ) type {
     return struct {
         const Self = @This();
+        const Offset = if (@max(max_bytes, max_undo_bytes) <= std.math.maxInt(u16)) u16 else u32;
+        const UndoOp = struct {
+            group_id: u32 = 0,
+            pos: Offset = 0,
+            inserted_len: Offset = 0,
+            deleted_offset: Offset = 0,
+            deleted_len: Offset = 0,
+            cursor_before: Offset = 0,
+        };
 
         bytes: [max_bytes]u8 = @splat(0),
         len: u32 = 0,
@@ -318,11 +318,11 @@ pub fn Document(
                 }
                 self.undo_ops[self.undo_count] = .{
                     .group_id = grp,
-                    .pos = pos,
-                    .inserted_len = ins_len,
-                    .deleted_offset = del_off,
-                    .deleted_len = del_len,
-                    .cursor_before = self.cursor,
+                    .pos = @intCast(pos),
+                    .inserted_len = @intCast(ins_len),
+                    .deleted_offset = @intCast(del_off),
+                    .deleted_len = @intCast(del_len),
+                    .cursor_before = @intCast(self.cursor),
                 };
                 self.undo_count += 1;
             }
@@ -450,6 +450,30 @@ pub fn Document(
             self.ruby_count += 1;
         }
     };
+}
+
+test "undo offsets retain full bounded and wider document ranges" {
+    const Small = Document(4096, 256, 2048, 1, 64);
+    const Large = Document(70000, 2, 70000, 1, 64);
+    const small = try std.testing.allocator.create(Small);
+    defer std.testing.allocator.destroy(small);
+    small.* = .{};
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(@TypeOf(small.undo_ops[0])));
+    const bytes = try std.testing.allocator.alloc(u8, 65536);
+    defer std.testing.allocator.free(bytes);
+    @memset(bytes, 'a');
+    try small.insertUtf8(bytes[0..4096]);
+    _ = try small.replaceRange(.{ .revision = small.revision, .start = 0, .end = 2048 }, "");
+    try std.testing.expect(try small.undo());
+    try std.testing.expectEqual(@as(u32, 4096), small.len);
+    try std.testing.expectEqualSlices(u8, bytes[0..4096], small.slice());
+    const large = try std.testing.allocator.create(Large);
+    defer std.testing.allocator.destroy(large);
+    large.* = .{};
+    try std.testing.expectEqual(@as(usize, 24), @sizeOf(@TypeOf(large.undo_ops[0])));
+    try large.insertUtf8(bytes);
+    try std.testing.expect(try large.undo());
+    try std.testing.expectEqual(@as(u32, 0), large.len);
 }
 
 // ============================================================================

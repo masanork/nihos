@@ -15,7 +15,9 @@ cc -std=c11 -Wall -Wextra -Werror -I include -fsyntax-only tools/probes/app_prot
     --dep core --dep canvas -Mroot=tools/probes/animation.zig \
     --dep canvas -Mcore=src/root.zig \
     --dep surface -Mcanvas=src/graphics/canvas.zig -Msurface=src/graphics/surface.zig
-"$zig" build-exe -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei \
+"$zig" build-obj -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei \
+    -O ReleaseSafe src/xy/scheme_decimal.zig -femit-bin="$out/scheme-decimal-rv32.o"
+"$zig" build-exe "$out/scheme-decimal-rv32.o" -target riscv32-freestanding-none -mcpu=generic_rv32+m+a+c+zicsr+zifencei \
     -O ReleaseSafe -fentry=nih_scheme_frame -fcompiler-rt -fno-strip \
     -femit-bin="$out/scheme-rv32.elf" \
     --dep scheme_runtime -Mroot=tools/probes/xy_app_scheme.zig \

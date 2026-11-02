@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/nihos-xy-r7rs-growth-20261102/tools/xy_nested_gc_pressure_probe.py", line 52, in <module>
+    print(json.dumps(run(args.zig, args.runtime), indent=2))
+  File "/private/tmp/nihos-xy-r7rs-growth-20261102/tools/xy_nested_gc_pressure_probe.py", line 41, in run
+    raise RuntimeError(result.stdout + result.stderr)
+RuntimeError: 1/1 pressure.test.pressure...PRESSURE nested_gc=0 free=58
+FAIL (TestUnexpectedResult)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/4460dafdc1482b95b1aba9e41e3cc889/root --seed=0x75561f2a
+

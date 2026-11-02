@@ -1,0 +1,40 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized] target(s) in 14.09s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+SLICED POC observed NIHOS_NATIVE_XY_READY
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=373031
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=373032
+SLICED POC observed mode=00000001
+test emu::tests::continuation_native_poc_sliced_gc_cancel has been running for over 60 seconds
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=373032
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=373032
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=33323030
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=373033
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_GC_STATE state=00000001
+SLICED POC observed NIHOS_NATIVE_XY_GC_STATE state=00000002
+SLICED POC observed NIHOS_NATIVE_XY_GC_DONE count=00000001
+SLICED POC observed NIHOS_NATIVE_XY_CONT_STATE state=00000002
+SLICED POC observed  bytes=00000001 cursor=00000001 
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=33323030
+SLICED POC observed mode=00000001
+SLICED POC observed NIHOS_NATIVE_XY_REPLY data=3432
+SLICED POC cancel drained replay=x retained=3200 recovery=42
+test emu::tests::continuation_native_poc_sliced_gc_cancel ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 121.07s
+

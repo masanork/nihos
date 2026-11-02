@@ -1,0 +1,250 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "2.33",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (my-map f xs) (accumulate (lambda (x y) (cons (f x) y)) '() xs))\n(define (my-append a b) (accumulate cons b a))\n(define (my-length xs) (accumulate (lambda (x n) (+ n 1)) 0 xs))",
+      "expression": "(my-map (lambda (x) (* x x)) '(1 2 3))",
+      "expected": "(1 4 9)",
+      "observed": "(1 4 9)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.33",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (my-map f xs) (accumulate (lambda (x y) (cons (f x) y)) '() xs))\n(define (my-append a b) (accumulate cons b a))\n(define (my-length xs) (accumulate (lambda (x n) (+ n 1)) 0 xs))",
+      "expression": "(my-append '(1 2) '(3 4))",
+      "expected": "(1 2 3 4)",
+      "observed": "(1 2 3 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.33",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (my-map f xs) (accumulate (lambda (x y) (cons (f x) y)) '() xs))\n(define (my-append a b) (accumulate cons b a))\n(define (my-length xs) (accumulate (lambda (x n) (+ n 1)) 0 xs))",
+      "expression": "(my-length '(a b c d))",
+      "expected": "4",
+      "observed": "4",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.34",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (horner-eval x coefficients) (accumulate (lambda (a higher) (+ a (* x higher))) 0 coefficients))",
+      "expression": "(horner-eval 2 '(1 3 0 5 0 1))",
+      "expected": "79",
+      "observed": "79",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.34",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (horner-eval x coefficients) (accumulate (lambda (a higher) (+ a (* x higher))) 0 coefficients))",
+      "expression": "(horner-eval 3 '(2 -1 4))",
+      "expected": "35",
+      "observed": "35",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.35",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (count-leaves t) (accumulate + 0 (map (lambda (x) (cond ((null? x) 0) ((pair? x) (count-leaves x)) (else 1))) t)))",
+      "expression": "(count-leaves '((1 2) (3 (4 5))))",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.35",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (count-leaves t) (accumulate + 0 (map (lambda (x) (cond ((null? x) 0) ((pair? x) (count-leaves x)) (else 1))) t)))",
+      "expression": "(count-leaves '())",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.36",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (accumulate-n op initial seqs) (if (null? (car seqs)) '() (cons (accumulate op initial (map car seqs)) (accumulate-n op initial (map cdr seqs)))))",
+      "expression": "(accumulate-n + 0 '((1 2 3) (4 5 6) (7 8 9) (10 11 12)))",
+      "expected": "(22 26 30)",
+      "observed": "(22 26 30)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.37",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (accumulate-n op initial seqs) (if (null? (car seqs)) '() (cons (accumulate op initial (map car seqs)) (accumulate-n op initial (map cdr seqs)))))\n(define (dot-product v w) (accumulate + 0 (map * v w)))\n(define (matrix-*-vector m v) (map (lambda (row) (dot-product row v)) m))\n(define (transpose m) (accumulate-n cons '() m))\n(define (matrix-*-matrix m n) (let ((columns (transpose n))) (map (lambda (row) (map (lambda (col) (dot-product row col)) columns)) m)))",
+      "expression": "(matrix-*-vector '((1 2) (3 4)) '(5 6))",
+      "expected": "(17 39)",
+      "observed": "(17 39)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.37",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (accumulate-n op initial seqs) (if (null? (car seqs)) '() (cons (accumulate op initial (map car seqs)) (accumulate-n op initial (map cdr seqs)))))\n(define (dot-product v w) (accumulate + 0 (map * v w)))\n(define (matrix-*-vector m v) (map (lambda (row) (dot-product row v)) m))\n(define (transpose m) (accumulate-n cons '() m))\n(define (matrix-*-matrix m n) (let ((columns (transpose n))) (map (lambda (row) (map (lambda (col) (dot-product row col)) columns)) m)))",
+      "expression": "(transpose '((1 2 3) (4 5 6)))",
+      "expected": "((1 4) (2 5) (3 6))",
+      "observed": "((1 4) (2 5) (3 6))",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.37",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (accumulate-n op initial seqs) (if (null? (car seqs)) '() (cons (accumulate op initial (map car seqs)) (accumulate-n op initial (map cdr seqs)))))\n(define (dot-product v w) (accumulate + 0 (map * v w)))\n(define (matrix-*-vector m v) (map (lambda (row) (dot-product row v)) m))\n(define (transpose m) (accumulate-n cons '() m))\n(define (matrix-*-matrix m n) (let ((columns (transpose n))) (map (lambda (row) (map (lambda (col) (dot-product row col)) columns)) m)))",
+      "expression": "(matrix-*-matrix '((1 2) (3 4)) '((5 6) (7 8)))",
+      "expected": "((19 22) (43 50))",
+      "observed": "((19 22) (43 50))",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.38",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))",
+      "expression": "(accumulate / 1 '(1 2 3))",
+      "expected": "3/2",
+      "observed": "3/2",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.38",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))",
+      "expression": "(fold-left / 1 '(1 2 3))",
+      "expected": "1/6",
+      "observed": "1/6",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.38",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))",
+      "expression": "(accumulate list '() '(1 2 3))",
+      "expected": "(1 (2 (3 ())))",
+      "observed": "(1 (2 (3 ())))",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.38",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))",
+      "expression": "(fold-left list '() '(1 2 3))",
+      "expected": "(((() 1) 2) 3)",
+      "observed": "(((() 1) 2) 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.39",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (reverse-right xs) (accumulate (lambda (x acc) (append acc (list x))) '() xs))\n(define (reverse-left xs) (fold-left (lambda (acc x) (cons x acc)) '() xs))",
+      "expression": "(reverse-right '(1 2 3))",
+      "expected": "(3 2 1)",
+      "observed": "(3 2 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.39",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (reverse-right xs) (accumulate (lambda (x acc) (append acc (list x))) '() xs))\n(define (reverse-left xs) (fold-left (lambda (acc x) (cons x acc)) '() xs))",
+      "expression": "(reverse-left '(1 2 3))",
+      "expected": "(3 2 1)",
+      "observed": "(3 2 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.40",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (unique-pairs n) (flatmap (lambda (i) (map (lambda (j) (list i j)) (enumerate 1 (- i 1)))) (enumerate 1 n)))",
+      "expression": "(unique-pairs 4)",
+      "expected": "((2 1) (3 1) (3 2) (4 1) (4 2) (4 3))",
+      "observed": "((2 1) (3 1) (3 2) (4 1) (4 2) (4 3))",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.41",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (triples n s) (filter (lambda (t) (= (+ (car t) (cadr t) (car (cdr (cdr t)))) s)) (flatmap (lambda (i) (flatmap (lambda (j) (map (lambda (k) (list i j k)) (enumerate 1 (- j 1)))) (enumerate 1 (- i 1)))) (enumerate 1 n))))",
+      "expression": "(triples 5 9)",
+      "expected": "((4 3 2) (5 3 1))",
+      "observed": "((4 3 2) (5 3 1))",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.42",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(length (queens 0))",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.42",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(length (queens 1))",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.42",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(length (queens 4))",
+      "expected": "2",
+      "observed": "HeapFull",
+      "status": "error"
+    },
+    {
+      "exercise": "2.42",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(length (queens 8))",
+      "expected": "92",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 1))) (count calls)) (list solutions count))",
+      "expected": "(1 2)",
+      "variant": "ordinary",
+      "observed": "(1 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (row) (map (lambda (rest) (cons row rest)) (queen-cols (- k 1)))) (enumerate 1 size)))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 1))) (count calls)) (list solutions count))",
+      "expected": "(1 2)",
+      "variant": "reordered",
+      "observed": "(1 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 2))) (count calls)) (list solutions count))",
+      "expected": "(0 3)",
+      "variant": "ordinary",
+      "observed": "(0 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (row) (map (lambda (rest) (cons row rest)) (queen-cols (- k 1)))) (enumerate 1 size)))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 2))) (count calls)) (list solutions count))",
+      "expected": "(0 7)",
+      "variant": "reordered",
+      "observed": "(0 7)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 3))) (count calls)) (list solutions count))",
+      "expected": "(0 4)",
+      "variant": "ordinary",
+      "observed": "(0 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.43",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define calls 0) (define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (set! calls (+ calls 1)) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (row) (map (lambda (rest) (cons row rest)) (queen-cols (- k 1)))) (enumerate 1 size)))))\n (queen-cols size))",
+      "expression": "(let* ((solutions (length (queens 3))) (count calls)) (list solutions count))",
+      "expected": "(0 40)",
+      "variant": "reordered",
+      "observed": "HeapFull",
+      "status": "error"
+    }
+  ],
+  "totals": {
+    "matched": 26,
+    "error": 3
+  },
+  "note": "Candidate finite cases only; queens n=8 is attempted against an independent exact count. Failures and drawing/proof obligations remain explicit."
+}

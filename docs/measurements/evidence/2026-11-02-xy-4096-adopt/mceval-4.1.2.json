@@ -1,0 +1,194 @@
+{
+  "source_archive_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "reference_checks": [
+    {
+      "name": "self-evaluating-integer",
+      "status": "matched"
+    },
+    {
+      "name": "self-evaluating-string",
+      "status": "matched"
+    },
+    {
+      "name": "self-evaluating-symbol",
+      "status": "matched"
+    },
+    {
+      "name": "variable",
+      "status": "matched"
+    },
+    {
+      "name": "variable-pair",
+      "status": "matched"
+    },
+    {
+      "name": "assignment-value",
+      "status": "matched"
+    },
+    {
+      "name": "definition-variable",
+      "status": "matched"
+    },
+    {
+      "name": "definition-value",
+      "status": "matched"
+    },
+    {
+      "name": "if-alternative",
+      "status": "matched"
+    },
+    {
+      "name": "if-default",
+      "status": "matched"
+    },
+    {
+      "name": "application",
+      "status": "matched"
+    },
+    {
+      "name": "cond-transform",
+      "status": "matched"
+    }
+  ],
+  "source_member": "ch4-mceval.scm",
+  "section": "4.1.2",
+  "compatibility_definitions": [
+    "(define true #t)",
+    "(define false #f)"
+  ],
+  "source_forms": [
+    "(define (self-evaluating? exp)\n  (cond ((number? exp) true)\n        ((string? exp) true)\n        (else false)))",
+    "(define (quoted? exp)\n  (tagged-list? exp 'quote))",
+    "(define (text-of-quotation exp) (cadr exp))",
+    "(define (tagged-list? exp tag)\n  (if (pair? exp)\n      (eq? (car exp) tag)\n      false))",
+    "(define (variable? exp) (symbol? exp))",
+    "(define (assignment? exp)\n  (tagged-list? exp 'set!))",
+    "(define (assignment-variable exp) (cadr exp))",
+    "(define (assignment-value exp) (caddr exp))",
+    "(define (definition? exp)\n  (tagged-list? exp 'define))",
+    "(define (definition-variable exp)\n  (if (symbol? (cadr exp))\n      (cadr exp)\n      (caadr exp)))",
+    "(define (definition-value exp)\n  (if (symbol? (cadr exp))\n      (caddr exp)\n      (make-lambda (cdadr exp)\n                   (cddr exp))))",
+    "(define (lambda? exp) (tagged-list? exp 'lambda))",
+    "(define (lambda-parameters exp) (cadr exp))",
+    "(define (lambda-body exp) (cddr exp))",
+    "(define (make-lambda parameters body)\n  (cons 'lambda (cons parameters body)))",
+    "(define (if? exp) (tagged-list? exp 'if))",
+    "(define (if-predicate exp) (cadr exp))",
+    "(define (if-consequent exp) (caddr exp))",
+    "(define (if-alternative exp)\n  (if (not (null? (cdddr exp)))\n      (cadddr exp)\n      'false))",
+    "(define (make-if predicate consequent alternative)\n  (list 'if predicate consequent alternative))",
+    "(define (begin? exp) (tagged-list? exp 'begin))",
+    "(define (begin-actions exp) (cdr exp))",
+    "(define (last-exp? seq) (null? (cdr seq)))",
+    "(define (first-exp seq) (car seq))",
+    "(define (rest-exps seq) (cdr seq))",
+    "(define (sequence->exp seq)\n  (cond ((null? seq) seq)\n        ((last-exp? seq) (first-exp seq))\n        (else (make-begin seq))))",
+    "(define (make-begin seq) (cons 'begin seq))",
+    "(define (application? exp) (pair? exp))",
+    "(define (operator exp) (car exp))",
+    "(define (operands exp) (cdr exp))",
+    "(define (no-operands? ops) (null? ops))",
+    "(define (first-operand ops) (car ops))",
+    "(define (rest-operands ops) (cdr ops))",
+    "(define (cond? exp) (tagged-list? exp 'cond))",
+    "(define (cond-clauses exp) (cdr exp))",
+    "(define (cond-else-clause? clause)\n  (eq? (cond-predicate clause) 'else))",
+    "(define (cond-predicate clause) (car clause))",
+    "(define (cond-actions clause) (cdr clause))",
+    "(define (cond->if exp)\n  (expand-clauses (cond-clauses exp)))",
+    "(define (expand-clauses clauses)\n  (if (null? clauses)\n      'false                          ; no else clause\n      (let ((first (car clauses))\n            (rest (cdr clauses)))\n        (if (cond-else-clause? first)\n            (if (null? rest)\n                (sequence->exp (cond-actions first))\n                (error \"ELSE clause isn't last -- COND->IF\"\n                       clauses))\n            (make-if (cond-predicate first)\n                     (sequence->exp (cond-actions first))\n                     (expand-clauses rest))))))"
+  ],
+  "setup": {
+    "completed": 42,
+    "status": "ok"
+  },
+  "recovery": null,
+  "cases": [
+    {
+      "name": "self-evaluating-integer",
+      "expression": "(self-evaluating? 12)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "name": "self-evaluating-string",
+      "expression": "(self-evaluating? \"hi\")",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "name": "self-evaluating-symbol",
+      "expression": "(self-evaluating? 'foo)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "name": "variable",
+      "expression": "(variable? 'foo)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "name": "variable-pair",
+      "expression": "(variable? '(foo))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "name": "assignment-value",
+      "expression": "(assignment-value '(set! x 4))",
+      "expected": "4",
+      "observed": "4",
+      "status": "matched"
+    },
+    {
+      "name": "definition-variable",
+      "expression": "(definition-variable '(define (f x) (+ x 1)))",
+      "expected": "f",
+      "observed": "f",
+      "status": "matched"
+    },
+    {
+      "name": "definition-value",
+      "expression": "(definition-value '(define (f x) (+ x 1)))",
+      "expected": "(lambda (x) (+ x 1))",
+      "observed": "(lambda (x) (+ x 1))",
+      "status": "matched"
+    },
+    {
+      "name": "if-alternative",
+      "expression": "(if-alternative '(if x 1 2))",
+      "expected": "2",
+      "observed": "2",
+      "status": "matched"
+    },
+    {
+      "name": "if-default",
+      "expression": "(if-alternative '(if x 1))",
+      "expected": "false",
+      "observed": "false",
+      "status": "matched"
+    },
+    {
+      "name": "application",
+      "expression": "(application? '(define x 3))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "name": "cond-transform",
+      "expression": "(cond->if '(cond ((> x 2) x) (else 0)))",
+      "expected": "(if (> x 2) x 0)",
+      "observed": "(if (> x 2) x 0)",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/1 cases.test.original syntax session...MCE_SETUP\t42\tok\nMCE_CASE\t0\tvalue\t#t\nMCE_CASE\t1\tvalue\t#t\nMCE_CASE\t2\tvalue\t#f\nMCE_CASE\t3\tvalue\t#t\nMCE_CASE\t4\tvalue\t#f\nMCE_CASE\t5\tvalue\t4\nMCE_CASE\t6\tvalue\tf\nMCE_CASE\t7\tvalue\t(lambda (x) (+ x 1))\nMCE_CASE\t8\tvalue\t2\nMCE_CASE\t9\tvalue\tfalse\nMCE_CASE\t10\tvalue\t#t\nMCE_CASE\t11\tvalue\t(if (> x 2) x 0)\nOK\nAll 1 tests passed.\n"
+}

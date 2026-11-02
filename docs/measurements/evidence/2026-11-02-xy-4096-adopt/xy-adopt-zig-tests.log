@@ -1,0 +1,235 @@
+test
++- run test w
+
+[SKK-S Conv 1] 'きょうはいいてんきですね' -> '今日はいい天気ですね'
+  seg[0]: '今日はいい'
+  seg[1]: '天気ですね'
+[SKK-S Conv 2] 'わたしはがくせいです' -> '渡しは学生です'
+  seg[0]: '渡しは'
+  seg[1]: '学生です'
+[SKK-S Conv 3] 'とうきょうへいく' -> '東京へいく'
+  seg[0]: '東京へいく'
+failed command: ./.zig-cache/o/a366cf91ea834d1297b1aefd68569bcd/test --cache-dir=./.zig-cache --seed=0xb400e555 --listen=-
+
+test
++- run test w
+
+
+================ Phase 4 Performance Benchmark ================
+1. Recursive Loop (sum-iter 50 0) x 30 runs (250,000 iterations total):
+   - AST Interpreter: 0.57 ms (379.0 ns/step), heap cells: 150
+   - Bytecode VM:     0.01 ms (7.3 ns/step), heap cells: 0
+   => Speedup:        51.69x faster!
+
+2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x 20000 runs:
+   - AST Interpreter: 3.49 ms (174.7 ns/eval)
+   - Bytecode VM:     0.10 ms (5.1 ns/eval)
+   => Speedup:        34.47x faster!
+
+3. SRAM Footprint:
+   - Phase 2 (Tagged Unions Baseline):  8,248 bytes
+   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes
+   - Runtime footprint: 79216 bytes
+=================================================================
+
+failed command: ./.zig-cache/o/ffcc4afd5a0e53f45aa167dd680ff35a/test --cache-dir=./.zig-cache --seed=0xb400e555 --listen=-
+
+test
++- run test w
+
+
+================ Phase 4 Performance Benchmark ================
+1. Recursive Loop (sum-iter 50 0) x 30 runs (250,000 iterations total):
+   - AST Interpreter: 0.78 ms (516.9 ns/step), heap cells: 150
+   - Bytecode VM:     0.04 ms (27.1 ns/step), heap cells: 0
+   => Speedup:        19.05x faster!
+
+2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x 20000 runs:
+   - AST Interpreter: 3.98 ms (199.1 ns/eval)
+   - Bytecode VM:     0.12 ms (5.8 ns/eval)
+   => Speedup:        34.06x faster!
+
+3. SRAM Footprint:
+   - Phase 2 (Tagged Unions Baseline):  8,248 bytes
+   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes
+   - Runtime footprint: 79216 bytes
+=================================================================
+
+failed command: ./.zig-cache/o/ad19f076a842791809897b3c97c0a580/test --cache-dir=./.zig-cache --seed=0xb400e555 --listen=-
+
+test
++- run test w
+
+
+================ Phase 4 Performance Benchmark ================
+1. Recursive Loop (sum-iter 50 0) x 30 runs (250,000 iterations total):
+   - AST Interpreter: 0.68 ms (453.4 ns/step), heap cells: 150
+   - Bytecode VM:     0.04 ms (23.5 ns/step), heap cells: 0
+   => Speedup:        19.32x faster!
+
+2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x 20000 runs:
+   - AST Interpreter: 5.14 ms (256.8 ns/eval)
+   - Bytecode VM:     0.11 ms (5.7 ns/eval)
+   => Speedup:        45.30x faster!
+
+3. SRAM Footprint:
+   - Phase 2 (Tagged Unions Baseline):  8,248 bytes
+   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes
+   - Runtime footprint: 79216 bytes
+=================================================================
+
+STORE_MODEL_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+STORE_MODEL_METADATA events=18 crash_cases=648 acknowledged_cases=6
+STORE_MODEL_INITIAL events=17 crash_cases=612 acknowledged_cases=6
+CHECKPOINT_CAMPAIGN events=162 crash_cases=5832 acknowledged_cases=6 max_mount_bytes=24576
+CHECKPOINT_BUDGET state_bytes=32096 max_objects=16128 mount_limit_bytes=1056768 tail_replay_bytes=0
+RANGE_CHECKSUM_IO object_bytes=4157441 single_byte_bytes=12288 crossing_table_bytes=20480 checksum_pages=2
+INDEX_GC_REUSE mutations=6000 pool_pages=3 protected_pages=2 free_pages=1 generation=6001
+INDEX_GC_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+PAYLOAD_GC_REUSE mutations=512 usable_pages=8 last_object_pages=2 free_after_collection=6
+PAYLOAD_GC_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+SEARCH_BUDGET calls=11 max_leaf_visits=1 max_bitmap_pages=1 max_metadata_read_bytes=4096
+SEARCH_CACHE_BUDGET plain_state_bytes=32096 cached_state_bytes=558432 data_bytes=524288 tags_bytes=2048
+STREAM_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+PATCH_CAMPAIGN events=82 crash_cases=2952 acknowledged_cases=6
+EXTENT_REUSE patches=128 live_payload_pages=3 unchanged_page_preserved=true
+EXTENT_CAMPAIGN events=84 crash_cases=3024 acknowledged_cases=6
+PROMOTION_CAMPAIGN events=50 crash_cases=1800 acknowledged_cases=6
+RESIZE_CAMPAIGN length=4099 events=66 crash_cases=2376 acknowledged_cases=6
+RESIZE_CAMPAIGN length=9000 events=66 crash_cases=2376 acknowledged_cases=6
+RESIZE_CAMPAIGN length=0 events=34 crash_cases=1224 acknowledged_cases=6
+RESIZE_CAMPAIGN length=262144 events=50 crash_cases=1800 acknowledged_cases=6
+BATCH_CAMPAIGN sparse=false events=82 crash_cases=2952 acknowledged_cases=6
+BATCH_CAMPAIGN sparse=true events=114 crash_cases=4104 acknowledged_cases=6
+SCATTER_CAMPAIGN resize=false events=82 crash_cases=2952 acknowledged_cases=6
+SCATTER_CAMPAIGN resize=true events=66 crash_cases=2376 acknowledged_cases=6
+MAINTENANCE_CAMPAIGN cancelled_dirty=false events=18 crash_cases=648 acknowledged_cases=6
+MAINTENANCE_CAMPAIGN cancelled_dirty=true events=42 crash_cases=1512 acknowledged_cases=6
+GATE_MAINTENANCE_CAMPAIGN crash_cases=648 dispatched_before_recovery=0
+SERVICE_CAMPAIGN events=114 crash_cases=4104 acknowledged_cases=6
+failed command: ./.zig-cache/o/0d02e4c45b556f0b5529bf084490b899/test --cache-dir=./.zig-cache --seed=0xb400e555 --listen=-
+
+Build Summary: 122/122 steps succeeded; 1111/1111 tests passed
+test success
++- run test cached
+|  +- compile test debug native cached 101ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 76ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 73ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 77ms MaxRSS:31M
++- test-app success
+|  +- run test cached
+|  |  +- compile test debug native cached 58ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 67ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 54ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 54ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 54ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 56ms MaxRSS:31M
+|  +- run test cached
+|  |  +- compile test debug native cached 65ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 63ms MaxRSS:32M
+|  +- run test cached
+|  |  +- compile test debug native cached 66ms MaxRSS:32M
+|  +- run test cached
+|     +- compile test debug native cached 54ms MaxRSS:32M
++- run test 884 pass (884 total) 1m MaxRSS:41M
+|  +- compile test debug native success 24s MaxRSS:1G
++- run test cached
+|  +- compile test debug native cached 106ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 60ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 80ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 69ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 69ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 111ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 67ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 65ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 62ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 123ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 61ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 71ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 57ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 108ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 67ms MaxRSS:32M
++- run test 4 pass (4 total) 219ms MaxRSS:2M
+|  +- compile test debug native success 2s MaxRSS:265M
++- run test 1 pass (1 total) 279ms MaxRSS:6M
+|  +- compile test debug native success 2s MaxRSS:261M
++- run test 4 pass (4 total) 302ms MaxRSS:6M
+|  +- compile test debug native success 3s MaxRSS:221M
++- run test 5 pass (5 total) 479ms MaxRSS:6M
+|  +- compile test debug native success 3s MaxRSS:269M
++- run test cached
+|  +- compile test debug native cached 95ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 65ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 66ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 57ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 161ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 56ms MaxRSS:31M
++- run test cached
+|  +- compile test debug native cached 110ms MaxRSS:32M
++- run test 79 pass (79 total) 1s MaxRSS:8M
+|  +- compile test debug native success 4s MaxRSS:417M
++- run test 8 pass (8 total) 197ms MaxRSS:3M
+|  +- compile test debug native success 2s MaxRSS:225M
++- run test cached
+|  +- compile test debug native cached 68ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 54ms MaxRSS:32M
++- run test 5 pass (5 total) 196ms MaxRSS:3M
+|  +- compile test debug native success 3s MaxRSS:229M
++- run test 8 pass (8 total) 218ms MaxRSS:3M
+|  +- compile test debug native success 3s MaxRSS:275M
++- run test cached
+|  +- compile test debug native cached 104ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 73ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 121ms MaxRSS:31M
++- run test 14 pass (14 total) 224ms MaxRSS:4M
+|  +- compile test debug native success 3s MaxRSS:307M
++- run test cached
+|  +- compile test debug native cached 62ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 65ms MaxRSS:32M
++- run test 62 pass (62 total) 2s MaxRSS:5M
+|  +- compile test debug native success 4s MaxRSS:325M
++- run test 16 pass (16 total) 231ms MaxRSS:4M
+|  +- compile test debug native success 4s MaxRSS:309M
++- run test cached
+|  +- compile test debug native cached 59ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 108ms MaxRSS:32M
++- run test cached
+|  +- compile test debug native cached 65ms MaxRSS:31M
++- run test 10 pass (10 total) 198ms MaxRSS:3M
+|  +- compile test debug native success 3s MaxRSS:236M
++- run test 11 pass (11 total) 211ms MaxRSS:3M
+   +- compile test debug native success 3s MaxRSS:235M
+

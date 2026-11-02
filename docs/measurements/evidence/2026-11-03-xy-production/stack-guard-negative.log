@@ -1,0 +1,29 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-scheme-product-20261103/apps/xy-gpui-guard-test-v2)
+    Finished `test` profile [unoptimized] target(s) in 4.18s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+STACK_GUARD observed NIHOS_NATIVE_XY_READY
+STACK_GUARD observed mode=00000001
+STACK_GUARD observed NIHOS_NATIVE_XY_REPLY data=373031
+STACK_GUARD observed mode=00000001
+STACK_GUARD observed NIHOS_NATIVE_XY_CONT_STATE state=00000001
+
+thread 'emu::tests::continuation_native_resume_rejects_corrupt_stack_guard' (15740881) panicked at src/emu/mod.rs:1854:13:
+corrupt guard was overwritten and evaluation completed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test emu::tests::continuation_native_resume_rejects_corrupt_stack_guard ... FAILED
+
+failures:
+
+failures:
+    emu::tests::continuation_native_resume_rejects_corrupt_stack_guard
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 39 filtered out; finished in 24.48s
+
+error: test failed, to rerun pass `--bin nihos-xy-gpui`

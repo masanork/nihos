@@ -1,0 +1,1517 @@
+{
+  "schema": 1,
+  "backend": "native-sram",
+  "rtos_linked": false,
+  "fp_assembly_linked": false,
+  "riscv_flags": "0x1",
+  "fp_instructions": {
+    "app": 0,
+    "c": 0,
+    "zig": 0,
+    "transfer_helpers": 0
+  },
+  "entry": "0x4ff00000",
+  "elf_sha256": "b77d183f409866a32c77a3c153071da3be8678b0eb0466a476a2ec3c94924429",
+  "sqld": null,
+  "memory": {
+    "profile": "device",
+    "origin": "0x4ff00000",
+    "end": "0x4ff28000",
+    "bytes": 163840,
+    "total_bytes": 221184,
+    "regions": [
+      {
+        "name": "resident",
+        "origin": "0x4ff00000",
+        "end": "0x4ff28000",
+        "bytes": 163840
+      },
+      {
+        "name": "stacks",
+        "origin": "0x4ff60000",
+        "end": "0x4ff6e000",
+        "bytes": 57344
+      }
+    ]
+  },
+  "sram_reserved_bytes": 168768,
+  "primary_static_bytes": 111424,
+  "stacks": {
+    "start": "0x4ff60000",
+    "end": "0x4ff6e000",
+    "bytes": 57344,
+    "bootstrap_bytes_per_hart": 8192,
+    "irq_bytes_per_hart": 8192,
+    "worker_bytes": 4096,
+    "workers_per_hart": 3,
+    "worker_start": "0x4ff68000",
+    "task_side_trap_bytes": 128,
+    "ordinary_sp_budget_bytes": 3952
+  },
+  "heap": {
+    "start": "0x4ff1b340",
+    "end": "0x4ff28000",
+    "bytes": 52416,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "flash_boot": {
+    "start": "0x40000120",
+    "end": "0x40000f9c",
+    "bytes": 3708,
+    "sha256": "45bc00cb3738fde92a4d44657dbe96c0bd249a15dbbdc1bbfb4699359ded0c2a",
+    "functions": {
+      "probe": {
+        "name": "psram.probe",
+        "start": "0x40000120",
+        "end": "0x40000b9a"
+      },
+      "mapping": {
+        "name": "psram_memory.prepare__func_328",
+        "start": "0x40000b9a",
+        "end": "0x40000f9c"
+      }
+    }
+  },
+  "pmp_flash": {
+    "start": "0x4000b150",
+    "end": "0x4000bbd4",
+    "bytes": 2692,
+    "sha256": "e2f0a674af11b797857e1510880a126155c048b547468ce016a686bf04791a45",
+    "functions": {
+      "native_tasks.reclaimFaulted": {
+        "start": "0x4000b150",
+        "end": "0x4000b27a"
+      },
+      "task_runtime.Runtime(4,2).add": {
+        "start": "0x4000b27a",
+        "end": "0x4000b45e"
+      },
+      "pmp.protectionAccepted": {
+        "start": "0x4000b45e",
+        "end": "0x4000b51c"
+      },
+      "pmp.grant": {
+        "start": "0x4000b51c",
+        "end": "0x4000b5cc"
+      },
+      "pmp.commit": {
+        "start": "0x4000b5cc",
+        "end": "0x4000b658"
+      },
+      "pmp.writeWords": {
+        "start": "0x4000b658",
+        "end": "0x4000b6ca"
+      },
+      "task_runtime.Runtime(4,2).finishCall": {
+        "start": "0x4000b6ca",
+        "end": "0x4000b996"
+      },
+      "native_tasks.onProtectedFault": {
+        "start": "0x4000b996",
+        "end": "0x4000ba30"
+      },
+      "native_tasks.closeFaulted": {
+        "start": "0x4000ba30",
+        "end": "0x4000bb1a"
+      },
+      "task_runtime.Runtime(4,2).containFault": {
+        "start": "0x4000bb1a",
+        "end": "0x4000bbd4"
+      }
+    }
+  },
+  "user_probe": null,
+  "flash_records": {
+    "start": "0x40010020",
+    "end": "0x4001f590",
+    "bytes": 62832,
+    "fnv1a": 153233827,
+    "executable": false,
+    "writable": false
+  },
+  "rom_symbols": {
+    "nih_rom_putc": "0x4fc00054",
+    "nih_rom_get_cpu_ticks": "0x4fc00040",
+    "nih_rom_set_cpu_ticks": "0x4fc00044",
+    "nih_rom_set_cpu1_entry": "0x4fc000a8",
+    "nih_rom_l2_line_size": "0x4fc003cc",
+    "nih_rom_l2_enable": "0x4fc00504",
+    "nih_rom_cache_invalidate": "0x4fc003e4",
+    "nih_rom_cache_writeback": "0x4fc003f4"
+  },
+  "sections": [
+    {
+      "name": ".flash.appdesc",
+      "address": "0x40000020",
+      "bytes": 256
+    },
+    {
+      "name": ".flash.boot",
+      "address": "0x40000120",
+      "bytes": 3708
+    },
+    {
+      "name": ".flash.devices",
+      "address": "0x40000fa0",
+      "bytes": 17400
+    },
+    {
+      "name": ".flash.time",
+      "address": "0x400053a0",
+      "bytes": 23978
+    },
+    {
+      "name": ".flash.pmp",
+      "address": "0x4000b150",
+      "bytes": 2692
+    },
+    {
+      "name": ".flash.rodata",
+      "address": "0x40010020",
+      "bytes": 62832
+    },
+    {
+      "name": ".flash.fspad",
+      "address": "0x4001f590",
+      "bytes": 2672
+    },
+    {
+      "name": ".flash.fstext",
+      "address": "0x40020000",
+      "bytes": 42496
+    },
+    {
+      "name": ".flash.fsrodata",
+      "address": "0x4002a600",
+      "bytes": 10580
+    },
+    {
+      "name": ".flash.xypad",
+      "address": "0x4002cf54",
+      "bytes": 209068
+    },
+    {
+      "name": ".flash.xytext",
+      "address": "0x40060000",
+      "bytes": 144176
+    },
+    {
+      "name": ".flash.xyrodata",
+      "address": "0x40083330",
+      "bytes": 3303932
+    },
+    {
+      "name": ".text",
+      "address": "0x4ff00000",
+      "bytes": 85682
+    },
+    {
+      "name": ".rodata",
+      "address": "0x4ff14ec0",
+      "bytes": 12048
+    },
+    {
+      "name": ".data",
+      "address": "0x4ff17e00",
+      "bytes": 2912
+    },
+    {
+      "name": ".bss",
+      "address": "0x4ff18980",
+      "bytes": 10656
+    },
+    {
+      "name": ".stacks",
+      "address": "0x4ff60000",
+      "bytes": 57344
+    },
+    {
+      "name": ".heap",
+      "address": "0x4ff1b340",
+      "bytes": 52416
+    }
+  ],
+  "service_sram": [
+    {
+      "name": "service.free0",
+      "origin": "0x4ff40000",
+      "end": "0x4ff60000",
+      "bytes": 131072
+    },
+    {
+      "name": "service.free1",
+      "origin": "0x4ff6e000",
+      "end": "0x4ff9f000",
+      "bytes": 200704
+    }
+  ],
+  "normal_fs": {
+    "profile": [
+      1,
+      65536,
+      32768,
+      1073872896,
+      1074135040,
+      4096,
+      0,
+      1
+    ],
+    "manifest_sha256": "87d2f2c430e8fc9617c98ed5e76ac6417b0d84f7af86c63f1d7cc8a09fe24279",
+    "text_start": "0x40020000",
+    "text_bytes": 42496,
+    "text_sha256": "c0b1f69e8c6ace5222129407574e47dc594bc4e13420686b284feaf388f1cc49",
+    "rodata_start": "0x4002a600",
+    "rodata_bytes": 10580,
+    "rodata_sha256": "ebec42cd7caec7d0ba92ddf69eb00d58ffb660afc7c758c0c39db852f183d42c",
+    "parent_bytes": 65536,
+    "worker_stack_bytes": 4096,
+    "foreground_only": true,
+    "read_only": true,
+    "static_frames": {
+      "records": 141,
+      "maximum_bytes": 1248,
+      "largest": [
+        {
+          "address": "0x400204ec",
+          "functions": [
+            "nih_normal_fs_begin",
+            "normal_fs.nih_normal_fs_begin"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x40026384",
+          "functions": [
+            "f_open"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x40027798",
+          "functions": [
+            "identity_of"
+          ],
+          "bytes": 1248
+        },
+        {
+          "address": "0x40026ce0",
+          "functions": [
+            "f_opendir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x40026e64",
+          "functions": [
+            "f_readdir"
+          ],
+          "bytes": 1152
+        },
+        {
+          "address": "0x40027578",
+          "functions": [
+            "parents"
+          ],
+          "bytes": 784
+        },
+        {
+          "address": "0x40020294",
+          "functions": [
+            "nih_normal_fs_submit",
+            "normal_fs.nih_normal_fs_submit"
+          ],
+          "bytes": 560
+        },
+        {
+          "address": "0x4002996e",
+          "functions": [
+            "discover"
+          ],
+          "bytes": 224
+        },
+        {
+          "address": "0x40024cfc",
+          "functions": [
+            "nih_storage_read",
+            "normal_fs.nih_storage_read"
+          ],
+          "bytes": 176
+        },
+        {
+          "address": "0x400209e6",
+          "functions": [
+            "nih_normal_fs_task",
+            "normal_fs.nih_normal_fs_task"
+          ],
+          "bytes": 160
+        }
+      ]
+    },
+    "whole_call_stack_qualified": false
+  },
+  "xy_scheme": {
+    "start": "0x40060000",
+    "end": "0x403a9d2c",
+    "code_bytes": 144176,
+    "rodata_bytes": 3303932,
+    "functions": {
+      "native_reading.label__func_1": {
+        "start": "0x40060000",
+        "end": "0x4006013c"
+      },
+      "native_reading.footer__func_2": {
+        "start": "0x4006013c",
+        "end": "0x400602b0"
+      },
+      "reader.shorter": {
+        "start": "0x400602b0",
+        "end": "0x4006032c"
+      },
+      "render_session.SizedSession(2048).renderInto__func_8": {
+        "start": "0x4006032c",
+        "end": "0x40063b70"
+      },
+      "render_session.SizedSession(2048).render": {
+        "start": "0x40063b70",
+        "end": "0x40063bb2"
+      },
+      "learning_view.label__func_15": {
+        "start": "0x40063bb2",
+        "end": "0x40063d7e"
+      },
+      "native_render_entry.nih_xy_render": {
+        "start": "0x40063d7e",
+        "end": "0x40065bec"
+      },
+      "nih_xy_render": {
+        "start": "0x40063d7e",
+        "end": "0x40065bec"
+      },
+      "native_render_entry.readingPack": {
+        "start": "0x40065bec",
+        "end": "0x40065f34"
+      },
+      "catalog.Pack.entry": {
+        "start": "0x40065f34",
+        "end": "0x400661cc"
+      },
+      "mem.eql__func_12": {
+        "start": "0x400661cc",
+        "end": "0x400662e6"
+      },
+      "Io.Writer.writeAll": {
+        "start": "0x400662e6",
+        "end": "0x40066368"
+      },
+      "Io.Writer.unimplementedSendFile": {
+        "start": "0x4006d0a0",
+        "end": "0x4006d0aa"
+      },
+      "Io.Writer.failingRebase": {
+        "start": "0x4006d0aa",
+        "end": "0x4006d0ae"
+      },
+      "Io.Writer.noopFlush": {
+        "start": "0x4006d0ae",
+        "end": "0x4006d0b2"
+      },
+      "Io.Writer.fixedDrain": {
+        "start": "0x4006d0b2",
+        "end": "0x4006d1a4"
+      },
+      "rotated_surface.Rotated.blitLinear": {
+        "start": "0x40066472",
+        "end": "0x400664b6"
+      },
+      "rotated_surface.Rotated.paint": {
+        "start": "0x400664b6",
+        "end": "0x40066924"
+      },
+      "surface.channelLinear": {
+        "start": "0x40066924",
+        "end": "0x4006697a"
+      },
+      "unicode.utf8ByteSequenceLength": {
+        "start": "0x4006697a",
+        "end": "0x400669e6"
+      },
+      "render_adapter.ThemePalette.color565": {
+        "start": "0x400669e6",
+        "end": "0x400669fe"
+      },
+      "line_layout.Flow.place": {
+        "start": "0x400669fe",
+        "end": "0x40066a5a"
+      },
+      "line_layout.cluster__func_29": {
+        "start": "0x40066a5a",
+        "end": "0x40066b16"
+      },
+      "viewport_layout.shapeStyledRun__func_28": {
+        "start": "0x40066b16",
+        "end": "0x40066c5a"
+      },
+      "mem.trim__func_27": {
+        "start": "0x40066c5a",
+        "end": "0x40066caa"
+      },
+      "viewport_layout.shapeRun__func_26": {
+        "start": "0x40066caa",
+        "end": "0x40066ce0"
+      },
+      "unicode.utf8Decode4": {
+        "start": "0x40066ce0",
+        "end": "0x40066d50"
+      },
+      "unicode.utf8Decode3": {
+        "start": "0x40066d50",
+        "end": "0x40066dae"
+      },
+      "unicode.utf8Decode2": {
+        "start": "0x40066dae",
+        "end": "0x40066dec"
+      },
+      "mem.findAny__func_25": {
+        "start": "0x40066dec",
+        "end": "0x40066e1a"
+      },
+      "render_adapter.computeCursorRect": {
+        "start": "0x40066e1a",
+        "end": "0x40066eba"
+      },
+      "viewport_layout.layoutStyledParagraph__func_5": {
+        "start": "0x40066eba",
+        "end": "0x40068c94"
+      },
+      "Io.Writer.printIntAny__func_42": {
+        "start": "0x40068c94",
+        "end": "0x40068d26"
+      },
+      "reader.closeBoundary": {
+        "start": "0x40068d26",
+        "end": "0x40068d48"
+      },
+      "unicode.utf8ValidateSlice": {
+        "start": "0x40068d48",
+        "end": "0x40068df0"
+      },
+      "catalog.Pack.learningBytes": {
+        "start": "0x40068df0",
+        "end": "0x40068e9a"
+      },
+      "document.isClusterBoundary": {
+        "start": "0x40068e9a",
+        "end": "0x40068eea"
+      },
+      "unicode.utf8Decode": {
+        "start": "0x40068eea",
+        "end": "0x40068f82"
+      },
+      "catalog.Pack.chapter": {
+        "start": "0x40068f82",
+        "end": "0x40069034"
+      },
+      "rotated_surface.Rotated.blit": {
+        "start": "0x40069034",
+        "end": "0x40069078"
+      },
+      "ttf.TwoTierCache(24,1024,48,16384).getOrRender": {
+        "start": "0x40069078",
+        "end": "0x4006a16c"
+      },
+      "ttf.Face.glyphSpan": {
+        "start": "0x4006a16c",
+        "end": "0x4006a398"
+      },
+      "ttf.decodeSimpleGlyfSlice": {
+        "start": "0x4006a398",
+        "end": "0x4006a75a"
+      },
+      "ttf.Family.resolve": {
+        "start": "0x4006a75a",
+        "end": "0x4006abc0"
+      },
+      "viewport_layout.ClusterIterator.next": {
+        "start": "0x4006abc0",
+        "end": "0x4006adec"
+      },
+      "ttf.Face.lookupBaseGlyph": {
+        "start": "0x4006adec",
+        "end": "0x4006b278"
+      },
+      "rotated_surface.Rotated.fillRect": {
+        "start": "0x4006b278",
+        "end": "0x4006b3ea"
+      },
+      "native_render_entry.nih_xy_render_learning": {
+        "start": "0x4006b3ea",
+        "end": "0x4006b3f6"
+      },
+      "nih_xy_render_learning": {
+        "start": "0x4006b3ea",
+        "end": "0x4006b3f6"
+      },
+      "native_render_entry.nih_xy_render_init": {
+        "start": "0x4006b3f6",
+        "end": "0x4006b6b4"
+      },
+      "nih_xy_render_init": {
+        "start": "0x4006b3f6",
+        "end": "0x4006b6b4"
+      },
+      "catalog.Pack.font": {
+        "start": "0x4006b6b4",
+        "end": "0x4006b760"
+      },
+      "ttf.Face.init": {
+        "start": "0x4006b760",
+        "end": "0x4006bea6"
+      },
+      "ttf.SliceReader.fromSlice.Impl.readSlice": {
+        "start": "0x4006bea6",
+        "end": "0x4006becc"
+      },
+      "native_render_entry.nih_xy_render_bytes": {
+        "start": "0x4006becc",
+        "end": "0x4006bed6"
+      },
+      "nih_xy_render_bytes": {
+        "start": "0x4006becc",
+        "end": "0x4006bed6"
+      },
+      "nih_xy_decimal_format": {
+        "start": "0x4006bed6",
+        "end": "0x4006cd16"
+      },
+      "scheme_decimal.nih_xy_decimal_format": {
+        "start": "0x4006bed6",
+        "end": "0x4006cd16"
+      },
+      "fmt.parseIntWithSign__func_7": {
+        "start": "0x4006cd16",
+        "end": "0x4006cd94"
+      },
+      "fmt.float.decimalLength__func_23": {
+        "start": "0x4006cd94",
+        "end": "0x4006cf28"
+      },
+      "fmt.float.multipleOfPowerOf5__func_29": {
+        "start": "0x4006cf28",
+        "end": "0x4006cf98"
+      },
+      "fmt.float.mulShift64": {
+        "start": "0x4006cf98",
+        "end": "0x4006d0a0"
+      },
+      "nih_xy_decimal_parse": {
+        "start": "0x4006d1a4",
+        "end": "0x4006dde8"
+      },
+      "scheme_decimal.nih_xy_decimal_parse": {
+        "start": "0x4006d1a4",
+        "end": "0x4006dde8"
+      },
+      "fmt.parse_float.decimal.Decimal(f64).round": {
+        "start": "0x4006dde8",
+        "end": "0x4006de84"
+      },
+      "fmt.parse_float.parse.min_n_digit_int__func_52": {
+        "start": "0x4006de84",
+        "end": "0x4006dea4"
+      },
+      "fmt.parse_float.parse.tryParseNDigits__func_56": {
+        "start": "0x4006dea4",
+        "end": "0x4006df24"
+      },
+      "fmt.parse_float.FloatStream.scanDigit__func_57": {
+        "start": "0x4006df24",
+        "end": "0x4006dfaa"
+      },
+      "fmt.parse_float.common.isDigit__func_58": {
+        "start": "0x4006dfaa",
+        "end": "0x4006dfce"
+      },
+      "fmt.parse_float.parse.tryParseDigits__func_53": {
+        "start": "0x4006dfce",
+        "end": "0x4006e01a"
+      },
+      "fmt.parse_float.parse.tryParseNDigits__func_51": {
+        "start": "0x4006e01a",
+        "end": "0x4006e0a2"
+      },
+      "fmt.parse_float.FloatStream.scanDigit__func_59": {
+        "start": "0x4006e0a2",
+        "end": "0x4006e0f6"
+      },
+      "fmt.parse_float.FloatStream.firstIs__func_50": {
+        "start": "0x4006e0f6",
+        "end": "0x4006e11e"
+      },
+      "fmt.parse_float.parse.parseScientific": {
+        "start": "0x4006e11e",
+        "end": "0x4006e222"
+      },
+      "fmt.parse_float.parse.tryParseDigits__func_46": {
+        "start": "0x4006e222",
+        "end": "0x4006e38e"
+      },
+      "fmt.parse_float.FloatStream.readU64Unchecked": {
+        "start": "0x4006e38e",
+        "end": "0x4006e400"
+      },
+      "fmt.parse_float.decimal.Decimal(f64).leftShift": {
+        "start": "0x4006e400",
+        "end": "0x4006e5dc"
+      },
+      "fmt.parse_float.decimal.Decimal(f64).rightShift": {
+        "start": "0x4006e5dc",
+        "end": "0x4006e7c4"
+      },
+      "fmt.parse_float.decimal.Decimal(f64).trim": {
+        "start": "0x4006e7c4",
+        "end": "0x4006e7e6"
+      },
+      "fmt.parse_float.convert_eisel_lemire.convertEiselLemire__func_39": {
+        "start": "0x4006e7e6",
+        "end": "0x4006eb4e"
+      },
+      "ascii.startsWithIgnoreCase": {
+        "start": "0x4006eb4e",
+        "end": "0x4006eb8a"
+      },
+      "learning_catalog.Pack.experiment": {
+        "start": "0x4006eb8a",
+        "end": "0x4006ed3c"
+      },
+      "learning_catalog.Pack.string": {
+        "start": "0x4006ed3c",
+        "end": "0x4006edd8"
+      },
+      "learning_catalog.read": {
+        "start": "0x4006edd8",
+        "end": "0x4006ee18"
+      },
+      "learning_catalog.Pack.snippet": {
+        "start": "0x4006ee18",
+        "end": "0x4006f18c"
+      },
+      "learning_catalog.Pack.section": {
+        "start": "0x4006f18c",
+        "end": "0x4006f23e"
+      },
+      "learning_session.Session.choice": {
+        "start": "0x4006f23e",
+        "end": "0x4006f4b2"
+      },
+      "learning_session.Session.count": {
+        "start": "0x4006f4b2",
+        "end": "0x4006f4f6"
+      },
+      "learning_catalog.Pack.styleOnPage": {
+        "start": "0x4006f4f6",
+        "end": "0x4006f62e"
+      },
+      "learning_catalog.Pack.init": {
+        "start": "0x4006f62e",
+        "end": "0x4006f9d0"
+      },
+      "document.nextClusterEnd": {
+        "start": "0x4006f9d0",
+        "end": "0x4006fb20"
+      },
+      "nih_xy_render_call": {
+        "start": "0x4006fb20",
+        "end": "0x4006fb42"
+      },
+      "nih_xy_eval_call": {
+        "start": "0x4006fb42",
+        "end": "0x4006fb64"
+      },
+      "nih_xy_eval_on_stack": {
+        "start": "0x4006fb64",
+        "end": "0x4006fd98"
+      },
+      "xy_eval_runtime.nih_xy_eval_on_stack": {
+        "start": "0x4006fb64",
+        "end": "0x4006fd98"
+      },
+      "xy.scratch.Model.schemeError": {
+        "start": "0x4006fd98",
+        "end": "0x4006fe04"
+      },
+      "xy.scheme_runtime.Runtime.evaluate__func_3": {
+        "start": "0x4006fe04",
+        "end": "0x4006ffde"
+      },
+      "xy.scheme_runtime.message": {
+        "start": "0x4006ffde",
+        "end": "0x4007006a"
+      },
+      "xy.scheme_runtime.Runtime.sequence__func_6": {
+        "start": "0x4007006a",
+        "end": "0x40070150"
+      },
+      "xy.scheme_runtime.Runtime.format": {
+        "start": "0x40070150",
+        "end": "0x4007018e"
+      },
+      "xy.scheme_runtime.Runtime.eval__func_7": {
+        "start": "0x4007018e",
+        "end": "0x40070e36"
+      },
+      "xy.scheme_runtime.Runtime.print": {
+        "start": "0x40070e36",
+        "end": "0x400713aa"
+      },
+      "xy.scheme_runtime.Runtime.bindFormals": {
+        "start": "0x400713aa",
+        "end": "0x40071496"
+      },
+      "xy.scheme_runtime.Runtime.emitInteger": {
+        "start": "0x40071496",
+        "end": "0x40071530"
+      },
+      "xy.scheme_runtime.Runtime.asInexact": {
+        "start": "0x40071530",
+        "end": "0x400715d2"
+      },
+      "xy.scheme_runtime.Runtime.fraction": {
+        "start": "0x400715d2",
+        "end": "0x4007165c"
+      },
+      "xy.scheme_runtime.Runtime.formals": {
+        "start": "0x4007165c",
+        "end": "0x4007177a"
+      },
+      "xy.scheme_runtime.Runtime.integer": {
+        "start": "0x4007177a",
+        "end": "0x400717be"
+      },
+      "xy.scheme_runtime.Runtime.apply__func_9": {
+        "start": "0x400717be",
+        "end": "0x40073c92"
+      },
+      "xy.scheme_runtime.Runtime.expandApply": {
+        "start": "0x40073c92",
+        "end": "0x40073d44"
+      },
+      "xy.scheme_runtime.Runtime.applyCard__func_15": {
+        "start": "0x40073d44",
+        "end": "0x40074222"
+      },
+      "xy.scheme_runtime.Runtime.applyStorage__func_14": {
+        "start": "0x40074222",
+        "end": "0x40074714"
+      },
+      "xy.scheme_runtime.Runtime.sameText": {
+        "start": "0x40074714",
+        "end": "0x40074738"
+      },
+      "xy.scheme_runtime.Runtime.nonnegative": {
+        "start": "0x40074738",
+        "end": "0x40074774"
+      },
+      "xy.scheme_runtime.Runtime.applyView": {
+        "start": "0x40074774",
+        "end": "0x40074cb0"
+      },
+      "xy.scheme_runtime.Runtime.applyApp": {
+        "start": "0x40074cb0",
+        "end": "0x4007502a"
+      },
+      "view_config.Config.set": {
+        "start": "0x4007502a",
+        "end": "0x400756c4"
+      },
+      "xy.scheme_runtime.Runtime.viewKey": {
+        "start": "0x400756c4",
+        "end": "0x40075722"
+      },
+      "xy.scheme_runtime.Runtime.equivalent": {
+        "start": "0x40075722",
+        "end": "0x400758e2"
+      },
+      "xy.scheme_runtime.Runtime.equalValues": {
+        "start": "0x400758e2",
+        "end": "0x40075af8"
+      },
+      "xy.scheme_runtime.Runtime.roundInexact": {
+        "start": "0x40075af8",
+        "end": "0x40075c76"
+      },
+      "xy.scheme_runtime.Runtime.numericOdd": {
+        "start": "0x40075c76",
+        "end": "0x40075d8c"
+      },
+      "xy.scheme_runtime.Runtime.integerGcd": {
+        "start": "0x40075d8c",
+        "end": "0x40075dde"
+      },
+      "xy.scheme_runtime.Runtime.integerResult": {
+        "start": "0x40075dde",
+        "end": "0x40075e3e"
+      },
+      "xy.scheme_runtime.Runtime.compareNumbers": {
+        "start": "0x40075e3e",
+        "end": "0x400760c6"
+      },
+      "xy.scheme_runtime.Runtime.cameraRead__func_11": {
+        "start": "0x400760c6",
+        "end": "0x40076202"
+      },
+      "xy.scheme_runtime.Runtime.compareExactInexact": {
+        "start": "0x40076202",
+        "end": "0x40076646"
+      },
+      "xy.scratch.Model.schemeCall": {
+        "start": "0x40076646",
+        "end": "0x4007676e"
+      },
+      "xy.storage.Client.load": {
+        "start": "0x4007676e",
+        "end": "0x40076ad6"
+      },
+      "xy.storage.decimalU32": {
+        "start": "0x40076ad6",
+        "end": "0x40076b2c"
+      },
+      "xy.document.Document(4096,256,2048,1,64).undo": {
+        "start": "0x40076b2c",
+        "end": "0x40076bd0"
+      },
+      "xy.document.Document(4096,256,2048,1,64).moveGraphemes": {
+        "start": "0x40076bd0",
+        "end": "0x40076c62"
+      },
+      "xy.document.Document(4096,256,2048,1,64).applySpliceInternal": {
+        "start": "0x40076c62",
+        "end": "0x40076e32"
+      },
+      "xy.document.prevClusterStart": {
+        "start": "0x40076e32",
+        "end": "0x40076eb4"
+      },
+      "xy.document.nextClusterEnd": {
+        "start": "0x40076eb4",
+        "end": "0x40077006"
+      },
+      "xy.document.Document(4096,256,2048,1,64).insertUtf8": {
+        "start": "0x40077006",
+        "end": "0x400770cc"
+      },
+      "xy.scheme_runtime.Runtime.storageText": {
+        "start": "0x400770cc",
+        "end": "0x40077122"
+      },
+      "xy.storage.Client.save": {
+        "start": "0x40077122",
+        "end": "0x400773c2"
+      },
+      "xy.scheme_runtime.Runtime.text": {
+        "start": "0x400773c2",
+        "end": "0x400774ce"
+      },
+      "xy.scheme_runtime.Runtime.alloc": {
+        "start": "0x400774ce",
+        "end": "0x40077548"
+      },
+      "xy.scheme_runtime.Runtime.number": {
+        "start": "0x40077548",
+        "end": "0x400775a2"
+      },
+      "xy.scheme_runtime.Runtime.fractionNumber": {
+        "start": "0x400775a2",
+        "end": "0x40077626"
+      },
+      "xy.scheme_runtime.Runtime.normalizeFraction": {
+        "start": "0x40077626",
+        "end": "0x40077724"
+      },
+      "xy.scheme_runtime.Runtime.inexactNumber": {
+        "start": "0x40077724",
+        "end": "0x4007777a"
+      },
+      "xy.scheme_runtime.Runtime.boundedInteger": {
+        "start": "0x4007777a",
+        "end": "0x40077874"
+      },
+      "xy.scheme_runtime.Runtime.isApplyProcedure": {
+        "start": "0x40077874",
+        "end": "0x400778be"
+      },
+      "xy.scheme_runtime.Runtime.define": {
+        "start": "0x400778be",
+        "end": "0x40077970"
+      },
+      "xy.scheme_runtime.Runtime.closure": {
+        "start": "0x40077970",
+        "end": "0x40077a22"
+      },
+      "xy.scheme_runtime.Runtime.arguments": {
+        "start": "0x40077a22",
+        "end": "0x40077a90"
+      },
+      "xy.scheme_runtime.Runtime.opcode": {
+        "start": "0x40077a90",
+        "end": "0x40077b34"
+      },
+      "xy.scheme_runtime.Runtime.lookup": {
+        "start": "0x40077b34",
+        "end": "0x40077b76"
+      },
+      "xy.scheme_runtime.Runtime.maybeCollectBoundary": {
+        "start": "0x40077b76",
+        "end": "0x40077bee"
+      },
+      "xy.scheme_runtime.Runtime.collectTail": {
+        "start": "0x40077bee",
+        "end": "0x40077fbe"
+      },
+      "xy.scheme_runtime.Runtime.runVm__func_5": {
+        "start": "0x40077fbe",
+        "end": "0x400788d8"
+      },
+      "xy.scheme_runtime.Runtime.mark": {
+        "start": "0x400788d8",
+        "end": "0x4007891a"
+      },
+      "xy.scheme_runtime.Runtime.compileSequence": {
+        "start": "0x4007891a",
+        "end": "0x40078a42"
+      },
+      "xy.scheme_runtime.Runtime.compileExpr": {
+        "start": "0x40078a42",
+        "end": "0x40079538"
+      },
+      "xy.scheme_runtime.Runtime.patchBcJump": {
+        "start": "0x40079538",
+        "end": "0x4007957c"
+      },
+      "xy.scheme_runtime.Runtime.emitBcU16": {
+        "start": "0x4007957c",
+        "end": "0x400795b8"
+      },
+      "xy.scheme_runtime.Runtime.pair": {
+        "start": "0x400795b8",
+        "end": "0x40079606"
+      },
+      "xy.scheme_runtime.Runtime.read": {
+        "start": "0x40079606",
+        "end": "0x4007a1fa"
+      },
+      "xy.scheme_runtime.Runtime.space": {
+        "start": "0x4007a1fa",
+        "end": "0x4007a254"
+      },
+      "xy.scheme_runtime.Runtime.parseDecimal": {
+        "start": "0x4007a254",
+        "end": "0x4007a2ec"
+      },
+      "xy.scheme_runtime.Runtime.parseInexact": {
+        "start": "0x4007a2ec",
+        "end": "0x4007a32c"
+      },
+      "xy.scheme_runtime.Runtime.radixInteger": {
+        "start": "0x4007a32c",
+        "end": "0x4007a444"
+      },
+      "xy.scheme_runtime.Runtime.delimiter": {
+        "start": "0x4007a444",
+        "end": "0x4007a480"
+      },
+      "xy.storage.validUtf8": {
+        "start": "0x4007a480",
+        "end": "0x4007a59c"
+      },
+      "xy.scheme_runtime.Runtime.start": {
+        "start": "0x4007a59c",
+        "end": "0x4007a5f2"
+      },
+      "xy.scheme_runtime.Runtime.collect": {
+        "start": "0x4007a5f2",
+        "end": "0x4007a5fe"
+      },
+      "nih_xy_evaluate": {
+        "start": "0x4007a5fe",
+        "end": "0x4007a9ca"
+      },
+      "xy_eval_runtime.nih_xy_evaluate": {
+        "start": "0x4007a5fe",
+        "end": "0x4007a9ca"
+      },
+      "diagnostic_ui.beginSession__func_189": {
+        "start": "0x4007a9ca",
+        "end": "0x4007ab4a"
+      },
+      "xy.scratch.Model.resetScheme": {
+        "start": "0x4007ab4a",
+        "end": "0x4007abb8"
+      },
+      "xy.scheme_runtime.Runtime.initInPlace": {
+        "start": "0x4007abb8",
+        "end": "0x4007ac5c"
+      },
+      "diagnostic_ui.updateSplash": {
+        "start": "0x4007ac5c",
+        "end": "0x4007b308"
+      },
+      "diagnostic_ui.paintTouchControl": {
+        "start": "0x4007b308",
+        "end": "0x4007b52a"
+      },
+      "diagnostic_ui.traceScratch__func_183": {
+        "start": "0x4007b52a",
+        "end": "0x4007b7da"
+      },
+      "diagnostic_ui.drawSession": {
+        "start": "0x4007b7da",
+        "end": "0x4007b89e"
+      },
+      "xy_render_runtime.draw": {
+        "start": "0x4007b89e",
+        "end": "0x4007bff4"
+      },
+      "xy.presentation.publish": {
+        "start": "0x4007bff4",
+        "end": "0x4007c09e"
+      },
+      "diagnostic_ui.traceIdle__func_182": {
+        "start": "0x4007c09e",
+        "end": "0x4007c122"
+      },
+      "xy.scratch.Model.expireSerial": {
+        "start": "0x4007c122",
+        "end": "0x4007c1ac"
+      },
+      "xy.scratch.Model.handle": {
+        "start": "0x4007c1ac",
+        "end": "0x4007cfa8"
+      },
+      "xy.document.Document(4096,256,2048,1,64).moveLines": {
+        "start": "0x4007cfa8",
+        "end": "0x4007d0f6"
+      },
+      "xy.document.Document(4096,256,2048,1,64).deleteForwardGrapheme": {
+        "start": "0x4007d0f6",
+        "end": "0x4007d172"
+      },
+      "xy.document.Document(4096,256,2048,1,64).deleteBackwardGrapheme": {
+        "start": "0x4007d172",
+        "end": "0x4007d1e8"
+      },
+      "xy.scratch.Model.appendCommand": {
+        "start": "0x4007d1e8",
+        "end": "0x4007d23c"
+      },
+      "xy.navigation.State.handle": {
+        "start": "0x4007d23c",
+        "end": "0x4007d554"
+      },
+      "xy.ime_omni.OmniIme.syncDocumentOverlay__func_240": {
+        "start": "0x4007d554",
+        "end": "0x4007d6be"
+      },
+      "xy.ime_omni.OmniIme.commitSelected__func_241": {
+        "start": "0x4007d6be",
+        "end": "0x4007d890"
+      },
+      "xy.ime_omni.OmniIme.triggerConversion__func_243": {
+        "start": "0x4007d890",
+        "end": "0x4007d9ec"
+      },
+      "xy.navigation.State.next": {
+        "start": "0x4007d9ec",
+        "end": "0x4007da86"
+      },
+      "xy.ime_omni.RomajiAutomaton.feed": {
+        "start": "0x4007da86",
+        "end": "0x4007dcba"
+      },
+      "xy.ime_omni.OmniIme.isCustomPrefixTrigger": {
+        "start": "0x4007dcba",
+        "end": "0x4007dcfa"
+      },
+      "xy.ime_omni.OmniIme.isBuiltinPrefixTrigger": {
+        "start": "0x4007dcfa",
+        "end": "0x4007dd24"
+      },
+      "xy.ime_omni.OmniIme.classifyPrefix": {
+        "start": "0x4007dd24",
+        "end": "0x4007de04"
+      },
+      "xy.document.Document(4096,256,2048,1,64).setPreedit": {
+        "start": "0x4007de04",
+        "end": "0x4007de74"
+      },
+      "xy.navigation.State.back": {
+        "start": "0x4007de74",
+        "end": "0x4007dec2"
+      },
+      "xy.scratch.Model.emptyImeQuery": {
+        "start": "0x4007dec2",
+        "end": "0x4007dec4"
+      },
+      "xy.navigation.State.activateHome": {
+        "start": "0x4007dec4",
+        "end": "0x4007df12"
+      },
+      "xy.learning_session.Session.handle": {
+        "start": "0x4007df12",
+        "end": "0x4007e2bc"
+      },
+      "xy.scratch.Model.insert": {
+        "start": "0x4007e2bc",
+        "end": "0x4007e35a"
+      },
+      "xy.learning_session.Session.insert": {
+        "start": "0x4007e35a",
+        "end": "0x4007e3a2"
+      },
+      "xy.learning_session.Session.run": {
+        "start": "0x4007e3a2",
+        "end": "0x4007e7c6"
+      },
+      "xy.learning_session.Session.resetVm": {
+        "start": "0x4007e7c6",
+        "end": "0x4007e7fa"
+      },
+      "xy.scheme_runtime.Runtime.sequence__func_247": {
+        "start": "0x4007e7fa",
+        "end": "0x4007e8d6"
+      },
+      "xy.scheme_runtime.Runtime.runVm__func_246": {
+        "start": "0x4007e8d6",
+        "end": "0x4007f1ec"
+      },
+      "xy.scheme_runtime.Runtime.eval__func_248": {
+        "start": "0x4007f1ec",
+        "end": "0x4007fe60"
+      },
+      "xy.scheme_runtime.Runtime.apply__func_249": {
+        "start": "0x4007fe60",
+        "end": "0x40081cfe"
+      },
+      "xy.scheme_runtime.Runtime.applyCard__func_251": {
+        "start": "0x40081cfe",
+        "end": "0x40081d92"
+      },
+      "xy.scheme_runtime.Runtime.applyStorage__func_250": {
+        "start": "0x40081d92",
+        "end": "0x40082094"
+      },
+      "xy.learning_catalog.Pack.string": {
+        "start": "0x40082094",
+        "end": "0x40082134"
+      },
+      "xy.learning_catalog.read": {
+        "start": "0x40082134",
+        "end": "0x40082174"
+      },
+      "xy.learning_session.Session.notice": {
+        "start": "0x40082174",
+        "end": "0x4008226a"
+      },
+      "xy.learning_session.Session.choice": {
+        "start": "0x4008226a",
+        "end": "0x400824e0"
+      },
+      "xy.learning_catalog.Pack.snippet": {
+        "start": "0x400824e0",
+        "end": "0x40082856"
+      },
+      "xy.learning_catalog.Pack.section": {
+        "start": "0x40082856",
+        "end": "0x40082908"
+      },
+      "diagnostic_ui.captureXySystem": {
+        "start": "0x40082908",
+        "end": "0x400830ee"
+      },
+      "xy.scratch.Model.feedSerial": {
+        "start": "0x400830ee",
+        "end": "0x40083326"
+      }
+    },
+    "foreground_only": true,
+    "heap_allocated": true,
+    "render_stack_bytes": 524288,
+    "plot_table": {
+      "symbol": "xy.plot_config.sine",
+      "start": "0x403a886a",
+      "bytes": 512,
+      "readonly_flash": true,
+      "sram_copy": false
+    },
+    "romaji_table": {
+      "symbol": "xy.ime_omni.romaji_table",
+      "start": "0x403a8fc4",
+      "bytes": 3288,
+      "readonly_flash": true,
+      "sram_copy": false
+    }
+  },
+  "time_text": {
+    "start": "0x400053a0",
+    "end": "0x4000b14a",
+    "bytes": 23978,
+    "sha256": "3a1ef44d6332608302e0be3704f8b8cb206fcab36f672a9dc9a46c2529190d25",
+    "functions": {
+      "main.serviceTime": {
+        "start": "0x400053a0",
+        "end": "0x400054d2"
+      },
+      "rtc.Calendar(\".flash.text.time\"[0..16]).fromUnix": {
+        "start": "0x400054d2",
+        "end": "0x40005632"
+      },
+      "rtc.Calendar(\".flash.text.time\"[0..16]).toUnix": {
+        "start": "0x40005632",
+        "end": "0x40005778"
+      },
+      "rtc.Calendar(\".flash.text.time\"[0..16]).writeStopped__func_99": {
+        "start": "0x40005778",
+        "end": "0x400059aa"
+      },
+      "rtc.Calendar(\".flash.text.time\"[0..16]).set__func_97": {
+        "start": "0x400059aa",
+        "end": "0x40005ada"
+      },
+      "board_devices.applyNetworkTime": {
+        "start": "0x40005ada",
+        "end": "0x40005c1e"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).snapshot": {
+        "start": "0x40005c1e",
+        "end": "0x40005c66"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).take": {
+        "start": "0x40005c66",
+        "end": "0x40005d3c"
+      },
+      "network_service.timePoll": {
+        "start": "0x40005d3c",
+        "end": "0x40005eb4"
+      },
+      "network_service.step": {
+        "start": "0x40005eb4",
+        "end": "0x400096bc"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).sent": {
+        "start": "0x400096bc",
+        "end": "0x40009776"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).tx": {
+        "start": "0x40009776",
+        "end": "0x4000988e"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).bind": {
+        "start": "0x4000988e",
+        "end": "0x40009988"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).route": {
+        "start": "0x40009988",
+        "end": "0x40009af2"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).query": {
+        "start": "0x40009af2",
+        "end": "0x40009c96"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).validMac": {
+        "start": "0x40009c96",
+        "end": "0x40009cb8"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).udp": {
+        "start": "0x40009cb8",
+        "end": "0x40009e32"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).sum16": {
+        "start": "0x40009e32",
+        "end": "0x40009e6a"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).unicast": {
+        "start": "0x40009e6a",
+        "end": "0x40009e82"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).fail": {
+        "start": "0x40009e82",
+        "end": "0x40009f5c"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).disconnect": {
+        "start": "0x40009f5c",
+        "end": "0x40009fc0"
+      },
+      "ipv6.Client.tx": {
+        "start": "0x40009fc0",
+        "end": "0x4000a670"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).receive": {
+        "start": "0x4000a670",
+        "end": "0x4000a8c2"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).acceptTime": {
+        "start": "0x4000a8c2",
+        "end": "0x4000ac2a"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).dnsAnswer": {
+        "start": "0x4000ac2a",
+        "end": "0x4000ae10"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).timestamp": {
+        "start": "0x4000ae10",
+        "end": "0x4000af40"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).skipName": {
+        "start": "0x4000af40",
+        "end": "0x4000afae"
+      },
+      "sntp.Engine(\".flash.text.time\"[0..16]).datagram": {
+        "start": "0x4000afae",
+        "end": "0x4000b14a"
+      }
+    },
+    "foreground_only": true,
+    "writable": false,
+    "executable": true
+  },
+  "device_text": {
+    "start": "0x40000fa0",
+    "end": "0x40005398",
+    "bytes": 17400,
+    "sha256": "34cb159398a0c03df1677286c389d49276f397fedeb512fb051c04fe898b7deb",
+    "functions": {
+      "nih_audio_tx_prepare": {
+        "start": "0x40000fa0",
+        "end": "0x400013da"
+      },
+      "audio_output": {
+        "start": "0x400013da",
+        "end": "0x400014e0"
+      },
+      "nih_audio_tx_start": {
+        "start": "0x400014e0",
+        "end": "0x40001536"
+      },
+      "nih_audio_tx_status": {
+        "start": "0x40001536",
+        "end": "0x4000158a"
+      },
+      "nih_audio_tx_stop": {
+        "start": "0x4000158a",
+        "end": "0x4000162c"
+      },
+      "nih_microphone_prepare": {
+        "start": "0x4000162c",
+        "end": "0x40001a22"
+      },
+      "microphone_output": {
+        "start": "0x40001a22",
+        "end": "0x40001b22"
+      },
+      "nih_microphone_start": {
+        "start": "0x40001b22",
+        "end": "0x40001bbe"
+      },
+      "nih_microphone_status": {
+        "start": "0x40001bbe",
+        "end": "0x40001bf0"
+      },
+      "nih_microphone_stop": {
+        "start": "0x40001bf0",
+        "end": "0x40001cc4"
+      },
+      "nih_rs485_diagnostic": {
+        "start": "0x40001cc4",
+        "end": "0x40001cde"
+      },
+      "nih_rs485_dir_low": {
+        "start": "0x40001cde",
+        "end": "0x40001d1a"
+      },
+      "nih_rs485_open": {
+        "start": "0x40001d1a",
+        "end": "0x400020da"
+      },
+      "rs485_output": {
+        "start": "0x400020da",
+        "end": "0x40002236"
+      },
+      "nih_rs485_direction": {
+        "start": "0x40002236",
+        "end": "0x400022cc"
+      },
+      "nih_rs485_errors": {
+        "start": "0x400022cc",
+        "end": "0x400022e4"
+      },
+      "nih_rs485_writable": {
+        "start": "0x400022e4",
+        "end": "0x40002310"
+      },
+      "nih_rs485_readable": {
+        "start": "0x40002310",
+        "end": "0x40002334"
+      },
+      "nih_rs485_tx_idle": {
+        "start": "0x40002334",
+        "end": "0x40002368"
+      },
+      "nih_rs485_write": {
+        "start": "0x40002368",
+        "end": "0x400023a0"
+      },
+      "nih_rs485_read": {
+        "start": "0x400023a0",
+        "end": "0x400023d2"
+      },
+      "nih_rs485_close": {
+        "start": "0x400023d2",
+        "end": "0x40002546"
+      },
+      "nih_rs485_closed": {
+        "start": "0x40002546",
+        "end": "0x4000255c"
+      },
+      "main.serviceNetwork": {
+        "start": "0x4000255c",
+        "end": "0x40002f5e"
+      },
+      "board_devices.poll": {
+        "start": "0x40002f5e",
+        "end": "0x40004008"
+      },
+      "rs485_probe.poll__func_124": {
+        "start": "0x40004008",
+        "end": "0x400042a6"
+      },
+      "microphone_probe.poll__func_123": {
+        "start": "0x400042a6",
+        "end": "0x400048e0"
+      },
+      "audio_probe.poll__func_122": {
+        "start": "0x400048e0",
+        "end": "0x40004ef8"
+      },
+      "diagnostic_ui.liveReport__func_56": {
+        "start": "0x40004ef8",
+        "end": "0x40004ff2"
+      },
+      "diagnostic_ui.action__func_233": {
+        "start": "0x40004ff2",
+        "end": "0x400050fc"
+      },
+      "diagnostic_ui.liveReport__func_44": {
+        "start": "0x400050fc",
+        "end": "0x4000516a"
+      },
+      "board_devices.requestDevice": {
+        "start": "0x4000516a",
+        "end": "0x40005398"
+      }
+    },
+    "foreground_only": true,
+    "writable": false,
+    "executable": true
+  }
+}

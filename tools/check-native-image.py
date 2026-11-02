@@ -76,7 +76,7 @@ CAMERA_FOREGROUND_FUNCTIONS = {'diagnostic_ui.drawSession', 'diagnostic_ui.updat
     'nih_jpeg_begin', 'nih_jpeg_poll', 'nih_jpeg_abort', 'nih_jpeg_status', 'camera_jpeg.poll', 'camera_jpeg.write', 'camera_jpeg.hex', 'camera_jpeg.field', 'camera_jpeg.sync', 'camera_jpeg.fail', 'camera_jpeg.request', 'camera_jpeg.info', 'camera_jpeg.read'}
 
 def device_function(name):
-    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey|service)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
+    return name in DEVICE_FUNCTIONS or name in CAMERA_FOREGROUND_FUNCTIONS or re.fullmatch(r'diagnostic_ui\.(?:input|poll|sessionKey|service|action|liveReport)__func_[0-9]+', name) is not None or re.fullmatch(r'(?:audio_probe|microphone_probe|rs485_probe)\.poll__func_[0-9]+', name) is not None
 
 
 PMP_FLASH_FUNCTIONS = {
@@ -143,6 +143,14 @@ def audit_device_functions(functions, span):
     require(len(names) == len(set(names)) and DEVICE_FUNCTIONS.issubset(names) and
             all(sum(re.fullmatch(prefix + r'\.poll__func_[0-9]+', name) is not None for name in names) == 1
                 for prefix in ('audio_probe', 'microphone_probe', 'rs485_probe')), 'missing/duplicate device Flash function')
+    # A source linksection can still leave a second SRAM copy. If any of
+    # these foreground functions is placed here, every copy must be here.
+    for name in names:
+        moved = name in ('board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork') or re.fullmatch(
+            r'diagnostic_ui\.(?:action|liveReport)__func_[0-9]+', name) is not None
+        if moved:
+            require(all(start <= address < stop <= end for candidate, address, stop in functions if candidate == name),
+                    'device foreground function has a copy outside Flash: ' + name)
     # Export and Zig debug aliases may describe the same bytes. Every name above
     # must still be approved; only the byte-coverage walk collapses exact aliases.
     ranges = sorted(set((a, b) for a, b, _ in selected))
@@ -237,12 +245,13 @@ TCP_XY_FUNCTIONS = {
     'arp_resolver.Resolver.result', 'arp_resolver.Resolver.poll',
 }
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
-              'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
+              'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
+              'normalizeFraction', 'fraction', 'fractionNumber', 'emitInteger', 'parseInexact', 'formatInexact', 'inexactNumber', 'asInexact', 'radixInteger', 'exactDecimal', 'prefixedNumber', 'compareExactInexact', 'compareNumbers', 'roundInexact', 'numericOdd', 'boundedInteger', 'integerResult', 'integerGcd', 'expandApply', 'isApplyProcedure', 'equivalent', 'equalValues',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
               'numericCall', 'safeNumericExpr', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'attachTerminal', 'detachTerminal', 'attachPrivateInput', 'detachPrivateInput', 'privateInputSnapshot', 'terminalSnapshot', 'terminalChanged', 'statusText', 'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'applyKeyboardPresence', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
+XY_HOST_METHODS = {'appendCommand', 'detachPrivateInput', 'saveDocument', 'insert', 'imeRoute', 'evaluationStackUnavailable', 'imeKey', 'schemeCall', 'imeProvider', 'statusText', 'touchMove', 'evaluate', 'terminalChanged', 'feedHid', 'touchMoveNow', 'attachPrivateInput', 'loadDocument', 'touchOrientation', 'showCardView', 'touchCancel', 'emptyImeQuery', 'cameraCapture', 'resetScheme', 'applyKeyboardPresence', 'touch', 'cameraRead', 'touchDownNow', 'evaluateOnStack', 'evaluateOnStackSync', 'expireSerial', 'cardRead', 'initInPlace', 'attachTerminal', 'softKeyboardVisible', 'schemeError', 'detachTerminal', 'touchNow', 'feedSerial', 'cardDismiss', 'deferTouch', 'setPhysicalKeyboard', 'privateInputSnapshot', 'openSystem', 'terminalSnapshot', 'documentText', 'cardInfo', 'cameraInfo', 'touchDown', 'storageCall', 'handle', 'replayInput'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -295,10 +304,44 @@ XY_CATALOG_METHODS = {
     'section', 'snippet', 'experiment', 'findSnippet', 'onPage', 'styleOnPage',
 }
 
+# Conversion helpers come only from the separately compiled foreground xy_decimal.o.
+XY_DECIMAL_FUNCTIONS = {
+    'nih_xy_decimal_format', 'scheme_decimal.nih_xy_decimal_format',
+    'nih_xy_decimal_parse', 'scheme_decimal.nih_xy_decimal_parse',
+    'fmt.parseIntWithSign', 'fmt.float.decimalLength', 'fmt.float.multipleOfPowerOf5',
+    'fmt.float.mulShift64', 'fmt.parse_float.decimal.Decimal(f64).round',
+    'fmt.parse_float.parse.min_n_digit_int', 'fmt.parse_float.parse.tryParseNDigits',
+    'fmt.parse_float.FloatStream.scanDigit', 'fmt.parse_float.parse.tryParseDigits',
+    'fmt.parse_float.common.isDigit', 'fmt.parse_float.FloatStream.firstIs',
+    'fmt.parse_float.parse.parseScientific', 'fmt.parse_float.FloatStream.readU64Unchecked',
+    'fmt.parse_float.decimal.Decimal(f64).leftShift', 'fmt.parse_float.decimal.Decimal(f64).rightShift',
+    'fmt.parse_float.decimal.Decimal(f64).trim', 'fmt.parse_float.convert_eisel_lemire.convertEiselLemire',
+    'ascii.startsWithIgnoreCase',
+}
+
+XY_CONTINUATION_FUNCTIONS = {
+    'nih_xy_resume',
+    'xy_eval_runtime.nih_xy_resume',
+    'xy_eval_runtime.evaluateOnForeground',
+    'xy.scratch.ScratchDispatch.cancel',
+    'xy.scheme_runtime.ContinuationLease.cancel',
+    'xy.scheme_runtime.ContinuationState.condClause',
+    'xy.scheme_runtime.ContinuationState.sequence',
+    'xy.scheme_runtime.ContinuationState.push',
+    'xy.scheme_runtime.ContinuationAdmission.expression',
+    'xy.scheme_runtime.ContinuationAdmission.isLocal',
+    'xy.scheme_runtime.ContinuationAdmission.sequence',
+}
+XY_NUMERIC_HELPERS = {
+    'compiler_rt.addf3.add_f64', 'compiler_rt.addf3.__adddf3',
+    'compiler_rt.addf3.__subdf3', 'compiler_rt.divdf3.__divdf3',
+    '__adddf3', '__subdf3', '__divdf3',
+}
+
 def xy_function(name):
     match = re.fullmatch(r'(?:xy\.)?scheme_runtime\.Runtime\.(\w+?)(?:__func_[0-9]+)?', name)
     host = re.fullmatch(r'xy\.scratch\.Model\.(\w+)', name)
-    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|input|serviceXyKeyboard|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.(?:printIntAny|printValue)|fmt\.bufPrint|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
+    render_helper = re.fullmatch(r"(?:diagnostic_ui\.(?:beginSession|prepareXyWorkspace|input|service|serviceXyKeyboard|traceScratch|traceIdle)|mem\.(?:eql|findAny|trim)|line_layout\.cluster|native_reading\.(?:label|footer)|Io\.Writer\.(?:printIntAny|printValue)|fmt\.bufPrint|viewport_layout\.(?:shapeRun|shapeStyledRun|layoutParagraph|layoutParagraphWithWordWrap|layoutStyledParagraph)|render_session\.SizedSession\(2048\)\.(?:renderInto|renderKeyboard))__func_[0-9]+", name)
     document = re.fullmatch(r'xy\.document\.Document\(4096,256,2048,1,64\)\.(?:applySpliceInternal|insertUtf8|undo|moveLines|moveGraphemes|setPreedit|commitPreedit|deleteBackwardGrapheme|deleteForwardGrapheme)', name)
     lesson = re.fullmatch(r'(?:xy\.)?learning_session\.Session\.(\w+)', name)
     catalogue = re.fullmatch(r'(?:xy\.)?learning_catalog\.Pack\.(\w+)', name)
@@ -311,12 +354,21 @@ def xy_function(name):
     keyboard_driver = re.fullmatch(r'board\.tab5\.keyboard\.KeyboardIn\(boot_i2c\.Master\(display_probe\.Pins\),"\.flash\.xytext"\[0\.\.13\]\)\.(?:read|begin|poll)(?:__func_[0-9]+)?', name)
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    decimal_name = re.sub(r'__func_[0-9]+$', '', name)
+    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
     start, end = span
     require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
+    for name in XY_CONTINUATION_FUNCTIONS | XY_NUMERIC_HELPERS:
+        copies = {(address, stop) for candidate, address, stop in functions if candidate == name}
+        # Other profiles deliberately place numeric helpers in the separate
+        # sqld/photo spans; enforce uniqueness here only when XY owns one.
+        if name in XY_NUMERIC_HELPERS and not any(start <= address < end for address, _ in copies):
+            continue
+        require(not copies or (len(copies) == 1 and all(start <= address < stop <= end for address, stop in copies)),
+                'xy foreground function has a copy outside xy Flash: ' + name)
     selected = sorted((a, b, n) for n, a, b in functions if start <= a < end)
     unapproved = [n for a, b, n in selected if not xy_function(n)]
     require(selected and selected[0][0] == start and not unapproved and all(a < b <= end for a, b, n in selected), 'unapproved xy Flash function: ' + ', '.join(unapproved))

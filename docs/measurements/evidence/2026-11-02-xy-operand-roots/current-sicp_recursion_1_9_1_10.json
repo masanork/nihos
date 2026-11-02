@@ -1,0 +1,104 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "source_xml": "xml/chapter1/section2/subsection1.xml",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "inc_dec": "(define (inc x)\n  (- x -1))\n(define (dec x)\n  (- x 1))",
+  "recursive_add": "(define (+ a b)\n  (if (= a 0)\n      b\n      (inc (+ (dec a) b))))",
+  "iterative_add": "(define (+ a b)\n  (if (= a 0)\n      b\n      (+ (dec a) (inc b))))",
+  "ackermann": "(define (A x y)\n  (cond ((= y 0) 0)\n        ((= x 0) (* 2 y))\n        ((= y 1) 2)\n        (else (A (- x 1)\n                 (A x (- y 1))))))",
+  "wrappers": "(define (f n) (A 0 n))\n\n(define (g n) (A 1 n))\n\n(define (h n) (A 2 n))\n\n(define (k n) (* 5 n n))",
+  "finite_checks": [
+    {
+      "group": "recursive",
+      "expression": "(+ 0 5)",
+      "expected": "5",
+      "status": "matched"
+    },
+    {
+      "group": "recursive",
+      "expression": "(+ 4 5)",
+      "expected": "9",
+      "status": "matched"
+    },
+    {
+      "group": "recursive",
+      "expression": "(+ 6 3)",
+      "expected": "9",
+      "status": "matched"
+    },
+    {
+      "group": "iterative",
+      "expression": "(+ 0 5)",
+      "expected": "5",
+      "status": "matched"
+    },
+    {
+      "group": "iterative",
+      "expression": "(+ 4 5)",
+      "expected": "9",
+      "status": "matched"
+    },
+    {
+      "group": "iterative",
+      "expression": "(+ 30 5)",
+      "expected": "35",
+      "status": "matched"
+    },
+    {
+      "group": "iterative",
+      "expression": "(+ 150 5)",
+      "expected": "155",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(A 0 5)",
+      "expected": "10",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(A 1 10)",
+      "expected": "1024",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(A 2 4)",
+      "expected": "65536",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(A 3 3)",
+      "expected": "65536",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(f 5)",
+      "expected": "10",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(g 5)",
+      "expected": "32",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(h 3)",
+      "expected": "16",
+      "status": "matched"
+    },
+    {
+      "group": "ackermann",
+      "expression": "(k 5)",
+      "expected": "125",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/3 cases.test.recursive...NONTAIL_30=Depth\nOK\n2/3 cases.test.iterative...OK\n3/3 cases.test.ackermann...OK\nAll 3 tests passed.\n"
+}

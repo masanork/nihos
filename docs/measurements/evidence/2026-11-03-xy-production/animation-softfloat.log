@@ -1,0 +1,132 @@
+1/3 animation.test.equal elapsed time gives equal ticks independent of callback rate...OK
+2/3 animation.test.pause releases do not toggle and resume never catches up paused time...OK
+3/3 animation.test.overload and backwards clocks are bounded and focus loss clears held input...OK
+All 3 tests passed.
+1/6 plot_app.test.input edges, focus and cancel have bounded lifecycle with no hidden update...OK
+2/6 plot_app.test.invalid event cannot change input or clock state...OK
+3/6 animation.test.equal elapsed time gives equal ticks independent of callback rate...OK
+4/6 animation.test.pause releases do not toggle and resume never catches up paused time...OK
+5/6 animation.test.overload and backwards clocks are bounded and focus loss clears held input...OK
+6/6 protocol.test.v1 rejects unknown versions, short structs and unbounded frame requests...OK
+All 6 tests passed.
+1/89 live_workspace.test.prepare rejects effects, swaps commands without stale closures, and removes deleted definitions...OK
+2/89 live_workspace.test.failed evaluation restores definitions and document; repeated loads and extreme movement recover...OK
+3/89 live_workspace.test.frame failure rolls back VM editor and plot; next editor evaluation recovers...OK
+4/89 live_workspace.test.frame budget abort and heap pressure recover transactionally without resetting definitions...OK
+5/89 live_workspace.test.running session rejects reentry before changing active or rollback state...OK
+6/89 live_workspace.test.native callback cannot overwrite live rollback state...OK
+7/89 scheme_runtime.test.control boundary retains the form referenced by the next child frame...OK
+8/89 scheme_runtime.test.application operand frames retain evaluated values and unwind on error...OK
+9/89 scheme_runtime.test.compiled closure restores VM stacks after errors and success...OK
+10/89 scheme_runtime.test.compileAndRun restores transient stacks and rolls back failed compilation...OK
+11/89 scheme_runtime.test.collector boundaries reject live VM and reserved-cell states...OK
+12/89 scheme_runtime.test.pending control forms and initialized bindings survive controlled collection...OK
+13/89 scheme_runtime.test.map and for-each state survives controlled collection in callbacks...OK
+14/89 scheme_runtime.test.lexical closures mutation recursion and GC persist across requests...OK
+15/89 scheme_runtime.test.buffer persistence dispatches save and load separately...OK
+16/89 scheme_runtime.test.unbound storage reports unavailable and provider responses are data...OK
+17/89 scheme_runtime.test.registered closures survive GC and command replacement is live...OK
+18/89 scheme_runtime.test.reader stages all forms and errors return without destroying definitions...OK
+19/89 scheme_runtime.test.bounded malformed requests do not trap or retain ephemeral garbage...OK
+20/89 scheme_runtime.test.real work hits evaluation budget and exhausted heap recovers on next request...OK
+21/89 scheme_runtime.test.view options share an atomic typed contract and survive GC...OK
+22/89 scheme_runtime.test.app capability, callback roots, replacement and atomic plot options...OK
+23/89 scheme_runtime.test.scheme runtime memory footprint and tail call execution...OK
+24/89 scheme_runtime.test.bytecode VM execution: arithmetic, control flow, and local loop...OK
+25/89 scheme_runtime.test.compiler and bytecode VM execution: AST to bytecode...OK
+26/89 scheme_runtime.test.compiler and bytecode VM execution: transparent evaluate...OK
+27/89 scheme_runtime.test.temporary bytecode is reclaimed and compiler respects mutable bindings...OK
+28/89 scheme_runtime.test.collection compacts live text in allocation order...OK
+29/89 scheme_runtime.test.tail calls preserve captured frames and lexical parents...OK
+30/89 scheme_runtime.test.numeric function cache respects rebinding and collects dead code...OK
+31/89 scheme_runtime.test.sliced GC clears a dead weak numeric cache before cell reuse...OK
+32/89 scheme_runtime.test.non-tail calls cannot overwrite the caller frame...OK
+33/89 scheme_runtime.test.numeric cache matches interpreter across inputs and errors...OK
+34/89 scheme_runtime.test.benchmark Phase 4: AST Interpreter vs Bytecode VM...
+
+================ Phase 4 Performance Benchmark ================
+1. Recursive Loop (sum-iter 50 0) x 30 runs (250,000 iterations total):
+   - AST Interpreter: 0.06 ms (37.9 ns/step), heap cells: 150
+   - Bytecode VM:     0.00 ms (0.6 ns/step), heap cells: 0
+   => Speedup:        59.90x faster!
+
+2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x 20000 runs:
+   - AST Interpreter: 0.27 ms (13.3 ns/eval)
+   - Bytecode VM:     0.01 ms (0.4 ns/eval)
+   => Speedup:        35.98x faster!
+
+3. SRAM Footprint:
+   - Phase 2 (Tagged Unions Baseline):  8,248 bytes
+   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes
+   - Runtime footprint: 83064 bytes
+=================================================================
+
+OK
+35/89 scheme_runtime.test.captured and non-tail environments retain lexical bindings...OK
+36/89 scheme_runtime.test.evaluation respects unbound set and redefined numeric procedures...OK
+37/89 scheme_runtime.test.ordered integer comparisons support multiple operands...OK
+38/89 scheme_runtime.test.cond evaluates clauses in order and returns selected values...OK
+39/89 scheme_runtime.test.exact bounded fractions normalize and interoperate with integers...OK
+40/89 scheme_runtime.test.list operations and apply honor bounded arguments and recover from errors...OK
+41/89 scheme_runtime.test.map applies closures across lists and recovers from bounded errors...OK
+42/89 scheme_runtime.test.let star initializes sequentially with distinct lexical bindings...OK
+43/89 scheme_runtime.test.bounded structural equality and list membership...OK
+44/89 scheme_runtime.test.structural equality terminates on cyclic pair graphs...OK
+45/89 scheme_runtime.test.equality agrees with a visited-pair oracle for cyclic graphs...OK
+46/89 scheme_runtime.test.variadic procedure formals bind positional and rest arguments...OK
+47/89 scheme_runtime.test.mutable pairs preserve sharing cycles and collection roots...OK
+48/89 scheme_runtime.test.standard predicates selectors and ordered for-each...OK
+49/89 scheme_runtime.test.dotted datum syntax validates tails and prints immediate values safely...OK
+50/89 scheme_runtime.test.larger text and heap bounds remain enforced...OK
+51/89 scheme_runtime.test.inexact decimals interoperate and survive requests...OK
+52/89 scheme_runtime.test.numeric predicates conversions and nonfinite values...OK
+53/89 scheme_runtime.test.numeric literal exactness and radix prefixes...OK
+54/89 scheme_runtime.test.mixed exact and inexact comparisons preserve transitivity...OK
+55/89 scheme_runtime.test.numeric signs parity and unbiased rounding...OK
+56/89 scheme_runtime.test.integer division and gcd respect signs and exactness...OK
+57/89 scheme_runtime.test.opcode immediate decoder retains all eight payload bits...OK
+58/89 scheme_runtime.test.numerator denominator and square preserve exactness...OK
+59/89 scheme_runtime.test.numeric extrema respect exactness infinities and signed zero...OK
+60/89 scheme_runtime.test.integer powers preserve exactness and bounds...OK
+61/89 scheme_runtime.test.tail apply transfers without growing evaluator depth...OK
+62/89 scheme_runtime.test.cond recipient tail calls reuse evaluation frame...OK
+63/89 scheme_runtime.test.outer tail boundaries reclaim temporary lists and preserve live closures...OK
+64/89 scheme_runtime.test.outer sequences reclaim temporaries while preserving pending forms...OK
+65/89 scheme_runtime.test.outer closure body boundaries retain local and captured values...OK
+66/89 scheme_runtime.test.outer let and selected cond boundaries retain local and pending values...OK
+67/89 scheme_runtime.test.outer logic boundaries retain pending forms and short circuit...OK
+68/89 scheme_runtime.test.outer cond tests and let initializers reclaim while preserving roots...OK
+69/89 scheme_runtime.test.sliced collection matches original and resumes at every phase...SLICED quantum=1 calls=20637 phase_mask=1fff cursor_bytes=40
+SLICED quantum=7 calls=2949 phase_mask=1fd3 cursor_bytes=40
+SLICED quantum=64 calls=323 phase_mask=1f81 cursor_bytes=40
+SLICED quantum=4096 calls=6 phase_mask=1b81 cursor_bytes=40
+OK
+70/89 scheme_runtime.test.sliced collector randomized heap graphs match original...SLICED_RANDOM fixtures=12 quantum=256 calls_total=1009 calls_max=85
+OK
+71/89 scheme_runtime.test.sliced collector preserves dense live text and bounded exhausted heap recovery...OK
+72/89 scheme_runtime.test.collector skips the text index when only empty text survives...OK
+73/89 scheme_runtime.test.continuation prototype yields, roots frames, rejects unsupported and unwinds...CONTINUATION size=4216 frame=44 peak=62 yields=225 collections=1576
+OK
+74/89 scheme_runtime.test.continuation prototype cond let and SICP 1.27...SICP_1_27 matched=9 nested_gc=7029 peak_frames=29
+OK
+75/89 scheme_runtime.test.continuation prototype let root under reuse...OK
+76/89 scheme_runtime.test.continuation prototype conservative admission and fallback...ADMISSION pure_recursion=accepted mutation_callback_shadowing=rejected fallback_once=ok
+OK
+77/89 scheme_runtime.test.continuation prototype leased lifecycle and cancellation...LEASE bytes=4224 yields=225 cancellation=ok errors=ok reentry=busy
+OK
+78/89 scheme_runtime.test.continuation sliced GC pressure and recovery...SLICED_PRESSURE collections=5 slices=1876 polls=2226
+OK
+79/89 scheme_runtime.test.continuation sliced GC deferred cancel at every phase...SLICED_CANCEL phases=13 busy=ok roots=retained recovery=ok
+OK
+80/89 document.test.undo offsets retain full bounded and wider document ranges...OK
+81/89 document.test.grapheme cursor and backspace never split IVS or combining dakuten...OK
+82/89 document.test.grouped undo reverts multi-step transaction and rejects stale or unaligned ranges...OK
+83/89 document.test.non-destructive SKK preedit overlay and ruby span shifting on edit...OK
+84/89 document.test.extreme signed movements clamp without overflowing negation...OK
+85/89 storage.test.decimal storage replies round-trip without the std formatter...OK
+86/89 camera.test.unbound camera does not allocate or expose an address...OK
+87/89 card.test.unbound card client errors gracefully...OK
+88/89 scheme_decimal.test.binary64 finite values round-trip through decimal...OK
+89/89 scheme_decimal.test.decimal parser rounds boundaries and halfway cases...OK
+All 89 tests passed.
+Animation/Canvas and Scheme callback RV32 soft-float standalone links passed; no device execution

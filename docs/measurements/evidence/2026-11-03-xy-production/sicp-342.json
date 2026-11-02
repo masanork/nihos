@@ -1,0 +1,6009 @@
+{
+  "runtime_sha256": "eb2eff7d303ebdcf117a48995f57588fdfcf1c87acd7be14c33ce75ad4a7ae2d",
+  "prototype_sha256": null,
+  "integrated": true,
+  "group_sha256": {
+    "current-sicp_abstraction_2_2_2_14.json": "8ec2403279faa7524d94bb9a3469943983a10f337f994d63872af564be0a8d74",
+    "current-sicp_circuits_3_28_3_31.json": "d0241f5a2291c40d2f172551cd931da891b289e228841d526aa0292b85251837",
+    "current-sicp_exercises_1_2_1_5.json": "98b21cd03be12dc3be8b5a9cef4d0e12a479769a73537745c4bda4ff660746b9",
+    "current-sicp_fast_processes_1_16_1_28.json": "6445d52915426c4cedfcdd3430146568c54619ab2a1f38b777a5b47f0ca7821c",
+    "current-sicp_higher_order_1_29_1_46.json": "5074744fd7e1f8ac5e1599d9081a72c174d02c15be34bd0cdb1baeab8c3dfb3e",
+    "current-sicp_lists_2_17_2_21.json": "c70dd9daba68840ba64fc6dd0c81afc83b11bbc38bc5d5bd0d5f48e489646122",
+    "current-sicp_metacircular_4_1_4_7.json": "0111becd89fb5e56e278cbd875f4ef1f4d0461dddf84d57d282e8e12f420cac8",
+    "current-sicp_mutation_3_12_3_20.json": "4ed6749e990724130cbb198951b27600e1c9d1cea30cef5c16cfc6c21bdee65f",
+    "current-sicp_official_sessions.json": "d03f1dfe712d91a534b821d6483e54b4f69fe878afad90e15b91f122b12fba66",
+    "current-sicp_queues_3_21_3_23.json": "181949f22570bc8fd85677b1e80b0d2964ff6bd6c918c0cdcfed3bae1d5685ec",
+    "current-sicp_rational_2_1.json": "1cf83055251ac4de88d867a6cd9451fc38570991031909c38c9ae94866e21b77",
+    "current-sicp_recursion_1_9_1_10.json": "555bb786a6c6b723ca5ab11307e364380dfa489275bef010e6831ce73fdfa9e9",
+    "current-sicp_register_5_1_5_2.json": "93354159cc5ae8104676ad9498c8f82876cedc9d85eca299211d29b6edbf0fa5",
+    "current-sicp_remaining_1_13_1_36.json": "09e8eea5aa5c1cea96cffcb7a6be5ec164224d8ad4028b842cca384e88463d09",
+    "current-sicp_roots_1_6_1_8.json": "32f1c3a22122e59e0175ab7884e3a1cf097ffad82a000b79ce9c131655b730ce",
+    "current-sicp_sequences_2_33_2_42.json": "2691afc0fdd0b325972119998b4b636807d94ae33efe82a9eb11bfb67386ec79",
+    "current-sicp_state_3_1_3_7.json": "7159182dd2fedc934818b85e073da0be6239bea70e11347d6bf64649ee91fd11",
+    "current-sicp_symbols_2_53_2_55.json": "122092675b0cb347c2d01ad37d970b38a03545177e5ce2c8dd1b3d22b14d748a",
+    "current-sicp_tables_3_24_3_27.json": "9066ef451662b2451e984d20f7ba1429e179c68b4169ae4d8718e70b809abf51",
+    "current-sicp_tree_1_11_1_12.json": "194ffea5ea5635b3d5c0dedaf488e562417a9be7431d7aa4e82715dd517d1681",
+    "current-sicp_trees_2_19_2_32.json": "85e41707d728b26510cba7a2c4cdc22e0f577c4785198683dfc78398272c3888"
+  },
+  "scope": "host-only temporary instrumentation; selected finite cases; no PSRAM or UI",
+  "quantum": 16,
+  "gc_on_yield": true,
+  "adaptive": true,
+  "cases": 342,
+  "admitted_cases": 34,
+  "candidate_status": {
+    "matched": 332,
+    "error": 10
+  },
+  "changes": [
+    {
+      "index": 113,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 115,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 117,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 119,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 121,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 123,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 125,
+      "exercise": "1.27",
+      "source": "(fermat? 2 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 127,
+      "exercise": "1.27",
+      "source": "(fermat? 3 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 129,
+      "exercise": "1.27",
+      "source": "(fermat? 10 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    }
+  ],
+  "observations": [
+    {
+      "index": 0,
+      "exercise": "2.2",
+      "source": "(midpoint-segment (make-segment (make-point 0 0) (make-point 4 6)))",
+      "expected": "(2 . 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 . 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 . 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 1,
+      "exercise": "2.2",
+      "source": "(midpoint-segment (make-segment (make-point -3 2) (make-point 5 -4)))",
+      "expected": "(1 . -1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 . -1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 . -1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 2,
+      "exercise": "2.2",
+      "source": "(midpoint-segment (make-segment (make-point 1 2) (make-point 2 5)))",
+      "expected": "(3/2 . 7/2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3/2 . 7/2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3/2 . 7/2)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 3,
+      "exercise": "2.3",
+      "source": "(let ((r (make-rect (make-point 0 0) (make-point 4 3)))) (list (area r) (perimeter r)))",
+      "expected": "(12 14)",
+      "baseline": {
+        "kind": "value",
+        "value": "(12 14)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(12 14)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 4,
+      "exercise": "2.3",
+      "source": "(let ((r (make-rect (make-point 0 0) (make-point 7 5)))) (list (area r) (perimeter r)))",
+      "expected": "(35 24)",
+      "baseline": {
+        "kind": "value",
+        "value": "(35 24)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(35 24)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 5,
+      "exercise": "2.3",
+      "source": "(let ((r (make-rect (make-point 0 0) (make-point 4 3)))) (list (area r) (perimeter r)))",
+      "expected": "(12 14)",
+      "baseline": {
+        "kind": "value",
+        "value": "(12 14)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(12 14)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 6,
+      "exercise": "2.3",
+      "source": "(let ((r (make-rect (make-point 0 0) (make-point 7 5)))) (list (area r) (perimeter r)))",
+      "expected": "(35 24)",
+      "baseline": {
+        "kind": "value",
+        "value": "(35 24)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(35 24)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 7,
+      "exercise": "2.4",
+      "source": "(list (car (cons 2 7)) (cdr (cons 2 7)))",
+      "expected": "(2 7)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 7)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 7)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 8,
+      "exercise": "2.4",
+      "source": "(list (car (cons 0 -5)) (cdr (cons 0 -5)))",
+      "expected": "(0 -5)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 -5)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 -5)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 9,
+      "exercise": "2.4",
+      "source": "(list (car (cons 8 8)) (cdr (cons 8 8)))",
+      "expected": "(8 8)",
+      "baseline": {
+        "kind": "value",
+        "value": "(8 8)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(8 8)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 10,
+      "exercise": "2.5",
+      "source": "(list (car (cons 0 0)) (cdr (cons 0 0)))",
+      "expected": "(0 0)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 0)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 0)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 11,
+      "exercise": "2.5",
+      "source": "(list (car (cons 2 3)) (cdr (cons 2 3)))",
+      "expected": "(2 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 12,
+      "exercise": "2.5",
+      "source": "(list (car (cons 4 1)) (cdr (cons 4 1)))",
+      "expected": "(4 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 13,
+      "exercise": "2.5",
+      "source": "(list (car (cons 1 5)) (cdr (cons 1 5)))",
+      "expected": "(1 5)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 5)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 5)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 14,
+      "exercise": "2.6",
+      "source": "(value zero)",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 15,
+      "exercise": "2.6",
+      "source": "(value one)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 16,
+      "exercise": "2.6",
+      "source": "(value two)",
+      "expected": "2",
+      "baseline": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 17,
+      "exercise": "2.6",
+      "source": "(value (add-1 two))",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 18,
+      "exercise": "2.6",
+      "source": "(value (plus two two))",
+      "expected": "4",
+      "baseline": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 19,
+      "exercise": "2.7",
+      "source": "(let ((i (make-interval -2 5))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(-2 5)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-2 5)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-2 5)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 20,
+      "exercise": "2.7",
+      "source": "(let ((i (make-interval 0 0))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(0 0)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 0)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 0)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 21,
+      "exercise": "2.7",
+      "source": "(let ((i (make-interval 4 9))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(4 9)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 9)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 9)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 22,
+      "exercise": "2.8",
+      "source": "(sub-interval (make-interval 1 3) (make-interval 2 5))",
+      "expected": "(-4 . 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-4 . 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-4 . 1)",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 23,
+      "exercise": "2.8",
+      "source": "(sub-interval (make-interval -4 -1) (make-interval -3 2))",
+      "expected": "(-6 . 2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-6 . 2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-6 . 2)",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 24,
+      "exercise": "2.8",
+      "source": "(sub-interval (make-interval 0 0) (make-interval 1 7))",
+      "expected": "(-7 . -1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-7 . -1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-7 . -1)",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 25,
+      "exercise": "2.9",
+      "source": "(list (width (add-interval (make-interval 1 3) (make-interval 2 6))) (+ (width (make-interval 1 3)) (width (make-interval 2 6))))",
+      "expected": "(3 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 26,
+      "exercise": "2.9",
+      "source": "(list (width (add-interval (make-interval -4 -1) (make-interval -3 2))) (+ (width (make-interval -4 -1)) (width (make-interval -3 2))))",
+      "expected": "(4 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 27,
+      "exercise": "2.9",
+      "source": "(list (width (add-interval (make-interval 0 0) (make-interval 1 7))) (+ (width (make-interval 0 0)) (width (make-interval 1 7))))",
+      "expected": "(3 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 28,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval 1 3) (make-interval 2 7))",
+      "expected": "(2 . 21)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 . 21)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 . 21)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 29,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval 1 3) (make-interval -6 -1))",
+      "expected": "(-18 . -1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-18 . -1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-18 . -1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 30,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval 1 3) (make-interval -3 8))",
+      "expected": "(-9 . 24)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-9 . 24)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-9 . 24)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 31,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -5 -2) (make-interval 2 7))",
+      "expected": "(-35 . -4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-35 . -4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-35 . -4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 32,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -5 -2) (make-interval -6 -1))",
+      "expected": "(2 . 30)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 . 30)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 . 30)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 33,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -5 -2) (make-interval -3 8))",
+      "expected": "(-40 . 15)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-40 . 15)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-40 . 15)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 34,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -4 6) (make-interval 2 7))",
+      "expected": "(-28 . 42)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-28 . 42)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-28 . 42)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 35,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -4 6) (make-interval -6 -1))",
+      "expected": "(-36 . 24)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-36 . 24)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-36 . 24)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 36,
+      "exercise": "2.11",
+      "source": "(mul-fast (make-interval -4 6) (make-interval -3 8))",
+      "expected": "(-32 . 48)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-32 . 48)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-32 . 48)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 37,
+      "exercise": "2.12",
+      "source": "(make-center-percent 50 10)",
+      "expected": "(45 . 55)",
+      "baseline": {
+        "kind": "value",
+        "value": "(45 . 55)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(45 . 55)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 38,
+      "exercise": "2.12",
+      "source": "(percent (make-center-percent 50 10))",
+      "expected": "10",
+      "baseline": {
+        "kind": "value",
+        "value": "10",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "10",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 39,
+      "exercise": "2.12",
+      "source": "(make-center-percent 100 5)",
+      "expected": "(95 . 105)",
+      "baseline": {
+        "kind": "value",
+        "value": "(95 . 105)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(95 . 105)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 40,
+      "exercise": "2.12",
+      "source": "(percent (make-center-percent 100 5))",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 41,
+      "exercise": "2.12",
+      "source": "(make-center-percent -20 25)",
+      "expected": "(-25 . -15)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-25 . -15)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-25 . -15)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 42,
+      "exercise": "2.12",
+      "source": "(percent (make-center-percent -20 25))",
+      "expected": "25",
+      "baseline": {
+        "kind": "value",
+        "value": "25",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "25",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 43,
+      "exercise": "2.14",
+      "source": "(par1 (make-interval 1 2) (make-interval 3 4))",
+      "expected": "(1/2 . 2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1/2 . 2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1/2 . 2)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 44,
+      "exercise": "2.14",
+      "source": "(par2 (make-interval 1 2) (make-interval 3 4))",
+      "expected": "(3/4 . 4/3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3/4 . 4/3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3/4 . 4/3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_abstraction_2_2_2_14.json"
+    },
+    {
+      "index": 45,
+      "exercise": "3.28",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 0) (propagate) (get out))",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 46,
+      "exercise": "3.28",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 47,
+      "exercise": "3.28",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 0) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 48,
+      "exercise": "3.28",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 49,
+      "exercise": "3.29",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 0) (propagate) (get out))",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 50,
+      "exercise": "3.29",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 51,
+      "exercise": "3.29",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 0) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 52,
+      "exercise": "3.29",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 53,
+      "exercise": "3.28",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire))) (or-gate a b o) (propagate) (let ((start now)) (set a 1) (propagate) (- now start)))",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 54,
+      "exercise": "3.29",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire))) (or-gate a b o) (propagate) (let ((start now)) (set a 1) (propagate) (- now start)))",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 55,
+      "exercise": "3.30",
+      "source": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 0) (set a1 0) (set b0 0) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 0)",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 56,
+      "exercise": "3.30",
+      "source": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 0)",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 57,
+      "exercise": "3.30",
+      "source": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 1)",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 58,
+      "exercise": "3.30",
+      "source": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 1) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 1)",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 59,
+      "exercise": "3.31",
+      "source": "(let ((a (make-wire)) (o (make-wire))) (inv a o) (propagate) (get o))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 60,
+      "exercise": "3.31",
+      "source": "(let ((a (make-wire)) (o (make-wire))) (inv a o) (propagate) (get o))",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 61,
+      "exercise": "3.32",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire)) (seen '())) (and-gate a b o) (on o (lambda () (set! seen (append seen (list (get o)))))) (set b 1) (propagate) (set! seen '()) (after-delay 1 (lambda () (set a 1))) (after-delay 1 (lambda () (set b 0))) (propagate) seen)",
+      "expected": "(1 0)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 0)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 0)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 62,
+      "exercise": "3.32",
+      "source": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire)) (seen '())) (and-gate a b o) (on o (lambda () (set! seen (append seen (list (get o)))))) (set b 1) (propagate) (set! seen '()) (after-delay 1 (lambda () (set a 1))) (after-delay 1 (lambda () (set b 0))) (propagate) seen)",
+      "expected": "()",
+      "baseline": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_circuits_3_28_3_31.json"
+    },
+    {
+      "index": 63,
+      "exercise": "1.16",
+      "source": "(fast-exp 2 0)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 64,
+      "exercise": "1.16",
+      "source": "(fast-exp 2 10)",
+      "expected": "1024",
+      "baseline": {
+        "kind": "value",
+        "value": "1024",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1024",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 65,
+      "exercise": "1.16",
+      "source": "(fast-exp -2 5)",
+      "expected": "-32",
+      "baseline": {
+        "kind": "value",
+        "value": "-32",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "-32",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 66,
+      "exercise": "1.16",
+      "source": "(fast-exp 3 7)",
+      "expected": "2187",
+      "baseline": {
+        "kind": "value",
+        "value": "2187",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2187",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 67,
+      "exercise": "1.16",
+      "source": "(fast-exp 1 20)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 68,
+      "exercise": "1.17",
+      "source": "(fast-mul 0 0)",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 69,
+      "exercise": "1.17",
+      "source": "(fast-mul 7 1)",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 70,
+      "exercise": "1.17",
+      "source": "(fast-mul 7 13)",
+      "expected": "91",
+      "baseline": {
+        "kind": "value",
+        "value": "91",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "91",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 71,
+      "exercise": "1.17",
+      "source": "(fast-mul -4 17)",
+      "expected": "-68",
+      "baseline": {
+        "kind": "value",
+        "value": "-68",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "-68",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 72,
+      "exercise": "1.17",
+      "source": "(fast-mul 25 32)",
+      "expected": "800",
+      "baseline": {
+        "kind": "value",
+        "value": "800",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "800",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 73,
+      "exercise": "1.18",
+      "source": "(fast-mul 0 0)",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 74,
+      "exercise": "1.18",
+      "source": "(fast-mul 7 1)",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 75,
+      "exercise": "1.18",
+      "source": "(fast-mul 7 13)",
+      "expected": "91",
+      "baseline": {
+        "kind": "value",
+        "value": "91",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "91",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 76,
+      "exercise": "1.18",
+      "source": "(fast-mul -4 17)",
+      "expected": "-68",
+      "baseline": {
+        "kind": "value",
+        "value": "-68",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "-68",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 77,
+      "exercise": "1.18",
+      "source": "(fast-mul 25 32)",
+      "expected": "800",
+      "baseline": {
+        "kind": "value",
+        "value": "800",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "800",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 78,
+      "exercise": "1.19",
+      "source": "(fib 0)",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 79,
+      "exercise": "1.19",
+      "source": "(fib 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 80,
+      "exercise": "1.19",
+      "source": "(fib 2)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 81,
+      "exercise": "1.19",
+      "source": "(fib 10)",
+      "expected": "55",
+      "baseline": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 82,
+      "exercise": "1.19",
+      "source": "(fib 20)",
+      "expected": "6765",
+      "baseline": {
+        "kind": "value",
+        "value": "6765",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "6765",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 83,
+      "exercise": "1.19",
+      "source": "(fib 30)",
+      "expected": "832040",
+      "baseline": {
+        "kind": "value",
+        "value": "832040",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "832040",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 84,
+      "exercise": "1.19",
+      "source": "(fib 40)",
+      "expected": "102334155",
+      "baseline": {
+        "kind": "value",
+        "value": "102334155",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "102334155",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 85,
+      "exercise": "1.21",
+      "source": "(smallest-divisor 199)",
+      "expected": "199",
+      "baseline": {
+        "kind": "value",
+        "value": "199",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "199",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 86,
+      "exercise": "1.21",
+      "source": "(smallest-divisor 1999)",
+      "expected": "1999",
+      "baseline": {
+        "kind": "value",
+        "value": "1999",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1999",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 87,
+      "exercise": "1.21",
+      "source": "(smallest-divisor 19999)",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 88,
+      "exercise": "1.21",
+      "source": "(smallest-divisor 121)",
+      "expected": "11",
+      "baseline": {
+        "kind": "value",
+        "value": "11",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "11",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 89,
+      "exercise": "1.21",
+      "source": "(smallest-divisor 561)",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 90,
+      "exercise": "1.23",
+      "source": "(smallest-divisor 199)",
+      "expected": "199",
+      "baseline": {
+        "kind": "value",
+        "value": "199",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "199",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 91,
+      "exercise": "1.23",
+      "source": "(smallest-divisor 1999)",
+      "expected": "1999",
+      "baseline": {
+        "kind": "value",
+        "value": "1999",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1999",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 92,
+      "exercise": "1.23",
+      "source": "(smallest-divisor 19999)",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 93,
+      "exercise": "1.23",
+      "source": "(smallest-divisor 121)",
+      "expected": "11",
+      "baseline": {
+        "kind": "value",
+        "value": "11",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "11",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 94,
+      "exercise": "1.23",
+      "source": "(smallest-divisor 561)",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 95,
+      "exercise": "1.27",
+      "source": "(fermat? 2 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 96,
+      "exercise": "1.27",
+      "source": "(fermat? 2 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 97,
+      "exercise": "1.27",
+      "source": "(fermat? 3 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 98,
+      "exercise": "1.27",
+      "source": "(fermat? 3 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 99,
+      "exercise": "1.27",
+      "source": "(fermat? 10 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 100,
+      "exercise": "1.27",
+      "source": "(fermat? 10 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 101,
+      "exercise": "1.27",
+      "source": "(fermat? 2 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 102,
+      "exercise": "1.27",
+      "source": "(fermat? 2 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 103,
+      "exercise": "1.27",
+      "source": "(fermat? 3 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 104,
+      "exercise": "1.27",
+      "source": "(fermat? 3 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 105,
+      "exercise": "1.27",
+      "source": "(fermat? 10 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 106,
+      "exercise": "1.27",
+      "source": "(fermat? 10 1105)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 107,
+      "exercise": "1.27",
+      "source": "(fermat? 2 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 108,
+      "exercise": "1.27",
+      "source": "(fermat? 2 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 109,
+      "exercise": "1.27",
+      "source": "(fermat? 3 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 110,
+      "exercise": "1.27",
+      "source": "(fermat? 3 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 111,
+      "exercise": "1.27",
+      "source": "(fermat? 10 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 112,
+      "exercise": "1.27",
+      "source": "(fermat? 10 1729)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 113,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 114,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 115,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 116,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 117,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 118,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2465)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 119,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 120,
+      "exercise": "1.27",
+      "source": "(fermat? 2 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 121,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 122,
+      "exercise": "1.27",
+      "source": "(fermat? 3 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 123,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 124,
+      "exercise": "1.27",
+      "source": "(fermat? 10 2821)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 125,
+      "exercise": "1.27",
+      "source": "(fermat? 2 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 126,
+      "exercise": "1.27",
+      "source": "(fermat? 2 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 127,
+      "exercise": "1.27",
+      "source": "(fermat? 3 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 128,
+      "exercise": "1.27",
+      "source": "(fermat? 3 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 129,
+      "exercise": "1.27",
+      "source": "(fermat? 10 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 130,
+      "exercise": "1.27",
+      "source": "(fermat? 10 6601)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 131,
+      "exercise": "1.28",
+      "source": "(passes? 2 7)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 132,
+      "exercise": "1.28",
+      "source": "(passes? 2 13)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 133,
+      "exercise": "1.28",
+      "source": "(passes? 2 9)",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 134,
+      "exercise": "1.28",
+      "source": "(passes? 2 15)",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 135,
+      "exercise": "1.28",
+      "source": "(passes? 2 21)",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 136,
+      "exercise": "1.28",
+      "source": "(passes? 2 561)",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 137,
+      "exercise": "1.28",
+      "source": "(passes? 50 561)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json"
+    },
+    {
+      "index": 138,
+      "exercise": "1.29",
+      "source": "(simpson cube 0 1 2)",
+      "expected": "1/4",
+      "baseline": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 139,
+      "exercise": "1.29",
+      "source": "(simpson cube 0 1 4)",
+      "expected": "1/4",
+      "baseline": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 140,
+      "exercise": "1.29",
+      "source": "(simpson cube 0 1 6)",
+      "expected": "1/4",
+      "baseline": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 141,
+      "exercise": "1.29",
+      "source": "(simpson cube 0 1 10)",
+      "expected": "1/4",
+      "baseline": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1/4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 142,
+      "exercise": "1.30",
+      "source": "(sum (lambda (x) (* x x)) 1 inc 5)",
+      "expected": "55",
+      "baseline": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 143,
+      "exercise": "1.30",
+      "source": "(sum (lambda (x) x) 1 inc 50)",
+      "expected": "1275",
+      "baseline": {
+        "kind": "value",
+        "value": "1275",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1275",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 144,
+      "exercise": "1.31",
+      "source": "(product (lambda (x) x) 1 inc 0)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 145,
+      "exercise": "1.31",
+      "source": "(product (lambda (x) x) 1 inc 5)",
+      "expected": "120",
+      "baseline": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 146,
+      "exercise": "1.31",
+      "source": "(product (lambda (x) x) 1 inc 8)",
+      "expected": "40320",
+      "baseline": {
+        "kind": "value",
+        "value": "40320",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "40320",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 147,
+      "exercise": "1.32",
+      "source": "(accumulate + 0 (lambda (x) (* x x)) 1 inc 5)",
+      "expected": "55",
+      "baseline": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "55",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 148,
+      "exercise": "1.32",
+      "source": "(accumulate * 1 (lambda (x) x) 1 inc 5)",
+      "expected": "120",
+      "baseline": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 149,
+      "exercise": "1.33",
+      "source": "(filtered-accumulate odd? + 0 (lambda (x) (* x x)) 1 inc 9)",
+      "expected": "165",
+      "baseline": {
+        "kind": "value",
+        "value": "165",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "165",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 150,
+      "exercise": "1.33",
+      "source": "(filtered-accumulate (lambda (x) (= (gcd x 10) 1)) * 1 (lambda (x) x) 1 inc 10)",
+      "expected": "189",
+      "baseline": {
+        "kind": "value",
+        "value": "189",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "189",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 151,
+      "exercise": "1.35",
+      "source": "(let ((v (fixed-point (lambda (x) (+ 1 (/ 1 x))) 1.0))) (and (> v 1.618) (< v 1.619)))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 152,
+      "exercise": "1.37",
+      "source": "(cont-frac (lambda (i) 1) (lambda (i) 1) 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 153,
+      "exercise": "1.37",
+      "source": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 154,
+      "exercise": "1.37",
+      "source": "(cont-frac (lambda (i) 1) (lambda (i) 1) 3)",
+      "expected": "2/3",
+      "baseline": {
+        "kind": "value",
+        "value": "2/3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2/3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 155,
+      "exercise": "1.37",
+      "source": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 3)",
+      "expected": "2/3",
+      "baseline": {
+        "kind": "value",
+        "value": "2/3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2/3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 156,
+      "exercise": "1.37",
+      "source": "(cont-frac (lambda (i) 1) (lambda (i) 1) 5)",
+      "expected": "5/8",
+      "baseline": {
+        "kind": "value",
+        "value": "5/8",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5/8",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 157,
+      "exercise": "1.37",
+      "source": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 5)",
+      "expected": "5/8",
+      "baseline": {
+        "kind": "value",
+        "value": "5/8",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5/8",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 158,
+      "exercise": "1.37",
+      "source": "(cont-frac (lambda (i) 1) (lambda (i) 1) 8)",
+      "expected": "21/34",
+      "baseline": {
+        "kind": "value",
+        "value": "21/34",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "21/34",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 159,
+      "exercise": "1.37",
+      "source": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 8)",
+      "expected": "21/34",
+      "baseline": {
+        "kind": "value",
+        "value": "21/34",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "21/34",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 160,
+      "exercise": "1.38",
+      "source": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 3))",
+      "expected": "11/4",
+      "baseline": {
+        "kind": "value",
+        "value": "11/4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "11/4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 161,
+      "exercise": "1.38",
+      "source": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 5))",
+      "expected": "87/32",
+      "baseline": {
+        "kind": "value",
+        "value": "87/32",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "87/32",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 162,
+      "exercise": "1.38",
+      "source": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 8))",
+      "expected": "1264/465",
+      "baseline": {
+        "kind": "value",
+        "value": "1264/465",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1264/465",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 163,
+      "exercise": "1.39",
+      "source": "(tan-cf 1 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 164,
+      "exercise": "1.39",
+      "source": "(tan-cf 1 2)",
+      "expected": "3/2",
+      "baseline": {
+        "kind": "value",
+        "value": "3/2",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3/2",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 165,
+      "exercise": "1.39",
+      "source": "(tan-cf 1 3)",
+      "expected": "14/9",
+      "baseline": {
+        "kind": "value",
+        "value": "14/9",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "14/9",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 166,
+      "exercise": "1.40",
+      "source": "((cubic 1 2 3) 2)",
+      "expected": "19",
+      "baseline": {
+        "kind": "value",
+        "value": "19",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "19",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 167,
+      "exercise": "1.41",
+      "source": "(((double (double double)) (lambda (x) (+ x 1))) 5)",
+      "expected": "21",
+      "baseline": {
+        "kind": "value",
+        "value": "21",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "21",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 168,
+      "exercise": "1.42",
+      "source": "((compose (lambda (x) (* x x)) (lambda (x) (+ x 1))) 5)",
+      "expected": "36",
+      "baseline": {
+        "kind": "value",
+        "value": "36",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "36",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 169,
+      "exercise": "1.43",
+      "source": "((repeated (lambda (x) (* x x)) 2) 5)",
+      "expected": "625",
+      "baseline": {
+        "kind": "value",
+        "value": "625",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "625",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 170,
+      "exercise": "1.43",
+      "source": "((repeated (lambda (x) (+ x 1)) 5) 0)",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 171,
+      "exercise": "1.44",
+      "source": "((smooth (lambda (x) (* x x))) 3)",
+      "expected": "29/3",
+      "baseline": {
+        "kind": "value",
+        "value": "29/3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "29/3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 172,
+      "exercise": "1.44",
+      "source": "(((repeated smooth 2) (lambda (x) (* x x))) 3)",
+      "expected": "31/3",
+      "baseline": {
+        "kind": "value",
+        "value": "31/3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "31/3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 173,
+      "exercise": "1.45",
+      "source": "(let ((r (nth-root 16 4 2))) (< (abs (- r 2.0)) 0.001))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 174,
+      "exercise": "1.45",
+      "source": "(let ((r (nth-root 27 3 1))) (< (abs (- r 3.0)) 0.001))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 175,
+      "exercise": "1.46",
+      "source": "((iterative-improve (lambda (x) (= x 5)) (lambda (x) (+ x 1))) 0)",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 176,
+      "exercise": "1.46",
+      "source": "(let ((r ((iterative-improve (lambda (g) (< (abs (- (* g g) 4.0)) 0.001)) (lambda (g) (/ (+ g (/ 4.0 g)) 2.0))) 1.0))) (< (abs (- (* r r) 4.0)) 0.001))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_higher_order_1_29_1_46.json"
+    },
+    {
+      "index": 177,
+      "exercise": "4.1",
+      "source": "(let* ((values (list-of-values '(a b c) 'env)) (observed order)) (list values observed))",
+      "expected": "((a b c) (a b c))",
+      "baseline": {
+        "kind": "value",
+        "value": "((a b c) (a b c))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((a b c) (a b c))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 178,
+      "exercise": "4.1",
+      "source": "(list-of-values '() 'env)",
+      "expected": "()",
+      "baseline": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 179,
+      "exercise": "4.1",
+      "source": "(let* ((values (list-of-values '(a b c) 'env)) (observed order)) (list values observed))",
+      "expected": "((a b c) (c b a))",
+      "baseline": {
+        "kind": "value",
+        "value": "((a b c) (c b a))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((a b c) (c b a))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 180,
+      "exercise": "4.1",
+      "source": "(list-of-values '() 'env)",
+      "expected": "()",
+      "baseline": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 181,
+      "exercise": "4.2",
+      "source": "(list (old-application? '(define x 3)) (definition? '(define x 3)) (application? '(define x 3)))",
+      "expected": "(#t #t #f)",
+      "baseline": {
+        "kind": "value",
+        "value": "(#t #t #f)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#t #t #f)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 182,
+      "exercise": "4.2",
+      "source": "(list (application? '(call + 1 2)) (operator '(call + 1 2)) (operands '(call + 1 2)))",
+      "expected": "(#t + (1 2))",
+      "baseline": {
+        "kind": "value",
+        "value": "(#t + (1 2))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#t + (1 2))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 183,
+      "exercise": "4.4",
+      "source": "(eval-and '() 'env)",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 184,
+      "exercise": "4.4",
+      "source": "(eval-or '() 'env)",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 185,
+      "exercise": "4.4",
+      "source": "(let* ((v (eval-and '((effect #f) (effect 2)) 'env)) (h hits)) (list v h))",
+      "expected": "(#f 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(#f 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#f 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 186,
+      "exercise": "4.4",
+      "source": "(let* ((v (eval-or '((effect 7) (effect 2)) 'env)) (h hits)) (list v h))",
+      "expected": "(7 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(7 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(7 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 187,
+      "exercise": "4.4",
+      "source": "(eval-and '(1 2 3) 'env)",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 188,
+      "exercise": "4.6",
+      "source": "(let->combination '(let ((x 2) (y 3)) (+ x y)))",
+      "expected": "((lambda (x y) (+ x y)) 2 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "((lambda (x y) (+ x y)) 2 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((lambda (x y) (+ x y)) 2 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 189,
+      "exercise": "4.6",
+      "source": "(let->combination '(let () 42))",
+      "expected": "((lambda () 42))",
+      "baseline": {
+        "kind": "value",
+        "value": "((lambda () 42))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((lambda () 42))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 190,
+      "exercise": "4.7",
+      "source": "(let*->nested-lets '(let* ((x 3) (y (+ x 2))) (+ x y)))",
+      "expected": "(let ((x 3)) (let ((y (+ x 2))) (let () (+ x y))))",
+      "baseline": {
+        "kind": "value",
+        "value": "(let ((x 3)) (let ((y (+ x 2))) (let () (+ x y))))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(let ((x 3)) (let ((y (+ x 2))) (let () (+ x y))))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 191,
+      "exercise": "4.7",
+      "source": "(let*->nested-lets '(let* () 42))",
+      "expected": "(let () 42)",
+      "baseline": {
+        "kind": "value",
+        "value": "(let () 42)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(let () 42)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_metacircular_4_1_4_7.json"
+    },
+    {
+      "index": 192,
+      "exercise": "3.12",
+      "source": "(let* ((x (list 'a 'b)) (y (list 'c 'd)) (z (append x y))) (list z (cdr x)))",
+      "expected": "((a b c d) (b))",
+      "baseline": {
+        "kind": "value",
+        "value": "((a b c d) (b))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((a b c d) (b))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 193,
+      "exercise": "3.12",
+      "source": "(let* ((x (list 'a 'b)) (y (list 'c 'd)) (w (append! x y))) (list w (cdr x)))",
+      "expected": "((a b c d) (b c d))",
+      "baseline": {
+        "kind": "value",
+        "value": "((a b c d) (b c d))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((a b c d) (b c d))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 194,
+      "exercise": "3.13",
+      "source": "(let ((z (make-cycle (list 'a 'b 'c)))) (eq? (cdr (cdr (cdr z))) z))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 195,
+      "exercise": "3.13",
+      "source": "(let ((z (make-cycle (list 'a 'b 'c)))) (list? z))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 196,
+      "exercise": "3.14",
+      "source": "(let* ((v (list 'a 'b 'c 'd)) (w (mystery v))) (list w v))",
+      "expected": "((d c b a) (a))",
+      "baseline": {
+        "kind": "value",
+        "value": "((d c b a) (a))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((d c b a) (a))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 197,
+      "exercise": "3.14",
+      "source": "(mystery '())",
+      "expected": "()",
+      "baseline": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 198,
+      "exercise": "3.15",
+      "source": "(let* ((x (list 'a 'b)) (z1 (cons x x)) (z2 (cons (list 'a 'b) (list 'a 'b)))) (set-to-wow! z1) (set-to-wow! z2) (list z1 z2))",
+      "expected": "(((wow b) wow b) ((wow b) a b))",
+      "baseline": {
+        "kind": "value",
+        "value": "(((wow b) wow b) ((wow b) a b))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(((wow b) wow b) ((wow b) a b))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 199,
+      "exercise": "3.16",
+      "source": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b b))) (count-pairs c))",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 200,
+      "exercise": "3.16",
+      "source": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b '()))) (count-pairs c))",
+      "expected": "4",
+      "baseline": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 201,
+      "exercise": "3.16",
+      "source": "(count-pairs (list 'a 'b 'c))",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 202,
+      "exercise": "3.17",
+      "source": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b b))) (count-pairs c))",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 203,
+      "exercise": "3.17",
+      "source": "(let ((a (list 'x))) (set-cdr! a a) (count-pairs a))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 204,
+      "exercise": "3.17",
+      "source": "(count-pairs (list 'a 'b 'c))",
+      "expected": "3",
+      "baseline": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 205,
+      "exercise": "3.18",
+      "source": "(cycle? (list 'a 'b 'c))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 206,
+      "exercise": "3.18",
+      "source": "(let ((a (list 'x))) (set-cdr! a a) (cycle? a))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 207,
+      "exercise": "3.18",
+      "source": "(let* ((a (list 'a 'b 'c)) (b (cdr a))) (set-cdr! (cdr b) b) (cycle? a))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 208,
+      "exercise": "3.18",
+      "source": "(cycle? (cons 'a 'b))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 209,
+      "exercise": "3.19",
+      "source": "(cycle? (list 'a 'b 'c))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 210,
+      "exercise": "3.19",
+      "source": "(let ((a (list 'x))) (set-cdr! a a) (cycle? a))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 211,
+      "exercise": "3.19",
+      "source": "(let* ((a (list 'a 'b 'c)) (b (cdr a))) (set-cdr! (cdr b) b) (cycle? a))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 212,
+      "exercise": "3.19",
+      "source": "(cycle? (cons 'a 'b))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 213,
+      "exercise": "3.20",
+      "source": "(let* ((x (cons 1 2)) (z (cons x x))) (set-car! (cdr z) 17) (car x))",
+      "expected": "17",
+      "baseline": {
+        "kind": "value",
+        "value": "17",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "17",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 214,
+      "exercise": "3.20",
+      "source": "(let ((x (cons 1 2))) (set-cdr! x 9) (cdr x))",
+      "expected": "9",
+      "baseline": {
+        "kind": "value",
+        "value": "9",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "9",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_mutation_3_12_3_20.json"
+    },
+    {
+      "index": 215,
+      "exercise": "3.21",
+      "source": "(let ((q (make-queue))) (insert-queue! q 'a) (insert-queue! q 'b) (queue-contents q))",
+      "expected": "(a b)",
+      "baseline": {
+        "kind": "value",
+        "value": "(a b)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(a b)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 216,
+      "exercise": "3.21",
+      "source": "(let ((q (make-queue))) (insert-queue! q 'a) (insert-queue! q 'b) (delete-queue! q) (queue-contents q))",
+      "expected": "(b)",
+      "baseline": {
+        "kind": "value",
+        "value": "(b)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(b)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 217,
+      "exercise": "3.21",
+      "source": "(let ((q (make-queue))) (insert-queue! q 'a) (delete-queue! q) (insert-queue! q 'c) (queue-contents q))",
+      "expected": "(c)",
+      "baseline": {
+        "kind": "value",
+        "value": "(c)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(c)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 218,
+      "exercise": "3.22",
+      "source": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'insert!) 'b) ((q 'get)))",
+      "expected": "(a b)",
+      "baseline": {
+        "kind": "value",
+        "value": "(a b)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(a b)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 219,
+      "exercise": "3.22",
+      "source": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'insert!) 'b) ((q 'delete!)) ((q 'get)))",
+      "expected": "(b)",
+      "baseline": {
+        "kind": "value",
+        "value": "(b)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(b)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 220,
+      "exercise": "3.22",
+      "source": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'delete!)) ((q 'insert!) 'c) ((q 'get)))",
+      "expected": "(c)",
+      "baseline": {
+        "kind": "value",
+        "value": "(c)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(c)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 221,
+      "exercise": "3.23",
+      "source": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((a b c) (c b a))",
+      "baseline": {
+        "kind": "value",
+        "value": "((a b c) (c b a))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((a b c) (c b a))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 222,
+      "exercise": "3.23",
+      "source": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (front-delete! d) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b c) (c b))",
+      "baseline": {
+        "kind": "value",
+        "value": "((b c) (c b))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((b c) (c b))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 223,
+      "exercise": "3.23",
+      "source": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (rear-delete! d) (front-delete! d) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b) (b))",
+      "baseline": {
+        "kind": "value",
+        "value": "((b) (b))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((b) (b))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 224,
+      "exercise": "3.23",
+      "source": "(let ((d (make-deque))) (rear-insert! d 'a) (rear-delete! d) (front-insert! d 'b) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b) (b))",
+      "baseline": {
+        "kind": "value",
+        "value": "((b) (b))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((b) (b))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_queues_3_21_3_23.json"
+    },
+    {
+      "index": 225,
+      "exercise": "5.1",
+      "source": "(run 0)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 226,
+      "exercise": "5.1",
+      "source": "(run 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 227,
+      "exercise": "5.1",
+      "source": "(run 3)",
+      "expected": "6",
+      "baseline": {
+        "kind": "value",
+        "value": "6",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "6",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 228,
+      "exercise": "5.1",
+      "source": "(run 5)",
+      "expected": "120",
+      "baseline": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 229,
+      "exercise": "5.1",
+      "source": "(run 6)",
+      "expected": "720",
+      "baseline": {
+        "kind": "value",
+        "value": "720",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "720",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 230,
+      "exercise": "5.2",
+      "source": "(run 0)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 231,
+      "exercise": "5.2",
+      "source": "(run 1)",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 232,
+      "exercise": "5.2",
+      "source": "(run 3)",
+      "expected": "6",
+      "baseline": {
+        "kind": "value",
+        "value": "6",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "6",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 233,
+      "exercise": "5.2",
+      "source": "(run 5)",
+      "expected": "120",
+      "baseline": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "120",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 234,
+      "exercise": "5.2",
+      "source": "(run 6)",
+      "expected": "720",
+      "baseline": {
+        "kind": "value",
+        "value": "720",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "720",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_register_5_1_5_2.json"
+    },
+    {
+      "index": 235,
+      "exercise": "1.13",
+      "source": "(and (= (fib 0) 0) (= (round (/ (- (expt 1.618033988749895 0) (expt -0.618033988749895 0)) 2.23606797749979)) 0))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 236,
+      "exercise": "1.13",
+      "source": "(and (= (fib 5) 5) (= (round (/ (- (expt 1.618033988749895 5) (expt -0.618033988749895 5)) 2.23606797749979)) 5))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 237,
+      "exercise": "1.13",
+      "source": "(and (= (fib 10) 55) (= (round (/ (- (expt 1.618033988749895 10) (expt -0.618033988749895 10)) 2.23606797749979)) 55))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 238,
+      "exercise": "1.14",
+      "source": "(let* ((v (cc 0 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(1 1 0)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 1 0)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 1 0)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 239,
+      "exercise": "1.14",
+      "source": "(let* ((v (cc 5 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(2 19 9)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 19 9)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 19 9)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 240,
+      "exercise": "1.14",
+      "source": "(let* ((v (cc 11 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(4 55 15)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 55 15)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 55 15)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 241,
+      "exercise": "1.15",
+      "source": "(begin (sine 12.15) count)",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 242,
+      "exercise": "1.15",
+      "source": "(let ((v (sine 12.15))) (< (abs (+ v 0.4)) 0.06))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 243,
+      "exercise": "1.20",
+      "source": "(let* ((v (app-gcd 206 40)) (c calls)) (list v c))",
+      "expected": "(2 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 244,
+      "exercise": "1.20",
+      "source": "(let* ((v (normal-gcd (lambda () 206) (lambda () 40))) (c calls)) (list v c))",
+      "expected": "(2 18)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 18)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 18)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 245,
+      "exercise": "1.22",
+      "source": "(let* ((v (prime? 1009)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "baseline": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 246,
+      "exercise": "1.22",
+      "source": "(let* ((v (prime? 1013)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "baseline": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 247,
+      "exercise": "1.22",
+      "source": "(let* ((v (prime? 1019)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "baseline": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(#t 31)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 248,
+      "exercise": "1.24",
+      "source": "(fast-prime? 1009 '(2 3 5))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 249,
+      "exercise": "1.24",
+      "source": "(fast-prime? 1001 '(2 3 5))",
+      "expected": "#f",
+      "baseline": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#f",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 250,
+      "exercise": "1.24",
+      "source": "(fast-prime? 561 '(2 3 5))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "#t",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 251,
+      "exercise": "1.25",
+      "source": "(expmod 2 40 101)",
+      "expected": "36",
+      "baseline": {
+        "kind": "value",
+        "value": "36",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "36",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 252,
+      "exercise": "1.25",
+      "source": "(remainder (expt 2 40) 101)",
+      "expected": "36",
+      "baseline": {
+        "kind": "error",
+        "value": "Overflow",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Overflow",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 253,
+      "exercise": "1.26",
+      "source": "(let* ((v (bad-expmod 2 8 17)) (c calls)) (list v c))",
+      "expected": "(1 23)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 23)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 23)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 254,
+      "exercise": "1.26",
+      "source": "(let* ((v (bad-expmod 2 16 17)) (c calls)) (list v c))",
+      "expected": "(1 47)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 47)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 47)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 255,
+      "exercise": "1.34",
+      "source": "(f (lambda (x) (* x x)))",
+      "expected": "4",
+      "baseline": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 256,
+      "exercise": "1.34",
+      "source": "(f f)",
+      "expected": "error:Type",
+      "baseline": {
+        "kind": "error",
+        "value": "Type",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Type",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 257,
+      "exercise": "1.36",
+      "source": "(let ((v (fixed-point (average-damp f) 2.0))) (< (abs (- v 4.5555)) 0.001))",
+      "expected": "#t",
+      "baseline": {
+        "kind": "error",
+        "value": "Budget",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Budget",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_remaining_1_13_1_36.json"
+    },
+    {
+      "index": 258,
+      "exercise": "2.33",
+      "source": "(my-map (lambda (x) (* x x)) '(1 2 3))",
+      "expected": "(1 4 9)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 4 9)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 4 9)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 259,
+      "exercise": "2.33",
+      "source": "(my-append '(1 2) '(3 4))",
+      "expected": "(1 2 3 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2 3 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2 3 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 260,
+      "exercise": "2.33",
+      "source": "(my-length '(a b c d))",
+      "expected": "4",
+      "baseline": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 261,
+      "exercise": "2.34",
+      "source": "(horner-eval 2 '(1 3 0 5 0 1))",
+      "expected": "79",
+      "baseline": {
+        "kind": "value",
+        "value": "79",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "79",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 262,
+      "exercise": "2.34",
+      "source": "(horner-eval 3 '(2 -1 4))",
+      "expected": "35",
+      "baseline": {
+        "kind": "value",
+        "value": "35",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "35",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 263,
+      "exercise": "2.35",
+      "source": "(count-leaves '((1 2) (3 (4 5))))",
+      "expected": "5",
+      "baseline": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "5",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 264,
+      "exercise": "2.35",
+      "source": "(count-leaves '())",
+      "expected": "0",
+      "baseline": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "0",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 265,
+      "exercise": "2.36",
+      "source": "(accumulate-n + 0 '((1 2 3) (4 5 6) (7 8 9) (10 11 12)))",
+      "expected": "(22 26 30)",
+      "baseline": {
+        "kind": "value",
+        "value": "(22 26 30)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(22 26 30)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 266,
+      "exercise": "2.37",
+      "source": "(matrix-*-vector '((1 2) (3 4)) '(5 6))",
+      "expected": "(17 39)",
+      "baseline": {
+        "kind": "value",
+        "value": "(17 39)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(17 39)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 267,
+      "exercise": "2.37",
+      "source": "(transpose '((1 2 3) (4 5 6)))",
+      "expected": "((1 4) (2 5) (3 6))",
+      "baseline": {
+        "kind": "value",
+        "value": "((1 4) (2 5) (3 6))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((1 4) (2 5) (3 6))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 268,
+      "exercise": "2.37",
+      "source": "(matrix-*-matrix '((1 2) (3 4)) '((5 6) (7 8)))",
+      "expected": "((19 22) (43 50))",
+      "baseline": {
+        "kind": "value",
+        "value": "((19 22) (43 50))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((19 22) (43 50))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 269,
+      "exercise": "2.38",
+      "source": "(accumulate / 1 '(1 2 3))",
+      "expected": "3/2",
+      "baseline": {
+        "kind": "value",
+        "value": "3/2",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "3/2",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 270,
+      "exercise": "2.38",
+      "source": "(fold-left / 1 '(1 2 3))",
+      "expected": "1/6",
+      "baseline": {
+        "kind": "value",
+        "value": "1/6",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1/6",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 271,
+      "exercise": "2.38",
+      "source": "(accumulate list '() '(1 2 3))",
+      "expected": "(1 (2 (3 ())))",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 (2 (3 ())))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 (2 (3 ())))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 272,
+      "exercise": "2.38",
+      "source": "(fold-left list '() '(1 2 3))",
+      "expected": "(((() 1) 2) 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(((() 1) 2) 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(((() 1) 2) 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 273,
+      "exercise": "2.39",
+      "source": "(reverse-right '(1 2 3))",
+      "expected": "(3 2 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3 2 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3 2 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 274,
+      "exercise": "2.39",
+      "source": "(reverse-left '(1 2 3))",
+      "expected": "(3 2 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(3 2 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(3 2 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 275,
+      "exercise": "2.40",
+      "source": "(unique-pairs 4)",
+      "expected": "((2 1) (3 1) (3 2) (4 1) (4 2) (4 3))",
+      "baseline": {
+        "kind": "value",
+        "value": "((2 1) (3 1) (3 2) (4 1) (4 2) (4 3))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((2 1) (3 1) (3 2) (4 1) (4 2) (4 3))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 276,
+      "exercise": "2.41",
+      "source": "(triples 5 9)",
+      "expected": "((4 3 2) (5 3 1))",
+      "baseline": {
+        "kind": "value",
+        "value": "((4 3 2) (5 3 1))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((4 3 2) (5 3 1))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 277,
+      "exercise": "2.42",
+      "source": "(length (queens 0))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 278,
+      "exercise": "2.42",
+      "source": "(length (queens 1))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 279,
+      "exercise": "2.42",
+      "source": "(length (queens 4))",
+      "expected": "2",
+      "baseline": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 280,
+      "exercise": "2.42",
+      "source": "(length (queens 8))",
+      "expected": "92",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 281,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 1))) (count calls)) (list solutions count))",
+      "expected": "(1 2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 282,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 1))) (count calls)) (list solutions count))",
+      "expected": "(1 2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 283,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 2))) (count calls)) (list solutions count))",
+      "expected": "(0 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 284,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 2))) (count calls)) (list solutions count))",
+      "expected": "(0 7)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 7)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 7)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 285,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 3))) (count calls)) (list solutions count))",
+      "expected": "(0 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 286,
+      "exercise": "2.43",
+      "source": "(let* ((solutions (length (queens 3))) (count calls)) (list solutions count))",
+      "expected": "(0 40)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 40)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 40)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_sequences_2_33_2_42.json"
+    },
+    {
+      "index": 287,
+      "exercise": "3.1",
+      "source": "(let* ((a (make-accumulator 5)) (x (a 10)) (y (a 10))) (list x y))",
+      "expected": "(15 25)",
+      "baseline": {
+        "kind": "value",
+        "value": "(15 25)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(15 25)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 288,
+      "exercise": "3.1",
+      "source": "(let* ((a (make-accumulator 2)) (b (make-accumulator 100)) (x (a 3)) (y (b 4)) (z (a -2))) (list x y z))",
+      "expected": "(5 104 3)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 104 3)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 104 3)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 289,
+      "exercise": "3.2",
+      "source": "(let* ((s (make-monitored (lambda (x) (* x x)))) (a (s 10)) (b (s 3)) (c (s 'how-many-calls?))) (list a b c))",
+      "expected": "(100 9 2)",
+      "baseline": {
+        "kind": "value",
+        "value": "(100 9 2)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(100 9 2)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 290,
+      "exercise": "3.2",
+      "source": "(let* ((s (make-monitored (lambda (x) (+ x 1)))) (a (s 5)) (reset (s 'reset-count)) (b (s 2)) (count (s 'how-many-calls?))) (list a reset b count))",
+      "expected": "(6 0 3 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(6 0 3 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(6 0 3 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 291,
+      "exercise": "3.3",
+      "source": "(let* ((a (make-account 100 'secret-password)) (x ((a 'secret-password 'withdraw) 40)) (y ((a 'bad 'deposit) 50)) (z ((a 'secret-password 'deposit) 10))) (list x y z))",
+      "expected": "(60 \"Incorrect password\" 70)",
+      "baseline": {
+        "kind": "value",
+        "value": "(60 \"Incorrect password\" 70)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(60 \"Incorrect password\" 70)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 292,
+      "exercise": "3.3",
+      "source": "(let* ((a (make-account 20 'p)) (x ((a 'p 'withdraw) 30)) (y ((a 'p 'deposit) 1))) (list x y))",
+      "expected": "(\"Insufficient funds\" 21)",
+      "baseline": {
+        "kind": "value",
+        "value": "(\"Insufficient funds\" 21)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(\"Insufficient funds\" 21)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 293,
+      "exercise": "3.4",
+      "source": "(let ((a (make-account 100 'p))) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1))",
+      "expected": "cops",
+      "baseline": {
+        "kind": "value",
+        "value": "cops",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "cops",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 294,
+      "exercise": "3.4",
+      "source": "(let* ((a (make-account 100 'p)) (x (begin ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'p 'deposit) 0))) (y ((a 'bad 'withdraw) 1))) (list x y))",
+      "expected": "(100 \"Incorrect password\")",
+      "baseline": {
+        "kind": "value",
+        "value": "(100 \"Incorrect password\")",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(100 \"Incorrect password\")",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 295,
+      "exercise": "3.6",
+      "source": "(let* ((a (rand 'generate)) (b (rand 'generate)) (r ((rand 'reset) 7)) (c (rand 'generate)) (d (rand 'generate))) (list a b r c d))",
+      "expected": "(65 81 7 65 81)",
+      "baseline": {
+        "kind": "value",
+        "value": "(65 81 7 65 81)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(65 81 7 65 81)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 296,
+      "exercise": "3.6",
+      "source": "(let* ((r ((rand 'reset) 0)) (a (rand 'generate)) (b (rand 'generate))) (list r a b))",
+      "expected": "(0 43 95)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 43 95)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 43 95)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 297,
+      "exercise": "3.7",
+      "source": "(let* ((a (make-account 100 'old)) (j (make-joint a 'old 'new)) (x ((j 'new 'withdraw) 40)) (y ((a 'old 'deposit) 10)) (z ((j 'new 'withdraw) 5))) (list x y z))",
+      "expected": "(60 70 65)",
+      "baseline": {
+        "kind": "value",
+        "value": "(60 70 65)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(60 70 65)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 298,
+      "exercise": "3.7",
+      "source": "(let* ((a (make-account 10 'old)) (j (make-joint a 'old 'new)) (x ((j 'bad 'withdraw) 4)) (y ((a 'old 'deposit) 0))) (list x y))",
+      "expected": "(\"Incorrect password\" 10)",
+      "baseline": {
+        "kind": "value",
+        "value": "(\"Incorrect password\" 10)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(\"Incorrect password\" 10)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_state_3_1_3_7.json"
+    },
+    {
+      "index": 299,
+      "exercise": "3.24",
+      "source": "(let ((t (make-table))) (put! t 10 'a) (list (get t 11) (get t 13)))",
+      "expected": "(a missing)",
+      "baseline": {
+        "kind": "value",
+        "value": "(a missing)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(a missing)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 300,
+      "exercise": "3.24",
+      "source": "(let ((t (make-table))) (put! t 10 'a) (put! t 11 'b) (get t 10))",
+      "expected": "b",
+      "baseline": {
+        "kind": "value",
+        "value": "b",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "b",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 301,
+      "exercise": "3.25",
+      "source": "(let ((t (make-node))) (put! t '(a b) 12) (put! t '(a c) 9) (list (get t '(a b)) (get t '(a c)) (get t '(b))))",
+      "expected": "(12 9 missing)",
+      "baseline": {
+        "kind": "value",
+        "value": "(12 9 missing)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(12 9 missing)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 302,
+      "exercise": "3.25",
+      "source": "(let ((t (make-node))) (put! t '(a) 7) (put! t '(a b) 8) (list (get t '(a)) (get t '(a b))))",
+      "expected": "(7 8)",
+      "baseline": {
+        "kind": "value",
+        "value": "(7 8)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(7 8)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 303,
+      "exercise": "3.26",
+      "source": "(let ((t (make-table))) (put! t 5 'a) (put! t 2 'b) (put! t 8 'c) (list (get t 2) (get t 5) (get t 8) (get t 4)))",
+      "expected": "(b a c missing)",
+      "baseline": {
+        "kind": "value",
+        "value": "(b a c missing)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(b a c missing)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 304,
+      "exercise": "3.26",
+      "source": "(let ((t (make-table))) (put! t 5 'a) (put! t 5 'z) (get t 5))",
+      "expected": "z",
+      "baseline": {
+        "kind": "value",
+        "value": "z",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "z",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 305,
+      "exercise": "3.27",
+      "source": "(let* ((v (memo-fib 0)) (count misses) (w (memo-fib 0))) (list v count w))",
+      "expected": "(0 1 0)",
+      "baseline": {
+        "kind": "value",
+        "value": "(0 1 0)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(0 1 0)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 306,
+      "exercise": "3.27",
+      "source": "(let* ((v (memo-fib 5)) (count misses) (w (memo-fib 5))) (list v count w))",
+      "expected": "(5 6 5)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 6 5)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 6 5)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 307,
+      "exercise": "3.27",
+      "source": "(let* ((v (memo-fib 10)) (count misses) (w (memo-fib 10))) (list v count w))",
+      "expected": "(55 11 55)",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_tables_3_24_3_27.json"
+    },
+    {
+      "index": 308,
+      "exercise": "2.19",
+      "source": "(cc 0 '(50 25 10 5 1))",
+      "expected": "1",
+      "baseline": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "1",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 309,
+      "exercise": "2.19",
+      "source": "(cc 5 '(50 25 10 5 1))",
+      "expected": "2",
+      "baseline": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "2",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 310,
+      "exercise": "2.19",
+      "source": "(cc 10 '(50 25 10 5 1))",
+      "expected": "4",
+      "baseline": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "4",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 311,
+      "exercise": "2.19",
+      "source": "(cc 20 '(50 25 10 5 1))",
+      "expected": "9",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 312,
+      "exercise": "2.19",
+      "source": "(cc 100 '(50 25 10 5 1))",
+      "expected": "292",
+      "baseline": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "error",
+        "value": "Depth",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 313,
+      "exercise": "2.20",
+      "source": "(same-parity 1 2 3 4 5 6 7)",
+      "expected": "(1 3 5 7)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 3 5 7)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 3 5 7)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 314,
+      "exercise": "2.20",
+      "source": "(same-parity 2 3 4 5 6 7)",
+      "expected": "(2 4 6)",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 4 6)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 4 6)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 315,
+      "exercise": "2.20",
+      "source": "(same-parity -1 2 3 -5)",
+      "expected": "(-1 3 -5)",
+      "baseline": {
+        "kind": "value",
+        "value": "(-1 3 -5)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(-1 3 -5)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 316,
+      "exercise": "2.22",
+      "source": "(square-list '(1 2 3 4))",
+      "expected": "(16 9 4 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(16 9 4 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(16 9 4 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 317,
+      "exercise": "2.22",
+      "source": "(square-list '(1 2 3))",
+      "expected": "(((() . 1) . 4) . 9)",
+      "baseline": {
+        "kind": "value",
+        "value": "(((() . 1) . 4) . 9)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(((() . 1) . 4) . 9)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 318,
+      "exercise": "2.23",
+      "source": "(begin (for-each (lambda (x) (set! seen (append seen (list x)))) '(57 321 88)) seen)",
+      "expected": "(57 321 88)",
+      "baseline": {
+        "kind": "value",
+        "value": "(57 321 88)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(57 321 88)",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 319,
+      "exercise": "2.23",
+      "source": "(begin (for-each (lambda (x) (set! seen (list x))) '()) seen)",
+      "expected": "()",
+      "baseline": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "()",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 320,
+      "exercise": "2.24",
+      "source": "(list 1 (list 2 (list 3 4)))",
+      "expected": "(1 (2 (3 4)))",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 (2 (3 4)))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 (2 (3 4)))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 321,
+      "exercise": "2.25",
+      "source": "(car (cdr (car (cdr (cdr '(1 3 (5 7) 9))))))",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 322,
+      "exercise": "2.25",
+      "source": "(car (car '((7))))",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 323,
+      "exercise": "2.25",
+      "source": "(car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr '(1 (2 (3 (4 (5 (6 7))))))))))))))))))",
+      "expected": "7",
+      "baseline": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "7",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 324,
+      "exercise": "2.26",
+      "source": "(append x y)",
+      "expected": "(1 2 3 4 5 6)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2 3 4 5 6)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2 3 4 5 6)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 325,
+      "exercise": "2.26",
+      "source": "(cons x y)",
+      "expected": "((1 2 3) 4 5 6)",
+      "baseline": {
+        "kind": "value",
+        "value": "((1 2 3) 4 5 6)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((1 2 3) 4 5 6)",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 326,
+      "exercise": "2.26",
+      "source": "(list x y)",
+      "expected": "((1 2 3) (4 5 6))",
+      "baseline": {
+        "kind": "value",
+        "value": "((1 2 3) (4 5 6))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((1 2 3) (4 5 6))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 327,
+      "exercise": "2.27",
+      "source": "(deep-reverse '((1 2) (3 4)))",
+      "expected": "((4 3) (2 1))",
+      "baseline": {
+        "kind": "value",
+        "value": "((4 3) (2 1))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "((4 3) (2 1))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 328,
+      "exercise": "2.27",
+      "source": "(deep-reverse '(1 (2 (3 4)) 5))",
+      "expected": "(5 ((4 3) 2) 1)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 ((4 3) 2) 1)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 ((4 3) 2) 1)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 329,
+      "exercise": "2.28",
+      "source": "(fringe '((1 2) (3 4)))",
+      "expected": "(1 2 3 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2 3 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2 3 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 330,
+      "exercise": "2.28",
+      "source": "(fringe '(((1 2) (3 4)) ((1 2) (3 4))))",
+      "expected": "(1 2 3 4 1 2 3 4)",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 2 3 4 1 2 3 4)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 2 3 4 1 2 3 4)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 331,
+      "exercise": "2.29",
+      "source": "(let ((m (make-mobile (make-branch 2 3) (make-branch 3 2)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(5 #t)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 #t)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 #t)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 332,
+      "exercise": "2.29",
+      "source": "(let ((m (make-mobile (make-branch 2 3) (make-branch 2 2)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(5 #f)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 #f)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 #f)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 333,
+      "exercise": "2.29",
+      "source": "(let* ((inner (make-mobile (make-branch 1 2) (make-branch 2 1))) (m (make-mobile (make-branch 1 inner) (make-branch 3 1)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(4 #t)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 #t)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 #t)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 334,
+      "exercise": "2.29",
+      "source": "(let ((m (make-mobile (make-branch 2 3) (make-branch 3 2)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(5 #t)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 #t)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 #t)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 335,
+      "exercise": "2.29",
+      "source": "(let ((m (make-mobile (make-branch 2 3) (make-branch 2 2)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(5 #f)",
+      "baseline": {
+        "kind": "value",
+        "value": "(5 #f)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(5 #f)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 336,
+      "exercise": "2.29",
+      "source": "(let* ((inner (make-mobile (make-branch 1 2) (make-branch 2 1))) (m (make-mobile (make-branch 1 inner) (make-branch 3 1)))) (list (total-weight m) (balanced? m)))",
+      "expected": "(4 #t)",
+      "baseline": {
+        "kind": "value",
+        "value": "(4 #t)",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(4 #t)",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 337,
+      "exercise": "2.30",
+      "source": "(square-tree '(1 (2 (3 4) 5) (6 7)))",
+      "expected": "(1 (4 (9 16) 25) (36 49))",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 (4 (9 16) 25) (36 49))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 (4 (9 16) 25) (36 49))",
+        "admissions": 1
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 338,
+      "exercise": "2.31",
+      "source": "(square-tree '(1 (2 (3 4) 5) (6 7)))",
+      "expected": "(1 (4 (9 16) 25) (36 49))",
+      "baseline": {
+        "kind": "value",
+        "value": "(1 (4 (9 16) 25) (36 49))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(1 (4 (9 16) 25) (36 49))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 339,
+      "exercise": "2.31",
+      "source": "(tree-map (lambda (x) (+ x 1)) '(1 (2 3)))",
+      "expected": "(2 (3 4))",
+      "baseline": {
+        "kind": "value",
+        "value": "(2 (3 4))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(2 (3 4))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 340,
+      "exercise": "2.32",
+      "source": "(subsets '())",
+      "expected": "(())",
+      "baseline": {
+        "kind": "value",
+        "value": "(())",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(())",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    },
+    {
+      "index": 341,
+      "exercise": "2.32",
+      "source": "(subsets '(1 2 3))",
+      "expected": "(() (3) (2) (2 3) (1) (1 3) (1 2) (1 2 3))",
+      "baseline": {
+        "kind": "value",
+        "value": "(() (3) (2) (2 3) (1) (1 3) (1 2) (1 2 3))",
+        "admissions": 0
+      },
+      "candidate": {
+        "kind": "value",
+        "value": "(() (3) (2) (2 3) (1) (1 3) (1 2) (1 2 3))",
+        "admissions": 0
+      },
+      "evidence": "current-sicp_trees_2_19_2_32.json"
+    }
+  ]
+}
