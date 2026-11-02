@@ -17,3 +17,7 @@ iroh. Host tests do not establish behavior on Tab5 or on a network.
 The existing diagnostic retains its own packet path. Integrating a general
 codec into a device transport requires separate ownership/backpressure design,
 image-size audit and paired physical qualification.
+
+`tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
+ISA as part of static analysis. This checks compilation only; it does not link
+or execute a firmware image.
