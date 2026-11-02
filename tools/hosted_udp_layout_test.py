@@ -1,10 +1,12 @@
 import hashlib
+import fcntl
 import importlib.util
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -71,6 +73,42 @@ class HostedUdpLayout(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'source changed'):
                     layout.main()
             self.assertFalse((out / 'report.json').exists())
+
+    def test_writer_waits_for_existing_lock(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            marker = out / 'started'
+            child_source = (
+                'import importlib.util, pathlib, sys; '
+                's=importlib.util.spec_from_file_location("layout_child", sys.argv[1]); '
+                'm=importlib.util.module_from_spec(s); s.loader.exec_module(m); '
+                'm.OUT=pathlib.Path(sys.argv[2]); pathlib.Path(sys.argv[3]).write_text("ready"); '
+                'm.main()'
+            )
+            with (out / '.lock').open('a+') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                child = subprocess.Popen([sys.executable, '-c', child_source, str(SCRIPT), str(out), str(marker)],
+                                         cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                try:
+                    deadline = time.monotonic() + 10
+                    while not marker.exists() and time.monotonic() < deadline:
+                        if child.poll() is not None:
+                            break
+                        time.sleep(0.02)
+                    self.assertTrue(marker.exists(), 'child did not reach the lock')
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        child.wait(timeout=0.2)
+                    self.assertFalse((out / 'report.json').exists())
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+                    stdout, stderr = child.communicate(timeout=30)
+                    self.assertEqual(child.returncode, 0, stderr)
+                    report = json.loads(stdout)
+                    self.assertEqual(hashlib.sha256((out / 'layout.o').read_bytes()).hexdigest(),
+                                     report['object_sha256'])
+                finally:
+                    if child.poll() is None:
+                        child.kill()
+                        child.communicate()
 
 
 if __name__ == '__main__':

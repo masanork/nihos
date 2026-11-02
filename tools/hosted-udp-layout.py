@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build RV32 layout markers and report their sizes; no device execution."""
 import hashlib
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -67,6 +68,14 @@ def source_receipt():
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    # All writers use one lock so their object, assembly and receipt cannot
+    # interleave. Readers still validate the hashes before using artifacts.
+    with (OUT / '.lock').open('a+') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        generate()
+
+
+def generate():
     # Remove a prior success receipt before any operation that can fail.
     (OUT / 'report.json').unlink(missing_ok=True)
     before = source_receipt()
