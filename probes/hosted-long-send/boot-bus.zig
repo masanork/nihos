@@ -2,7 +2,7 @@
 const adapter = @import("hosted_dma_bus");
 const cache = @import("hosted_long_cache");
 pub var buffer: adapter.Buffer = .{};
-const udp = @import("long_udp_probe");
+const udp = @import("hosted_station").long_udp_probe;
 var framed: [udp.ethernet_bytes + 12]u8 = undefined;
 var padding: [1536]u8 = undefined;
 var rx: [512]u8 = undefined;
