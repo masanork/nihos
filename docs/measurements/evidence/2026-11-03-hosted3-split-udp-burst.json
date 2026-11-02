@@ -1,0 +1,28 @@
+{
+  "date_jst": "2026-11-03",
+  "fixture_source_commit": "7801d31ca8b4f45640e0d745beb4194fb28d678c",
+  "p4_candidate_sha256": "d7fc1a130ab51cc24e5183d0d3085650eb736da320be3a2830c1499f93643c4b",
+  "p4_loader_sha256": "433083e6fbf4d26269fa0de74ef9dbc00920e1d96a502d4371d4e5b37cdecddf",
+  "c6_reported_version": "3.0.10",
+  "c6_flash_readback": false,
+  "c6_firmware_written": false,
+  "burst": {
+    "payload_bytes": 1200,
+    "sent_count": 16,
+    "peer_received_count": 16,
+    "peer_received_mask": 65535,
+    "p4_echo_count": 16,
+    "p4_echo_mask": 65535,
+    "settle_ms": 8000,
+    "wifi_step": 0
+  },
+  "p4_full_backup_bytes": 16777216,
+  "p4_full_backup_sha256": "06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435",
+  "p4_full_restore_verified": true,
+  "p4_restored_native_periodic_log_observed": true,
+  "device_capture_sha256": "bed391aa5d4af696530fa52d314f0d8fe098facff41c74a36430574735fdc53d",
+  "peer_file_sha256": "b60b6ee13b1559c202184297890361f64edfe36efe215f3aaacd03618f76aa1c",
+  "peer_canonical_sha256": "62c74d94d2316564673f32108eb6ef2e26f9c5281a1b69f0d981945f7fd9131a",
+  "restored_serial_sha256": "83147c58444fee66a0d5ba6d7f12459e99129e5ca0789b60455ed9c0a581c564",
+  "scope": "one bounded LAN burst; no general UDP reliability, QUIC, TLS, iroh or madowi interoperability claim"
+}
