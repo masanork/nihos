@@ -58,7 +58,9 @@ C6 receipt.
 its queued packet and padding, uses short or long writes, retries only a zero
 write, and retires on timeout, stale binding, partial write or transport
 error. It invalidates a still-current address after ambiguous write failures,
-but preserves a newer address generation. Its caller must exclusively own the
+but preserves a newer address generation. An unsent queued packet may be
+canceled after a zero-credit result; explicit invalidation retires the owner
+and stream on reset. Its caller must exclusively own the
 stream and state and drain Hosted control events before every poll. Retirement
 does not prove hardware DMA quiescence; in-flight storage must remain alive as
 required by the backend. It is not connected to the native network service.

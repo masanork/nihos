@@ -95,6 +95,47 @@ test "a concurrent newer address is not invalidated by an old failure" {
     try testing.expect(stream.retired);
 }
 
+test "cancel removes an unsent packet and permits a later packet" {
+    var state = ready();
+    var tx = try sender(&state);
+    var stream: Mock = .{};
+    try testing.expectError(error.Busy, tx.cancel());
+    try tx.enqueue(peer, "first", 1, 1, 50);
+    try testing.expectEqual(mod.Outcome.pending, try tx.poll(&stream, 2));
+    try tx.cancel();
+    try testing.expectEqual(mod.Phase.idle, tx.phase);
+    try testing.expectError(error.Busy, tx.poll(&stream, 3));
+    try tx.enqueue(peer, "next", 2, 3, 50);
+    stream.result = 1;
+    try testing.expectEqual(mod.Outcome.sent, try tx.poll(&stream, 4));
+    try testing.expectEqual(@as(u32, 2), stream.short_calls);
+    try testing.expect(state.address != null and !stream.retired);
+}
+
+test "reset retires once and does not invalidate a newer generation" {
+    for (0..2) |case| {
+        var state = ready();
+        var tx = try sender(&state);
+        var stream: Mock = .{};
+        try tx.enqueue(peer, "first", 1, 1, 50);
+        if (case == 1) {
+            state.generation += 1;
+            state.address.?.ip = 0xc0000203;
+        }
+        tx.invalidate(&stream);
+        tx.invalidate(&stream);
+        try testing.expect(stream.retired);
+        try testing.expectError(error.Retired, tx.cancel());
+        try testing.expectError(error.Retired, tx.poll(&stream, 2));
+        if (case == 0) {
+            try testing.expect(state.address == null);
+        } else {
+            try testing.expectEqual(@as(u64, 8), state.generation);
+            try testing.expectEqual(@as(u32, 0xc0000203), state.address.?.ip);
+        }
+    }
+}
+
 const Host = struct {
     pub const TransportError = error{WriteFailed};
     credits: u32 = 0,

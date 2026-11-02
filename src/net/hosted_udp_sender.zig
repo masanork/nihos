@@ -38,6 +38,22 @@ pub const Sender = struct {
         self.phase = .queued;
     }
 
+    /// Cancel only a queued packet: no poll is in progress and a prior
+    /// pending result guarantees that no transfer started. The caller must
+    /// serialize cancellation with poll and control-event processing.
+    pub fn cancel(self: *Sender) Error!void {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .queued) return error.Busy;
+        self.length = 0;
+        self.phase = .idle;
+    }
+
+    /// Retire this owner after disconnect/reset and revoke its address only
+    /// if it is still current. This does not establish DMA quiescence.
+    pub fn invalidate(self: *Sender, stream: anytype) void {
+        if (self.phase != .retired) self.retire(stream, true);
+    }
+
     /// Zero credits means no write began. Nonzero partial writes or any
     /// transport error are ambiguous and permanently retire this owner.
     pub fn poll(self: *Sender, stream: anytype, now: u64) !Outcome {
