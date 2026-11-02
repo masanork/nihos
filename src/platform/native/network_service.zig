@@ -97,6 +97,12 @@ pub fn experimentalTcpWrite(handle: ExperimentalTcpHandle, bytes: []const u8, de
     const now = try experimentalTcpNow();
     return tcp_state.write(client, handle, now, deadline_us / 1000, bytes);
 }
+/// CPU0 cancellation retires the handle without reusing its TCP tuple.
+pub fn experimentalTcpCancel(handle: ExperimentalTcpHandle) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    _ = try experimentalTcpNow();
+    try tcp_state.cancel(handle);
+}
 pub fn experimentalTcpCloseWrite(handle: ExperimentalTcpHandle, deadline_us: u64) !void {
     if (comptime !experimental_tcp) return error.TcpDisabled;
     const now = try experimentalTcpNow();
@@ -135,6 +141,10 @@ pub fn bindExperimentalSshStorage(backing: *ExperimentalSshSession) !void {
     if (comptime !experimental_tcp) return error.TcpDisabled;
     try reserved_ssh_slot.bind();
     reserved_ssh = backing;
+}
+/// Only true after boot admitted and bound the experimental PSRAM region.
+pub fn experimentalSshStorageBound() bool {
+    return experimental_tcp and reserved_ssh_slot.bound;
 }
 /// The returned address is exclusively borrowed until release, including after
 /// a network reset. The owner must not copy it or retain it after release.

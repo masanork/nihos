@@ -214,3 +214,12 @@ export fn hosted_ssh_write(random: *const [32]u8, src: [*]const u8, len: usize) 
     if (!ssh_started) return -1;
     return @intCast(ssh_owner.write(host_now_ms *| 1000, random, src[0..len]) catch return -1);
 }
+
+export fn hosted_ssh_abort() void {
+    if (ssh_started) ssh_owner.abort();
+}
+export fn tcp_link_cancel() bool {
+    const handle = owner.handle orelse return false;
+    owner.cancel(handle) catch return false;
+    return true;
+}

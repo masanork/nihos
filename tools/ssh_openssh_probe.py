@@ -42,6 +42,7 @@ class BridgeSocket:
         self.bridge = bridge
         self.blocking = True
         self.timeout = 20
+        self.closed_by_controller = False
         if not bridge.bridge_open(port): raise RuntimeError("TCP bridge initialization failed")
         self.wait(lambda: bridge.bridge_ready())
     def wait(self, condition):
@@ -80,7 +81,7 @@ class BridgeSocket:
     def __enter__(self): return self
     def __exit__(self, exc_type, unused_value, unused_traceback):
         try:
-            if exc_type is None:
+            if exc_type is None and not self.closed_by_controller:
                 if not self.bridge.bridge_close_write(): raise RuntimeError("TCP close failed")
                 self.wait(lambda: self.bridge.bridge_closed())
         finally:
@@ -132,6 +133,8 @@ def run():
             subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(tcp_lib), "src/net/tcp_host_probe.zig"], cwd=ROOT, check=True)
             subprocess.run([os.environ.get("CC", "cc"), "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", "-Wno-deprecated-declarations", "-I" + str(prefix / "include"), "tools/tcp_slirp_bridge.c", "-L" + str(libdir), "-lslirp", str(tcp_lib), "-Wl,-rpath," + str(libdir), "-Wl,-rpath," + str(tmp), "-o", str(bridge_lib)], cwd=ROOT, check=True)
             tcp_ffi = c.CDLL(str(tcp_lib))
+            tcp_ffi.hosted_ssh_abort.argtypes = []
+            tcp_ffi.tcp_link_cancel.restype = c.c_bool
             tcp_ffi.hosted_ssh_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p]; tcp_ffi.hosted_ssh_begin.restype = c.c_bool
             tcp_ffi.hosted_ssh_poll.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; tcp_ffi.hosted_ssh_poll.restype = c.c_ssize_t
             tcp_ffi.hosted_ssh_read.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t]; tcp_ffi.hosted_ssh_read.restype = c.c_ssize_t
@@ -184,7 +187,8 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
-                hosted_vt = os.environ.get("NIHOS_SSH_HOSTED_VT") == "1"
+                lifecycle_mode = os.environ.get("NIHOS_SSH_LIFECYCLE") == "1"
+                hosted_vt = os.environ.get("NIHOS_SSH_HOSTED_VT") == "1" or lifecycle_mode
                 hosted_session = os.environ.get("NIHOS_SSH_HOSTED_SESSION") == "1" or hosted_vt
                 if hosted_session and not bridge: raise ValueError("Hosted session requires libslirp")
                 auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1" or hosted_session
@@ -248,7 +252,9 @@ def run():
                     if pause: p.probe_pause(True)
                     p.probe_release()
                     return result
-                if auto_client:
+                if lifecycle_mode:
+                    username = getpass.getuser().encode()
+                elif auto_client:
                     now = time.monotonic_ns() // 1000
                     if hosted_session:
                         assert tcp_ffi.hosted_ssh_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin))
@@ -380,14 +386,15 @@ def run():
                 if hosted_vt:
                     vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
                     subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
-                        "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
+                        "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
                         "--dep", "vt100", "--dep", "terminal_buffer", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
                         "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
                         "--dep", "viewport_layout", "--dep", "terminal_adapter", "--dep", "vt100", "-Mterminal_buffer=src/xy/terminal_buffer.zig",
                         "--dep", "view_config", "-Mviewport_layout=src/graphics/viewport_layout.zig",
                         "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig",
                         "--dep", "view_config", "--dep", "canvas", "-Mtext_console=src/console.zig",
-                        "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig"], cwd=ROOT, check=True)
+                        "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig",
+                        "-Mssh_lifecycle=src/xy/ssh_lifecycle.zig"], cwd=ROOT, check=True)
                     vt = c.CDLL(str(vt_lib))
                     poll_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p)
                     io_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t)
@@ -404,14 +411,42 @@ def run():
                     vt.probe_vt_poll.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; vt.probe_vt_poll.restype = c.c_ssize_t
                     vt.probe_vt_key.argtypes = [c.c_uint32]; vt.probe_vt_key.restype = c.c_bool
                     vt.probe_vt_cell.argtypes = [c.c_size_t]; vt.probe_vt_cell.restype = c.c_uint32
-                    vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
+                    if lifecycle_mode:
+                        action_cb = c.CFUNCTYPE(c.c_bool)
+                        start_cb = c.CFUNCTYPE(c.c_bool, c.c_void_p, c.c_void_p, c.c_void_p)
+                        @start_cb
+                        def lifecycle_start(cookie, secret, host_pin):
+                            return tcp_ffi.hosted_ssh_begin(cookie, secret, host_pin)
+                        @action_cb
+                        def lifecycle_ready(): return bridge.bridge_ready()
+                        @action_cb
+                        def lifecycle_release():
+                            tcp_ffi.hosted_ssh_abort()
+                            return True
+                        @action_cb
+                        def lifecycle_cancel(): return tcp_ffi.tcp_link_cancel()
+                        @action_cb
+                        def lifecycle_close(): return bridge.bridge_close_write()
+                        @action_cb
+                        def lifecycle_complete(): return bridge.bridge_closed()
+                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, c.c_uint64]
+                        vt.probe_lifecycle_begin.restype = c.c_bool
+                        vt.probe_lifecycle_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]
+                        vt.probe_lifecycle_poll.restype = c.c_ssize_t
+                        secret, cookie, host_pin = buffer(os.urandom(32)), buffer(os.urandom(16)), buffer(pin)
+                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, time.monotonic_ns() // 1000)
+                    else:
+                        vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
                     def vt_step():
                         if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
-                        result = vt.probe_vt_poll(buffer(os.urandom(32)), buffer(username), len(username), seed)
+                        result = (vt.probe_lifecycle_poll(time.monotonic_ns() // 1000, secret, host_pin, cookie, buffer(os.urandom(32)), buffer(username), len(username), seed) if lifecycle_mode else
+                                  vt.probe_vt_poll(buffer(os.urandom(32)), buffer(username), len(username), seed))
                         if result < 0: raise RuntimeError("VT session failed")
                         time.sleep(0.001)
                         return result
-                    if vt_step() != 1: raise RuntimeError("VT session did not become ready")
+                    deadline = time.monotonic() + 20
+                    while vt_step() != 1:
+                        if time.monotonic() > deadline: raise TimeoutError("VT startup timeout")
                     for byte in b"printf ni%s_ssh_ok hos\n":
                         if not vt.probe_vt_key(byte): raise RuntimeError("VT key queue full")
                     deadline = time.monotonic() + 20
@@ -433,6 +468,7 @@ def run():
                     deadline = time.monotonic() + 20
                     while vt_step() != 2:
                         if time.monotonic() > deadline: raise TimeoutError("VT close timeout")
+                    if lifecycle_mode: sock.closed_by_controller = True
                 elif auto_client:
                     def tty_step():
                         if hosted_session:

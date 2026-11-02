@@ -111,6 +111,8 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('network_service.tcpReceive'))
         self.assertTrue(MODULE.xy_function('network_service.timePoll'))
         self.assertTrue(MODULE.xy_function('tcp_link.Link.poll'))
+        self.assertTrue(MODULE.xy_function('hosted_tcp_owner.Owner.cancel'))
+        self.assertFalse(MODULE.xy_function('hosted_tcp_owner.Owner.cancel_unapproved'))
         self.assertTrue(MODULE.xy_function('hosted_station.Client.maintain'))
         self.assertFalse(MODULE.xy_function('hosted_station.Client.unapproved'))
         self.assertFalse(MODULE.xy_function('tcp_link.Link.unapproved'))

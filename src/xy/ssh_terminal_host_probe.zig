@@ -77,3 +77,63 @@ export fn probe_vt_cell(index: usize) u32 {
     const cells: [*]const terminal.Cell = @ptrCast(@alignCast(snapshot.cells));
     return cells[index].codepoint;
 }
+
+const lifecycle = @import("ssh_lifecycle");
+const Start = *const fn (*const [16]u8, *const [32]u8, *const [32]u8) callconv(.c) bool;
+const Action = *const fn () callconv(.c) bool;
+const HostNetwork = struct {
+    pub const Handle = u8;
+    pub const Owner = Backend;
+    start: Start,
+    ready_fn: Action,
+    release_fn: Action,
+    cancel_fn: Action,
+    close_fn: Action,
+    complete_fn: Action,
+    pub fn open(_: *@This(), _: [4]u8, _: u16, _: u16, _: u32, _: u64) !Handle {
+        return 1;
+    }
+    pub fn ready(self: *@This(), _: Handle) !bool {
+        return self.ready_fn();
+    }
+    pub fn startSsh(self: *@This(), _: Handle, _: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, _: u32, _: u32) !*Owner {
+        if (!self.start(&cookie, &secret, &pin)) return error.Backend;
+        return &backend;
+    }
+    pub fn releaseSsh(self: *@This(), _: *Owner) !void {
+        if (!self.release_fn()) return error.Backend;
+    }
+    pub fn cancel(self: *@This(), _: Handle) !void {
+        if (!self.cancel_fn()) return error.Backend;
+    }
+    pub fn closeWrite(self: *@This(), _: Handle, _: u64) !void {
+        if (!self.close_fn()) return error.Backend;
+    }
+    pub fn closeComplete(self: *@This(), _: Handle) !bool {
+        return self.complete_fn();
+    }
+};
+const Controller = lifecycle.Controller(HostNetwork, Ui, console.scratch.Model);
+// SAFETY: probe_lifecycle_begin initializes these stable objects before use.
+var host_network: HostNetwork = undefined;
+// SAFETY: probe_lifecycle_begin initializes this stable object before use.
+var controller: Controller = undefined;
+export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64) bool {
+    backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
+    host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
+    model.initInPlace();
+    controller = Controller.init(&host_network, &ui, &model);
+    controller.begin(now, now +| 20_000_000, 20_000_000, .{ 10, 0, 2, 2 }, 22, 50001, 123) catch return false;
+    initialized = true;
+    return true;
+}
+export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, pin: *const [32]u8, cookie: *const [16]u8, random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {
+    if (!initialized) return -1;
+    const material = lifecycle.Material{ .secret = secret.*, .pin = pin.*, .cookie = cookie.* };
+    return switch (controller.poll(now, &material, random, user[0..len], seed.*) catch return -1) {
+        .opening, .need_material, .handshaking, .closing => 0,
+        .ready => 1,
+        .closed => 2,
+        .idle, .failed => -1,
+    };
+}

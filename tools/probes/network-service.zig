@@ -35,6 +35,7 @@ export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_b
             _ = reserved.poll(now, &padding, "probe", @splat(5)) catch return 0;
             network.experimentalSshReservedRelease(reserved) catch return 0;
         } else |_| {}
+        network.experimentalTcpCancel(handle) catch return 0;
         network.experimentalTcpCloseWrite(handle, 5_000_000) catch return 0;
         _ = network.experimentalTcpCloseComplete(handle) catch false;
     } else |err| tcp_result = @intFromError(err);

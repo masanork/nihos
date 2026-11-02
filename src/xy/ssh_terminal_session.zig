@@ -16,6 +16,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         screen: vt.Vt100(cols, rows, history),
         buffer: terminal.TerminalBuffer,
         state: State = .connecting,
+        revision: u32 = 0,
         input: [128]u8 = @splat(0),
         input_len: usize = 0,
 
@@ -31,6 +32,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
             self.screen.initInPlace(cols, rows);
             self.buffer = terminal.TerminalBuffer.init(title, cols, rows);
             self.state = .connecting;
+            self.revision = 0;
             self.input = @splat(0);
             self.input_len = 0;
         }
@@ -105,6 +107,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
             const n = try self.backend.read(now_us, padding, &bytes);
             if (n > bytes.len) return error.InvalidIo;
             self.screen.feed(bytes[0..n]);
+            if (n != 0) self.revision +%= 1;
             if (self.input_len != 0) {
                 const sent = try self.backend.write(now_us, padding, self.input[0..self.input_len]);
                 if (sent > self.input_len) return error.InvalidIo;

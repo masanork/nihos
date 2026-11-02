@@ -226,7 +226,7 @@ TCP_XY_FUNCTIONS = {
     'hosted_station.Client.finishIfReady', 'hosted_station.Client.afterBluetooth',
     'hosted_station.Client.afterVersion', 'hosted_station.Client.encodeFrame',
     'hosted_station.Client.maintain', 'hosted_station.Client.beginDual',
-    'hosted_tcp_owner.Owner.sent', 'hosted_tcp_owner.Owner.retireTcp', 'hosted_tcp_owner.Owner.reset',
+    'hosted_tcp_owner.Owner.sent', 'hosted_tcp_owner.Owner.retireTcp', 'hosted_tcp_owner.Owner.reset', 'hosted_tcp_owner.Owner.cancel',
     'hosted_tcp_service.Service.get', 'hosted_tcp_service.Service.retire', 'hosted_tcp_service.Service.sync',
     'hosted_tcp_service.Service.receive', 'hosted_tcp_service.Service.ready',
     'hosted_tcp_rx.Queue.clear', 'hosted_tcp_rx.Queue.overflow', 'hosted_tcp_station.refresh',

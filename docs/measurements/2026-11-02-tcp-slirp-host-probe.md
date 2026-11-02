@@ -86,6 +86,13 @@ The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
 reads and writes. Its station lease remains synthetic; this is not a live
 native network-service or device test.
 
+With `NIHOS_SSH_LIFECYCLE=1`, the same fixture exercises the xy lifecycle
+controller from an established TCP stream through caller-supplied key material,
+SSH authentication, terminal input and output, SSH close, TCP FIN and owner
+retirement. The native workspace adapter and its reserved storage bounds are
+also checked by freestanding RV32 code generation. The fixture supplies the
+network and credentials; no native application starts this controller yet.
+
 An optional `NIHOS_SSH_AUTOIDENT=1 NIHOS_SSH_AUTOKEX=1` host run exchanges
 identification with `ssh_identification.zig` and advances first key exchange
 using `ssh_kex_driver.zig`; the fixture supplies fresh random bytes. An

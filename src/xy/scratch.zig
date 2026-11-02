@@ -47,6 +47,7 @@ pub const TerminalPort = struct {
     close: *const fn (*anyopaque) void,
 };
 pub const Model = struct {
+    pub const TerminalPortType = TerminalPort;
     camera: camera.Client,
     card: card.Client,
     storage_client: scheme.storage.Client,
