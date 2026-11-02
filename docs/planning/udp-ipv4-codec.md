@@ -47,6 +47,13 @@ underlying state on disconnect or reset. It cannot cancel an already-submitted
 transfer and does not authenticate the sender. No runtime network service
 uses this wrapper yet.
 
+Host integration tests combine the lease and `ProfileStream.sendLong` using a
+mock SDIO host. A test-only owner rechecks before retrying zero-credit sends
+and invalidates the address on transport failure; neither action happens
+automatically across these separate objects. The tests check payload and
+padding, stale retry and no replay after a failed write, not physical DMA or
+C6 receipt.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
