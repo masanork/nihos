@@ -58,6 +58,8 @@ both stages on a single socket with a monotonic deadline, epoch checks and
 fail-closed secret cleanup. The OpenSSH host fixture exercises the combined
 path and a wrong-pin control. `ssh_client.zig` continues through public-key
 authentication and an interactive PTY shell, with a bounded startup deadline.
+`ssh_terminal.zig` adds bounded partial input and output, receive credit after
+consumption, connection epoch checks and the remote close acknowledgement.
 Production entropy, credential storage and the native application remain
 outside these components.
 

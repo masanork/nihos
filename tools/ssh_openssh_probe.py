@@ -96,6 +96,9 @@ def run():
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
         p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
         p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
+        p.probe_terminal_poll.argtypes = [c.c_uint64, c.c_void_p]; p.probe_terminal_poll.restype = c.c_ssize_t
+        p.probe_terminal_read.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_terminal_read.restype = c.c_ssize_t
+        p.probe_terminal_write.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_terminal_write.restype = c.c_ssize_t
         p.probe_client_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]
         p.probe_client_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; p.probe_client_poll.restype = c.c_ssize_t
         p.probe_connection_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]
@@ -359,21 +362,65 @@ def run():
                     action(0); wait_event(1)
                     action(1); wait_event(2)
                     action(2); wait_event(3)
-                action(3, b"printf ni%s_ssh_ok hos\n")
-                output = b""
-                for _ in range(256):
-                    event, data = channel_event()
-                    if event >= 100: output += data
-                    if b"nihos_ssh_ok" in output: break
-                assert b"nihos_ssh_ok" in output, output
-                action(3, b"exit\n")
-                for _ in range(24):
-                    event, _ = channel_event()
-                    if event == 6:
-                        action(5)
-                        break
+                if auto_client:
+                    def tty_step():
+                        result = p.probe_terminal_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)))
+                        if result < 0: raise RuntimeError("SSH terminal poll failed")
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                        return result
+                    def tty_write(data):
+                        deadline = time.monotonic() + (20 if bridge else 5)
+                        while data:
+                            count = p.probe_terminal_write(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(data), len(data))
+                            if count < 0: raise RuntimeError("SSH terminal write failed")
+                            data = data[count:]
+                            if tty_step(): raise RuntimeError("SSH terminal closed while writing")
+                            if time.monotonic() > deadline: raise TimeoutError("SSH terminal write timeout")
+                    tty_write(b"printf ni%s_ssh_ok hos\n")
+                    output = b""
+                    deadline = time.monotonic() + (20 if bridge else 5)
+                    while b"nihos_ssh_ok" not in output:
+                        if tty_step(): raise RuntimeError("SSH terminal closed before output")
+                        out = c.create_string_buffer(7)
+                        n = p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out))
+                        if n < 0: raise RuntimeError("SSH terminal read failed")
+                        output += out.raw[:n]
+                        if time.monotonic() > deadline: raise TimeoutError("SSH terminal read timeout")
+                    if os.environ.get("NIHOS_SSH_LARGE_OUTPUT") == "1":
+                        tty_write(b"python3 -c 'print(\"x\"*70000)'\n")
+                        received = 0
+                        deadline = time.monotonic() + 30
+                        while received < 70000:
+                            if tty_step(): raise RuntimeError("SSH terminal closed during large output")
+                            out = c.create_string_buffer(257)
+                            n = p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out))
+                            if n < 0: raise RuntimeError("SSH terminal large-output read failed")
+                            received += out.raw[:n].count(b"x")
+                            if time.monotonic() > deadline: raise TimeoutError(f"SSH terminal output stalled at {received} bytes")
+                    tty_write(b"exit\n")
+                    deadline = time.monotonic() + (20 if bridge else 5)
+                    while not tty_step():
+                        out = c.create_string_buffer(7)
+                        if p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out)) < 0:
+                            raise RuntimeError("SSH terminal drain failed")
+                        if time.monotonic() > deadline: raise TimeoutError("SSH terminal close timeout")
                 else:
-                    raise RuntimeError("channel close not received")
+                    action(3, b"printf ni%s_ssh_ok hos\n")
+                    output = b""
+                    for _ in range(256):
+                        event, data = channel_event()
+                        if event >= 100: output += data
+                        if b"nihos_ssh_ok" in output: break
+                    assert b"nihos_ssh_ok" in output, output
+                    action(3, b"exit\n")
+                    for _ in range(24):
+                        event, _ = channel_event()
+                        if event == 6:
+                            action(5)
+                            break
+                    else:
+                        raise RuntimeError("channel close not received")
             print("OpenSSH KEX, host pin, public-key authentication and interactive PTY: OK" + (" (nihos TCP via libslirp, TCP FIN confirmed)" if bridge else ""))
         finally:
             server.terminate()

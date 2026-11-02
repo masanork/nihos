@@ -8,6 +8,7 @@ const kex_driver = @import("ssh_kex_driver.zig");
 const identification = @import("ssh_identification.zig");
 const connection = @import("ssh_connection.zig");
 const client = @import("ssh_client.zig");
+const terminal = @import("ssh_terminal.zig");
 var wire: transport.Transport = .{};
 var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
 const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
@@ -41,6 +42,23 @@ var hs: ?handshake.Handshake = null;
 var driver: ?kex_driver.Driver = null;
 var ident = identification.Exchange{ .epoch = 1 };
 var ssh_client: ?client.Client = null;
+var tty: terminal.Terminal = .{};
+fn probeIo() socket_pump.Io {
+    return .{ .context = null, .read = socketRead, .write = socketWrite };
+}
+export fn probe_terminal_poll(now: u64, random: *const [32]u8) isize {
+    const value = if (ssh_client) |*v| v else return -1;
+    return if (tty.poll(value, &wire, &pump, probeIo(), 1, now, random) catch return -1) 1 else 0;
+}
+export fn probe_terminal_read(now: u64, random: *const [32]u8, dst: [*]u8, len: usize) isize {
+    const value = if (ssh_client) |*v| v else return -1;
+    return @intCast(tty.read(value, &wire, &pump, probeIo(), 1, now, random, dst[0..len]) catch return -1);
+}
+export fn probe_terminal_write(now: u64, random: *const [32]u8, src: [*]const u8, len: usize) isize {
+    const value = if (ssh_client) |*v| v else return -1;
+    return @intCast(tty.write(value, &wire, &pump, probeIo(), 1, now, src[0..len], random) catch return -1);
+}
+
 fn activeSession() ?*session.Session {
     if (ssh_client) |*v| if (v.session) |*s| return s;
     if (ssh_session) |*s| return s;

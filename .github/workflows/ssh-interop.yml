@@ -54,3 +54,5 @@ jobs:
         run: |
           NIHOS_SSH_AUTOCLIENT=1 NIHOS_SSH_BADPIN=1 python3 tools/ssh_openssh_probe.py
           NIHOS_SSH_AUTOCLIENT=1 NIHOS_SSH_BADAUTH=1 python3 tools/ssh_openssh_probe.py
+      - name: Terminal receive credit beyond initial SSH window
+        run: NIHOS_SSH_AUTOCLIENT=1 NIHOS_SSH_LARGE_OUTPUT=1 python3 tools/ssh_openssh_probe.py
