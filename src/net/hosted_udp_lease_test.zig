@@ -57,6 +57,40 @@ test "lease guards transmit and receipt without authenticating peer" {
     try testing.expectError(error.Stale, lease.check(&state));
 }
 
+test "generic UDP matches the numbered diagnostic packets and accepts their replies" {
+    const diagnostic = @import("long_udp_probe.zig");
+    const wire = @import("udp_ipv4.zig");
+    var state = ready();
+    const lease = try guard.Lease.open(&state, mac, 49152, range);
+    const lan_peer = wire.Endpoint{ .mac = peer.mac, .ip = peer.ip, .port = 44444 };
+
+    // Compare every attempt in the physical burst, using synthetic addresses.
+    for (1..17) |n| {
+        var expected: [diagnostic.ethernet_bytes]u8 = undefined;
+        const attempt: u8 = @intCast(n);
+        const reference = diagnostic.packetAttemptFrom(&expected, mac, 0xc0000201, 49152, peer.mac, 0xc0000202, lan_peer.port, attempt);
+        var payload: [diagnostic.payload_bytes]u8 = undefined;
+        for (&payload, 0..) |*byte, i| byte.* = @truncate(i);
+        @memcpy(payload[0..8], "NIHOSUDP");
+        payload[8] = attempt;
+        var outbound: [1536]u8 = undefined;
+        const generic = try lease.prepare(&state, &outbound, lan_peer, &payload, attempt);
+        try testing.expectEqualSlices(u8, reference, generic[12..]);
+
+        var inbound: [1536]u8 = undefined;
+        const reply = try udp.prepare(&inbound, lan_peer, lease.local, &payload, attempt);
+        var decoder: hosted.Decoder = .{};
+        var received: ?hosted.Frame = null;
+        for (reply) |byte| if (try decoder.push(byte)) |frame| {
+            received = frame;
+        };
+        const datagram = (try lease.receive(&state, received.?)).?;
+        try testing.expectEqualDeep(lan_peer, datagram.source);
+        try testing.expectEqualSlices(u8, &payload, datagram.payload);
+        try testing.expectEqual(diagnostic.Echo.long, diagnostic.matchEchoTo(received.?.payload, mac, 0xc0000201, 49152, peer.mac, 0xc0000202, lan_peer.port));
+    }
+}
+
 test "even a changed snapshot under the same generation is stale" {
     var state = ready();
     const lease = try guard.Lease.open(&state, mac, 61439, range);
