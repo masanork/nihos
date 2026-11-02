@@ -37,6 +37,65 @@ not connected to the runtime network service or the physical diagnostic.
 UDP port after decoding. It does not authenticate a source or acquire a lease;
 the caller must check address generation before using the borrowed payload.
 
+`hosted_udp_lease.Lease` is an experimental wrapper that captures a complete
+C6 address snapshot and generation, and checks both before frame preparation
+or receive matching. The local port must belong to an externally supplied
+range: this is neither port allocation nor proof of the installed C6 routing
+policy. The caller must prevent port collisions, serialize transport ownership,
+recheck immediately before submission or consumption, and invalidate the
+underlying state on disconnect or reset. It cannot cancel an already-submitted
+transfer and does not authenticate the sender. No runtime network service
+uses this wrapper yet.
+
+Host integration tests combine the lease and `ProfileStream.sendLong` using a
+mock SDIO host. A test-only owner rechecks before retrying zero-credit sends
+and invalidates the address on transport failure; neither action happens
+automatically across these separate objects. The tests check payload and
+padding, stale retry and no replay after a failed write, not physical DMA or
+C6 receipt.
+
+`hosted_udp_sender.Sender` is an experimental, single-datagram owner. It owns
+its queued packet and padding, uses short or long writes, retries only a zero
+write, and retires on timeout, stale binding, partial write or transport
+error. It invalidates a still-current address after ambiguous write failures,
+but preserves a newer address generation. An unsent queued packet may be
+canceled after a zero-credit result; explicit invalidation retires the owner
+and stream on reset. Its caller must exclusively own the
+stream and state and drain Hosted control events before every poll. Retirement
+does not prove hardware DMA quiescence; in-flight storage must remain alive as
+required by the backend. It is not connected to the native network service.
+
+Every poll also requires the current Hosted decoder and an explicit assertion
+that the caller read zero bytes after applying control events while holding the
+same exclusive stream. A false assertion or incomplete frame defers sending;
+a poisoned decoder retires the owner. The flag is supplied by the caller, not
+an independent proof of an empty FIFO. An event arriving after the empty read
+can still race the send. The current native network service
+processes at most one 512-byte receive chunk per poll and can then send, so it
+cannot pass this gate merely because one chunk was processed. Runtime
+integration must preserve bounded fairness while draining and handling events.
+
+`Sender.step` is an opt-in helper that performs one receive of at most 512
+bytes, decodes and synchronously dispatches each complete borrowed frame,
+then sends only after an empty read. The supplied handler must apply all
+relevant control events to the same exclusively owned state and must not keep
+borrowed frames. A peer INIT, receive error, decoder error or handler error
+retires the sender and stream; the current address is invalidated when still
+owned. Incomplete input continues to respect the send deadline. This helper
+does not bind into the native service and does not eliminate arrivals racing
+an empty read.
+
+The host integration test also composes `Sender.step`, the existing SDIO
+stream and controller, the long-DMA guard, bus adapter and buffer, and a mock
+register/cache backend. It checks padded packet bytes and quarantine after
+simulated DMA completion and stop failures. When stop fails, the model retains
+the adapter's active long operation and retired buffer; it does not claim that
+hardware has stopped. The guard forwards receive and short-write operations;
+long-write errors retire its associated DMA buffer. This is not a target
+driver or a measurement of silicon DMA completion. The native service's
+current bus does not use the long-DMA fixture provider and must not be assumed
+to support this path without an explicit integration and image audit.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.

@@ -1,0 +1,129 @@
+//! Experimental one-datagram Hosted sender. Not wired to a runtime service.
+const guard = @import("hosted_udp_lease.zig");
+const wire = @import("udp_ipv4.zig");
+const split = @import("hosted_network_split.zig");
+const hosted = @import("hosted.zig");
+
+pub const Phase = enum { idle, queued, retired };
+pub const Outcome = enum { pending, sent };
+pub const Error = guard.Error || error{ Busy, Retired, Deadline, PartialPacket };
+
+/// The caller owns and serializes this object, the address state and the
+/// stream. Before each poll it must drain/apply pending Hosted control events.
+/// No automatic reconnect, hardware quiescence or socket API is provided.
+pub const Sender = struct {
+    binding: guard.Lease,
+    state: *split.State,
+    phase: Phase = .idle,
+    packet: [1512]u8 = @splat(0),
+    padding: [1536]u8 = @splat(0),
+    length: usize = 0,
+    deadline: u64 = 0,
+    last_now: u64 = 0,
+
+    pub fn init(state: *split.State, binding: guard.Lease) Error!Sender {
+        try binding.check(state);
+        return .{ .state = state, .binding = binding };
+    }
+
+    /// Input is copied into owned storage; it may be released on return and
+    /// must not overlap the sender's packet buffer.
+    pub fn enqueue(self: *Sender, peer: wire.Endpoint, payload: []const u8, sequence: u16, now: u64, deadline: u64) Error!void {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .idle) return error.Busy;
+        if (deadline <= now or now < self.last_now) return error.Deadline;
+        const frame = try self.binding.prepare(self.state, &self.packet, peer, payload, sequence);
+        self.length = frame.len;
+        self.last_now = now;
+        self.deadline = deadline;
+        self.phase = .queued;
+    }
+
+    /// Cancel only a queued packet: no poll is in progress and a prior
+    /// pending result guarantees that no transfer started. The caller must
+    /// serialize cancellation with poll and control-event processing.
+    pub fn cancel(self: *Sender) Error!void {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .queued) return error.Busy;
+        self.length = 0;
+        self.phase = .idle;
+    }
+
+    /// Retire this owner after disconnect/reset and revoke its address only
+    /// if it is still current. This does not establish DMA quiescence.
+    pub fn invalidate(self: *Sender, stream: anytype) void {
+        if (self.phase != .retired) self.retire(stream, true);
+    }
+
+    /// Read at most one 512-byte chunk, dispatch each complete borrowed frame
+    /// synchronously, then attempt a send only after an empty read. `handler`
+    /// must apply all relevant control events to the same exclusively owned
+    /// state before returning, and must not retain the borrowed frame. A new
+    /// peer INIT denotes reset. Data and other events are also dispatched.
+    pub fn step(self: *Sender, stream: anytype, decoder: *hosted.Decoder, handler: anytype, rx: *[512]u8, now: u64) !Outcome {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .queued) return error.Busy;
+        // Do not touch transport when the deadline, binding or decoder has
+        // already failed; poll performs the corresponding retirement.
+        if (now < self.last_now or now >= self.deadline or decoder.poisoned)
+            return self.poll(stream, now, decoder, false);
+        self.binding.check(self.state) catch return self.poll(stream, now, decoder, false);
+        errdefer self.invalidate(stream);
+        const count = try stream.receive(rx);
+        if (count > rx.len) return error.InvalidBuffer;
+        for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
+            if (frame.interface == 5) return error.Stale;
+            try handler.receive(frame, now);
+            try self.binding.check(self.state);
+        };
+        return self.poll(stream, now, decoder, count == 0);
+    }
+
+    /// `drained` is true only after the exclusive caller has received zero
+    /// bytes and applied all decoded control events in this ownership turn.
+    /// An incomplete decoder or undrained input prevents transmission. Zero
+    /// credits means no write began; partial writes and errors retire.
+    pub fn poll(self: *Sender, stream: anytype, now: u64, decoder: *const hosted.Decoder, drained: bool) !Outcome {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .queued) return error.Busy;
+        if (now < self.last_now or now >= self.deadline) {
+            self.retire(stream, false);
+            return error.Deadline;
+        }
+        self.last_now = now;
+        self.binding.check(self.state) catch |err| {
+            self.retire(stream, false);
+            return err;
+        };
+        if (decoder.poisoned) {
+            self.retire(stream, true);
+            return error.Malformed;
+        }
+        if (!drained or decoder.used != 0) return .pending;
+        const frame = self.packet[0..self.length];
+        const written = (if (frame.len <= 512) stream.send(frame) else stream.sendLong(frame, &self.padding)) catch |err| {
+            self.retire(stream, true);
+            return err;
+        };
+        if (written == 0) return .pending;
+        if (written != frame.len) {
+            self.retire(stream, true);
+            return error.PartialPacket;
+        }
+        self.length = 0;
+        self.phase = .idle;
+        return .sent;
+    }
+
+    fn retire(self: *Sender, stream: anytype, invalidate_current: bool) void {
+        // Do not destroy an address acquired by a newer generation.
+        if (invalidate_current) {
+            if (self.binding.check(self.state)) |_| {
+                _ = self.state.invalidate();
+            } else |_| {}
+        }
+        self.phase = .retired;
+        self.length = 0;
+        stream.invalidate();
+    }
+};
