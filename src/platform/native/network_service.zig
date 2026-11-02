@@ -113,9 +113,7 @@ pub fn experimentalTcpCloseComplete(handle: ExperimentalTcpHandle) !bool {
 pub fn experimentalSshAdapter(handle: ExperimentalTcpHandle, write_timeout_ms: u64) !ExperimentalSshAdapter {
     if (comptime !experimental_tcp) return error.TcpDisabled;
     const now = try experimentalTcpNow();
-    if (write_timeout_ms == 0 or now / 1000 > @import("std").math.maxInt(u64) - write_timeout_ms) return error.InvalidArgument;
-    if (!try tcp_state.ready(client, handle, now)) return error.WouldBlock;
-    return .{ .owner = tcp_state, .client = client, .handle = handle, .epoch = tcp_state.epoch, .now_us = now, .write_timeout_ms = write_timeout_ms };
+    return ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
 }
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.

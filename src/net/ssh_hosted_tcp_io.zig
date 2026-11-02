@@ -15,6 +15,14 @@ pub const Adapter = struct {
     write_timeout_ms: u64,
     failed: bool = false,
 
+    /// Borrow only an established, current connection. No pointer is handed
+    /// to the caller until timeout and lease validation have succeeded.
+    pub fn init(owner: *owner_mod.Owner, client: *station.Client, handle: tcp.Handle, now_us: u64, write_timeout_ms: u64) (owner_mod.Error || error{ InvalidArgument, WouldBlock })!Adapter {
+        if (write_timeout_ms == 0 or now_us / 1000 > std.math.maxInt(u64) - write_timeout_ms) return error.InvalidArgument;
+        if (!try owner.ready(client, handle, now_us)) return error.WouldBlock;
+        return .{ .owner = owner, .client = client, .handle = handle, .epoch = owner.epoch, .now_us = now_us, .write_timeout_ms = write_timeout_ms };
+    }
+
     /// Called by the serialized owner before each pump poll; clock rollback and
     /// zero write deadlines fail closed rather than reusing a connection.
     pub fn advance(self: *Adapter, now_us: u64) pump.SocketError!void {
@@ -64,10 +72,12 @@ test "adapter maps partial writes, backpressure, buffered EOF and reset" {
     client.mac_address = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
     client.dhcp_client = .{ .mac = client.mac_address, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 20_000_000, .rebind_at = 30_000_000, .expires_at = 40_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 40 } };
     const handle = try owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 123, 0, 5000);
+    try std.testing.expectError(error.InvalidArgument, Adapter.init(&owner, &client, handle, 0, 0));
+    try std.testing.expectError(error.WouldBlock, Adapter.init(&owner, &client, handle, 0, 5000));
     const link = &owner.service.link.?;
     link.state = .active;
     link.stream = @import("tcp_stream.zig").Stream.init(.{ .local = .{ .address = .{ 10, 0, 2, 15 }, .port = 50001 }, .remote = .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, .send_next = 1, .receive_next = 1, .remote_window = 4096, .remote_mss = 1460 });
-    var adapter = Adapter{ .owner = &owner, .client = &client, .handle = handle, .epoch = owner.epoch, .now_us = 0, .write_timeout_ms = 5000 };
+    var adapter = try Adapter.init(&owner, &client, handle, 0, 5000);
     const io = adapter.io();
     try adapter.advance(1000);
     const payload: [600]u8 = @splat(0x5a);
@@ -82,6 +92,7 @@ test "adapter maps partial writes, backpressure, buffered EOF and reset" {
     try std.testing.expectEqualStrings("abc", buffer[0..3]);
     try std.testing.expectEqual(pump.Result.eof, try io.read(io.context, &buffer));
     try owner.reset();
+    try std.testing.expectError(error.StaleHandle, Adapter.init(&owner, &client, handle, 2000, 5000));
     var wire: @import("ssh_transport.zig").Transport = .{};
     try wire.prepare("pending", &@as([32]u8, @splat(1)));
     var socket_pump = pump.Pump{ .wire = &wire, .epoch = adapter.epoch };
