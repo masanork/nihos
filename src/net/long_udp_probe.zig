@@ -23,8 +23,11 @@ pub fn packet(out: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, peer_mac: [6]u8, pe
 }
 /// The ninth payload byte identifies a long-datagram attempt (1 through 32).
 pub fn packetAttempt(out: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, peer_mac: [6]u8, peer_ip: u32, port: u16, attempt: u8) []const u8 {
+    return packetAttemptFrom(out, mac, ip, 44444, peer_mac, peer_ip, port, attempt);
+}
+pub fn packetAttemptFrom(out: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, local_port: u16, peer_mac: [6]u8, peer_ip: u32, port: u16, attempt: u8) []const u8 {
     std.debug.assert(attempt >= 1 and attempt <= 32);
-    _ = packet(out, mac, ip, peer_mac, peer_ip, port);
+    _ = sizedPacketFrom(out, mac, ip, local_port, peer_mac, peer_ip, port, payload_bytes);
     out[50] = attempt;
     out[40] = 0;
     out[41] = 0;
@@ -34,6 +37,9 @@ pub fn packetAttempt(out: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, peer_mac: [6
     return out;
 }
 pub fn sizedPacket(storage: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, peer_mac: [6]u8, peer_ip: u32, port: u16, length: usize) []const u8 {
+    return sizedPacketFrom(storage, mac, ip, 44444, peer_mac, peer_ip, port, length);
+}
+pub fn sizedPacketFrom(storage: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, local_port: u16, peer_mac: [6]u8, peer_ip: u32, port: u16, length: usize) []const u8 {
     std.debug.assert(length >= 8 and length <= payload_bytes);
     const out = storage[0 .. 42 + length];
     @memset(out, 0);
@@ -48,7 +54,7 @@ pub fn sizedPacket(storage: *[ethernet_bytes]u8, mac: [6]u8, ip: u32, peer_mac: 
     std.mem.writeInt(u32, out[26..30], ip, .big);
     std.mem.writeInt(u32, out[30..34], peer_ip, .big);
     std.mem.writeInt(u16, out[24..26], sum(out[14..34], 0), .big);
-    std.mem.writeInt(u16, out[34..36], 44444, .big);
+    std.mem.writeInt(u16, out[34..36], local_port, .big);
     std.mem.writeInt(u16, out[36..38], port, .big);
     std.mem.writeInt(u16, out[38..40], @intCast(8 + length), .big);
     for (out[42..], 0..) |*byte, i| byte.* = @truncate(i);
@@ -67,6 +73,9 @@ pub fn hash(bytes: []const u8) u32 {
 pub const Echo = enum { none, short, long };
 /// Validate an unfragmented Ethernet/IPv4 UDP echo from the configured peer.
 pub fn matchEcho(frame: []const u8, mac: [6]u8, ip: u32, peer_mac: [6]u8, peer_ip: u32, peer_port: u16) Echo {
+    return matchEchoTo(frame, mac, ip, 44444, peer_mac, peer_ip, peer_port);
+}
+pub fn matchEchoTo(frame: []const u8, mac: [6]u8, ip: u32, local_port: u16, peer_mac: [6]u8, peer_ip: u32, peer_port: u16) Echo {
     if (frame.len < 42 or !std.mem.eql(u8, frame[0..6], &mac) or !std.mem.eql(u8, frame[6..12], &peer_mac) or
         std.mem.readInt(u16, frame[12..14], .big) != 0x0800 or frame[14] != 0x45 or frame[23] != 17) return .none;
     const total = std.mem.readInt(u16, frame[16..18], .big);
@@ -75,7 +84,7 @@ pub fn matchEcho(frame: []const u8, mac: [6]u8, ip: u32, peer_mac: [6]u8, peer_i
         std.mem.readInt(u32, frame[30..34], .big) != ip) return .none;
     const length = std.mem.readInt(u16, frame[38..40], .big);
     if (length != total - 20 or std.mem.readInt(u16, frame[34..36], .big) != peer_port or
-        std.mem.readInt(u16, frame[36..38], .big) != 44444) return .none;
+        std.mem.readInt(u16, frame[36..38], .big) != local_port) return .none;
     const udp = frame[34 .. 14 + total];
     if (std.mem.readInt(u16, frame[40..42], .big) != 0) {
         const pseudo: u32 = @as(u32, @intCast(~sum(frame[26..34], 0))) + 17 + length;

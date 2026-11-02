@@ -69,6 +69,7 @@ test "upgrade and recovery sizes transfer fully with the peer's activation proto
     for ([_]struct { size: usize, explicit: bool }{
         .{ .size = 1_278_048, .explicit = false },
         .{ .size = 1_079_120, .explicit = true },
+        .{ .size = 1_397_104, .explicit = true }, // Hosted 3.0.10 candidate
     }) |case| {
         const image = try std.testing.allocator.alloc(u8, case.size);
         defer std.testing.allocator.free(image);

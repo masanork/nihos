@@ -219,6 +219,19 @@ class NativeInstructionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.audit_time_functions(functions, span)
 
+    def test_c6_time_allows_only_complete_xy_station_placement(self):
+        start = 0x40004000
+        names = sorted(MODULE.TIME_FUNCTIONS | MODULE.TIME_C6)
+        names += [prefix + '__func_7' for prefix in sorted(MODULE.TIME_GENERIC)]
+        boot = [(name, start + i * 16, start + (i + 1) * 16) for i, name in enumerate(names)]
+        xy = [(name, 0x40060000 + i * 16, 0x40060010 + i * 16)
+              for i, name in enumerate(sorted(MODULE.TIME_STATION))]
+        span = (start, start + len(names) * 16)
+        MODULE.audit_time_functions(boot + xy, span)
+        self.assertTrue(all(MODULE.xy_function(item[0]) for item in xy))
+        with self.assertRaises(ValueError):
+            MODULE.audit_time_functions(boot + xy[:-1], span)
+
     def test_device_code_requires_exact_allowlist_rx_extent_and_explicit_profile(self):
         first = 0x40002000
         names = sorted(MODULE.DEVICE_FUNCTIONS) + ['audio_probe.poll__func_1', 'microphone_probe.poll__func_2', 'rs485_probe.poll__func_3']
