@@ -6,6 +6,57 @@ const std = @import("std");
 pub const Material = struct { secret: [32]u8, pin: [32]u8, cookie: [16]u8 };
 pub const State = enum { idle, opening, need_material, handshaking, ready, closing, closed, failed };
 
+/// Volatile caller-owned connection material. Never copy, persist, log or put
+/// this object in an editor buffer. Input slices must not alias this object.
+/// The fingerprint is OpenSSH's SHA256 hash of the complete host-key blob;
+/// the seed is exactly 32 raw Ed25519 seed bytes, encoded as 64 hex digits.
+pub const Profile = struct {
+    address: [4]u8 = @splat(0),
+    port: u16 = 0,
+    username: [64]u8 = @splat(0),
+    username_len: u8 = 0,
+    pin: [32]u8 = @splat(0),
+    seed: [32]u8 = @splat(0),
+    valid: bool = false,
+
+    /// Replace atomically: invalid input leaves the previous profile intact.
+    pub fn set(self: *Profile, address: []const u8, port: []const u8, username: []const u8, fingerprint: []const u8, seed_hex: []const u8) error{InvalidProfile}!void {
+        var next: Profile = .{};
+        defer next.clear();
+        var pieces = std.mem.splitScalar(u8, address, '.');
+        for (&next.address) |*octet| {
+            const text = pieces.next() orelse return error.InvalidProfile;
+            if (text.len == 0 or text.len > 3 or (text.len > 1 and text[0] == '0')) return error.InvalidProfile;
+            for (text) |c| if (c < '0' or c > '9') return error.InvalidProfile;
+            octet.* = std.fmt.parseInt(u8, text, 10) catch return error.InvalidProfile;
+        }
+        if (pieces.next() != null or next.address[0] == 0 or next.address[0] >= 224) return error.InvalidProfile;
+        if (port.len == 0 or port.len > 5) return error.InvalidProfile;
+        for (port) |c| if (c < '0' or c > '9') return error.InvalidProfile;
+        next.port = std.fmt.parseInt(u16, port, 10) catch return error.InvalidProfile;
+        if (next.port == 0 or username.len == 0 or username.len > next.username.len) return error.InvalidProfile;
+        for (username) |c| if (c < 33 or c > 126) return error.InvalidProfile;
+        @memcpy(next.username[0..username.len], username);
+        next.username_len = @intCast(username.len);
+        if (!std.mem.startsWith(u8, fingerprint, "SHA256:") or fingerprint.len != 50) return error.InvalidProfile;
+        const encoded = fingerprint[7..];
+        std.base64.standard_no_pad.Decoder.decode(&next.pin, encoded) catch return error.InvalidProfile;
+        var canonical: [43]u8 = undefined;
+        if (!std.mem.eql(u8, std.base64.standard_no_pad.Encoder.encode(&canonical, &next.pin), encoded)) return error.InvalidProfile;
+        if (seed_hex.len != 64) return error.InvalidProfile;
+        _ = std.fmt.hexToBytes(&next.seed, seed_hex) catch return error.InvalidProfile;
+        next.valid = true;
+        self.clear();
+        self.* = next;
+    }
+    pub fn user(self: *const Profile) []const u8 {
+        return self.username[0..self.username_len];
+    }
+    pub fn clear(self: *Profile) void {
+        std.crypto.secureZero(u8, std.mem.asBytes(self));
+    }
+};
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -237,6 +288,30 @@ const TestUi = struct {
         self.canceled = true;
     }
 };
+
+test "profile validates OpenSSH fingerprint and wipes credentials" {
+    var p: Profile = .{};
+    const ones: [32]u8 = @splat(1);
+    const pin = "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    const seed = "0101010101010101010101010101010101010101010101010101010101010101";
+    try p.set("192.168.1.5", "22", "alice", pin, seed);
+    try std.testing.expectEqual([4]u8{ 192, 168, 1, 5 }, p.address);
+    try std.testing.expectEqual(@as(u16, 22), p.port);
+    try std.testing.expectEqualStrings("alice", p.user());
+    try std.testing.expectEqual(ones, p.seed);
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.01.5", "22", "alice", pin, seed));
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.1.5", "0", "alice", pin, seed));
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.1.5", "22", "alice\n", pin, seed));
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.1.5", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB", seed));
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.1.5", "22", "alice", pin, "invalid"));
+    try std.testing.expectError(error.InvalidProfile, p.set("192.168.1.5", "22", "alice", pin, "01010101010101010101010101010101010101010101010101010101010101xz"));
+    try std.testing.expectError(error.InvalidProfile, p.set("224.0.0.1", "22", "alice", pin, seed));
+    try std.testing.expect(p.valid);
+    try std.testing.expectEqualStrings("alice", p.user());
+    try std.testing.expectEqual(ones, p.seed);
+    p.clear();
+    for (std.mem.asBytes(&p)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
 
 test "lifecycle connects, attaches only when ready, and closes in order" {
     var network: TestNetwork = .{};
