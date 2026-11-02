@@ -122,5 +122,7 @@ resolve the configured gateway but retain the original IP in the UDP endpoint.
 A changed address snapshot, link reset, deadline, or ambiguous transport write
 invalidates the route. The bounded result is not an authenticated peer or a
 MAC cache, and must be passed to the existing sender under exclusive ownership.
-These are host tests only; Network Split ARP forwarding and application socket
-integration still require device evidence.
+One [bounded Tab5 diagnostic](../measurements/2026-11-03-hosted-split-arp-udp.md)
+resolved a same-subnet Mac and used it for a 16-packet UDP round trip. Gateway
+resolution remains host-tested only, and application socket integration is
+not implemented.
