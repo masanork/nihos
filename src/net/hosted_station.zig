@@ -8,6 +8,11 @@ fn timeSection() []const u8 {
     return if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 }
 pub const wire = @import("hosted.zig");
+/// Experimental CPU0-owned TCP boundary; not enabled by the station itself.
+pub const tcp_owner = @import("hosted_tcp_owner.zig");
+pub const ssh_tcp = @import("ssh_hosted_tcp_io.zig");
+pub const ssh_session_owner = @import("ssh_hosted_session.zig");
+pub const ssh_reservation = @import("ssh_reservation.zig");
 pub const c6_time_exchange = @import("hosted_c6_time_exchange.zig");
 pub const c6_time_policy = @import("hosted_c6_time_policy.zig");
 pub const split_udp_owner = @import("hosted_split_udp_owner.zig");

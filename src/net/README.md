@@ -1,5 +1,94 @@
 # ESP-AT client controller
 
+`tcp_wire.zig` provides a bounded IPv4/TCP packet codec for future use by the
+ESP-Hosted P4 network path. It validates IPv4 and TCP checksums and rejects IP
+fragments; it does not provide a TCP connection, retransmission, socket API,
+native service integration, or a working SSH transport. The normal hosted
+network service does not yet call it.
+
+`arp_resolver.zig` resolves one IPv4 next hop from a caller-supplied lease,
+validates replies, retries under a deadline and invalidates on an epoch change.
+It is exercised through libslirp in the host SSH probe but is not yet owned by
+the normal network service or connected to its DHCP lease lifecycle.
+
+`tcp_link.zig` combines this resolver and the experimental TCP client for one
+connection, with one full Ethernet frame owned until its send is confirmed.
+The owner must queue incoming frames during a send, invalidate on an ambiguous
+handoff or epoch change, and retain the tuple during TIME_WAIT. This has only
+host fixture coverage and is not yet integrated with the native network owner.
+
+`hosted_tcp_service.zig` wraps that connection in Hosted station frames and
+binds handles and pending TX to the network owner's lease/reset epoch. It
+rejects ambiguous partial sends and requires the caller to queue RX while a
+frame is staged. Writes accept at most 446 bytes, leaving room for the
+current headers in the normal short SDIO path's 512-byte Hosted frame limit;
+callers must retry any remaining bytes. The OpenSSH/libslirp host fixture exercises this boundary;
+normal `network_service.zig` does not yet call it. It is not a socket table or
+a qualified DMA, Wi-Fi, reconnect, or device implementation.
+
+`hosted_tcp_station.zig` maps the Hosted station's live DHCP lease and an
+owner-supplied reset epoch into that service. Its experimental scheduling
+helper runs station maintenance first, gives station/other priority traffic
+precedence, and retains already-staged TCP frames. `hosted_tcp_rx.zig` adds a
+four-frame bounded RX queue, preserving station processing and retiring only
+the TCP handle on overflow. The owner must serialize completions and surface
+queue failure; normal boot does not call either module yet.
+
+`hosted_tcp_owner.zig` combines these prototypes behind one serialized owner,
+tracks whole-frame completion, and requires a transport reset after an
+ambiguous partial send. On TCP/RX failure it retires the TCP handle and
+reports the error; callers can continue station maintenance on the next poll.
+The OpenSSH host fixture uses this owner. An opt-in native build includes
+experimental RX, TX and CPU0-only connection operations; native xy does not
+call them. Its image has been linked and audited but not run on a device.
+
+`ssh_hosted_tcp_io.zig` maps the owner's TCP stream to SSH pump partial I/O,
+backpressure, EOF and failure. It requires the serialized caller to advance
+the monotonic clock before each poll and revalidates the lease and handle for
+each operation. The OpenSSH/libslirp host fixture uses this adapter. The
+experimental native network owner can construct one for an established TCP
+handle on CPU0; native xy does not yet use it.
+
+`ssh_kex_driver.zig` advances the first key exchange after the caller has
+exchanged SSH identification lines. It coordinates pending packet writes,
+host-pin verification and NEWKEYS activation, and clears secrets on failure.
+`ssh_identification.zig` provides the preceding bounded, nonblocking line
+exchange without consuming the next packet. `ssh_connection.zig` coordinates
+both stages on a single socket with a monotonic deadline, epoch checks and
+fail-closed secret cleanup. The OpenSSH host fixture exercises the combined
+path and a wrong-pin control. `ssh_client.zig` continues through public-key
+authentication and an interactive PTY shell, with a bounded startup deadline.
+`ssh_terminal.zig` adds bounded partial input and output, receive credit after
+consumption, connection epoch checks and the remote close acknowledgement.
+`ssh_hosted_session.zig` composes these with the Hosted TCP adapter in a
+caller-owned, stable object; an opt-in native factory exposes it on CPU0.
+The experimental image reserves 128 KiB in the boot-admitted sqld PSRAM
+region: 88 KiB for the session and 40 KiB for its future VT state. The session
+borrow remains reserved until explicit release after reset; the VT area is not
+yet bound to a native screen.
+The xy `ssh_terminal_session.zig` bridge feeds received bytes into VT100 and
+queues encoded keys with bounded backpressure; the host OpenSSH fixture checks
+that path through the Hosted session. The native renderer can paint a borrowed
+terminal view through the guarded foreground stack. The xy model can attach a
+terminal port for input and rendering; the home screen and native session
+lifecycle are not wired. Production entropy and credential storage remain outside these
+components.
+
+`tcp_connect.zig` adds a host-tested bounded active-open state machine using
+that codec. It handles SYN retransmission, tuple/ACK validation and a final
+ACK; its result is only the handoff state for a future data-plane TCP client.
+It has no ARP/routing adapter, socket service, data transfer, close handling,
+or physical/real-network qualification and is not connected to SSH.
+
+`tcp_stream.zig` is a separate host-tested experimental data plane with one
+segment in flight, bounded receive buffering, retransmission, zero-window
+probing and FIN handling.
+`tcp_time_wait.zig` retains the tuple through a caller-supplied TIME_WAIT and
+acknowledges duplicate FINs. These are not a complete TCP implementation:
+among other gaps they lack congestion control, a socket table, routing and
+integration with the normal network service. They must not yet be
+exposed as an application socket.
+
 `esp_at.zig` decodes the bounded passive-socket/BLE receive profile.
 `at_commands.zig` encodes a closed set of typed commands, escaping quoted
 strings and rejecting control-character injection. `at_controller.zig`

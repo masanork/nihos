@@ -6,7 +6,7 @@ pub const section = config.section;
 const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
-pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification };
+pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification, ssh };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
 
 pub const CardViewData = struct {
@@ -125,7 +125,7 @@ pub const State = struct {
             .document => {},
             .home => switch (key) {
                 .up, .left => self.home_selection -|= 1,
-                .down, .right => self.home_selection = @min(5, self.home_selection + 1),
+                .down, .right => self.home_selection = @min(6, self.home_selection + 1),
                 .enter => self.activateHome(),
                 .text => |byte| switch (byte) {
                     'n', 'N' => self.screen = .document,
@@ -135,6 +135,7 @@ pub const State = struct {
                         self.screen = .settings;
                     },
                     'r', 'R' => self.screen = .reading,
+                    't', 'T' => self.screen = .ssh,
                     else => {},
                 },
                 else => {},
@@ -200,6 +201,7 @@ pub const State = struct {
                 .enter => self.screen = .document,
                 else => {},
             },
+            .ssh => {},
         }
         view.style.ruby_px = @max(8, view.style.body_px / 2);
     }
@@ -211,7 +213,7 @@ pub const State = struct {
                 self.return_screen = .home;
                 self.screen = .settings;
             },
-            6 => self.screen = .reading,
+            6 => self.screen = .ssh,
             else => {},
         }
     }
@@ -221,10 +223,20 @@ pub const State = struct {
     pub const portrait_home_top: u32 = 170;
     pub const portrait_home_pitch: u32 = 156;
     pub const portrait_home_card_height: u32 = 132;
+    pub const portrait_ssh_top: u32 = 1108;
+    pub const portrait_ssh_height: u32 = 80;
+    pub const landscape_ssh_x: u32 = 664;
+    pub const landscape_ssh_y: u32 = 566;
+    pub const landscape_ssh_width: u32 = 568;
+    pub const landscape_ssh_height: u32 = 64;
 
     /// Handles only the portrait Home screen until the other scenes are adapted.
     pub fn touchPortraitHome(self: *State, x: u32, y: u32) linksection(section) void {
         if (self.screen != .home or x < portrait_home_x or x >= portrait_home_x + portrait_home_width or y < portrait_home_top) return;
+        if (y >= portrait_ssh_top and y < portrait_ssh_top + portrait_ssh_height) {
+            self.home_selection = 6;
+            return self.activateHome();
+        }
         const offset = y - portrait_home_top;
         const index = offset / portrait_home_pitch;
         if (index >= 6 or offset % portrait_home_pitch >= portrait_home_card_height) return;
@@ -304,6 +316,10 @@ pub const State = struct {
         }
         switch (self.screen) {
             .home => {
+                if (x >= landscape_ssh_x and x < landscape_ssh_x + landscape_ssh_width and y >= landscape_ssh_y and y < landscape_ssh_y + landscape_ssh_height) {
+                    self.home_selection = 6;
+                    return self.activateHome();
+                }
                 if (y >= 170 and y < 570 and x >= 48 and x < 1232) {
                     const col: u8 = if (x < 640) 0 else 1;
                     const row: u8 = @intCast((y - 170) / 130);
@@ -330,7 +346,7 @@ pub const State = struct {
             .certification => self.screen = .settings,
             .credits => self.screen = .reading,
             .card_view => self.screen = self.return_screen,
-            .examples, .exercise => {},
+            .examples, .exercise, .ssh => {},
             .document => self.home(),
         }
     }
@@ -397,6 +413,26 @@ test "portrait home cards select every destination and gaps do nothing" {
     state.touchPortraitHome(State.portrait_home_x, State.portrait_home_top + State.portrait_home_card_height);
     state.touchPortraitHome(0, State.portrait_home_top);
     try std.testing.expectEqual(Screen.home, state.screen);
+}
+
+test "SSH entry is reachable from home by touch and keyboard" {
+    var view: config.Config = .{};
+    var state: State = .{};
+    state.home();
+    state.touchPortraitHome(State.portrait_home_x + 1, State.portrait_ssh_top + 1);
+    try std.testing.expectEqual(Screen.ssh, state.screen);
+    state.handle(.escape, &view);
+    try std.testing.expectEqual(Screen.home, state.screen);
+    state.touch(State.landscape_ssh_x + 1, State.landscape_ssh_y + 1, &view);
+    try std.testing.expectEqual(Screen.ssh, state.screen);
+    state.handle(.escape, &view);
+    state.handle(.{ .text = 't' }, &view);
+    try std.testing.expectEqual(Screen.ssh, state.screen);
+    state.handle(.escape, &view);
+    state.home_selection = 5;
+    state.handle(.down, &view);
+    state.handle(.enter, &view);
+    try std.testing.expectEqual(Screen.ssh, state.screen);
 }
 
 test "certification screen opens from settings and returns" {

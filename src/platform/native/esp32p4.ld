@@ -318,6 +318,14 @@ SECTIONS
         __flash_xy_start = .;
         *xy_render.o(.text .text.*)
         *(.flash.xytext .flash.xytext.*)
+#if NIH_NATIVE_EXPERIMENTAL_TCP
+        /* Foreground-only network owner; never used by an IRQ or cache-off path. */
+        *(.text.hosted_tcp* .text.tcp_* .text.arp_resolver*)
+        *(.text.network_service.collectRenewals)
+        *(.text.hosted_station.Client.finishIfReady .text.hosted_station.Client.afterBluetooth)
+        *(.text.hosted_station.Client.afterVersion .text.hosted_station.Client.encodeFrame)
+        *(.text.hosted_station.Client.maintain .text.hosted_station.Client.beginDual)
+#endif
         . = ALIGN(16);
         __flash_xy_text_end = .;
     } > flash_xy

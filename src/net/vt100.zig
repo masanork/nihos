@@ -43,6 +43,7 @@ pub const EscState = enum(u8) {
 };
 
 pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: usize) type {
+    if (max_cols == 0 or max_rows == 0) @compileError("terminal dimensions must be nonzero");
     return struct {
         const Self = @This();
 
@@ -79,12 +80,22 @@ pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: 
         hist_count: usize = 0,
 
         pub fn init(cols: u16, rows: u16) Self {
-            var term = Self{
-                .cols = @min(cols, max_cols),
-                .rows = @min(rows, max_rows),
-            };
-            term.reset();
+            // SAFETY: initInPlace initializes all fields and both grids.
+            var term: Self = undefined;
+            term.initInPlace(cols, rows);
             return term;
+        }
+
+        /// Initialize caller-owned storage without a large temporary grid.
+        pub fn initInPlace(self: *Self, cols: u16, rows: u16) void {
+            self.cols = std.math.clamp(cols, 1, max_cols);
+            self.rows = std.math.clamp(rows, 1, max_rows);
+            self.cursor_visible = true;
+            self.csi_params = @splat(0);
+            self.dirty_rows = @splat(true);
+            for (&self.screen) |*row| @memset(row, .{});
+            for (&self.hist) |*row| @memset(row, .{});
+            self.reset();
         }
 
         pub fn reset(self: *Self) void {
@@ -295,7 +306,9 @@ pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: 
                         if (self.csi_nparams == 0) self.csi_nparams = 1;
                         const idx = self.csi_nparams - 1;
                         if (idx < self.csi_params.len) {
-                            self.csi_params[idx] = self.csi_params[idx] * 10 + @as(i32, b - '0');
+                            // A server controls these bytes. Saturate before conversion
+                            // and cursor arithmetic instead of overflowing on long CSI.
+                            self.csi_params[idx] = @min(65535, self.csi_params[idx] *| 10 +| @as(i32, b - '0'));
                         }
                         return;
                     }
@@ -337,7 +350,7 @@ pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: 
             switch (final_ch) {
                 'm' => self.handleSgr(),
                 'A' => { // Cursor Up
-                    const n: u16 = @intCast(if (p0 > 0) p0 else 1);
+                    const n: u16 = @intCast(@min(if (p0 > 0) p0 else 1, @as(i32, self.rows)));
                     if (self.cy >= n) {
                         self.cy -= n;
                     } else {
@@ -346,16 +359,16 @@ pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: 
                     self.dirty_rows[self.cy] = true;
                 },
                 'B' => { // Cursor Down
-                    const n: u16 = @intCast(if (p0 > 0) p0 else 1);
-                    self.cy = @min(self.cy + n, self.rows - 1);
+                    const n: u16 = @intCast(@min(if (p0 > 0) p0 else 1, @as(i32, self.rows)));
+                    self.cy = @min(self.cy +| n, self.rows - 1);
                     self.dirty_rows[self.cy] = true;
                 },
                 'C' => { // Cursor Forward
-                    const n: u16 = @intCast(if (p0 > 0) p0 else 1);
-                    self.cx = @min(self.cx + n, self.cols - 1);
+                    const n: u16 = @intCast(@min(if (p0 > 0) p0 else 1, @as(i32, self.cols)));
+                    self.cx = @min(self.cx +| n, self.cols - 1);
                 },
                 'D' => { // Cursor Back
-                    const n: u16 = @intCast(if (p0 > 0) p0 else 1);
+                    const n: u16 = @intCast(@min(if (p0 > 0) p0 else 1, @as(i32, self.cols)));
                     if (self.cx >= n) {
                         self.cx -= n;
                     } else {
@@ -404,7 +417,7 @@ pub fn Vt100(comptime max_cols: u16, comptime max_rows: u16, comptime max_hist: 
                             self.screen[self.cy][c] = .{ .codepoint = ' ', .fg_rgb565 = ansi_palette[self.cur_fg], .bg_rgb565 = ansi_palette[self.cur_bg] };
                         }
                     } else if (p0 == 1) {
-                        for (0..@min(@as(usize, self.cx + 1), self.cols)) |c| {
+                        for (0..@min(@as(usize, self.cx) + 1, self.cols)) |c| {
                             self.screen[self.cy][c] = .{ .codepoint = ' ', .fg_rgb565 = ansi_palette[self.cur_fg], .bg_rgb565 = ansi_palette[self.cur_bg] };
                         }
                     } else if (p0 == 2) {
@@ -539,4 +552,22 @@ test "VT100 UTF-8 multi-byte decoding" {
     try std.testing.expectEqual(0x306B, term.screen[0][2].codepoint); // 'に'
     try std.testing.expectEqual(0x3061, term.screen[0][3].codepoint); // 'ち'
     try std.testing.expectEqual(0x306F, term.screen[0][4].codepoint); // 'は'
+}
+
+test "untrusted long CSI counts stay bounded and parsing recovers" {
+    var term = Vt100(10, 2, 0).init(0, 0);
+    try std.testing.expectEqual(@as(u16, 1), term.cols);
+    try std.testing.expectEqual(@as(u16, 1), term.rows);
+    term.feed("\x1b[999999999999999999999999999999999B");
+    term.feed("\x1b[999999999999999999999999999999999C");
+    term.feed("\x1b[999999999999999999999999999999999A");
+    term.feed("\x1b[999999999999999999999999999999999D");
+    term.feed("\x1b[999999999999999999999999999999999;999999999999999999999H");
+    term.feed("X");
+    try std.testing.expectEqual(@as(u16, 0), term.cy);
+    try std.testing.expectEqual(@as(u32, 'X'), term.getView().cells[0].codepoint);
+    var wide = Vt100(80, 24, 0).init(80, 24);
+    wide.feed("\x1b[65535;65535H\x1b[65535B\x1b[65535C!");
+    try std.testing.expectEqual(@as(u16, 23), wide.cy);
+    try std.testing.expectEqual(@as(u32, '!'), wide.screen[23][79].codepoint);
 }

@@ -69,10 +69,11 @@ sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
 # owner, which the SDK-free qualification images intentionally eliminate.
 for diagnostic in false true; do
   for ipv6 in false true; do
+    for tcp in false true; do
     printf 'pub const ipv6 = %s;\n' "$ipv6" > "$out_dir/network-config.zig"
-    printf 'pub const network_test = %s;\n' "$diagnostic" > "$out_dir/network-options.zig"
+    printf 'pub const network_test = %s;\npub const experimental_tcp = %s;\n' "$diagnostic" "$tcp" > "$out_dir/network-options.zig"
     "$zig" build-obj -target "$target" -mcpu="$cpu" \
-        -femit-bin="$out_dir/network-$diagnostic-$ipv6.o" --dep network_service --dep timer_group \
+        -femit-bin="$out_dir/network-$diagnostic-$ipv6-$tcp.o" --dep network_service --dep timer_group \
         "-Mroot=$repo_root/tools/probes/network-service.zig" \
         --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
         "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
@@ -85,9 +86,65 @@ for diagnostic in false true; do
         "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
         "-Mnative_options=$out_dir/network-options.zig" \
         "-Mnetwork_config=$out_dir/network-config.zig"
+    done
   done
 done
 echo "Native network owner codegen (normal and diagnostic): ok"
+
+# Force TCP owner operations with the exact Hosted station module instance
+# used by the native network service. This is codegen, not a linked image.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/hosted-tcp-owner.o" --dep hosted_station \
+    "-Mroot=$repo_root/tools/probes/hosted-tcp-owner.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig"
+echo "Experimental Hosted TCP owner RV32 codegen: ok"
+
+# Force the xy VT bridge against the native Hosted SSH owner. Compile-only.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-vt-owner.o" --dep hosted_station --dep ssh_terminal_session --dep sqld_layout --dep text_console \
+    "-Mroot=$repo_root/tools/probes/ssh-vt-owner.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+    "-Msqld_layout=$repo_root/src/platform/native/sqld_layout.zig" \
+    --dep view_config --dep canvas "-Mtext_console=$repo_root/src/console.zig" \
+    --dep surface "-Mcanvas=$repo_root/src/graphics/canvas.zig" \
+    "-Msurface=$repo_root/src/graphics/surface.zig" \
+    --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
+    --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \
+    --dep view_config "-Mviewport_layout=$repo_root/src/graphics/viewport_layout.zig" \
+    "-Mterminal_adapter=$repo_root/src/net/terminal_adapter.zig" \
+    "-Mview_config=$repo_root/src/xy/view_config.zig"
+echo "SSH VT and Hosted session RV32 codegen: ok"
+
+# Full native lifecycle type with the same network and model module instances.
+# The fixture uses fixed material and is never executed.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-workspace.o" --dep ssh_workspace \
+    "-Mroot=$repo_root/tools/probes/ssh-workspace.zig" \
+    --dep network_service --dep text_console --dep ssh_terminal_session --dep ssh_lifecycle \
+    "-Mssh_workspace=$repo_root/src/platform/native/ssh_workspace.zig" \
+    --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
+    "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
+    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+    "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
+    "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
+    "-Mc6_sdio=$repo_root/src/net/c6_sdio.zig" \
+    "-Mat_controller=$repo_root/src/net/at_controller.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+    "-Mnative_options=$out_dir/network-options.zig" \
+    "-Mnetwork_config=$out_dir/network-config.zig" \
+    --dep view_config --dep canvas "-Mtext_console=$repo_root/src/console.zig" \
+    --dep surface "-Mcanvas=$repo_root/src/graphics/canvas.zig" \
+    "-Msurface=$repo_root/src/graphics/surface.zig" \
+    --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
+    --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \
+    --dep view_config "-Mviewport_layout=$repo_root/src/graphics/viewport_layout.zig" \
+    "-Mterminal_adapter=$repo_root/src/net/terminal_adapter.zig" \
+    "-Mview_config=$repo_root/src/xy/view_config.zig" \
+    "-Mssh_lifecycle=$repo_root/src/xy/ssh_lifecycle.zig"
+echo "Native SSH workspace lifecycle RV32 codegen: ok"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
