@@ -418,6 +418,14 @@ def run():
                         cells = "".join(chr(vt.probe_vt_cell(i)) for i in range(80 * 24))
                         if "nihos_ssh_ok" in cells: break
                         if time.monotonic() > deadline: raise TimeoutError("VT output timeout")
+                    for byte in b"printf '\\033[999999999999999999999999C'; printf '\\rVT_%s_OK\\n' BOUND\n":
+                        if not vt.probe_vt_key(byte): raise RuntimeError("VT control sequence queue full")
+                    deadline = time.monotonic() + 20
+                    while True:
+                        if vt_step() == 2: raise RuntimeError("VT session closed during control sequence")
+                        cells = "".join(chr(vt.probe_vt_cell(i)) for i in range(80 * 24))
+                        if "VT_BOUND_OK" in cells: break
+                        if time.monotonic() > deadline: raise TimeoutError("VT control sequence timeout")
                     for byte in b"exit\n":
                         if not vt.probe_vt_key(byte): raise RuntimeError("VT exit queue full")
                     deadline = time.monotonic() + 20

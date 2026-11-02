@@ -36,7 +36,7 @@ var ui: Ui = undefined;
 var initialized = false;
 export fn probe_vt_begin(poll: Poll, read: Read, write: Write) void {
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
-    ui = Ui.init(&backend, "OpenSSH");
+    ui.initInPlace(&backend, "OpenSSH");
     initialized = true;
 }
 export fn probe_vt_poll(random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {

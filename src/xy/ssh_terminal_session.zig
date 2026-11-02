@@ -20,7 +20,19 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         input_len: usize = 0,
 
         pub fn init(backend: *Backend, title: []const u8) Self {
-            return .{ .backend = backend, .screen = vt.Vt100(cols, rows, history).init(cols, rows), .buffer = terminal.TerminalBuffer.init(title, cols, rows) };
+            // SAFETY: initInPlace initializes the backend, grid and queue.
+            var self: Self = undefined;
+            self.initInPlace(backend, title);
+            return self;
+        }
+        /// Initialize the terminal grid in its final caller-owned location.
+        pub fn initInPlace(self: *Self, backend: *Backend, title: []const u8) void {
+            self.backend = backend;
+            self.screen.initInPlace(cols, rows);
+            self.buffer = terminal.TerminalBuffer.init(title, cols, rows);
+            self.state = .connecting;
+            self.input = @splat(0);
+            self.input_len = 0;
         }
         /// Enqueue a complete key sequence or reject it without dropping bytes.
         pub fn key(self: *Self, code: terminal.KeyCode, cp: ?u21) error{ NotReady, InputFull, InvalidKey }!void {

@@ -63,7 +63,9 @@ consumption, connection epoch checks and the remote close acknowledgement.
 `ssh_hosted_session.zig` composes these with the Hosted TCP adapter in a
 caller-owned, stable object; an opt-in native factory exposes it on CPU0.
 The experimental image reserves 128 KiB in the boot-admitted sqld PSRAM
-region, and keeps its single borrow until explicit release after reset.
+region: 88 KiB for the session and 40 KiB for its future VT state. The session
+borrow remains reserved until explicit release after reset; the VT area is not
+yet bound to a native screen.
 The xy `ssh_terminal_session.zig` bridge feeds received bytes into VT100 and
 queues encoded keys with bounded backpressure; the host OpenSSH fixture checks
 that path through the Hosted session. The home screen and native rendering are
