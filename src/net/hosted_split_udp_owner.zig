@@ -7,6 +7,18 @@ const probe = @import("hosted_split_udp_probe.zig");
 const udp = @import("long_udp_probe.zig");
 pub const Peer = probe.Peer;
 
+pub const Acquisition = enum { pump, drain, ready };
+/// Once the address owner is ready, never call its tx() again: that would
+/// enqueue the unrelated C6 time service. Drain an incomplete frame first.
+pub fn acquisition(exchange: *const time.Exchange, decoder: *const wire.Decoder) error{WrongState}!Acquisition {
+    if (decoder.poisoned) return error.WrongState;
+    return switch (exchange.phase) {
+        .station, .address => .pump,
+        .ready => if (decoder.used == 0) .ready else .drain,
+        else => error.WrongState,
+    };
+}
+
 pub const Phase = enum { queued, waiting, complete, failed };
 pub const Owner = struct {
     exchange: *time.Exchange,

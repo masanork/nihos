@@ -576,7 +576,15 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
         };
         const now = clock.counter() orelse return error.Clock;
         if (clock_failed or now < started) return error.Clock;
-        if (hosted_time.phase == .ready and hosted_decoder.used == 0) {
+        if (now >= hosted_time.deadline) return error.Timeout;
+        const acquisition = try hosted.split_udp_owner.acquisition(&hosted_time, &hosted_decoder);
+        if (acquisition == .drain) {
+            // A split control frame must finish before transferring ownership;
+            // calling tx here would start an unrelated C6 time request.
+            host.io.delay(100);
+            continue;
+        }
+        if (acquisition == .ready) {
             const address = hosted_time.addresses.address orelse return error.Stale;
             report.ip = address.ip;
             report.netmask = address.mask;
@@ -639,6 +647,11 @@ pub fn runHostedSplitUdp(clock: timers.Timer, join: hosted.Join) Report {
     report.fw_patch = hosted_time.station.version[2];
     report.peer_chip = hosted_time.station.peer_chip;
     report.connected_events = @intFromBool(hosted_time.station.connected);
+    report.hosted_phase = @backingInt(hosted_time.station.phase) + 1;
+    report.hosted_frames = hosted_time.station.frames;
+    report.hosted_priv = hosted_time.station.priv_events;
+    report.rpc_status = hosted_time.station.rpc_status;
+    report.rpc_response = hosted_time.last_rpc_id;
     return snapshot(report);
 }
 noinline fn exerciseHostedTime(clock: timers.Timer, report: *TimeReport, join: hosted.Join) !void {

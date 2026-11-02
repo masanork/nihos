@@ -7,6 +7,18 @@ const mod = @import("hosted_split_udp_owner.zig");
 const local = [6]u8{ 2, 1, 2, 3, 4, 5 };
 const peer = probe.Peer{ .ip = 0xc0a80127, .mac = .{ 2, 6, 7, 8, 9, 10 }, .port = 44444 };
 
+test "handoff drains incomplete frames and never starts a time request" {
+    var e = exchange();
+    var decoder = wire.Decoder{};
+    try std.testing.expectEqual(mod.Acquisition.ready, try mod.acquisition(&e, &decoder));
+    decoder.used = 1;
+    try std.testing.expectEqual(mod.Acquisition.drain, try mod.acquisition(&e, &decoder));
+    e.phase = .address;
+    try std.testing.expectEqual(mod.Acquisition.pump, try mod.acquisition(&e, &decoder));
+    e.phase = .waiting;
+    try std.testing.expectError(error.WrongState, mod.acquisition(&e, &decoder));
+}
+
 fn exchange() time.Exchange {
     var e = time.Exchange{};
     e.phase = .ready;
