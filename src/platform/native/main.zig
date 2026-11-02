@@ -1115,6 +1115,11 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                 if (network.storage_bytes > region.network_experiment_bytes) @compileError("experimental network state exceeds its reservation");
             }
             if (!region.admitted(external_bytes, external_heap_start, external_heap_bytes)) fail("experimental network PSRAM reservation");
+            comptime {
+                if (@sizeOf(network.ExperimentalSshSession) > region.ssh_experiment_bytes) @compileError("experimental SSH state exceeds its reservation");
+                if (region.ssh_experiment % @alignOf(network.ExperimentalSshSession) != 0) @compileError("experimental SSH state is misaligned");
+            }
+            network.bindExperimentalSshStorage(@ptrFromInt(region.ssh_experiment)) catch fail("experimental SSH storage binding");
             break :blk @as(*align(64) [network.storage_bytes]u8, @ptrFromInt(region.network_experiment));
         } else ui.serviceBacking(network.storage_bytes);
         network.begin(ui.timer(), if (!network_config.enabled) .disabled else if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, network_backing);

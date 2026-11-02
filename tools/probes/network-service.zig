@@ -3,6 +3,9 @@ const network = @import("network_service");
 const timers = @import("timer_group");
 
 export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_bytes]u8, ssh: *network.ExperimentalSshSession) u32 {
+    network.bindExperimentalSshStorage(ssh) catch |err| {
+        if (err != error.TcpDisabled) return 0;
+    };
     network.begin(timers.Timer.fromGroup(0x500c3000, 0).?, .saved, backing);
     network.poll();
     var tcp_result: u32 = 0;
@@ -25,6 +28,12 @@ export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_b
             _ = ssh.read(now, &padding, &buffer) catch return 0;
             _ = ssh.write(now, &padding, &buffer) catch return 0;
             ssh.abort();
+        } else |_| {}
+        if (network.experimentalSshReservedStart(handle, 5_000_000, 5000, @splat(1), @splat(2), @splat(3), 80, 24)) |reserved| {
+            const now = network.experimentalSshSessionNow() catch return 0;
+            const padding: [32]u8 = @splat(4); // Code generation only.
+            _ = reserved.poll(now, &padding, "probe", @splat(5)) catch return 0;
+            network.experimentalSshReservedRelease(reserved) catch return 0;
         } else |_| {}
         network.experimentalTcpCloseWrite(handle, 5_000_000) catch return 0;
         _ = network.experimentalTcpCloseComplete(handle) catch false;

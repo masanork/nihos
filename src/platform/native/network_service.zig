@@ -126,6 +126,36 @@ pub fn experimentalSshSessionStart(backing: *ExperimentalSshSession, handle: Exp
     const adapter = try ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
     backing.begin(adapter, now, deadline_us, secret, pin, cookie, cols, rows);
 }
+// The boot path binds this address only after PSRAM reservation admission.
+// SAFETY: accessed only while reserved_ssh_slot is bound on CPU0.
+var reserved_ssh: *ExperimentalSshSession = undefined;
+var reserved_ssh_slot: hosted.ssh_reservation.Slot = .{};
+/// Bind once during CPU0 boot, before begin and before any session exists.
+pub fn bindExperimentalSshStorage(backing: *ExperimentalSshSession) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    try reserved_ssh_slot.bind();
+    reserved_ssh = backing;
+}
+/// The returned address is exclusively borrowed until release, including after
+/// a network reset. The owner must not copy it or retain it after release.
+pub fn experimentalSshReservedStart(handle: ExperimentalTcpHandle, deadline_us: u64, write_timeout_ms: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, cols: u32, rows: u32) !*ExperimentalSshSession {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    try reserved_ssh_slot.checkAvailable();
+    try experimentalSshSessionStart(reserved_ssh, handle, deadline_us, write_timeout_ms, secret, pin, cookie, cols, rows);
+    reserved_ssh_slot.claim();
+    return reserved_ssh;
+}
+pub fn experimentalSshReservedRelease(backing: *ExperimentalSshSession) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    if (!reserved_ssh_slot.bound or !reserved_ssh_slot.owned or backing != reserved_ssh) return error.InvalidArgument;
+    revokeReservedSsh();
+    try reserved_ssh_slot.release();
+}
+// Keep the borrow reserved until explicit release, so reset cannot hand its
+// storage to a second caller while the first caller still has a pointer.
+fn revokeReservedSsh() void {
+    if (experimental_tcp and reserved_ssh_slot.revoke()) reserved_ssh.abort();
+}
 /// Use the same monotonic source for session poll/read/write. The caller must
 /// continue polling the network owner between SSH operations, and must abort
 /// the session if this clock becomes unavailable or on cancellation.
@@ -213,6 +243,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
 }
 // Foreground-only reconnect path; Flash is mapped before network begin.
 noinline fn startAttempt(now: u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
+    if (experimental_tcp) revokeReservedSsh();
     if (experimental_tcp) tcp_state.reset() catch {
         phase = .failed;
         return;
@@ -253,6 +284,7 @@ fn collectRenewals() void {
     }
 }
 noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
+    if (experimental_tcp) revokeReservedSsh();
     const tcp_reset_failed = if (experimental_tcp) blk: {
         tcp_state.reset() catch break :blk true;
         break :blk false;

@@ -62,6 +62,8 @@ authentication and an interactive PTY shell, with a bounded startup deadline.
 consumption, connection epoch checks and the remote close acknowledgement.
 `ssh_hosted_session.zig` composes these with the Hosted TCP adapter in a
 caller-owned, stable object; an opt-in native factory exposes it on CPU0.
+The experimental image reserves 128 KiB in the boot-admitted sqld PSRAM
+region, and keeps its single borrow until explicit release after reset.
 Production entropy, credential storage and the native application remain
 outside these components.
 
