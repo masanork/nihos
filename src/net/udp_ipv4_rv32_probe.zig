@@ -39,6 +39,9 @@ export fn udp_ipv4_probe_lease(state: *const split.State, data: [*]const u8, len
 }
 
 const CompileStream = struct {
+    pub fn receive(_: *@This(), _: []u8) error{Fault}!usize {
+        return 0;
+    }
     pub fn send(_: *@This(), _: []const u8) error{Fault}!usize {
         return 0;
     }
@@ -48,14 +51,20 @@ const CompileStream = struct {
     pub fn invalidate(_: *@This()) void {}
 };
 
+const CompileHandler = struct {
+    pub fn receive(_: *@This(), _: @import("hosted.zig").Frame, _: u64) error{Fault}!void {}
+};
+
 export fn udp_ipv4_probe_sender(state: *split.State, data: [*]const u8, length: usize) usize {
     const binding = lease.Lease.open(state, .{ 2, 0, 0, 0, 0, 2 }, 49152, .{ .first = 49152, .last = 61439 }) catch return 0;
     var tx = sender.Sender.init(state, binding) catch return 0;
     const peer = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 1 }, .ip = .{ 192, 0, 2, 1 }, .port = 443 };
     tx.enqueue(peer, data[0..length], 1, 1, 3) catch return 0;
     var stream: CompileStream = .{};
-    const decoder: @import("hosted.zig").Decoder = .{};
-    const result = tx.poll(&stream, 2, &decoder, true) catch return 0;
+    var decoder: @import("hosted.zig").Decoder = .{};
+    var handler: CompileHandler = .{};
+    var rx: [512]u8 = undefined;
+    const result = tx.step(&stream, &decoder, &handler, &rx, 2) catch return 0;
     if (result == .pending) tx.cancel() catch return 0;
     tx.invalidate(&stream);
     return if (result == .pending) 1 else 2;

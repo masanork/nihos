@@ -55,6 +55,30 @@ pub const Sender = struct {
         if (self.phase != .retired) self.retire(stream, true);
     }
 
+    /// Read at most one 512-byte chunk, dispatch each complete borrowed frame
+    /// synchronously, then attempt a send only after an empty read. `handler`
+    /// must apply all relevant control events to the same exclusively owned
+    /// state before returning, and must not retain the borrowed frame. A new
+    /// peer INIT denotes reset. Data and other events are also dispatched.
+    pub fn step(self: *Sender, stream: anytype, decoder: *hosted.Decoder, handler: anytype, rx: *[512]u8, now: u64) !Outcome {
+        if (self.phase == .retired) return error.Retired;
+        if (self.phase != .queued) return error.Busy;
+        // Do not touch transport when the deadline, binding or decoder has
+        // already failed; poll performs the corresponding retirement.
+        if (now < self.last_now or now >= self.deadline or decoder.poisoned)
+            return self.poll(stream, now, decoder, false);
+        self.binding.check(self.state) catch return self.poll(stream, now, decoder, false);
+        errdefer self.invalidate(stream);
+        const count = try stream.receive(rx);
+        if (count > rx.len) return error.InvalidBuffer;
+        for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
+            if (frame.interface == 5) return error.Stale;
+            try handler.receive(frame, now);
+            try self.binding.check(self.state);
+        };
+        return self.poll(stream, now, decoder, count == 0);
+    }
+
     /// `drained` is true only after the exclusive caller has received zero
     /// bytes and applied all decoded control events in this ownership turn.
     /// An incomplete decoder or undrained input prevents transmission. Zero

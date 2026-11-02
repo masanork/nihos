@@ -75,6 +75,16 @@ processes at most one 512-byte receive chunk per poll and can then send, so it
 cannot pass this gate merely because one chunk was processed. Runtime
 integration must preserve bounded fairness while draining and handling events.
 
+`Sender.step` is an opt-in helper that performs one receive of at most 512
+bytes, decodes and synchronously dispatches each complete borrowed frame,
+then sends only after an empty read. The supplied handler must apply all
+relevant control events to the same exclusively owned state and must not keep
+borrowed frames. A peer INIT, receive error, decoder error or handler error
+retires the sender and stream; the current address is invalidated when still
+owned. Incomplete input continues to respect the send deadline. This helper
+does not bind into the native service and does not eliminate arrivals racing
+an empty read.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
