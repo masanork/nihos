@@ -14,7 +14,11 @@ pub const Error = arp.Error || hosted.Error || binding.Error || error{ Busy, Dea
 pub const Route = struct {
     const Phase = enum { idle, resolving, resolved, failed };
     phase: Phase = .idle,
-    lease: binding.Lease = undefined,
+    lease: binding.Lease = .{
+        .generation = 0,
+        .address = .{ .ip = 0, .mask = 0, .gateway = 0, .dns = 0 },
+        .local = .{ .mac = @splat(0), .ip = @splat(0), .port = 0 },
+    },
     resolver: arp.Resolver = .{},
     target: [4]u8 = @splat(0),
     port: u16 = 0,

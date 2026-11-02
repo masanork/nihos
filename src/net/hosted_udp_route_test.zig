@@ -26,6 +26,14 @@ fn reply(request: []const u8, next_hop: [4]u8) [42]u8 {
     return out;
 }
 
+test "a new route cannot expose or send an unbound lease" {
+    const s = ready();
+    var r: route.Route = .{};
+    try t.expectError(error.InvalidState, r.poll(&s, 1, 1));
+    try t.expectError(error.InvalidState, r.result(&s, 1));
+    try t.expectError(error.InvalidState, r.sent(&s, 1));
+}
+
 test "on-link resolution holds a stable request and feeds the generic sender" {
     var s = ready();
     const l = try bind(&s);
