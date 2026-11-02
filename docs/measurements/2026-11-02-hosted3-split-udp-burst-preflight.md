@@ -35,3 +35,7 @@ already been read and digest-verified against
 the existing P4 firmware was reset, but its subsequent boot was not captured.
 The exclusive serial and writer leases were released. Private artifacts are
 under `/private/tmp/nihos-hosted3-split-udp-burst-physical-20261102-v2/`.
+
+The later [2026-11-03 burst](2026-11-03-hosted3-split-udp-burst.md) completed
+16 paired round trips and verified restoration. It does not independently
+decode error 23 or prove the cause of this first preflight failure.
