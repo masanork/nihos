@@ -1,6 +1,16 @@
 //! Internal borrowed render request. No ownership crosses the C boundary.
 pub const Config = @import("view_config").Config;
 pub const RubySpan = @import("document.zig").RubySpan;
+/// Borrowed VT cells remain immutable for the duration of a foreground draw.
+/// `cells` points to `cols * rows` terminal_adapter.Cell values.
+pub const TerminalView = extern struct {
+    cols: u16,
+    rows: u16,
+    cursor_col: u16,
+    cursor_row: u16,
+    cursor_visible: bool,
+    cells: [*]const u8,
+};
 pub const Request = extern struct {
     workspace: *anyopaque,
     learning: ?*@import("learning_session.zig").Session = null,

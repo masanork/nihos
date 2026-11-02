@@ -69,7 +69,9 @@ yet bound to a native screen.
 The xy `ssh_terminal_session.zig` bridge feeds received bytes into VT100 and
 queues encoded keys with bounded backpressure; the host OpenSSH fixture checks
 that path through the Hosted session. The native renderer can paint a borrowed
-terminal view, but the home screen and native caller are not wired. Production entropy and credential storage remain outside these
+terminal view through the guarded foreground stack. The xy model can attach a
+terminal port for input and rendering; the home screen and native session
+lifecycle are not wired. Production entropy and credential storage remain outside these
 components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using

@@ -66,7 +66,9 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             if (view.cols == 0 or view.rows == 0 or view.cols > 80 or view.rows > 24) return error.Geometry;
             const width: u32 = @intCast(target.width);
             const height: u32 = @intCast(target.height);
-            const usable = height -| request.reserved_bottom_px;
+            const keyboard_top = height -| request.reserved_bottom_px;
+            const status_height: u32 = if (request.status_length == 0) 0 else 20;
+            const usable = keyboard_top -| status_height;
             const cell_w = width / view.cols;
             const cell_h = @min(usable / view.rows, cell_w * 2);
             if (cell_w < 8 or cell_h < 8) return error.Geometry;
@@ -113,6 +115,18 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             if (view.cursor_visible and view.cursor_col < view.cols and view.cursor_row < view.rows) {
                 const cell = view.cells[@as(usize, view.cursor_row) * view.cols + view.cursor_col];
                 _ = target.fillRect(@intCast(@as(usize, view.cursor_col) * cell_w), @intCast((@as(usize, view.cursor_row) + 1) * cell_h - 2), cell_w, 2, cell.fg_rgb565);
+            }
+            if (status_height != 0) {
+                _ = target.fillRect(0, @intCast(usable), width, status_height, 0x2104);
+                var pen: i32 = 4;
+                for (request.status[0..@min(request.status_length, 384)]) |byte| {
+                    if (byte < 32 or byte >= 127) continue;
+                    const glyph = try self.cache.getOrRender(family, 0, byte, 0, 16, false, &self.scratch);
+                    if (pen + 16 > @as(i32, @intCast(width))) break;
+                    const mask = adapter.surface.Mask{ .bytes = glyph.alpha, .width = glyph.metrics.width, .height = glyph.metrics.height, .stride = glyph.metrics.width };
+                    _ = target.blit(mask, pen + glyph.metrics.left_px, @as(i32, @intCast(usable)) + 16 - glyph.metrics.top_px, 0xffff);
+                    pen += @divTrunc(glyph.metrics.x_advance_26_6 + 32, 64);
+                }
             }
         }
         /// Portrait document rendering into the panel's unrotated 720x1280 surface.

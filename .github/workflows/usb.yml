@@ -163,6 +163,7 @@ jobs:
         run: |
           sh tools/build-native.sh device integer
           grep -Fx 'pub const keyboard_i2c = true;' build/native-device-network-devices-camera-sqld/native_options.zig
+          python3 -c 'import json; a=json.load(open("build/native-device-network-devices-camera-sqld/image-audit.json")); assert "network_service.timePoll" in a["xy_scheme"]["functions"]; assert a["heap"]["bytes"] >= 49152'
           mkdir -p build/usb-ci/default-connected
           cp build/native-device-network-devices-camera-sqld/nihos-native.elf \
              build/native-device-network-devices-camera-sqld/nihos-native.bin \
@@ -180,7 +181,7 @@ jobs:
           NIHOS_NATIVE_EXPERIMENTAL_TCP=1 sh tools/build-native.sh device integer
           dir=build/native-device-network-tcp-experiment-devices-camera-sqld
           grep -Fx 'pub const experimental_tcp = true;' "$dir/native_options.zig"
-          python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); assert {"network_service.tcpPoll", "network_service.tcpReceive", "tcp_link.Link.poll"}.issubset(a["xy_scheme"]["functions"]); assert a["heap"]["bytes"] >= 49152' "$dir/image-audit.json"
+          python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); assert {"network_service.tcpPoll", "network_service.tcpReceive", "tcp_link.Link.poll", "native_render_entry.nih_xy_render_terminal", "nih_xy_render_terminal_call"}.issubset(a["xy_scheme"]["functions"]); assert a["heap"]["bytes"] >= 49152' "$dir/image-audit.json"
           mkdir -p build/usb-ci/tcp-experiment
           cp "$dir/image-audit.json" "$dir/native_options.zig" build/usb-ci/tcp-experiment/
 

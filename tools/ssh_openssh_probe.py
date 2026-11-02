@@ -380,12 +380,14 @@ def run():
                 if hosted_vt:
                     vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
                     subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
-                        "--dep", "ssh_terminal_session", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
+                        "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
                         "--dep", "vt100", "--dep", "terminal_buffer", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
                         "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
                         "--dep", "viewport_layout", "--dep", "terminal_adapter", "--dep", "vt100", "-Mterminal_buffer=src/xy/terminal_buffer.zig",
                         "--dep", "view_config", "-Mviewport_layout=src/graphics/viewport_layout.zig",
-                        "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig"], cwd=ROOT, check=True)
+                        "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig",
+                        "--dep", "view_config", "--dep", "canvas", "-Mtext_console=src/console.zig",
+                        "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig"], cwd=ROOT, check=True)
                     vt = c.CDLL(str(vt_lib))
                     poll_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p)
                     io_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t)

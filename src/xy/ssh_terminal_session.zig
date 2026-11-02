@@ -40,9 +40,38 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
             var bytes: [4]u8 = undefined;
             const len = terminal.TerminalBuffer.encodeKey(code, cp, &bytes);
             if (len == 0) return error.InvalidKey;
-            if (len > self.input.len - self.input_len) return error.InputFull;
-            @memcpy(self.input[self.input_len..][0..len], bytes[0..len]);
-            self.input_len += len;
+            try self.queueBytes(bytes[0..len]);
+        }
+        /// Atomically queue already encoded UTF-8 or control bytes.
+        pub fn queueBytes(self: *Self, bytes: []const u8) error{ NotReady, InputFull }!void {
+            if (self.state != .ready) return error.NotReady;
+            if (bytes.len > self.input.len - self.input_len) return error.InputFull;
+            @memcpy(self.input[self.input_len..][0..bytes.len], bytes);
+            self.input_len += bytes.len;
+        }
+        /// Build an xy attachment without retaining credentials or copying this
+        /// session. Detach before destroying this object; its native owner
+        /// must separately close TCP and release the reserved session storage.
+        pub fn port(self: *Self, comptime Port: type) Port {
+            const Callbacks = struct {
+                fn snapshot(context: *anyopaque, out: *Port.View) bool {
+                    const owner: *Self = @ptrCast(@alignCast(context));
+                    if (owner.state != .ready) return false;
+                    const v = owner.view();
+                    out.* = .{ .cols = v.cols, .rows = v.rows, .cursor_col = v.cursor_col, .cursor_row = v.cursor_row, .cursor_visible = v.cursor_visible, .cells = @ptrCast(v.cells) };
+                    return true;
+                }
+                fn write(context: *anyopaque, bytes: []const u8) bool {
+                    const owner: *Self = @ptrCast(@alignCast(context));
+                    owner.queueBytes(bytes) catch return false;
+                    return true;
+                }
+                fn close(context: *anyopaque) void {
+                    const owner: *Self = @ptrCast(@alignCast(context));
+                    owner.cancel();
+                }
+            };
+            return .{ .context = self, .snapshot = Callbacks.snapshot, .write = Callbacks.write, .close = Callbacks.close };
         }
         /// Bounded to one backend poll, one 256-byte read and one partial write.
         /// Fresh cryptographic padding is needed on every call.
@@ -52,6 +81,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
                 std.crypto.secureZero(u8, &self.input);
                 self.input_len = 0;
                 self.backend.abort();
+                std.crypto.secureZero(u8, std.mem.asBytes(&self.screen));
                 return err;
             };
         }
@@ -90,6 +120,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         pub fn cancel(self: *Self) void {
             self.backend.abort();
             std.crypto.secureZero(u8, &self.input);
+            std.crypto.secureZero(u8, std.mem.asBytes(&self.screen));
             self.input_len = 0;
             self.state = .closed;
         }
@@ -149,6 +180,7 @@ test "terminal bridges fragmented output and preserves partial key writes" {
     backend.fail_read = true;
     try std.testing.expectError(error.Backend, session.poll(30, &random, "user", @splat(0)));
     try std.testing.expect(std.mem.allEqual(u8, &session.input, 0));
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&session.screen), 0));
     try std.testing.expect(backend.aborted);
     try std.testing.expectError(error.NotReady, session.key(.enter, null));
     var other: Mock = .{};
@@ -157,6 +189,53 @@ test "terminal bridges fragmented output and preserves partial key writes" {
     try canceled.key(.enter, null);
     canceled.cancel();
     try std.testing.expect(other.aborted and canceled.input_len == 0);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&canceled.screen), 0));
+
+    // Exercise xy's actual attachment and input routing, including a UTF-8
+    // insertion and Ctrl-C without mutating the editor document.
+    const console = @import("text_console");
+    var attached_backend: Mock = .{};
+    var attached = Session(Mock, 10, 2, 0).init(&attached_backend, "attached");
+    _ = try attached.poll(1, &random, "user", @splat(0));
+    const model = try std.testing.allocator.create(console.scratch.Model);
+    defer std.testing.allocator.destroy(model);
+    model.initInPlace();
+    model.nav.home();
+    try std.testing.expect(model.attachTerminal(attached.port(console.scratch.TerminalPort)));
+    try std.testing.expect(!model.attachTerminal(attached.port(console.scratch.TerminalPort)));
+    try std.testing.expect(model.softKeyboardVisible());
+    model.handle(.{ .text = 'a' });
+    model.handle(.up);
+    model.handle(.cancel);
+    for ("あ", 0..) |byte, i| model.feedSerial(byte, 1000 + i);
+    model.insert("い");
+    var rects: [console.scratch.soft_keyboard.max_keys]console.scratch.soft_keyboard.KeyRect = undefined;
+    var touched = false;
+    for (console.scratch.soft_keyboard.layoutIn(&rects, model.soft_keyboard_state, model.touchOrientation())) |rect| {
+        if (rect.action == .char and rect.action.char == 'b') {
+            model.touch(rect.x + rect.w / 2, rect.y + rect.h / 2);
+            touched = true;
+            break;
+        }
+    }
+    try std.testing.expect(touched);
+    try std.testing.expectEqualStrings("a\x1b[A\x03あいb", attached.input[0..attached.input_len]);
+    try std.testing.expectEqual(@as(usize, 0), model.doc.len);
+    var snapshot: console.xy_render_protocol.TerminalView = undefined;
+    try std.testing.expect(model.terminalSnapshot(&snapshot));
+    try std.testing.expectEqual(@as(u16, 10), snapshot.cols);
+    const free = attached.input.len - attached.input_len;
+    const fill: [128]u8 = @splat('x');
+    try attached.queueBytes(fill[0..free]);
+    model.handle(.right);
+    try std.testing.expectEqual(console.scratch.Status.buffer_full, model.status);
+    try std.testing.expectEqual(attached.input.len, attached.input_len);
+    const revision = model.revision;
+    model.terminalChanged();
+    try std.testing.expect(model.revision != revision);
+    model.detachTerminal();
+    try std.testing.expect(attached_backend.aborted and model.terminal == null);
+    try std.testing.expect(!model.terminalSnapshot(&snapshot));
 }
 
 test "Hosted session backend matches terminal bridge contract" {

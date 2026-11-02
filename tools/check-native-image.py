@@ -242,13 +242,14 @@ XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string'
               'numericCall', 'safeNumericExpr', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'applyKeyboardPresence', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
+XY_HOST_METHODS = {'attachTerminal', 'detachTerminal', 'terminalSnapshot', 'terminalChanged', 'statusText', 'initInPlace', 'resetScheme', 'schemeError', 'evaluate', 'schemeCall', 'handle', 'insert', 'feedHid', 'feedSerial', 'expireSerial', 'openSystem', 'appendCommand', 'touch', 'cameraCapture', 'cameraInfo', 'cameraRead', 'cardRead', 'cardInfo', 'cardDismiss', 'showCardView', 'storageCall', 'saveDocument', 'loadDocument', 'documentText', 'replayInput', 'evaluateOnStack', 'setPhysicalKeyboard', 'applyKeyboardPresence', 'softKeyboardVisible', 'touchDown', 'touchMove', 'touchCancel', 'touchOrientation', 'imeRoute', 'imeKey', 'imeProvider', 'emptyImeQuery'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
 # helpers must not acquire a route into the PSRAM render stack.
 XY_RENDER_FUNCTIONS = {
-    'native_render_entry.nih_xy_render', 'native_render_entry.nih_xy_render_init',
+    'native_render_entry.nih_xy_render', 'native_render_entry.nih_xy_render_terminal',
+    'nih_xy_render_terminal', 'nih_xy_render_terminal_call', 'native_render_entry.nih_xy_render_init',
     'native_render_entry.nih_xy_render_bytes', 'native_render_entry.nih_xy_render_learning',
     'nih_xy_render_learning', 'rotated_surface.Rotated.blit',
     'rotated_surface.Rotated.paint', 'rotated_surface.Rotated.blitLinear',

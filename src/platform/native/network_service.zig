@@ -548,7 +548,9 @@ pub fn configure(join: hosted.Join) !void {
 
 /// Called after the station's own tx() maintenance. Shares its monotonic epoch;
 /// DNS/NTP failures stay local and never reset C6 or revoke the DHCP lease.
-noinline fn timePoll(now: u64) linksection(if (experimental_tcp) ".flash.xytext" else ".flash.text.time") !bool {
+// Foreground network work can share the mapped xy Flash page. Keep the boot
+// page for startup and PMP, including in the standard connected xy image.
+noinline fn timePoll(now: u64) linksection(if (experimental_tcp or (@hasDecl(options, "xy_workspace") and options.xy_workspace)) ".flash.xytext" else ".flash.text.time") !bool {
     const v4 = client.dhcp_client orelse {
         state_storage.time.disconnect();
         return false;

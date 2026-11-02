@@ -85,6 +85,9 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
 
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
+        for name in ('native_render_entry.nih_xy_render_terminal', 'nih_xy_render_terminal', 'nih_xy_render_terminal_call'):
+            with self.subTest(name=name): self.assertTrue(MODULE.xy_function(name))
+        self.assertFalse(MODULE.xy_function('nih_xy_render_terminal_unapproved'))
         self.assertTrue(MODULE.xy_function('diagnostic_ui.paintTouchControl'))
         self.assertTrue(MODULE.xy_function('viewport_layout.layoutParagraph__func_1'))
         self.assertTrue(MODULE.xy_function('render_session.SizedSession(2048).render'))
@@ -92,6 +95,10 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(512).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
+        for name in ('attachTerminal', 'detachTerminal', 'terminalSnapshot', 'terminalChanged'):
+            with self.subTest(name=name): self.assertTrue(MODULE.xy_function('xy.scratch.Model.' + name))
+        self.assertFalse(MODULE.xy_function('xy.scratch.Model.unapprovedTerminal'))
+        self.assertTrue(MODULE.xy_function('xy.scratch.Model.statusText'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.setPhysicalKeyboard'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.softKeyboardVisible'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.touchCancel'))

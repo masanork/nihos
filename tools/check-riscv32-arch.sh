@@ -101,10 +101,13 @@ echo "Experimental Hosted TCP owner RV32 codegen: ok"
 
 # Force the xy VT bridge against the native Hosted SSH owner. Compile-only.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-vt-owner.o" --dep hosted_station --dep ssh_terminal_session --dep sqld_layout \
+    -femit-bin="$out_dir/ssh-vt-owner.o" --dep hosted_station --dep ssh_terminal_session --dep sqld_layout --dep text_console \
     "-Mroot=$repo_root/tools/probes/ssh-vt-owner.zig" \
     "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
     "-Msqld_layout=$repo_root/src/platform/native/sqld_layout.zig" \
+    --dep view_config --dep canvas "-Mtext_console=$repo_root/src/console.zig" \
+    --dep surface "-Mcanvas=$repo_root/src/graphics/canvas.zig" \
+    "-Msurface=$repo_root/src/graphics/surface.zig" \
     --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
     --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
     --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \

@@ -37,6 +37,15 @@ const status_4 linksection(scheme.data_section) = "Command too long; cancel or e
 const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
 
 pub const LearningSession = @import("learning_session.zig").Session;
+/// CPU0-only terminal attachment. The producer keeps the cells and context
+/// alive until detach; each snapshot is borrowed only for the current draw.
+pub const TerminalPort = struct {
+    pub const View = @import("render_protocol.zig").TerminalView;
+    context: *anyopaque,
+    snapshot: *const fn (*anyopaque, *View) bool,
+    write: *const fn (*anyopaque, []const u8) bool,
+    close: *const fn (*anyopaque) void,
+};
 pub const Model = struct {
     camera: camera.Client,
     card: card.Client,
@@ -44,6 +53,7 @@ pub const Model = struct {
     doc: Doc,
     nav: navigation.State,
     learning: ?*@import("learning_session.zig").Session,
+    terminal: ?TerminalPort,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -100,6 +110,30 @@ pub const Model = struct {
         self.revision = 1;
         self.resetScheme();
     }
+    /// Caller retains the context and cell storage until detach; no screen is
+    /// made available without an attached, explicitly started backend.
+    pub fn attachTerminal(self: *Model, port: TerminalPort) linksection(scheme.code_section) bool {
+        if (self.terminal != null or self.vm.running) return false;
+        self.terminal = port;
+        self.mode = .edit;
+        self.status = .none;
+        self.changed();
+        return true;
+    }
+    pub fn detachTerminal(self: *Model) linksection(scheme.code_section) void {
+        const port = self.terminal orelse return;
+        self.terminal = null;
+        port.close(port.context);
+        self.changed();
+    }
+    pub fn terminalSnapshot(self: *const Model, out: *TerminalPort.View) linksection(scheme.code_section) bool {
+        const port = self.terminal orelse return false;
+        return port.snapshot(port.context, out);
+    }
+    /// The CPU0 session owner calls this after output or a visible state change.
+    pub fn terminalChanged(self: *Model) linksection(scheme.code_section) void {
+        if (self.terminal != null) self.changed();
+    }
     fn changed(self: *Model) void {
         self.revision +%= 1;
     }
@@ -148,6 +182,11 @@ pub const Model = struct {
         }
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
+        if (self.terminal) |port| {
+            self.status = if (port.write(port.context, text)) .none else .buffer_full;
+            self.changed();
+            return;
+        }
         if (self.nav.screen == .exercise) {
             if (self.learning) |l| l.insert(text) catch |err| l.notice(err);
             self.changed();
@@ -215,6 +254,28 @@ pub const Model = struct {
         }
         self.status = .none;
         self.changed();
+        if (self.terminal) |port| {
+            var one: [1]u8 = undefined;
+            const bytes: []const u8 = switch (key) {
+                .text => |byte| blk: {
+                    one[0] = byte;
+                    break :blk &one;
+                },
+                .enter => "\r",
+                .backspace => "\x7f",
+                .left => "\x1b[D",
+                .right => "\x1b[C",
+                .up => "\x1b[A",
+                .down => "\x1b[B",
+                .escape => "\x1b",
+                .cancel => "\x03",
+                .eof => "\x04",
+                .clear => "\x0c",
+                .undo => "\x1a",
+            };
+            if (!port.write(port.context, bytes)) self.status = .buffer_full;
+            return;
+        }
         if (self.nav.screen != .document) {
             if (self.nav.screen == .card_view and key == .enter) {
                 var insert_buf: [256]u8 = undefined;
@@ -324,6 +385,7 @@ pub const Model = struct {
     /// The document and portrait learning exercise accept soft-key input.
     /// Zero indicates a screen with no soft-keyboard input context.
     fn softKeyboardContext(self: *const Model) u8 {
+        if (self.terminal != null) return 5;
         if (self.nav.screen == .exercise and self.portrait_touch and self.learning != null) {
             return if (self.learning.?.editing_notes) 4 else 3;
         }
@@ -457,6 +519,7 @@ pub const Model = struct {
             }
             if (soft_keyboard.containsIn(x, y, self.touchOrientation())) return; // Gaps between keys.
         }
+        if (self.terminal != null) return;
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| {
                 if (self.portrait_touch) l.touchPortrait(&self.nav, x, y, self.softKeyboardVisible()) else l.touch(&self.nav, x, y);

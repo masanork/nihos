@@ -60,7 +60,7 @@ jobs:
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_HOSTED_SESSION=1 python3 tools/ssh_openssh_probe.py
-      - name: OpenSSH through xy VT and Hosted session
+      - name: OpenSSH through xy model, VT and Hosted session
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_HOSTED_VT=1 python3 tools/ssh_openssh_probe.py

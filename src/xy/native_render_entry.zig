@@ -54,9 +54,12 @@ pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool 
 }
 
 /// CPU0 foreground-stack caller must keep the terminal view immutable until return.
-pub export fn nih_xy_render_terminal(request: *const protocol.Request, view: *const @import("terminal_adapter").TermView) callconv(.c) bool {
+pub export fn nih_xy_render_terminal(request: *const protocol.Request, view: *const protocol.TerminalView) callconv(.c) bool {
+    const term = @import("terminal_adapter");
+    if (@intFromPtr(view.cells) % @alignOf(term.Cell) != 0) return false;
+    const typed = term.TermView{ .cols = view.cols, .rows = view.rows, .cursor_col = view.cursor_col, .cursor_row = view.cursor_row, .cursor_visible = view.cursor_visible, .cells = @ptrCast(@alignCast(view.cells)) };
     const owner: *Workspace = @ptrCast(@alignCast(request.workspace));
-    owner.renderer.renderTerminal(request, view) catch return false;
+    owner.renderer.renderTerminal(request, &typed) catch return false;
     return true;
 }
 
@@ -270,6 +273,11 @@ test "terminal renderer preserves cell colors and cursor on both orientations" {
         try std.testing.expectEqual(@as(u16, 0x001f), std.mem.readInt(u16, pixels[(y * 720 + x) * 2 ..][0..2], .little));
     };
     try std.testing.expectEqual(@as(u16, 0x07e0), std.mem.readInt(u16, pixels[(16 * 720 + 30) * 2 ..][0..2], .little));
+    req.status = "SSH / Buffer full";
+    req.status_length = "SSH / Buffer full".len;
+    try instance.renderTerminal(&req, &view);
+    try std.testing.expectEqual(@as(u16, 0x2104), std.mem.readInt(u16, pixels[(1279 * 720 + 719) * 2 ..][0..2], .little));
+    req.status_length = 0;
     req.portrait = 0;
     try instance.renderTerminal(&req, &view);
     // Landscape is rotated onto the physical portrait framebuffer.
@@ -279,4 +287,12 @@ test "terminal renderer preserves cell colors and cursor on both orientations" {
     view.cols = 80;
     cells[2].codepoint = 0x1fffff; // Malformed remote Unicode is replaced.
     try instance.renderTerminal(&req, &view);
+    const owner = try std.testing.allocator.create(Workspace);
+    defer std.testing.allocator.destroy(owner);
+    try owner.renderer.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    req.workspace = owner;
+    var borrowed = protocol.TerminalView{ .cols = view.cols, .rows = view.rows, .cursor_col = view.cursor_col, .cursor_row = view.cursor_row, .cursor_visible = view.cursor_visible, .cells = @ptrCast(view.cells) };
+    try std.testing.expect(nih_xy_render_terminal(&req, &borrowed));
+    borrowed.cells = @ptrFromInt(@intFromPtr(borrowed.cells) + 1);
+    try std.testing.expect(!nih_xy_render_terminal(&req, &borrowed));
 }
