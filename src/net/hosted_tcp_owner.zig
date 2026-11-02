@@ -59,6 +59,35 @@ pub const Owner = struct {
             return err;
         };
     }
+    /// Select TCP after the native owner has run station maintenance itself.
+    /// A staged TCP frame keeps ownership; otherwise station/time/BLE take
+    /// precedence. The caller remains responsible for station completions.
+    pub fn nextTcp(self: *Owner, client: *station.Client, now_us: u64, station_pending: bool, other_pending: bool) Error!?[]const u8 {
+        try self.check();
+        if (self.pending == .station) return error.InvalidCompletion;
+        if (self.handle) |handle| _ = self.queue.drain(&self.service, client, handle, self.epoch, now_us) catch |err| {
+            self.retireTcp();
+            return err;
+        };
+        binding.refresh(&self.service, client, self.epoch, now_us) catch |err| {
+            self.retireTcp();
+            return err;
+        };
+        const handle = self.handle orelse return null;
+        if (self.service.frame_len == 0 and (station_pending or other_pending)) return null;
+        const packet = self.service.tx(handle, client.sequence, now_us / 1000) catch |err| {
+            self.retireTcp();
+            return err;
+        } orelse return null;
+        if (packet.newly_staged) client.sequence +%= 1;
+        if (self.pending == .tcp and self.pending_len != packet.bytes.len) {
+            self.retireTcp();
+            return error.InvalidCompletion;
+        }
+        self.pending = .tcp;
+        self.pending_len = packet.bytes.len;
+        return packet.bytes;
+    }
     /// Call once per owner poll. Other producers must be represented by
     /// other_pending and must not transmit while a frame here is pending.
     pub fn next(self: *Owner, client: *station.Client, now_us: u64, other_pending: bool) Error!binding.Next {
@@ -173,6 +202,29 @@ test "partial completion retires connection" {
     try std.testing.expectError(error.TransportResetRequired, owner.next(&client, 0, false));
     try owner.reset();
     try std.testing.expect(!owner.reset_required);
+}
+
+test "native TCP scheduling respects priorities and retains a blocked frame" {
+    var owner: Owner = .{};
+    var client: station.Client = .{};
+    client.phase = .done;
+    client.keep_serving = true;
+    client.connected = true;
+    client.mac_address = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
+    client.dhcp_client = .{ .mac = client.mac_address, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 20_000_000, .rebind_at = 30_000_000, .expires_at = 40_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 40 } };
+    _ = try owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 123, 0, 5000);
+    try std.testing.expect((try owner.nextTcp(&client, 0, true, false)) == null);
+    try std.testing.expect((try owner.nextTcp(&client, 0, false, true)) == null);
+    const first = (try owner.nextTcp(&client, 0, false, false)).?;
+    const len = first.len;
+    const sequence = std.mem.readInt(u16, first[8..10], .little);
+    const next_sequence = client.sequence;
+    try owner.sent(&client, 0, 1000);
+    const retry = (try owner.nextTcp(&client, 1000, true, true)).?;
+    try std.testing.expectEqual(sequence, std.mem.readInt(u16, retry[8..10], .little));
+    try std.testing.expectEqual(next_sequence, client.sequence);
+    try owner.sent(&client, len, 2000);
+    try std.testing.expect((try owner.nextTcp(&client, 2000, true, false)) == null);
 }
 
 test "epoch exhaustion never permits reuse" {

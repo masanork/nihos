@@ -13,6 +13,8 @@ var time_wait: ?wait.TimeWait = null;
 var owner: owner_core.Owner = .{};
 var host_station: station_core.Client = .{};
 var socket_adapter: ?ssh_tcp.Adapter = null;
+var staged_owner: enum { none, station, tcp } = .none;
+var staged_length: usize = 0;
 var host_now_ms: u64 = 0;
 var link_time_wait: ?wait.TimeWait = null;
 const guest_mac = [6]u8{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
@@ -95,12 +97,16 @@ export fn tcp_link_begin(port: u16) bool {
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
     if (!refreshStation(now)) return 0;
-    const choice = owner.next(&host_station, now *| 1000, false) catch return 0;
-    const bytes = switch (choice) {
-        .idle => return 0,
-        .station => |frame| frame,
-        .tcp => |frame| frame,
-    };
+    const station_bytes = host_station.tx(now *| 1000) catch return 0;
+    const tcp_bytes = owner.nextTcp(&host_station, now *| 1000, station_bytes.len != 0, false) catch return 0;
+    const bytes = if (tcp_bytes) |frame| blk: {
+        staged_owner = .tcp;
+        break :blk frame;
+    } else if (station_bytes.len != 0) blk: {
+        staged_owner = .station;
+        break :blk station_bytes;
+    } else return 0;
+    staged_length = bytes.len;
     const ethernet = bytes[12..];
     if (cap < ethernet.len) return 0;
     @memcpy(out[0..ethernet.len], ethernet);
@@ -108,7 +114,13 @@ export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
 }
 export fn tcp_link_sent(now: u64) bool {
     if (!refreshStation(now)) return false;
-    owner.sent(&host_station, owner.pending_len, now *| 1000) catch return false;
+    switch (staged_owner) {
+        .station => host_station.sent(now *| 1000),
+        .tcp => owner.sent(&host_station, staged_length, now *| 1000) catch return false,
+        .none => return false,
+    }
+    staged_owner = .none;
+    staged_length = 0;
     return true;
 }
 export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
