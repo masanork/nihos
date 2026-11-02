@@ -543,7 +543,7 @@ pub const TimeReport = struct {
 };
 var hosted_time: hosted.c6_time_exchange.Exchange = .{};
 // SAFETY: the split UDP fixture initializes the owner before stepping it.
-var hosted_split_udp: hosted.split_udp_owner.Owner = undefined;
+var hosted_split_udp: hosted.split_udp_generic_owner.Owner = undefined;
 
 /// Separate diagnostic: C6 owns DHCP, and one owner sends a single UDP frame.
 noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: hosted.Join) !void {
@@ -605,7 +605,7 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
             }
             report.stage = 7;
             defer {
-                report.long_sent = if (hosted_split_udp.sent_count != 0) @intCast(hosted_split_udp.output.len) else 0;
+                report.long_sent = if (hosted_split_udp.sent_count != 0) @intCast(12 + hosted.long_udp_probe.ethernet_bytes) else 0;
                 report.long_attempts = hosted_split_udp.sent_count;
                 report.long_burst = @intFromBool(config.udp_burst);
                 report.long_echo_mask = hosted_split_udp.echo_mask;
