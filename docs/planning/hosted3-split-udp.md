@@ -52,6 +52,14 @@ The same address-generation, disconnect, reset and deadline rules apply.
 A peer must independently record payloads and the run must preserve both
 sent and received masks; a sample is not a general UDP loss-rate estimate.
 
+For a stage 5 failure the fixture reports `wifi_step`: 1 begins the address
+exchange, 2 reads SDIO, 3 decodes/applies frames, 4 checks the clock/deadline,
+5 checks ownership handoff, 6 produces a control request, 7 sends it, and 8
+accounts for the send. This is the operation in progress, not an error name
+or root cause. Step 3 includes the clock read while applying a frame. The
+field is zeroed when handoff starts. Older images did not record these steps;
+in particular they cannot retrospectively decode the first burst failure.
+
 ## madowi port and authentication boundary
 
 A local source inspection on 2026-11-02 of madowi commit

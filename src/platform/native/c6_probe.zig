@@ -566,17 +566,22 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
     try host.enableFunction();
     try host.writeDoorbell(1, 0x8c, 1);
     report.stage = 5;
+    report.wifi_step = 1; // Begin the address exchange.
     const started = clock.counter() orelse return error.Clock;
     try hosted_time.begin(join, 1, started, started + 100_000_000);
     while (true) {
+        report.wifi_step = 2; // Read from SDIO.
         const count = try hosted_stream.receive(&rx);
         report.rx +|= @intCast(count);
+        report.wifi_step = 3; // Decode and apply received frames.
         for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
             try hosted_time.receive(frame, clock.counter() orelse return error.Clock);
         };
+        report.wifi_step = 4; // Check the clock and exchange deadline.
         const now = clock.counter() orelse return error.Clock;
         if (clock_failed or now < started) return error.Clock;
         if (now >= hosted_time.deadline) return error.Timeout;
+        report.wifi_step = 5; // Check if ownership can be transferred.
         const acquisition = try hosted.split_udp_owner.acquisition(&hosted_time, &hosted_decoder);
         if (acquisition == .drain) {
             // A split control frame must finish before transferring ownership;
@@ -585,6 +590,7 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
             continue;
         }
         if (acquisition == .ready) {
+            report.wifi_step = 0; // Later stages have their own stage marker.
             const address = hosted_time.addresses.address orelse return error.Stale;
             report.ip = address.ip;
             report.netmask = address.mask;
@@ -616,9 +622,12 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
             report.stage = 12;
             return;
         }
+        report.wifi_step = 6; // Produce the next control request.
         const bytes = try hosted_time.tx(now);
         if (bytes.len > 0) {
+            report.wifi_step = 7; // Send the request over SDIO.
             const sent = try hosted_stream.send(bytes);
+            report.wifi_step = 8; // Account for the completed send.
             try hosted_time.sent(sent, clock.counter() orelse return error.Clock);
             report.tx +|= @intCast(sent);
         }
