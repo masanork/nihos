@@ -200,7 +200,7 @@ export fn hosted_ssh_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *c
 }
 export fn hosted_ssh_poll(random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {
     if (!ssh_started) return -1;
-    return switch (ssh_owner.poll(host_now_ms *| 1000, random, user[0..len], seed.*) catch return -1) {
+    return switch (ssh_owner.poll(host_now_ms *| 1000, random, user[0..len], seed.*) catch |err| return if (err == error.HostKeyMismatch) -2 else -1) {
         .connecting => 0,
         .ready => 1,
         .closed => 2,

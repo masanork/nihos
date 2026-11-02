@@ -153,6 +153,11 @@ def run():
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
+        lifecycle_bad_pin = os.environ.get("NIHOS_SSH_LIFECYCLE_BADPIN") == "1"
+        if lifecycle_bad_pin:
+            if os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge:
+                raise ValueError("lifecycle bad-pin control requires lifecycle over libslirp")
+            pin = bytes([pin[0] ^ 1]) + pin[1:]
         bad_pin = os.environ.get("NIHOS_SSH_BADPIN") == "1"
         if bad_pin:
             if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1") or bridge:
@@ -429,23 +434,35 @@ def run():
                         def lifecycle_close(): return bridge.bridge_close_write()
                         @action_cb
                         def lifecycle_complete(): return bridge.bridge_closed()
-                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, c.c_uint64]
+                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, c.c_uint64, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p]
                         vt.probe_lifecycle_begin.restype = c.c_bool
-                        vt.probe_lifecycle_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]
+                        vt.probe_lifecycle_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_void_p]
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
-                        secret, cookie, host_pin = buffer(os.urandom(32)), buffer(os.urandom(16)), buffer(pin)
-                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, time.monotonic_ns() // 1000)
+                        vt.probe_profile_cleared.restype = c.c_bool
+                        secret, cookie = buffer(os.urandom(32)), buffer(os.urandom(16))
+                        fingerprint = b"SHA256:" + base64.b64encode(pin).rstrip(b"=")
+                        seed_hex = seed.raw.hex().encode("ascii")
+                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
                     else:
                         vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
                     def vt_step():
                         if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
-                        result = (vt.probe_lifecycle_poll(time.monotonic_ns() // 1000, secret, host_pin, cookie, buffer(os.urandom(32)), buffer(username), len(username), seed) if lifecycle_mode else
+                        result = (vt.probe_lifecycle_poll(time.monotonic_ns() // 1000, secret, cookie, buffer(os.urandom(32))) if lifecycle_mode else
                                   vt.probe_vt_poll(buffer(os.urandom(32)), buffer(username), len(username), seed))
-                        if result < 0: raise RuntimeError("VT session failed")
+                        if result < 0 and not (lifecycle_bad_pin and result == -2): raise RuntimeError("VT session failed")
                         time.sleep(0.001)
                         return result
                     deadline = time.monotonic() + 20
-                    while vt_step() != 1:
+                    while True:
+                        state = vt_step()
+                        if lifecycle_bad_pin and state == -2:
+                            assert vt.probe_profile_cleared(), "profile retained after rejection"
+                            sock.closed_by_controller = True
+                            print("SSH profile rejected the wrong host pin and was cleared: OK")
+                            return
+                        if state == 1:
+                            if lifecycle_bad_pin: raise RuntimeError("SSH profile accepted the wrong host pin")
+                            break
                         if time.monotonic() > deadline: raise TimeoutError("VT startup timeout")
                     for byte in b"printf ni%s_ssh_ok hos\n":
                         if not vt.probe_vt_key(byte): raise RuntimeError("VT key queue full")
@@ -468,7 +485,9 @@ def run():
                     deadline = time.monotonic() + 20
                     while vt_step() != 2:
                         if time.monotonic() > deadline: raise TimeoutError("VT close timeout")
-                    if lifecycle_mode: sock.closed_by_controller = True
+                    if lifecycle_mode:
+                        assert vt.probe_profile_cleared(), "profile retained after close"
+                        sock.closed_by_controller = True
                 elif auto_client:
                     def tty_step():
                         if hosted_session:

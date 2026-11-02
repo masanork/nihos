@@ -15,6 +15,7 @@ const Backend = struct {
             0 => .connecting,
             1 => .ready,
             2 => .closed,
+            -2 => error.HostKeyMismatch,
             else => error.Backend,
         };
     }
@@ -118,22 +119,38 @@ const Controller = lifecycle.Controller(HostNetwork, Ui, console.scratch.Model);
 var host_network: HostNetwork = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable object before use.
 var controller: Controller = undefined;
-export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64) bool {
+var profile: lifecycle.Profile = .{};
+export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
+    profile.clear();
+    profile.set("10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex) catch return false;
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
     host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
     model.initInPlace();
     controller = Controller.init(&host_network, &ui, &model);
-    controller.begin(now, now +| 20_000_000, 20_000_000, .{ 10, 0, 2, 2 }, 22, 50001, 123) catch return false;
+    controller.begin(now, now +| 20_000_000, 20_000_000, profile.address, profile.port, 50001, 123) catch {
+        profile.clear();
+        return false;
+    };
     initialized = true;
     return true;
 }
-export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, pin: *const [32]u8, cookie: *const [16]u8, random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {
+export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, cookie: *const [16]u8, random: *const [32]u8) isize {
     if (!initialized) return -1;
-    const material = lifecycle.Material{ .secret = secret.*, .pin = pin.*, .cookie = cookie.* };
-    return switch (controller.poll(now, &material, random, user[0..len], seed.*) catch return -1) {
+    const material = lifecycle.Material{ .secret = secret.*, .pin = profile.pin, .cookie = cookie.* };
+    return switch (controller.poll(now, &material, random, profile.user(), profile.seed) catch |err| {
+        profile.clear();
+        return if (err == error.HostKeyMismatch) -2 else -1;
+    }) {
         .opening, .need_material, .handshaking, .closing => 0,
         .ready => 1,
-        .closed => 2,
+        .closed => blk: {
+            profile.clear();
+            break :blk 2;
+        },
         .idle, .failed => -1,
     };
+}
+export fn probe_profile_cleared() bool {
+    for (@import("std").mem.asBytes(&profile)) |byte| if (byte != 0) return false;
+    return true;
 }

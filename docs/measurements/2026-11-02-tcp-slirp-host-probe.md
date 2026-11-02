@@ -96,7 +96,10 @@ The terminal bridge derives distinct per-operation padding from each fresh
 caller-supplied random seed; this does not provide a device entropy source.
 The volatile profile parser accepts a numeric IPv4 endpoint, OpenSSH SHA256
 host-key fingerprint and raw Ed25519 seed, and supports explicit erasure. It
-does not provide a provisioning UI or protected storage. ESP32-P4 RNG output
+is exercised against the local OpenSSH server through lifecycle, xy terminal
+input/output and TCP FIN; a wrong fingerprint is rejected and both success and
+failure paths clear the fixture's profile. It does not provide a provisioning
+UI or protected storage. ESP32-P4 RNG output
 must not be treated as cryptographic entropy without meeting the documented
 [entropy-source conditions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/api-reference/system/random.html);
 the existing SQL random callback does not establish those conditions for SSH.
