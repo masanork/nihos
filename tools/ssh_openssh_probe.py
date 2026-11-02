@@ -96,6 +96,8 @@ def run():
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
         p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
         p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
+        p.probe_ident_poll.restype = c.c_ssize_t
+        p.probe_ident_banner.argtypes = [c.c_void_p, c.c_size_t]; p.probe_ident_banner.restype = c.c_size_t
         p.probe_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_server_init.restype = c.c_size_t
         p.probe_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_reply.restype = c.c_bool
         p.probe_newkeys.argtypes = [c.c_void_p, c.c_size_t]; p.probe_newkeys.restype = c.c_size_t
@@ -166,12 +168,14 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
-                client_banner = b"SSH-2.0-nihos_1.0"
-                sock.sendall(client_banner + b"\r\n")
-                banner = b""
-                while not banner.endswith(b"\n"):
-                    banner += exact(sock, 1)
-                server_banner = banner.rstrip(b"\r\n")
+                auto_ident = os.environ.get("NIHOS_SSH_AUTOIDENT") == "1"
+                if not auto_ident:
+                    client_banner = b"SSH-2.0-nihos_1.0"
+                    sock.sendall(client_banner + b"\r\n")
+                    banner = b""
+                    while not banner.endswith(b"\n"):
+                        banner += exact(sock, 1)
+                    server_banner = banner.rstrip(b"\r\n")
                 sock.setblocking(False)
                 @callback
                 def socket_read(dst, cap):
@@ -192,6 +196,19 @@ def run():
                     except OSError:
                         return -2
                 p.probe_socket(socket_read, socket_write)
+                if auto_ident:
+                    deadline = time.monotonic() + (20 if bridge else 5)
+                    while True:
+                        state = p.probe_ident_poll()
+                        if state < 0: raise RuntimeError("SSH identification exchange failed")
+                        if state == 1: break
+                        if time.monotonic() > deadline: raise TimeoutError("SSH identification timeout")
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock], [], 0.001)
+                    value = c.create_string_buffer(253)
+                    size = p.probe_ident_banner(value, len(value))
+                    if not size: raise RuntimeError("SSH identification missing")
+                    server_banner = value.raw[:size]
                 def poll_until(predicate):
                     deadline = time.monotonic() + (20 if bridge else 5)
                     while not predicate():

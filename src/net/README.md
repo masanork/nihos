@@ -52,8 +52,10 @@ handle on CPU0; native xy does not yet use it.
 `ssh_kex_driver.zig` advances the first key exchange after the caller has
 exchanged SSH identification lines. It coordinates pending packet writes,
 host-pin verification and NEWKEYS activation, and clears secrets on failure.
-The OpenSSH host fixture exercises the driver and a wrong-pin control; banner
-I/O, production entropy and the native application remain outside this driver.
+`ssh_identification.zig` provides the preceding bounded, nonblocking line
+exchange without consuming the next packet. The OpenSSH host fixture exercises
+both and a wrong-pin control; production entropy and the native application
+remain outside these components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final

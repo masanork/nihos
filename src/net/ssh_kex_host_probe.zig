@@ -5,6 +5,7 @@ const transport = @import("ssh_transport.zig");
 const socket_pump = @import("ssh_socket_pump.zig");
 const session = @import("ssh_session.zig");
 const kex_driver = @import("ssh_kex_driver.zig");
+const identification = @import("ssh_identification.zig");
 var wire: transport.Transport = .{};
 var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
 const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
@@ -36,6 +37,17 @@ export fn probe_pause(paused: bool) void {
 var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
 var driver: ?kex_driver.Driver = null;
+var ident = identification.Exchange{ .epoch = 1 };
+
+export fn probe_ident_poll() isize {
+    return if (ident.poll(.{ .context = null, .read = socketRead, .write = socketWrite }, 1) catch return -1) 1 else 0;
+}
+export fn probe_ident_banner(out: [*]u8, cap: usize) usize {
+    const banner = ident.banner() orelse return 0;
+    if (banner.len > cap) return 0;
+    @memcpy(out[0..banner.len], banner);
+    return banner.len;
+}
 
 export fn probe_driver_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, banner_len: usize) bool {
     driver = .{ .handshake = .{ .secret = secret.*, .pin = pin.* }, .cookie = cookie.* };

@@ -34,9 +34,9 @@ jobs:
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 python3 tools/ssh_openssh_probe.py
-      - name: OpenSSH PTY with automatic SSH key exchange
+      - name: OpenSSH PTY with automatic identification and key exchange
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
-            NIHOS_SSH_SLIRP=1 NIHOS_SSH_AUTOKEX=1 python3 tools/ssh_openssh_probe.py
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_AUTOIDENT=1 NIHOS_SSH_AUTOKEX=1 python3 tools/ssh_openssh_probe.py
       - name: Automatic key exchange rejects wrong host pin
         run: NIHOS_SSH_AUTOKEX=1 NIHOS_SSH_BADPIN=1 python3 tools/ssh_openssh_probe.py
