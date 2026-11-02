@@ -3,6 +3,7 @@ const wire = @import("udp_ipv4.zig");
 const probe = @import("long_udp_probe.zig");
 const hosted = @import("hosted.zig");
 const tx_plan = @import("hosted_tx_plan.zig");
+const hosted_udp = @import("hosted_udp_frame.zig");
 const testing = std.testing;
 const src = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 1 }, .ip = .{ 192, 0, 2, 1 }, .port = 49152 };
 const dst = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 2 }, .ip = .{ 198, 51, 100, 2 }, .port = 443 };
@@ -94,4 +95,24 @@ test "Hosted framing limits UDP payload to 1458 bytes" {
     try testing.expectEqualSlices(u8, payload[0..limit], (try wire.decode(framed[12..])).payload);
     const too_long = try wire.encode(packet[12..], src, dst, payload[0 .. limit + 1]);
     try testing.expectError(error.Capacity, hosted.frameInPlace(&packet, hosted.station_interface, 1, too_long.len));
+}
+
+test "Hosted UDP preparation returns one complete frame and rejects oversize before writing" {
+    var output: [1536]u8 = @splat(0xa5);
+    const data: [hosted_udp.max_payload + 1]u8 = @splat(0x5a);
+    const frame = try hosted_udp.prepare(&output, src, dst, data[0..hosted_udp.max_payload], 17);
+    try testing.expectEqual(@as(usize, 1512), frame.len);
+    try testing.expectEqual(@as(u16, 17), std.mem.readInt(u16, frame[8..10], .little));
+    var decoder: hosted.Decoder = .{};
+    var received: ?hosted.Frame = null;
+    for (frame) |byte| if (try decoder.push(byte)) |f| {
+        received = f;
+    };
+    const decoded = try wire.decode((received orelse return error.TestUnexpectedResult).payload);
+    try testing.expectEqualSlices(u8, data[0..hosted_udp.max_payload], decoded.payload);
+    @memset(&output, 0xa5);
+    try testing.expectError(error.TooLarge, hosted_udp.prepare(&output, src, dst, &data, 17));
+    try testing.expect(std.mem.allEqual(u8, &output, 0xa5));
+    try testing.expectError(error.NoSpace, hosted_udp.prepare(output[0..53], src, dst, "", 17));
+    try testing.expect(std.mem.allEqual(u8, &output, 0xa5));
 }

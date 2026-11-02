@@ -28,6 +28,12 @@ boundary; it does not establish that a C6 accepts the transfer. Do not use
 the codec limit as the link's negotiated path MTU or enlarge the Hosted limit
 without separately qualifying the peer and transport.
 
+`hosted_udp_frame.prepare` composes the two existing encoders and rejects a
+payload beyond the Hosted limit or an insufficient output buffer before
+writing. It constructs a frame only: the caller must hold the address and
+transport lease, handle port routing and serialize all I/O. This helper is
+not connected to the runtime network service or the physical diagnostic.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
