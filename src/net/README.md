@@ -68,8 +68,8 @@ borrow remains reserved until explicit release after reset; the VT area is not
 yet bound to a native screen.
 The xy `ssh_terminal_session.zig` bridge feeds received bytes into VT100 and
 queues encoded keys with bounded backpressure; the host OpenSSH fixture checks
-that path through the Hosted session. The home screen and native rendering are
-not wired. Production entropy and credential storage remain outside these
+that path through the Hosted session. The native renderer can paint a borrowed
+terminal view, but the home screen and native caller are not wired. Production entropy and credential storage remain outside these
 components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using

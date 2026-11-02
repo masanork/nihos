@@ -53,6 +53,13 @@ pub export fn nih_xy_render(request: *const protocol.Request) callconv(.c) bool 
     return true;
 }
 
+/// CPU0 foreground-stack caller must keep the terminal view immutable until return.
+pub export fn nih_xy_render_terminal(request: *const protocol.Request, view: *const @import("terminal_adapter").TermView) callconv(.c) bool {
+    const owner: *Workspace = @ptrCast(@alignCast(request.workspace));
+    owner.renderer.renderTerminal(request, view) catch return false;
+    return true;
+}
+
 test "boot faces render Japanese spaces missing glyphs and live view settings" {
     const std = @import("std");
     const config_module = @import("view_config");
@@ -236,4 +243,40 @@ test "portrait card scene renders synthetic data and returns on touch" {
     nav.touchPortrait(100, 400, &config);
     try std.testing.expectEqual(navmod.Screen.home, nav.screen);
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
+}
+
+test "terminal renderer preserves cell colors and cursor on both orientations" {
+    const std = @import("std");
+    const term = @import("terminal_adapter");
+    const instance = try std.testing.allocator.create(session.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    const pixels = try std.testing.allocator.alloc(u8, 720 * 1280 * 2);
+    defer std.testing.allocator.free(pixels);
+    var cells: [80 * 24]term.Cell = @splat(.{ .codepoint = ' ', .fg_rgb565 = 0xffff, .bg_rgb565 = 0 });
+    cells[0] = .{ .codepoint = ' ', .fg_rgb565 = 0x07e0, .bg_rgb565 = 0xf800 };
+    cells[1] = .{ .codepoint = 'A', .fg_rgb565 = 0xffff, .bg_rgb565 = 0x001f };
+    cells[2] = .{ .codepoint = 'W', .fg_rgb565 = 0xffff, .bg_rgb565 = 0xf800 };
+    cells[3] = .{ .codepoint = ' ', .fg_rgb565 = 0x07e0, .bg_rgb565 = 0x001f, .flags = 2 };
+    var view = term.TermView{ .cols = 80, .rows = 24, .cursor_col = 0, .cursor_row = 0, .cells = &cells };
+    var config = @import("view_config").Config{};
+    var req = protocol.Request{ .workspace = instance, .frame = pixels.ptr, .frame_length = pixels.len, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0, .portrait = 1 };
+    try instance.renderTerminal(&req, &view);
+    // Portrait cells are 9x18; the final two rows carry the cursor.
+    try std.testing.expectEqual(@as(u16, 0xf800), std.mem.readInt(u16, pixels[(10 * 720 + 4) * 2 ..][0..2], .little));
+    try std.testing.expectEqual(@as(u16, 0x07e0), std.mem.readInt(u16, pixels[(17 * 720 + 4) * 2 ..][0..2], .little));
+    try std.testing.expectEqual(@as(u16, 0x001f), std.mem.readInt(u16, pixels[(16 * 720 + 17) * 2 ..][0..2], .little));
+    for (0..16) |y| for (27..36) |x| {
+        try std.testing.expectEqual(@as(u16, 0x001f), std.mem.readInt(u16, pixels[(y * 720 + x) * 2 ..][0..2], .little));
+    };
+    try std.testing.expectEqual(@as(u16, 0x07e0), std.mem.readInt(u16, pixels[(16 * 720 + 30) * 2 ..][0..2], .little));
+    req.portrait = 0;
+    try instance.renderTerminal(&req, &view);
+    // Landscape is rotated onto the physical portrait framebuffer.
+    try std.testing.expectEqual(@as(u16, 0xf800), std.mem.readInt(u16, pixels[((1279 - 4) * 720 + 10) * 2 ..][0..2], .little));
+    view.cols = 81;
+    try std.testing.expectError(error.Geometry, instance.renderTerminal(&req, &view));
+    view.cols = 80;
+    cells[2].codepoint = 0x1fffff; // Malformed remote Unicode is replaced.
+    try instance.renderTerminal(&req, &view);
 }

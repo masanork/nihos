@@ -88,6 +88,14 @@ pub export fn xy_tab5_render(pixels: [*]u8, len: u32) callconv(.c) bool {
     return true;
 }
 
+/// Host fixture for the same terminal renderer; view remains borrowed for this call.
+pub export fn xy_tab5_render_terminal(pixels: [*]u8, len: u32, view: *const @import("terminal_adapter").TermView) callconv(.c) bool {
+    if (!ready or len != 720 * 1280 * 2) return false;
+    const req = protocol.Request{ .workspace = &instance, .frame = pixels, .frame_length = len, .config = &config, .text = "", .text_length = 0, .cursor = 0, .status = "", .status_length = 0, .show_cursor = 0, .portrait = @intFromBool(portrait) };
+    instance.renderTerminal(&req, view) catch return false;
+    return true;
+}
+
 pub export fn xy_tab5_learning_replace(text: [*]const u8, length: u32) callconv(.c) bool {
     if (!ready or nav.screen != .exercise) return false;
     lessons.replace(text[0..length]) catch return false;

@@ -1164,10 +1164,10 @@ EOF
     "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$build_dir/xy_reading_assets.S" -o "$build_dir/xy_reading_assets.o"
     set -- "$@" "$build_dir/xy_reading_assets.o"
     "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
-        --dep view_config --dep surface --dep viewport_layout --dep rotated_surface -Mroot="$repo_root/src/xy/native_render_entry.zig" \
+        --dep view_config --dep surface --dep viewport_layout --dep rotated_surface --dep terminal_adapter -Mroot="$repo_root/src/xy/native_render_entry.zig" \
         --dep view_config -Mviewport_layout="$repo_root/src/graphics/viewport_layout.zig" \
         --dep surface -Mrotated_surface="$repo_root/src/graphics/rotated_surface.zig" \
-        -Mview_config="$repo_root/src/xy/view_config.zig" -Msurface="$repo_root/src/graphics/surface.zig" \
+        -Mview_config="$repo_root/src/xy/view_config.zig" -Msurface="$repo_root/src/graphics/surface.zig" -Mterminal_adapter="$repo_root/src/net/terminal_adapter.zig" \
         -femit-bin="$build_dir/xy_render.o"
     "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/xy_render_stack.o"
     set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o"
