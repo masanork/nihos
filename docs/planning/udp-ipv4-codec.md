@@ -86,9 +86,11 @@ does not bind into the native service and does not eliminate arrivals racing
 an empty read.
 
 The host integration test also composes `Sender.step`, the existing SDIO
-stream and controller, the long-DMA guard and buffer, and a mock register/cache
-backend. It checks padded packet bytes and quarantine after a simulated DMA
-completion failure. The guard forwards receive and short-write operations;
+stream and controller, the long-DMA guard, bus adapter and buffer, and a mock
+register/cache backend. It checks padded packet bytes and quarantine after
+simulated DMA completion and stop failures. When stop fails, the model retains
+the adapter's active long operation and retired buffer; it does not claim that
+hardware has stopped. The guard forwards receive and short-write operations;
 long-write errors retire its associated DMA buffer. This is not a target
 driver or a measurement of silicon DMA completion. The native service's
 current bus does not use the long-DMA fixture provider and must not be assumed
