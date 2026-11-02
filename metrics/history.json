@@ -4508,23 +4508,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-02",
-    "measuredAt": "2026-11-02T00:43:21.257184+00:00",
+    "measuredAt": "2026-11-02T03:32:33.695302+00:00",
     "project": "nihos",
-    "commit": "7f994648c97c62a011d9474f45c14c73bed68dfd",
+    "commit": "e5f620418ca1bb69d9f050b96c5d60c2a25fb55c",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "1dd40e26afefa6ee3f155c2f2e257706951b7385eaf26298c603e8f1c6d71eeb",
+    "sourceTreeSha256": "9a2a4afbe1a742ae77cf51a5e88bec4d2a82bb80a533a391d737d63bc2e6857d",
     "code": {
-      "implementation": 74857,
-      "tests": 37477,
-      "tooling": 24516,
+      "implementation": 74934,
+      "tests": 37698,
+      "tooling": 24597,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 67160,
-        "tests": 27699,
+        "implementation": 67237,
+        "tests": 27778,
         "tooling": 1440,
         "probes": 5642,
         "vendored": 0,
@@ -4556,8 +4556,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 9619,
-        "tooling": 17914,
+        "tests": 9761,
+        "tooling": 17987,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -4573,7 +4573,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4448,
+        "tooling": 4456,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -4621,8 +4621,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 72920,
-        "tests": 27825,
+        "implementation": 72997,
+        "tests": 27904,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -4638,8 +4638,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 9652,
-        "tooling": 24272,
+        "tests": 9794,
+        "tooling": 24353,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -4919,8 +4919,8 @@
         "src/net/hosted_ota_session.zig": "b1505ab62614c1e1c0f233f19e3ed4ac45f0b4f8c7b85e49405a4f0958c7fe1f",
         "src/net/hosted_ota_session_test.zig": "ed156d4082ba50469fd700a9961d6536ed9549b1e30d2a1635edfa306f2dd74d",
         "src/net/hosted_ota_test.zig": "9c1e6bb1f390c0c8dac015cf8055834f2c25b1a59ce29be535eaf1ccbb8ebaa0",
-        "src/net/hosted_split_udp_owner.zig": "55cc817150f085af8b9560e11f5f49e5f0efae9a70dc1c3a4533644d656f68b0",
-        "src/net/hosted_split_udp_owner_test.zig": "a17b16e2a95d5bf75dfbde77c8461022e4ac1a4f23490434ddeafaf228fc7492",
+        "src/net/hosted_split_udp_owner.zig": "4e62693dc5521db9152694cf55fe2a8da70eda66203a4a188148bfd93edbfbce",
+        "src/net/hosted_split_udp_owner_test.zig": "42fc63018d820c28a83ce3b8133725dab8f71cf9ce9ef40ebaa8f9a6d815ab06",
         "src/net/hosted_split_udp_probe.zig": "72d72a0a044bb7184005fa8c57c6b39dd249194dcd4aa4280e67775a5f039c55",
         "src/net/hosted_split_udp_probe_test.zig": "af41aa33c06c95f43d903c56cc503f5f3ce6b059c181b32070f0d95b9429d534",
         "src/net/hosted_station.zig": "ecd565f016766c45b025c27819348f576f1f0234c0702430a7ed56d879ff71a2",
@@ -4949,7 +4949,7 @@
         "src/platform/native/board_devices.zig": "a2962ed666192cfb6ed131245fb5fe40ee5a155185d39baa839eb624d9f56e48",
         "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
         "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
-        "src/platform/native/c6_probe.zig": "c9fdc6d91d41c96778740c0a96ad997d203edd72314cbc9c49c8551a62489c7a",
+        "src/platform/native/c6_probe.zig": "73f1ffd398e565102f5b07e33b1f8d94621aeb2f25b1dd5eb10df22dad54cdc6",
         "src/platform/native/camera_jpeg.zig": "570e4c29e5f176be2b00f6dbc00346883b7c8715692799a21ad435e2d36699ef",
         "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
         "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
