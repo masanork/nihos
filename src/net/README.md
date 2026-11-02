@@ -53,8 +53,10 @@ handle on CPU0; native xy does not yet use it.
 exchanged SSH identification lines. It coordinates pending packet writes,
 host-pin verification and NEWKEYS activation, and clears secrets on failure.
 `ssh_identification.zig` provides the preceding bounded, nonblocking line
-exchange without consuming the next packet. The OpenSSH host fixture exercises
-both and a wrong-pin control; production entropy and the native application
+exchange without consuming the next packet. `ssh_connection.zig` coordinates
+both stages on a single socket with a monotonic deadline, epoch checks and
+fail-closed secret cleanup. The OpenSSH host fixture exercises the combined
+path and a wrong-pin control; production entropy and the native application
 remain outside these components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using

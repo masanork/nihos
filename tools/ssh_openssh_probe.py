@@ -96,6 +96,8 @@ def run():
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
         p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
         p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
+        p.probe_connection_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]
+        p.probe_connection_poll.argtypes = [c.c_uint64, c.c_void_p]; p.probe_connection_poll.restype = c.c_ssize_t
         p.probe_ident_poll.restype = c.c_ssize_t
         p.probe_ident_banner.argtypes = [c.c_void_p, c.c_size_t]; p.probe_ident_banner.restype = c.c_size_t
         p.probe_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_server_init.restype = c.c_size_t
@@ -140,7 +142,7 @@ def run():
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
         bad_pin = os.environ.get("NIHOS_SSH_BADPIN") == "1"
         if bad_pin:
-            if os.environ.get("NIHOS_SSH_AUTOKEX") != "1" or bridge:
+            if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1") or bridge:
                 raise ValueError("bad-pin control requires automatic KEX over a host socket")
             pin = bytes([pin[0] ^ 1]) + pin[1:]
         with socket.socket() as picker:
@@ -168,8 +170,9 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
+                auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1"
                 auto_ident = os.environ.get("NIHOS_SSH_AUTOIDENT") == "1"
-                if not auto_ident:
+                if not auto_ident and not auto_connect:
                     client_banner = b"SSH-2.0-nihos_1.0"
                     sock.sendall(client_banner + b"\r\n")
                     banner = b""
@@ -196,7 +199,7 @@ def run():
                     except OSError:
                         return -2
                 p.probe_socket(socket_read, socket_write)
-                if auto_ident:
+                if auto_ident and not auto_connect:
                     deadline = time.monotonic() + (20 if bridge else 5)
                     while True:
                         state = p.probe_ident_poll()
@@ -227,7 +230,21 @@ def run():
                     if pause: p.probe_pause(True)
                     p.probe_release()
                     return result
-                if os.environ.get("NIHOS_SSH_AUTOKEX") == "1":
+                if auto_connect:
+                    now = time.monotonic_ns() // 1000
+                    p.probe_connection_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), now, now + (20_000_000 if bridge else 5_000_000))
+                    while True:
+                        state = p.probe_connection_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)))
+                        if state == -2 and bad_pin:
+                            print("SSH connection rejected the wrong host pin: OK")
+                            return
+                        if state < 0: raise RuntimeError("SSH connection failed")
+                        if state == 1:
+                            if bad_pin: raise RuntimeError("SSH connection accepted the wrong host pin")
+                            break
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                elif os.environ.get("NIHOS_SSH_AUTOKEX") == "1":
                     assert p.probe_driver_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), buffer(server_banner), len(server_banner))
                     deadline = time.monotonic() + (20 if bridge else 5)
                     while True:

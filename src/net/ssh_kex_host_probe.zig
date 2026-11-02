@@ -6,6 +6,7 @@ const socket_pump = @import("ssh_socket_pump.zig");
 const session = @import("ssh_session.zig");
 const kex_driver = @import("ssh_kex_driver.zig");
 const identification = @import("ssh_identification.zig");
+const connection = @import("ssh_connection.zig");
 var wire: transport.Transport = .{};
 var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
 const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
@@ -38,6 +39,17 @@ var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
 var driver: ?kex_driver.Driver = null;
 var ident = identification.Exchange{ .epoch = 1 };
+var conn: ?connection.Connection = null;
+export fn probe_connection_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, now: u64, deadline: u64) void {
+    conn = connection.Connection.init(1, now, deadline, secret.*, pin.*, cookie.*);
+}
+export fn probe_connection_poll(now: u64, random: *const [32]u8) isize {
+    const value = if (conn) |*v| v else return -1;
+    const done = value.poll(&wire, &pump, .{ .context = null, .read = socketRead, .write = socketWrite }, 1, now, random) catch |err| return if (err == error.HostKeyMismatch) -2 else -1;
+    if (!done) return 0;
+    if (ssh_session == null) ssh_session = .{ .session_id = value.driver.session_id orelse return -1 };
+    return 1;
+}
 
 export fn probe_ident_poll() isize {
     return if (ident.poll(.{ .context = null, .read = socketRead, .write = socketWrite }, 1) catch return -1) 1 else 0;
