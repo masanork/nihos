@@ -1,10 +1,8 @@
     Blocking waiting for file lock on package cache
     Blocking waiting for file lock on package cache
     Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on shared package cache
     Blocking waiting for file lock on build directory
-    Finished `test` profile [unoptimized] target(s) in 30.07s
+    Finished `test` profile [unoptimized] target(s) in 16.09s
 warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
 note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
      Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
@@ -15,5 +13,5 @@ HART_GUARD NIHOS_XY_RESUME_ENTRY returned on hart 1
 HART_GUARD NIHOS_XY_ON_STACK_ENTRY returned on hart 1
 test emu::tests::continuation_native_foreground_rejects_other_hart ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.05s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.04s
 
