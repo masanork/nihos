@@ -67,7 +67,9 @@ separate from station failures. The architecture probe compiles both settings.
 The experimental owner also schedules TCP TX through the existing short SDIO
 sender after station, time and BLE work, retaining any staged TCP frame across
 backpressure. An experimental CPU0-only interface offers open, readiness,
-partial I/O and half-close with lease/epoch validation. Callers must supply
+partial I/O, half-close and a borrowed SSH adapter with lease/epoch validation.
+Native adapter construction is RV32-codegen tested; the OpenSSH fixture uses
+the same adapter with a synthetic station. Callers must supply
 secure connection randomness before production use. Production configuration
 does not enable the option, and xy does not call it.
 

@@ -65,6 +65,7 @@ pub fn experimentalTcpError() u32 {
     return if (experimental_tcp) tcp_error_code else 0;
 }
 pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
+pub const ExperimentalSshAdapter = hosted.ssh_tcp.Adapter;
 
 // Experimental CPU0-only interface. The caller must supply a securely chosen
 // ephemeral port/sequence before production use and must serialize all calls
@@ -106,6 +107,15 @@ pub fn experimentalTcpCloseComplete(handle: ExperimentalTcpHandle) !bool {
     if (comptime !experimental_tcp) return error.TcpDisabled;
     const now = try experimentalTcpNow();
     return tcp_state.closeComplete(client, handle, now);
+}
+/// The adapter borrows the CPU0 network owner. The caller must advance it
+/// before each SSH pump poll and discard it after failure or network reset.
+pub fn experimentalSshAdapter(handle: ExperimentalTcpHandle, write_timeout_ms: u64) !ExperimentalSshAdapter {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    if (write_timeout_ms == 0 or now / 1000 > @import("std").math.maxInt(u64) - write_timeout_ms) return error.InvalidArgument;
+    if (!try tcp_state.ready(client, handle, now)) return error.WouldBlock;
+    return .{ .owner = tcp_state, .client = client, .handle = handle, .epoch = tcp_state.epoch, .now_us = now, .write_timeout_ms = write_timeout_ms };
 }
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.

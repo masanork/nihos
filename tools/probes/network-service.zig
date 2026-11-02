@@ -11,6 +11,13 @@ export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_b
         _ = network.experimentalTcpReady(handle) catch false;
         _ = network.experimentalTcpWrite(handle, &buffer, 5_000_000) catch 0;
         _ = network.experimentalTcpRead(handle, &buffer) catch 0;
+        if (network.experimentalSshAdapter(handle, 5000)) |value| {
+            var adapter = value;
+            adapter.advance(1_000_000) catch return 0;
+            const socket = adapter.io();
+            _ = socket.read(socket.context, &buffer) catch return 0;
+            _ = socket.write(socket.context, &buffer) catch return 0;
+        } else |err| tcp_result +|= @intFromError(err);
         network.experimentalTcpCloseWrite(handle, 5_000_000) catch return 0;
         _ = network.experimentalTcpCloseComplete(handle) catch false;
     } else |err| tcp_result = @intFromError(err);
