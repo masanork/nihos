@@ -80,7 +80,9 @@ impl Emulator {
         self.total_steps = 0;
         self.mips = 0.0;
         #[cfg(test)]
-        { self.gc_probe = None; }
+        {
+            self.gc_probe = None;
+        }
         Ok(())
     }
 
@@ -573,13 +575,19 @@ mod tests {
             assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
             let output = String::from_utf8_lossy(&emu.bus.console_output);
             assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-            if let Some(line) = output.lines().find(|line| line.contains("NIHOS_NATIVE_XY_IDLE ")) {
+            if let Some(line) = output
+                .lines()
+                .find(|line| line.contains("NIHOS_NATIVE_XY_IDLE "))
+            {
                 eprintln!("xy_backing {line}");
                 assert!(line.contains("backing_reserved=00400000"), "{line}");
                 return;
             }
         }
-        panic!("no backing allocation report: {}", String::from_utf8_lossy(&emu.bus.console_output));
+        panic!(
+            "no backing allocation report: {}",
+            String::from_utf8_lossy(&emu.bus.console_output)
+        );
     }
 
     // Requires an xy trace ELF built from the exact candidate under test.
@@ -587,14 +595,18 @@ mod tests {
     #[ignore = "requires NIHOS_EMU_TEST_ELF with xy trace enabled"]
     fn firmware_nested_gc_pressure_and_recovery() {
         let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
-        let expected = std::env::var("NIHOS_EMU_GC_EXPECT").expect("set NIHOS_EMU_GC_EXPECT to done or full");
+        let expected =
+            std::env::var("NIHOS_EMU_GC_EXPECT").expect("set NIHOS_EMU_GC_EXPECT to done or full");
         let mut emu = Emulator::new(path, None::<&str>).unwrap();
         let mut ready = false;
         for _ in 0..1000 {
             emu.step_frame(1_000_000);
             let output = String::from_utf8_lossy(&emu.bus.console_output);
             assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-            if output.contains("NIHOS_NATIVE_XY_READY") { ready = true; break; }
+            if output.contains("NIHOS_NATIVE_XY_READY") {
+                ready = true;
+                break;
+            }
         }
         assert!(ready, "guest did not reach xy");
         emu.step_frame(30_000_000);
@@ -608,19 +620,23 @@ mod tests {
             if source == "(let ((result (work 3))) result)" {
                 if let Ok(entry) = std::env::var("NIHOS_EMU_GC_ENTRY") {
                     emu.gc_probe = Some(GcInstructionProbe {
-                        entry: u32::from_str_radix(entry.trim_start_matches("0x"), 16).expect("invalid GC entry"),
+                        entry: u32::from_str_radix(entry.trim_start_matches("0x"), 16)
+                            .expect("invalid GC entry"),
                         active: None,
                         samples: Vec::new(),
                     });
                 }
             }
-            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            for byte in source.bytes().chain(std::iter::once(b'\r')) {
+                emu.send_key(byte);
+            }
             let hex: String = expected_reply.bytes().map(|b| format!("{b:02x}")).collect();
             let expected_line = format!("NIHOS_NATIVE_XY_REPLY data={hex}");
             let mut checkpoint = start;
             let cancel = std::env::var_os("NIHOS_EMU_GC_CANCEL").is_some();
             let abort = std::env::var_os("NIHOS_EMU_GC_ABORT").is_some();
-            let inject = source == "(let ((result (work 3))) result)" && (abort || cancel || std::env::var_os("NIHOS_EMU_GC_INJECT").is_some());
+            let inject = source == "(let ((result (work 3))) result)"
+                && (abort || cancel || std::env::var_os("NIHOS_EMU_GC_INJECT").is_some());
             let mut injected = false;
             for _ in 0..if inject { 3000 } else { 200 } {
                 emu.step_frame(if inject { 100_000 } else { 5_000_000 });
@@ -637,32 +653,70 @@ mod tests {
                     continue;
                 }
                 let completed = String::from_utf8_lossy(&emu.bus.console_output[checkpoint..]);
-                let reply_seen = completed.lines().any(|line| line.trim_end_matches('\r') == expected_line);
-                let replay_marker = if cancel { "NIHOS_NATIVE_XY_READER screen=00000001" } else { "bytes=00000001" };
-                let replayed = if abort { reply_seen } else { inject && output.contains("NIHOS_XY_GC_RESULT done") && output.contains(replay_marker) };
+                let reply_seen = completed
+                    .lines()
+                    .any(|line| line.trim_end_matches('\r') == expected_line);
+                let replay_marker = if cancel {
+                    "NIHOS_NATIVE_XY_READER screen=00000001"
+                } else {
+                    "bytes=00000001"
+                };
+                let replayed = if abort {
+                    reply_seen
+                } else {
+                    inject
+                        && output.contains("NIHOS_XY_GC_RESULT done")
+                        && output.contains(replay_marker)
+                };
                 if if inject { replayed } else { reply_seen } {
                     if inject {
                         if abort {
-                            let seen = output.find("NIHOS_XY_GC_CANCEL_SEEN").expect("cancel not observed during GC");
-                            let safe = output.find("NIHOS_XY_GC_CANCEL_SAFE").expect("collector did not complete after cancel");
-                            let result = output.find("NIHOS_XY_GC_RESULT Evaluation cancelled").expect("missing cancellation result");
-                            assert!(injected && seen < safe && safe < result, "invalid cancellation ordering: {output}");
+                            let seen = output
+                                .find("NIHOS_XY_GC_CANCEL_SEEN")
+                                .expect("cancel not observed during GC");
+                            let safe = output
+                                .find("NIHOS_XY_GC_CANCEL_SAFE")
+                                .expect("collector did not complete after cancel");
+                            let result = output
+                                .find("NIHOS_XY_GC_RESULT Evaluation cancelled")
+                                .expect("missing cancellation result");
+                            assert!(
+                                injected && seen < safe && safe < result,
+                                "invalid cancellation ordering: {output}"
+                            );
                         } else {
-                            assert!(injected && output.contains("NIHOS_XY_GC_DEFERRED"), "input was not deferred during GC: {output}");
-                            assert!(output.contains(replay_marker), "deferred input was not replayed: {output}");
+                            assert!(
+                                injected && output.contains("NIHOS_XY_GC_DEFERRED"),
+                                "input was not deferred during GC: {output}"
+                            );
+                            assert!(
+                                output.contains(replay_marker),
+                                "deferred input was not replayed: {output}"
+                            );
                         }
                         if std::env::var_os("NIHOS_EMU_GC_REPAINT").is_some() {
-                            assert!(output.contains("NIHOS_XY_GC_REPAINT"), "no repaint while collecting: {output}");
+                            assert!(
+                                output.contains("NIHOS_XY_GC_REPAINT"),
+                                "no repaint while collecting: {output}"
+                            );
                         }
                         if std::env::var_os("NIHOS_EMU_GC_OVERLAP").is_some() {
-                            assert!(output.contains("NIHOS_XY_GC_OVERLAP_REJECTED"), "overlap test missing: {output}");
+                            assert!(
+                                output.contains("NIHOS_XY_GC_OVERLAP_REJECTED"),
+                                "overlap test missing: {output}"
+                            );
                             eprintln!("gc_foreground overlapping_stack=rejected");
                         }
                         if std::env::var_os("NIHOS_EMU_GC_TRAPS").is_some() {
-                            let line = output.lines().find(|line| line.contains("NIHOS_XY_GC_STACK_CAPTURES"))
+                            let line = output
+                                .lines()
+                                .find(|line| line.contains("NIHOS_XY_GC_STACK_CAPTURES"))
                                 .expect("missing GC stack capture counters");
                             let counter = |name: &str| {
-                                let value = line.split_whitespace().find_map(|part| part.strip_prefix(name)).expect("missing stack counter");
+                                let value = line
+                                    .split_whitespace()
+                                    .find_map(|part| part.strip_prefix(name))
+                                    .expect("missing stack counter");
                                 u32::from_str_radix(value, 16).expect("invalid stack counter")
                             };
                             let eval = counter("eval=");
@@ -670,20 +724,41 @@ mod tests {
                             assert!(eval > 0 && render > 0, "timer capture missing: {line}");
                             eprintln!("gc_stack_captures eval={eval} render={render}");
                         }
-                        eprintln!("gc_input pump=active repaint={} result={} replay={}", output.contains("NIHOS_XY_GC_REPAINT"), if abort { "cancelled" } else { "done" }, if abort { "none" } else if cancel { "cancel-home" } else { "text" });
+                        eprintln!(
+                            "gc_input pump=active repaint={} result={} replay={}",
+                            output.contains("NIHOS_XY_GC_REPAINT"),
+                            if abort { "cancelled" } else { "done" },
+                            if abort {
+                                "none"
+                            } else if cancel {
+                                "cancel-home"
+                            } else {
+                                "text"
+                            }
+                        );
                         if cancel {
                             let resume = emu.bus.console_output.len();
                             emu.send_key(b'n');
                             let mut returned = false;
                             for _ in 0..200 {
                                 emu.step_frame(5_000_000);
-                                let state = String::from_utf8_lossy(&emu.bus.console_output[resume..]);
-                                if state.contains("NIHOS_NATIVE_XY_READER screen=00000000") { returned = true; break; }
+                                let state =
+                                    String::from_utf8_lossy(&emu.bus.console_output[resume..]);
+                                if state.contains("NIHOS_NATIVE_XY_READER screen=00000000") {
+                                    returned = true;
+                                    break;
+                                }
                             }
-                            assert!(returned, "could not return to scratch after deferred cancel");
+                            assert!(
+                                returned,
+                                "could not return to scratch after deferred cancel"
+                            );
                         }
                     }
-                    eprintln!("nested_gc source_len={} reply={expected_reply}", source.len());
+                    eprintln!(
+                        "nested_gc source_len={} reply={expected_reply}",
+                        source.len()
+                    );
                     if let Some(probe) = emu.gc_probe.take() {
                         assert!(probe.active.is_none(), "GC probe ended inside collection");
                         assert!(!probe.samples.is_empty(), "GC entry not observed");
@@ -691,19 +766,38 @@ mod tests {
                         let total: u64 = probe.samples.iter().sum();
                         let min = probe.samples.iter().min().unwrap();
                         let max = probe.samples.iter().max().unwrap();
-                        eprintln!("gc_cpu0_instructions count={count} total={total} min={min} max={max} first={:?}", &probe.samples[..count.min(8)]);
+                        eprintln!(
+                            "gc_cpu0_instructions count={count} total={total} min={min} max={max} first={:?}",
+                            &probe.samples[..count.min(8)]
+                        );
                     }
                     return;
                 }
             }
-            panic!("missing expected reply for {source}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+            panic!(
+                "missing expected reply for {source}: {}",
+                String::from_utf8_lossy(&emu.bus.console_output[start..])
+            );
         };
         let root = format!("(define root '({}))", vec!["0"; 116].join(" "));
         run(&root, "()");
-        for _ in 0..5 { run("(set! root (append root root))", "()"); }
-        run("(define (alloc n acc) (if (= n 0) acc (alloc (- n 1) (cons n acc))))", "()");
-        run("(define (work n) (if (= n 0) 'done (begin (let ((a (alloc 70 '()))) (let ((b (alloc 70 '()))) (+ (length a) (length b)))) (work (- n 1)))))", "()");
-        let reply = match expected.as_str() { "done" => "done", "full" => "Scheme heap full", "cancelled" => "Evaluation cancelled", _ => panic!("invalid NIHOS_EMU_GC_EXPECT") };
+        for _ in 0..5 {
+            run("(set! root (append root root))", "()");
+        }
+        run(
+            "(define (alloc n acc) (if (= n 0) acc (alloc (- n 1) (cons n acc))))",
+            "()",
+        );
+        run(
+            "(define (work n) (if (= n 0) 'done (begin (let ((a (alloc 70 '()))) (let ((b (alloc 70 '()))) (+ (length a) (length b)))) (work (- n 1)))))",
+            "()",
+        );
+        let reply = match expected.as_str() {
+            "done" => "done",
+            "full" => "Scheme heap full",
+            "cancelled" => "Evaluation cancelled",
+            _ => panic!("invalid NIHOS_EMU_GC_EXPECT"),
+        };
         run("(let ((result (work 3))) result)", reply);
         run("(+ 20 22)", "42");
     }
@@ -965,29 +1059,49 @@ mod tests {
             emu.step_frame(1_000_000);
             let output = String::from_utf8_lossy(&emu.bus.console_output);
             assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-            if output.contains("NIHOS_NATIVE_XY_READY") { ready = true; break; }
+            if output.contains("NIHOS_NATIVE_XY_READY") {
+                ready = true;
+                break;
+            }
         }
         assert!(ready, "guest did not reach xy");
         emu.step_frame(30_000_000);
         emu.send_key(b'n');
         emu.step_frame(30_000_000);
         for (source, expected) in [
-            ("(map (lambda (x) (* x x)) '(1 2 3 4))", "28312034203920313629"),
+            (
+                "(map (lambda (x) (* x x)) '(1 2 3 4))",
+                "28312034203920313629",
+            ),
             ("(map + '(1 2 3) '(10 20 30))", "28313120323220333329"),
-            ("(begin (define (many n a) (if (= n 0) a (many (- n 1) (cons 1 a)))) (if (equal? (many 129 '()) (many 129 '())) 709 708))", "373039"),
+            (
+                "(begin (define (many n a) (if (= n 0) a (many (- n 1) (cons 1 a)))) (if (equal? (many 129 '()) (many 129 '())) 709 708))",
+                "373039",
+            ),
             ("(if (equal? '(a (b c)) '(a (b c))) 710 711)", "373130"),
             ("(if (equal? '(a (b c)) '(a (b d))) 712 713)", "373133"),
-            ("(memq 'red '(red shoes blue socks))", "287265642073686f657320626c756520736f636b7329"),
+            (
+                "(memq 'red '(red shoes blue socks))",
+                "287265642073686f657320626c756520736f636b7329",
+            ),
             ("(cadr '((x1 x2) (y1 y2)))", "28793120793229"),
             ("(let* ((x 1) (f (lambda () x)) (x 2)) (f))", "31"),
-            ("(let* ((n 6) (d -8) (g (gcd n d)) (a (/ n g)) (b (/ d g))) (cons (- a) (- b)))", "282d33202e203429"),
-            ("(map + '(1) '(2 3))", "57726f6e6720617267756d656e742074797065"),
+            (
+                "(let* ((n 6) (d -8) (g (gcd n d)) (a (/ n g)) (b (/ d g))) (cons (- a) (- b)))",
+                "282d33202e203429",
+            ),
+            (
+                "(map + '(1) '(2 3))",
+                "57726f6e6720617267756d656e742074797065",
+            ),
             ("(+ 20 22)", "3432"),
         ] {
             let start = emu.bus.console_output.len();
             emu.send_key(0x1b);
             emu.step_frame(30_000_000);
-            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            for byte in source.bytes().chain(std::iter::once(b'\r')) {
+                emu.send_key(byte);
+            }
             let expected_line = format!("NIHOS_NATIVE_XY_REPLY data={expected}");
             let mut matched = false;
             for _ in 0..200 {
@@ -995,13 +1109,20 @@ mod tests {
                 assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
                 let output = String::from_utf8_lossy(&emu.bus.console_output[start..]);
                 assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-                if output.lines().any(|line| line.trim_end_matches('\r') == expected_line) {
+                if output
+                    .lines()
+                    .any(|line| line.trim_end_matches('\r') == expected_line)
+                {
                     eprintln!("sicp_lists source={source} reply={expected_line}");
                     matched = true;
                     break;
                 }
             }
-            assert!(matched, "no expected reply for {source}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+            assert!(
+                matched,
+                "no expected reply for {source}: {}",
+                String::from_utf8_lossy(&emu.bus.console_output[start..])
+            );
         }
     }
 
@@ -1016,31 +1137,68 @@ mod tests {
             emu.step_frame(1_000_000);
             let output = String::from_utf8_lossy(&emu.bus.console_output);
             assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-            if output.contains("NIHOS_NATIVE_XY_READY") { ready = true; break; }
+            if output.contains("NIHOS_NATIVE_XY_READY") {
+                ready = true;
+                break;
+            }
         }
         assert!(ready, "guest did not reach xy");
         emu.step_frame(30_000_000);
         emu.send_key(b'n');
         emu.step_frame(30_000_000);
         for (source, expected) in [
-            ("(begin (define (xp b n a) (cond ((= n 0) a) ((even? n) (xp (* b b) (quotient n 2) a)) (else (xp b (- n 1) (* a b))))) (xp 3 7 1))", "32313837"),
-            ("(let* ((a (cons -3 2)) (b (cons 5 -4))) (cons (/ (+ (car a) (car b)) 2) (/ (+ (cdr a) (cdr b)) 2)))", "2831202e202d3129"),
-            ("(let* ((a (let ((n 5)) (lambda (x) (set! n (+ n x)) n))) (x (a 10)) (y (a 10))) (list x y))", "28313520323529"),
-            ("(let ((x (list 1 2))) (set-car! x 7) (set-cdr! (cdr x) x) (list (car x) (list? x)))", "283720236629"),
-            ("(let ((q (cons '() '()))) (let ((n (list 'a))) (set-car! q n) (set-cdr! q n)) (let ((n (list 'b))) (set-cdr! (cdr q) n) (set-cdr! q n)) (car q))", "2861206229"),
-            ("(let ((e '(define x 3))) (list (pair? e) (eq? (car e) 'call)))", "28237420236629"),
-            ("(begin (define (fact n) (define (iter p c) (if (> c n) p (iter (* c p) (+ c 1)))) (iter 1 1)) (fact 5))", "313230"),
-
-            ("(begin (define (same-parity f . r) (define (k xs) (cond ((null? xs) '()) ((= (remainder (abs (car xs)) 2) (remainder (abs f) 2)) (cons (car xs) (k (cdr xs)))) (else (k (cdr xs))))) (cons f (k r))) (same-parity 1 2 3 4 5 6 7))", "283120332035203729"),
-            ("(list (symbol? 'x) (string? \"x\") (boolean? #f) (procedure? +))", "28237420237420237420237429"),
+            (
+                "(begin (define (xp b n a) (cond ((= n 0) a) ((even? n) (xp (* b b) (quotient n 2) a)) (else (xp b (- n 1) (* a b))))) (xp 3 7 1))",
+                "32313837",
+            ),
+            (
+                "(let* ((a (cons -3 2)) (b (cons 5 -4))) (cons (/ (+ (car a) (car b)) 2) (/ (+ (cdr a) (cdr b)) 2)))",
+                "2831202e202d3129",
+            ),
+            (
+                "(let* ((a (let ((n 5)) (lambda (x) (set! n (+ n x)) n))) (x (a 10)) (y (a 10))) (list x y))",
+                "28313520323529",
+            ),
+            (
+                "(let ((x (list 1 2))) (set-car! x 7) (set-cdr! (cdr x) x) (list (car x) (list? x)))",
+                "283720236629",
+            ),
+            (
+                "(let ((q (cons '() '()))) (let ((n (list 'a))) (set-car! q n) (set-cdr! q n)) (let ((n (list 'b))) (set-cdr! (cdr q) n) (set-cdr! q n)) (car q))",
+                "2861206229",
+            ),
+            (
+                "(let ((e '(define x 3))) (list (pair? e) (eq? (car e) 'call)))",
+                "28237420236629",
+            ),
+            (
+                "(begin (define (fact n) (define (iter p c) (if (> c n) p (iter (* c p) (+ c 1)))) (iter 1 1)) (fact 5))",
+                "313230",
+            ),
+            (
+                "(begin (define (same-parity f . r) (define (k xs) (cond ((null? xs) '()) ((= (remainder (abs (car xs)) 2) (remainder (abs f) 2)) (cons (car xs) (k (cdr xs)))) (else (k (cdr xs))))) (cons f (k r))) (same-parity 1 2 3 4 5 6 7))",
+                "283120332035203729",
+            ),
+            (
+                "(list (symbol? 'x) (string? \"x\") (boolean? #f) (procedure? +))",
+                "28237420237420237420237429",
+            ),
             ("(list (caddr '(1 2 3)) (caadr '(a (b c))))", "2833206229"),
-            ("(let ((seen '())) (for-each (lambda (x) (set! seen (cons x seen))) '(1 2 3)) seen)", "28332032203129"),
-            ("(assoc '(a b) '(((x) . 1) ((a b) . 2)))", "282861206229202e203229"),
+            (
+                "(let ((seen '())) (for-each (lambda (x) (set! seen (cons x seen))) '(1 2 3)) seen)",
+                "28332032203129",
+            ),
+            (
+                "(assoc '(a b) '(((x) . 1) ((a b) . 2)))",
+                "282861206229202e203229",
+            ),
         ] {
             let start = emu.bus.console_output.len();
             emu.send_key(0x1b);
             emu.step_frame(30_000_000);
-            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            for byte in source.bytes().chain(std::iter::once(b'\r')) {
+                emu.send_key(byte);
+            }
             let expected_line = format!("NIHOS_NATIVE_XY_REPLY data={expected}");
             let mut matched = false;
             for _ in 0..200 {
@@ -1048,13 +1206,20 @@ mod tests {
                 assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
                 let output = String::from_utf8_lossy(&emu.bus.console_output[start..]);
                 assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
-                if output.lines().any(|line| line.trim_end_matches('\r') == expected_line) {
+                if output
+                    .lines()
+                    .any(|line| line.trim_end_matches('\r') == expected_line)
+                {
                     eprintln!("sicp_five source={source} reply={expected_line}");
                     matched = true;
                     break;
                 }
             }
-            assert!(matched, "no expected reply for {source}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+            assert!(
+                matched,
+                "no expected reply for {source}: {}",
+                String::from_utf8_lossy(&emu.bus.console_output[start..])
+            );
         }
     }
 
@@ -1336,9 +1501,19 @@ mod tests {
         }
         assert!(ready, "guest did not reach xy");
         let output = String::from_utf8_lossy(&emu.bus.console_output);
-        let placement = output.lines().find(|line| line.contains("NIHOS_NATIVE_XY_PSRAM ")).expect("missing workspace placement");
+        let placement = output
+            .lines()
+            .find(|line| line.contains("NIHOS_NATIVE_XY_PSRAM "))
+            .expect("missing workspace placement");
         let field = |name: &str| -> u32 {
-            u32::from_str_radix(placement.split_whitespace().find_map(|s| s.strip_prefix(name)).expect("missing field"), 16).expect("invalid field")
+            u32::from_str_radix(
+                placement
+                    .split_whitespace()
+                    .find_map(|s| s.strip_prefix(name))
+                    .expect("missing field"),
+                16,
+            )
+            .expect("invalid field")
         };
         let stack_bytes = field("stack_bytes=");
         assert_eq!(stack_bytes, 65536);
@@ -1395,14 +1570,21 @@ mod tests {
                 // Wait beyond the reply so its foreground call has returned.
                 emu.step_frame(5_000_000);
                 assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
-                let first = (256..stack_bytes).find(|i| {
-                    let offset = emu.bus.translate_psram(stack_low + i);
-                    emu.bus.psram[offset] != 0xa5
-                }).unwrap_or(stack_bytes);
+                let first = (256..stack_bytes)
+                    .find(|i| {
+                        let offset = emu.bus.translate_psram(stack_low + i);
+                        emu.bus.psram[offset] != 0xa5
+                    })
+                    .unwrap_or(stack_bytes);
                 let used = stack_bytes - first;
-                assert!((0..256).all(|i| emu.bus.psram[emu.bus.translate_psram(stack_low + i)] == 0xa5), "stack guard changed");
+                assert!(
+                    (0..256).all(|i| emu.bus.psram[emu.bus.translate_psram(stack_low + i)] == 0xa5),
+                    "stack guard changed"
+                );
                 assert!(used > 0, "invalid stack watermark");
-                eprintln!("sicp_stack_watermark source={source} low={stack_low:#x} bytes={stack_bytes} observed_used={used}");
+                eprintln!(
+                    "sicp_stack_watermark source={source} low={stack_low:#x} bytes={stack_bytes} observed_used={used}"
+                );
             }
         }
     }
