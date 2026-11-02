@@ -66,8 +66,10 @@ stop/retry, and delivers station-processed RX to it. TCP RX failures are kept
 separate from station failures. The architecture probe compiles both settings.
 The experimental owner also schedules TCP TX through the existing short SDIO
 sender after station, time and BLE work, retaining any staged TCP frame across
-backpressure. Production build configuration does not enable the option, and
-no application entry point is connected through it yet. The existing image audits
+backpressure. An experimental CPU0-only interface offers open, readiness,
+partial I/O and half-close with lease/epoch validation. Callers must supply
+secure connection randomness before production use. Production configuration
+does not enable the option, and xy does not call it. The existing image audits
 therefore do not qualify a TCP-enabled image or its PSRAM reservation.
 
 The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream

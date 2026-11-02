@@ -64,6 +64,49 @@ var tcp_error_code: u32 = 0;
 pub fn experimentalTcpError() u32 {
     return if (experimental_tcp) tcp_error_code else 0;
 }
+pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
+
+// Experimental CPU0-only interface. The caller must supply a securely chosen
+// ephemeral port/sequence before production use and must serialize all calls
+// with poll(). This is not exposed to xy and is disabled in normal builds.
+fn experimentalTcpNow() !u64 {
+    if (!experimental_tcp) return error.TcpDisabled;
+    if (phase != .active or offload_active) return error.NetworkUnavailable;
+    return clock.counter() orelse error.Clock;
+}
+pub fn experimentalTcpOpen(remote: [4]u8, remote_port: u16, local_port: u16, initial_seq: u32, deadline_us: u64) !ExperimentalTcpHandle {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.open(client, .{ .address = remote, .port = remote_port }, local_port, initial_seq, now, deadline_us / 1000);
+}
+pub fn experimentalTcpReady(handle: ExperimentalTcpHandle) !bool {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.ready(client, handle, now);
+}
+/// Zero indicates peer EOF; WouldBlock means no data is available yet.
+pub fn experimentalTcpRead(handle: ExperimentalTcpHandle, out: []u8) !usize {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.read(client, handle, now, out);
+}
+/// The returned count is accepted into TCP, not acknowledged by the peer.
+pub fn experimentalTcpWrite(handle: ExperimentalTcpHandle, bytes: []const u8, deadline_us: u64) !usize {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.write(client, handle, now, deadline_us / 1000, bytes);
+}
+pub fn experimentalTcpCloseWrite(handle: ExperimentalTcpHandle, deadline_us: u64) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.closeWrite(client, handle, now, deadline_us / 1000);
+}
+/// TCP close completion does not replace TIME_WAIT or permit port reuse.
+pub fn experimentalTcpCloseComplete(handle: ExperimentalTcpHandle) !bool {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.closeComplete(client, handle, now);
+}
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;

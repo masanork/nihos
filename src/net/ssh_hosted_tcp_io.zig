@@ -3,7 +3,6 @@
 const std = @import("std");
 const owner_mod = @import("hosted_tcp_owner.zig");
 const station = @import("hosted_station.zig");
-const binding = @import("hosted_tcp_station.zig");
 const tcp = @import("hosted_tcp_service.zig");
 const pump = @import("ssh_socket_pump.zig");
 
@@ -21,8 +20,7 @@ pub const Adapter = struct {
     pub fn advance(self: *Adapter, now_us: u64) pump.SocketError!void {
         if (self.failed or self.write_timeout_ms == 0 or now_us < self.now_us or self.epoch != self.owner.epoch or self.owner.reset_required or self.owner.exhausted) return self.fail();
         self.now_us = now_us;
-        binding.refresh(&self.owner.service, self.client, self.epoch, now_us) catch return self.fail();
-        _ = self.owner.service.ready(self.handle) catch return self.fail();
+        _ = self.owner.ready(self.client, self.handle, now_us) catch return self.fail();
     }
     pub fn io(self: *Adapter) pump.Io {
         return .{ .context = self, .read = read, .write = write };
@@ -33,7 +31,7 @@ pub const Adapter = struct {
     fn read(context: ?*anyopaque, out: []u8) pump.SocketError!pump.Result {
         const self: *Adapter = @ptrCast(@alignCast(context orelse return error.SocketFailed));
         try self.valid();
-        const n = self.owner.service.read(self.handle, out) catch |err| switch (err) {
+        const n = self.owner.read(self.client, self.handle, self.now_us, out) catch |err| switch (err) {
             error.WouldBlock => return .would_block,
             else => return self.fail(),
         };
@@ -44,7 +42,7 @@ pub const Adapter = struct {
         try self.valid();
         const now_ms = self.now_us / 1000;
         const deadline = std.math.add(u64, now_ms, self.write_timeout_ms) catch return self.fail();
-        const n = self.owner.service.write(self.handle, bytes, now_ms, deadline) catch |err| switch (err) {
+        const n = self.owner.write(self.client, self.handle, self.now_us, deadline, bytes) catch |err| switch (err) {
             error.WouldBlock => return .would_block,
             else => return self.fail(),
         };

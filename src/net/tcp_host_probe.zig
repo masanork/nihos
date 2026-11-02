@@ -138,7 +138,7 @@ export fn tcp_link_receive(frame: [*]const u8, len: usize, now: u64) bool {
 export fn tcp_link_ready() bool {
     if (!refreshStation(host_now_ms)) return false;
     const handle = owner.handle orelse return false;
-    return owner.service.ready(handle) catch false;
+    return owner.ready(&host_station, handle, host_now_ms *| 1000) catch false;
 }
 export fn tcp_link_write(bytes: [*]const u8, len: usize, now: u64) isize {
     if (!refreshStation(now)) return -2;
@@ -165,13 +165,13 @@ export fn tcp_link_read(out: [*]u8, cap: usize) isize {
 export fn tcp_link_close(now: u64) bool {
     if (!refreshStation(now)) return false;
     const handle = owner.handle orelse return false;
-    owner.service.closeWrite(handle, now, now +| 12000) catch return false;
+    owner.closeWrite(&host_station, handle, now *| 1000, now +| 12000) catch return false;
     return true;
 }
 export fn tcp_link_closed(now: u64) bool {
     if (!refreshStation(now)) return false;
     const handle = owner.handle orelse return false;
-    if (!(owner.service.closeComplete(handle) catch return false)) return false;
+    if (!(owner.closeComplete(&host_station, handle, now *| 1000) catch return false)) return false;
     if (link_time_wait == null) {
         const link = if (owner.service.link) |*value| value else return false;
         const s = if (link.stream) |*value| value else return false;

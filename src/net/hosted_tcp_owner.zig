@@ -7,6 +7,8 @@ const tcp = @import("hosted_tcp_service.zig");
 const binding = @import("hosted_tcp_station.zig");
 const rx = @import("hosted_tcp_rx.zig");
 pub const Error = rx.Error || error{ InvalidCompletion, EpochExhausted, TransportResetRequired };
+pub const Handle = tcp.Handle;
+pub const Endpoint = @import("tcp_connect.zig").Endpoint;
 pub const Owner = struct {
     service: tcp.Service = .{},
     queue: rx.Queue = .{},
@@ -43,6 +45,28 @@ pub const Owner = struct {
         const handle = try self.service.open(remote, port, seq, now_us / 1000, deadline_ms);
         self.handle = handle;
         return handle;
+    }
+    /// Each application operation revalidates the live lease and reset epoch.
+    pub fn ready(self: *Owner, client: *const station.Client, handle: Handle, now_us: u64) Error!bool {
+        try self.check();
+        try binding.refresh(&self.service, client, self.epoch, now_us);
+        return self.service.ready(handle);
+    }
+    pub fn read(self: *Owner, client: *const station.Client, handle: Handle, now_us: u64, out: []u8) Error!usize {
+        _ = try self.ready(client, handle, now_us);
+        return self.service.read(handle, out);
+    }
+    pub fn write(self: *Owner, client: *const station.Client, handle: Handle, now_us: u64, deadline_ms: u64, bytes: []const u8) Error!usize {
+        _ = try self.ready(client, handle, now_us);
+        return self.service.write(handle, bytes, now_us / 1000, deadline_ms);
+    }
+    pub fn closeWrite(self: *Owner, client: *const station.Client, handle: Handle, now_us: u64, deadline_ms: u64) Error!void {
+        _ = try self.ready(client, handle, now_us);
+        return self.service.closeWrite(handle, now_us / 1000, deadline_ms);
+    }
+    pub fn closeComplete(self: *Owner, client: *const station.Client, handle: Handle, now_us: u64) Error!bool {
+        _ = try self.ready(client, handle, now_us);
+        return self.service.closeComplete(handle);
     }
     pub fn receive(self: *Owner, client: *station.Client, frame: hosted.Frame, now_us: u64) Error!bool {
         try self.check();
@@ -225,6 +249,31 @@ test "native TCP scheduling respects priorities and retains a blocked frame" {
     try std.testing.expectEqual(next_sequence, client.sequence);
     try owner.sent(&client, len, 2000);
     try std.testing.expect((try owner.nextTcp(&client, 2000, true, false)) == null);
+}
+
+test "application operations revalidate lease and preserve partial I/O" {
+    var owner: Owner = .{};
+    var client: station.Client = .{};
+    client.phase = .done;
+    client.keep_serving = true;
+    client.connected = true;
+    client.mac_address = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
+    client.dhcp_client = .{ .mac = client.mac_address, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 20_000_000, .rebind_at = 30_000_000, .expires_at = 40_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 40 } };
+    const handle = try owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 123, 0, 5000);
+    const link = &owner.service.link.?;
+    link.state = .active;
+    link.stream = @import("tcp_stream.zig").Stream.init(.{ .local = .{ .address = .{ 10, 0, 2, 15 }, .port = 50001 }, .remote = .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, .send_next = 1, .receive_next = 1, .remote_window = 4096, .remote_mss = 1460 });
+    const payload: [600]u8 = @splat(1);
+    try std.testing.expect(try owner.ready(&client, handle, 1000));
+    try std.testing.expectEqual(@as(usize, tcp.max_write), try owner.write(&client, handle, 1000, 5000, &payload));
+    try std.testing.expectError(error.WouldBlock, owner.write(&client, handle, 1000, 5000, &payload));
+    var out: [8]u8 = undefined;
+    try std.testing.expectError(error.WouldBlock, owner.read(&client, handle, 1000, &out));
+    link.stream.?.peer_fin = true;
+    try std.testing.expectEqual(@as(usize, 0), try owner.read(&client, handle, 1000, &out));
+    client.dhcp_client.?.expires_at = 5000;
+    try std.testing.expectError(error.StaleHandle, owner.write(&client, handle, 5000, 5000, &payload));
+    try std.testing.expectError(error.StaleHandle, owner.read(&client, handle, 5000, &out));
 }
 
 test "epoch exhaustion never permits reuse" {
