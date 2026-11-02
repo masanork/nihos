@@ -1,0 +1,91 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "3.21",
+      "setup": "(define (make-queue) (cons '() '()))\n(define (front-ptr q) (car q)) (define (rear-ptr q) (cdr q))\n(define (empty-queue? q) (null? (front-ptr q)))\n(define (insert-queue! q item) (let ((n (cons item '()))) (if (empty-queue? q) (begin (set-car! q n) (set-cdr! q n)) (begin (set-cdr! (rear-ptr q) n) (set-cdr! q n))) q))\n(define (delete-queue! q) (set-car! q (cdr (front-ptr q))) q)\n(define (queue-contents q) (front-ptr q))",
+      "expression": "(let ((q (make-queue))) (insert-queue! q 'a) (insert-queue! q 'b) (queue-contents q))",
+      "expected": "(a b)",
+      "observed": "(a b)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.21",
+      "setup": "(define (make-queue) (cons '() '()))\n(define (front-ptr q) (car q)) (define (rear-ptr q) (cdr q))\n(define (empty-queue? q) (null? (front-ptr q)))\n(define (insert-queue! q item) (let ((n (cons item '()))) (if (empty-queue? q) (begin (set-car! q n) (set-cdr! q n)) (begin (set-cdr! (rear-ptr q) n) (set-cdr! q n))) q))\n(define (delete-queue! q) (set-car! q (cdr (front-ptr q))) q)\n(define (queue-contents q) (front-ptr q))",
+      "expression": "(let ((q (make-queue))) (insert-queue! q 'a) (insert-queue! q 'b) (delete-queue! q) (queue-contents q))",
+      "expected": "(b)",
+      "observed": "(b)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.21",
+      "setup": "(define (make-queue) (cons '() '()))\n(define (front-ptr q) (car q)) (define (rear-ptr q) (cdr q))\n(define (empty-queue? q) (null? (front-ptr q)))\n(define (insert-queue! q item) (let ((n (cons item '()))) (if (empty-queue? q) (begin (set-car! q n) (set-cdr! q n)) (begin (set-cdr! (rear-ptr q) n) (set-cdr! q n))) q))\n(define (delete-queue! q) (set-car! q (cdr (front-ptr q))) q)\n(define (queue-contents q) (front-ptr q))",
+      "expression": "(let ((q (make-queue))) (insert-queue! q 'a) (delete-queue! q) (insert-queue! q 'c) (queue-contents q))",
+      "expected": "(c)",
+      "observed": "(c)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.22",
+      "setup": "(define (make-queue) (let ((front '()) (rear '()))\n (define (insert! item) (let ((n (cons item '()))) (if (null? front) (begin (set! front n) (set! rear n)) (begin (set-cdr! rear n) (set! rear n))) 'ok))\n (define (delete!) (set! front (cdr front)) 'ok)\n (define (get) front)\n (lambda (message) (cond ((eq? message 'insert!) insert!) ((eq? message 'delete!) delete!) ((eq? message 'get) get) (else #f)))))",
+      "expression": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'insert!) 'b) ((q 'get)))",
+      "expected": "(a b)",
+      "observed": "(a b)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.22",
+      "setup": "(define (make-queue) (let ((front '()) (rear '()))\n (define (insert! item) (let ((n (cons item '()))) (if (null? front) (begin (set! front n) (set! rear n)) (begin (set-cdr! rear n) (set! rear n))) 'ok))\n (define (delete!) (set! front (cdr front)) 'ok)\n (define (get) front)\n (lambda (message) (cond ((eq? message 'insert!) insert!) ((eq? message 'delete!) delete!) ((eq? message 'get) get) (else #f)))))",
+      "expression": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'insert!) 'b) ((q 'delete!)) ((q 'get)))",
+      "expected": "(b)",
+      "observed": "(b)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.22",
+      "setup": "(define (make-queue) (let ((front '()) (rear '()))\n (define (insert! item) (let ((n (cons item '()))) (if (null? front) (begin (set! front n) (set! rear n)) (begin (set-cdr! rear n) (set! rear n))) 'ok))\n (define (delete!) (set! front (cdr front)) 'ok)\n (define (get) front)\n (lambda (message) (cond ((eq? message 'insert!) insert!) ((eq? message 'delete!) delete!) ((eq? message 'get) get) (else #f)))))",
+      "expression": "(let ((q (make-queue))) ((q 'insert!) 'a) ((q 'delete!)) ((q 'insert!) 'c) ((q 'get)))",
+      "expected": "(c)",
+      "observed": "(c)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.23",
+      "setup": "(define (make-deque) (cons '() '()))\n(define (make-node x) (cons x (cons '() '())))\n(define (value n) (car n)) (define (prev n) (car (cdr n))) (define (next n) (cdr (cdr n)))\n(define (set-prev! n x) (set-car! (cdr n) x)) (define (set-next! n x) (set-cdr! (cdr n) x))\n(define (front-insert! d x) (let ((n (make-node x)) (f (car d))) (if (null? f) (begin (set-car! d n) (set-cdr! d n)) (begin (set-next! n f) (set-prev! f n) (set-car! d n))) 'ok))\n(define (rear-insert! d x) (let ((n (make-node x)) (r (cdr d))) (if (null? r) (begin (set-car! d n) (set-cdr! d n)) (begin (set-prev! n r) (set-next! r n) (set-cdr! d n))) 'ok))\n(define (front-delete! d) (let* ((f (car d)) (n (next f))) (if (null? n) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-prev! n '()) (set-car! d n))) 'ok))\n(define (rear-delete! d) (let* ((r (cdr d)) (p (prev r))) (if (null? p) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-next! p '()) (set-cdr! d p))) 'ok))\n(define (deque->list d) (define (go n) (if (null? n) '() (cons (value n) (go (next n))))) (go (car d)))\n(define (deque-reverse d) (define (go n) (if (null? n) '() (cons (value n) (go (prev n))))) (go (cdr d)))",
+      "expression": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((a b c) (c b a))",
+      "observed": "((a b c) (c b a))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.23",
+      "setup": "(define (make-deque) (cons '() '()))\n(define (make-node x) (cons x (cons '() '())))\n(define (value n) (car n)) (define (prev n) (car (cdr n))) (define (next n) (cdr (cdr n)))\n(define (set-prev! n x) (set-car! (cdr n) x)) (define (set-next! n x) (set-cdr! (cdr n) x))\n(define (front-insert! d x) (let ((n (make-node x)) (f (car d))) (if (null? f) (begin (set-car! d n) (set-cdr! d n)) (begin (set-next! n f) (set-prev! f n) (set-car! d n))) 'ok))\n(define (rear-insert! d x) (let ((n (make-node x)) (r (cdr d))) (if (null? r) (begin (set-car! d n) (set-cdr! d n)) (begin (set-prev! n r) (set-next! r n) (set-cdr! d n))) 'ok))\n(define (front-delete! d) (let* ((f (car d)) (n (next f))) (if (null? n) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-prev! n '()) (set-car! d n))) 'ok))\n(define (rear-delete! d) (let* ((r (cdr d)) (p (prev r))) (if (null? p) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-next! p '()) (set-cdr! d p))) 'ok))\n(define (deque->list d) (define (go n) (if (null? n) '() (cons (value n) (go (next n))))) (go (car d)))\n(define (deque-reverse d) (define (go n) (if (null? n) '() (cons (value n) (go (prev n))))) (go (cdr d)))",
+      "expression": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (front-delete! d) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b c) (c b))",
+      "observed": "((b c) (c b))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.23",
+      "setup": "(define (make-deque) (cons '() '()))\n(define (make-node x) (cons x (cons '() '())))\n(define (value n) (car n)) (define (prev n) (car (cdr n))) (define (next n) (cdr (cdr n)))\n(define (set-prev! n x) (set-car! (cdr n) x)) (define (set-next! n x) (set-cdr! (cdr n) x))\n(define (front-insert! d x) (let ((n (make-node x)) (f (car d))) (if (null? f) (begin (set-car! d n) (set-cdr! d n)) (begin (set-next! n f) (set-prev! f n) (set-car! d n))) 'ok))\n(define (rear-insert! d x) (let ((n (make-node x)) (r (cdr d))) (if (null? r) (begin (set-car! d n) (set-cdr! d n)) (begin (set-prev! n r) (set-next! r n) (set-cdr! d n))) 'ok))\n(define (front-delete! d) (let* ((f (car d)) (n (next f))) (if (null? n) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-prev! n '()) (set-car! d n))) 'ok))\n(define (rear-delete! d) (let* ((r (cdr d)) (p (prev r))) (if (null? p) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-next! p '()) (set-cdr! d p))) 'ok))\n(define (deque->list d) (define (go n) (if (null? n) '() (cons (value n) (go (next n))))) (go (car d)))\n(define (deque-reverse d) (define (go n) (if (null? n) '() (cons (value n) (go (prev n))))) (go (cdr d)))",
+      "expression": "(let ((d (make-deque))) (front-insert! d 'b) (front-insert! d 'a) (rear-insert! d 'c) (rear-delete! d) (front-delete! d) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b) (b))",
+      "observed": "((b) (b))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.23",
+      "setup": "(define (make-deque) (cons '() '()))\n(define (make-node x) (cons x (cons '() '())))\n(define (value n) (car n)) (define (prev n) (car (cdr n))) (define (next n) (cdr (cdr n)))\n(define (set-prev! n x) (set-car! (cdr n) x)) (define (set-next! n x) (set-cdr! (cdr n) x))\n(define (front-insert! d x) (let ((n (make-node x)) (f (car d))) (if (null? f) (begin (set-car! d n) (set-cdr! d n)) (begin (set-next! n f) (set-prev! f n) (set-car! d n))) 'ok))\n(define (rear-insert! d x) (let ((n (make-node x)) (r (cdr d))) (if (null? r) (begin (set-car! d n) (set-cdr! d n)) (begin (set-prev! n r) (set-next! r n) (set-cdr! d n))) 'ok))\n(define (front-delete! d) (let* ((f (car d)) (n (next f))) (if (null? n) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-prev! n '()) (set-car! d n))) 'ok))\n(define (rear-delete! d) (let* ((r (cdr d)) (p (prev r))) (if (null? p) (begin (set-car! d '()) (set-cdr! d '())) (begin (set-next! p '()) (set-cdr! d p))) 'ok))\n(define (deque->list d) (define (go n) (if (null? n) '() (cons (value n) (go (next n))))) (go (car d)))\n(define (deque-reverse d) (define (go n) (if (null? n) '() (cons (value n) (go (prev n))))) (go (cdr d)))",
+      "expression": "(let ((d (make-deque))) (rear-insert! d 'a) (rear-delete! d) (front-insert! d 'b) (list (deque->list d) (deque-reverse d)))",
+      "expected": "((b) (b))",
+      "observed": "((b) (b))",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 10
+  },
+  "note": "Finite independently written queue/deque candidates. 3.21 observes queue contents instead of printing because output ports are unavailable. Empty-deletion errors and concurrency are not tested."
+}

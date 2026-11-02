@@ -1,0 +1,327 @@
+{
+  "runtime_sha256": "a4f78083004933a48bac71cf518135894637379bb9b2cf25956532aa1a3639a2",
+  "experimental_depth_limit": 24,
+  "experimental_step_limit": 8192,
+  "snapshot_heap": false,
+  "instrumentation": "temporary host copy; source line numbers before instrumentation",
+  "cases": [
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 0) (set a1 0) (set b0 0) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 0)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 5339,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 0)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 5339,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 1)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 5339,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 1) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 1)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 5339,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 427,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.25",
+      "setup": "",
+      "expression": "(remainder (expt 2 40) 101)",
+      "expected": "36",
+      "observed": "Overflow",
+      "status": "error",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Overflow",
+      "depth_sites": [],
+      "steps": 18,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "1.36",
+      "setup": "(define (ln x) (define (series z) (define (iter power total k) (if (= k 15) (* 2.0 total) (iter (* power z z) (+ total (/ power (+ (* 2 k) 1))) (+ k 1)))) (iter z 0.0 0))\n (define (reduce y count) (if (> y 2.0) (reduce (/ y 2.0) (+ count 1)) (+ (* count 0.6931471805599453) (series (/ (- y 1.0) (+ y 1.0)))))) (reduce x 0))\n(define visits 0)\n(define (fixed-point f first) (define (iter guess) (set! visits (+ visits 1)) (let ((next (f guess))) (if (< (abs (- guess next)) 0.00001) next (iter next)))) (iter first))\n(define (f x) (/ (ln 1000.0) (ln x)))\n(define (average-damp f) (lambda (x) (/ (+ x (f x)) 2.0)))",
+      "expression": "(let ((v (fixed-point (average-damp f) 2.0))) (< (abs (- v 4.5555)) 0.001))",
+      "expected": "#t",
+      "observed": "Budget",
+      "status": "error",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Budget",
+      "depth_sites": [],
+      "steps": 8192,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "2.42",
+      "setup": "(define (accumulate op initial xs) (if (null? xs) initial (op (car xs) (accumulate op initial (cdr xs)))))\n(define (fold-left op initial xs) (define (iter result rest) (if (null? rest) result (iter (op result (car rest)) (cdr rest)))) (iter initial xs))\n(define (enumerate low high) (if (> low high) '() (cons low (enumerate (+ low 1) high))))\n(define (flatmap f xs) (accumulate append '() (map f xs)))\n(define (filter pred xs) (cond ((null? xs) '()) ((pred (car xs)) (cons (car xs) (filter pred (cdr xs)))) (else (filter pred (cdr xs)))))\n(define (queens size)\n (define (safe? positions) (define (check rest distance) (if (null? rest) #t (and (not (= (car positions) (car rest))) (not (= (abs (- (car positions) (car rest))) distance)) (check (cdr rest) (+ distance 1))))) (check (cdr positions) 1))\n (define (queen-cols k) (if (= k 0) (list '()) (filter safe? (flatmap (lambda (rest) (map (lambda (row) (cons row rest)) (enumerate 1 size))) (queen-cols (- k 1))))))\n (queen-cols size))",
+      "expression": "(length (queens 8))",
+      "expected": "92",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 491,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "3.27",
+      "setup": "(define table '()) (define misses 0)\n(define (find n xs) (cond ((null? xs) #f) ((= n (car (car xs))) (car xs)) (else (find n (cdr xs)))))\n(define (memo-fib n) (let ((entry (find n table))) (if entry (cdr entry) (begin (set! misses (+ misses 1)) (let ((v (if (< n 2) n (+ (memo-fib (- n 1)) (memo-fib (- n 2)))))) (set! table (cons (cons n v) table)) v)))))",
+      "expression": "(let* ((v (memo-fib 10)) (count misses) (w (memo-fib 10))) (list v count w))",
+      "expected": "(55 11 55)",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_tables_3_24_3_27.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 544,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "2.19",
+      "setup": "(define (cc amount coins) (cond ((= amount 0) 1) ((or (< amount 0) (null? coins)) 0) (else (+ (cc amount (cdr coins)) (cc (- amount (car coins)) coins)))))",
+      "expression": "(cc 20 '(50 25 10 5 1))",
+      "expected": "9",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 1045,
+      "heap_snapshot": null
+    },
+    {
+      "exercise": "2.19",
+      "setup": "(define (cc amount coins) (cond ((= amount 0) 1) ((or (< amount 0) (null? coins)) 0) (else (+ (cc amount (cdr coins)) (cc (- amount (car coins)) coins)))))",
+      "expression": "(cc 100 '(50 25 10 5 1))",
+      "expected": "292",
+      "observed": "Depth",
+      "status": "error",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "instrumented_stage": "expression",
+      "instrumented_result": "Depth",
+      "depth_sites": [
+        230
+      ],
+      "steps": 1045,
+      "heap_snapshot": null
+    }
+  ],
+  "test_log": "1/19 cases.test.case_0...CASE_START 0\nDEPTH_SITE 230\nCASE_STEPS 0 5339\nCASE_RESULT 0 expression Depth\nOK\n2/19 cases.test.case_1...CASE_START 1\nDEPTH_SITE 230\nCASE_STEPS 1 5339\nCASE_RESULT 1 expression Depth\nOK\n3/19 cases.test.case_2...CASE_START 2\nDEPTH_SITE 230\nCASE_STEPS 2 5339\nCASE_RESULT 2 expression Depth\nOK\n4/19 cases.test.case_3...CASE_START 3\nDEPTH_SITE 230\nCASE_STEPS 3 5339\nCASE_RESULT 3 expression Depth\nOK\n5/19 cases.test.case_4...CASE_START 4\nDEPTH_SITE 230\nCASE_STEPS 4 427\nCASE_RESULT 4 expression Depth\nOK\n6/19 cases.test.case_5...CASE_START 5\nDEPTH_SITE 230\nCASE_STEPS 5 427\nCASE_RESULT 5 expression Depth\nOK\n7/19 cases.test.case_6...CASE_START 6\nDEPTH_SITE 230\nCASE_STEPS 6 427\nCASE_RESULT 6 expression Depth\nOK\n8/19 cases.test.case_7...CASE_START 7\nDEPTH_SITE 230\nCASE_STEPS 7 427\nCASE_RESULT 7 expression Depth\nOK\n9/19 cases.test.case_8...CASE_START 8\nDEPTH_SITE 230\nCASE_STEPS 8 427\nCASE_RESULT 8 expression Depth\nOK\n10/19 cases.test.case_9...CASE_START 9\nDEPTH_SITE 230\nCASE_STEPS 9 427\nCASE_RESULT 9 expression Depth\nOK\n11/19 cases.test.case_10...CASE_START 10\nDEPTH_SITE 230\nCASE_STEPS 10 427\nCASE_RESULT 10 expression Depth\nOK\n12/19 cases.test.case_11...CASE_START 11\nDEPTH_SITE 230\nCASE_STEPS 11 427\nCASE_RESULT 11 expression Depth\nOK\n13/19 cases.test.case_12...CASE_START 12\nDEPTH_SITE 230\nCASE_STEPS 12 427\nCASE_RESULT 12 expression Depth\nOK\n14/19 cases.test.case_13...CASE_START 13\nCASE_STEPS 13 18\nCASE_RESULT 13 expression Overflow\nOK\n15/19 cases.test.case_14...CASE_START 14\nCASE_STEPS 14 8192\nCASE_RESULT 14 expression Budget\nOK\n16/19 cases.test.case_15...CASE_START 15\nDEPTH_SITE 230\nCASE_STEPS 15 491\nCASE_RESULT 15 expression Depth\nOK\n17/19 cases.test.case_16...CASE_START 16\nDEPTH_SITE 230\nCASE_STEPS 16 544\nCASE_RESULT 16 expression Depth\nOK\n18/19 cases.test.case_17...CASE_START 17\nDEPTH_SITE 230\nCASE_STEPS 17 1045\nCASE_RESULT 17 expression Depth\nOK\n19/19 cases.test.case_18...CASE_START 18\nDEPTH_SITE 230\nCASE_STEPS 18 1045\nCASE_RESULT 18 expression Depth\nOK\nAll 19 tests passed.\n"
+}

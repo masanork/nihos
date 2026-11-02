@@ -1,0 +1,100 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "candidate": "(define (same-tree? x y) (cond ((and (pair? x) (pair? y)) (and (same-tree? (car x) (car y)) (same-tree? (cdr x) (cdr y)))) ((or (pair? x) (pair? y)) #f) (else (eq? x y))))",
+  "cases": [
+    {
+      "exercise": "2.53",
+      "expression": "(list 'a 'b 'c)",
+      "expected": "(a b c)",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(list (list 'george))",
+      "expected": "((george))",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(cdr '((x1 x2) (y1 y2)))",
+      "expected": "((y1 y2))",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(cadr '((x1 x2) (y1 y2)))",
+      "expected": "(y1 y2)",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(pair? (car '(a short list)))",
+      "expected": "#f",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(memq 'red '((red shoes) (blue socks)))",
+      "expected": "#f",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.53",
+      "expression": "(memq 'red '(red shoes blue socks))",
+      "expected": "(red shoes blue socks)",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.54",
+      "expression": "(equal? '(this is a list) '(this is a list))",
+      "expected": "#t",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.54",
+      "expression": "(equal? '(this is a list) '(this (is a) list))",
+      "expected": "#f",
+      "origin": "original",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.54",
+      "expression": "(same-tree? '(a (b c)) '(a (b c)))",
+      "expected": "#t",
+      "origin": "candidate",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.54",
+      "expression": "(same-tree? '(a (b c)) '(a (b d)))",
+      "expected": "#f",
+      "origin": "candidate",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.54",
+      "expression": "(same-tree? '(a . b) '(a . c))",
+      "expected": "#f",
+      "origin": "candidate",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.55",
+      "expression": "(car ''abracadabra)",
+      "expected": "quote",
+      "origin": "original",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/13 cases.test.case_0...OK\n2/13 cases.test.case_1...OK\n3/13 cases.test.case_2...OK\n4/13 cases.test.case_3...OK\n5/13 cases.test.case_4...OK\n6/13 cases.test.case_5...OK\n7/13 cases.test.case_6...OK\n8/13 cases.test.case_7...OK\n9/13 cases.test.case_8...OK\n10/13 cases.test.case_9...OK\n11/13 cases.test.case_10...OK\n12/13 cases.test.case_11...OK\n13/13 cases.test.case_12...OK\nAll 13 tests passed.\n"
+}

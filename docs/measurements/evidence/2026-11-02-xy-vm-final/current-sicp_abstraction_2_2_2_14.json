@@ -1,0 +1,371 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "2.2",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))",
+      "expression": "(midpoint-segment (make-segment (make-point 0 0) (make-point 4 6)))",
+      "expected": "(2 . 3)",
+      "observed": "(2 . 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.2",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))",
+      "expression": "(midpoint-segment (make-segment (make-point -3 2) (make-point 5 -4)))",
+      "expected": "(1 . -1)",
+      "observed": "(1 . -1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.2",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))",
+      "expression": "(midpoint-segment (make-segment (make-point 1 2) (make-point 2 5)))",
+      "expected": "(3/2 . 7/2)",
+      "observed": "(3/2 . 7/2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.3",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))\n(define (make-rect a b) (cons a b))\n(define (rect-width r) (abs (- (x-point (car r)) (x-point (cdr r)))))\n(define (rect-height r) (abs (- (y-point (car r)) (y-point (cdr r)))))\n(define (area r) (* (rect-width r) (rect-height r)))\n(define (perimeter r) (* 2 (+ (rect-width r) (rect-height r))))",
+      "expression": "(let ((r (make-rect (make-point 0 0) (make-point 4 3)))) (list (area r) (perimeter r)))",
+      "expected": "(12 14)",
+      "observed": "(12 14)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.3",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))\n(define (make-rect a b) (cons a b))\n(define (rect-width r) (abs (- (x-point (car r)) (x-point (cdr r)))))\n(define (rect-height r) (abs (- (y-point (car r)) (y-point (cdr r)))))\n(define (area r) (* (rect-width r) (rect-height r)))\n(define (perimeter r) (* 2 (+ (rect-width r) (rect-height r))))",
+      "expression": "(let ((r (make-rect (make-point 0 0) (make-point 7 5)))) (list (area r) (perimeter r)))",
+      "expected": "(35 24)",
+      "observed": "(35 24)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.3",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))\n(define (make-rect a b) (cons (abs (- (x-point a) (x-point b))) (abs (- (y-point a) (y-point b)))))\n(define (rect-width r) (car r)) (define (rect-height r) (cdr r))\n(define (area r) (* (rect-width r) (rect-height r)))\n(define (perimeter r) (* 2 (+ (rect-width r) (rect-height r))))",
+      "expression": "(let ((r (make-rect (make-point 0 0) (make-point 4 3)))) (list (area r) (perimeter r)))",
+      "expected": "(12 14)",
+      "observed": "(12 14)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.3",
+      "setup": "(define (make-point x y) (cons x y))\n(define (x-point p) (car p)) (define (y-point p) (cdr p))\n(define (make-segment a b) (cons a b))\n(define (start-segment s) (car s)) (define (end-segment s) (cdr s))\n(define (midpoint-segment s) (let ((a (start-segment s)) (b (end-segment s))) (make-point (/ (+ (x-point a) (x-point b)) 2) (/ (+ (y-point a) (y-point b)) 2))))\n(define (make-rect a b) (cons (abs (- (x-point a) (x-point b))) (abs (- (y-point a) (y-point b)))))\n(define (rect-width r) (car r)) (define (rect-height r) (cdr r))\n(define (area r) (* (rect-width r) (rect-height r)))\n(define (perimeter r) (* 2 (+ (rect-width r) (rect-height r))))",
+      "expression": "(let ((r (make-rect (make-point 0 0) (make-point 7 5)))) (list (area r) (perimeter r)))",
+      "expected": "(35 24)",
+      "observed": "(35 24)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.4",
+      "setup": "(define (cons x y) (lambda (m) (m x y)))\n(define (car z) (z (lambda (p q) p)))\n(define (cdr z) (z (lambda (p q) q)))",
+      "expression": "(list (car (cons 2 7)) (cdr (cons 2 7)))",
+      "expected": "(2 7)",
+      "observed": "(2 7)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.4",
+      "setup": "(define (cons x y) (lambda (m) (m x y)))\n(define (car z) (z (lambda (p q) p)))\n(define (cdr z) (z (lambda (p q) q)))",
+      "expression": "(list (car (cons 0 -5)) (cdr (cons 0 -5)))",
+      "expected": "(0 -5)",
+      "observed": "(0 -5)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.4",
+      "setup": "(define (cons x y) (lambda (m) (m x y)))\n(define (car z) (z (lambda (p q) p)))\n(define (cdr z) (z (lambda (p q) q)))",
+      "expression": "(list (car (cons 8 8)) (cdr (cons 8 8)))",
+      "expected": "(8 8)",
+      "observed": "(8 8)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.5",
+      "setup": "(define (cons a b) (* (expt 2 a) (expt 3 b)))\n(define (power-count z p) (if (= (remainder z p) 0) (+ 1 (power-count (quotient z p) p)) 0))\n(define (car z) (power-count z 2)) (define (cdr z) (power-count z 3))",
+      "expression": "(list (car (cons 0 0)) (cdr (cons 0 0)))",
+      "expected": "(0 0)",
+      "observed": "(0 0)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.5",
+      "setup": "(define (cons a b) (* (expt 2 a) (expt 3 b)))\n(define (power-count z p) (if (= (remainder z p) 0) (+ 1 (power-count (quotient z p) p)) 0))\n(define (car z) (power-count z 2)) (define (cdr z) (power-count z 3))",
+      "expression": "(list (car (cons 2 3)) (cdr (cons 2 3)))",
+      "expected": "(2 3)",
+      "observed": "(2 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.5",
+      "setup": "(define (cons a b) (* (expt 2 a) (expt 3 b)))\n(define (power-count z p) (if (= (remainder z p) 0) (+ 1 (power-count (quotient z p) p)) 0))\n(define (car z) (power-count z 2)) (define (cdr z) (power-count z 3))",
+      "expression": "(list (car (cons 4 1)) (cdr (cons 4 1)))",
+      "expected": "(4 1)",
+      "observed": "(4 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.5",
+      "setup": "(define (cons a b) (* (expt 2 a) (expt 3 b)))\n(define (power-count z p) (if (= (remainder z p) 0) (+ 1 (power-count (quotient z p) p)) 0))\n(define (car z) (power-count z 2)) (define (cdr z) (power-count z 3))",
+      "expression": "(list (car (cons 1 5)) (cdr (cons 1 5)))",
+      "expected": "(1 5)",
+      "observed": "(1 5)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.6",
+      "setup": "(define zero (lambda (f) (lambda (x) x)))\n(define (add-1 n) (lambda (f) (lambda (x) (f ((n f) x)))))\n(define one (lambda (f) (lambda (x) (f x))))\n(define two (lambda (f) (lambda (x) (f (f x)))))\n(define (plus a b) (lambda (f) (lambda (x) ((a f) ((b f) x)))))\n(define (value n) ((n (lambda (x) (+ x 1))) 0))",
+      "expression": "(value zero)",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.6",
+      "setup": "(define zero (lambda (f) (lambda (x) x)))\n(define (add-1 n) (lambda (f) (lambda (x) (f ((n f) x)))))\n(define one (lambda (f) (lambda (x) (f x))))\n(define two (lambda (f) (lambda (x) (f (f x)))))\n(define (plus a b) (lambda (f) (lambda (x) ((a f) ((b f) x)))))\n(define (value n) ((n (lambda (x) (+ x 1))) 0))",
+      "expression": "(value one)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.6",
+      "setup": "(define zero (lambda (f) (lambda (x) x)))\n(define (add-1 n) (lambda (f) (lambda (x) (f ((n f) x)))))\n(define one (lambda (f) (lambda (x) (f x))))\n(define two (lambda (f) (lambda (x) (f (f x)))))\n(define (plus a b) (lambda (f) (lambda (x) ((a f) ((b f) x)))))\n(define (value n) ((n (lambda (x) (+ x 1))) 0))",
+      "expression": "(value two)",
+      "expected": "2",
+      "observed": "2",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.6",
+      "setup": "(define zero (lambda (f) (lambda (x) x)))\n(define (add-1 n) (lambda (f) (lambda (x) (f ((n f) x)))))\n(define one (lambda (f) (lambda (x) (f x))))\n(define two (lambda (f) (lambda (x) (f (f x)))))\n(define (plus a b) (lambda (f) (lambda (x) ((a f) ((b f) x)))))\n(define (value n) ((n (lambda (x) (+ x 1))) 0))",
+      "expression": "(value (add-1 two))",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.6",
+      "setup": "(define zero (lambda (f) (lambda (x) x)))\n(define (add-1 n) (lambda (f) (lambda (x) (f ((n f) x)))))\n(define one (lambda (f) (lambda (x) (f x))))\n(define two (lambda (f) (lambda (x) (f (f x)))))\n(define (plus a b) (lambda (f) (lambda (x) ((a f) ((b f) x)))))\n(define (value n) ((n (lambda (x) (+ x 1))) 0))",
+      "expression": "(value (plus two two))",
+      "expected": "4",
+      "observed": "4",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.7",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(let ((i (make-interval -2 5))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(-2 5)",
+      "observed": "(-2 5)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.7",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(let ((i (make-interval 0 0))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(0 0)",
+      "observed": "(0 0)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.7",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(let ((i (make-interval 4 9))) (list (lower-bound i) (upper-bound i)))",
+      "expected": "(4 9)",
+      "observed": "(4 9)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.8",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(sub-interval (make-interval 1 3) (make-interval 2 5))",
+      "expected": "(-4 . 1)",
+      "observed": "(-4 . 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.8",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(sub-interval (make-interval -4 -1) (make-interval -3 2))",
+      "expected": "(-6 . 2)",
+      "observed": "(-6 . 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.8",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(sub-interval (make-interval 0 0) (make-interval 1 7))",
+      "expected": "(-7 . -1)",
+      "observed": "(-7 . -1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.9",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(list (width (add-interval (make-interval 1 3) (make-interval 2 6))) (+ (width (make-interval 1 3)) (width (make-interval 2 6))))",
+      "expected": "(3 3)",
+      "observed": "(3 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.9",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(list (width (add-interval (make-interval -4 -1) (make-interval -3 2))) (+ (width (make-interval -4 -1)) (width (make-interval -3 2))))",
+      "expected": "(4 4)",
+      "observed": "(4 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.9",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))",
+      "expression": "(list (width (add-interval (make-interval 0 0) (make-interval 1 7))) (+ (width (make-interval 0 0)) (width (make-interval 1 7))))",
+      "expected": "(3 3)",
+      "observed": "(3 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval 1 3) (make-interval 2 7))",
+      "expected": "(2 . 21)",
+      "observed": "(2 . 21)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval 1 3) (make-interval -6 -1))",
+      "expected": "(-18 . -1)",
+      "observed": "(-18 . -1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval 1 3) (make-interval -3 8))",
+      "expected": "(-9 . 24)",
+      "observed": "(-9 . 24)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -5 -2) (make-interval 2 7))",
+      "expected": "(-35 . -4)",
+      "observed": "(-35 . -4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -5 -2) (make-interval -6 -1))",
+      "expected": "(2 . 30)",
+      "observed": "(2 . 30)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -5 -2) (make-interval -3 8))",
+      "expected": "(-40 . 15)",
+      "observed": "(-40 . 15)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -4 6) (make-interval 2 7))",
+      "expected": "(-28 . 42)",
+      "observed": "(-28 . 42)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -4 6) (make-interval -6 -1))",
+      "expected": "(-36 . 24)",
+      "observed": "(-36 . 24)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.11",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (mul-fast x y) (let ((a (lower-bound x)) (b (upper-bound x)) (c (lower-bound y)) (d (upper-bound y)))\n(cond ((>= a 0) (cond ((>= c 0) (make-interval (* a c) (* b d))) ((<= d 0) (make-interval (* b c) (* a d))) (else (make-interval (* b c) (* b d)))))\n((<= b 0) (cond ((>= c 0) (make-interval (* a d) (* b c))) ((<= d 0) (make-interval (* b d) (* a c))) (else (make-interval (* a d) (* a c)))))\n(else (cond ((>= c 0) (make-interval (* a d) (* b d))) ((<= d 0) (make-interval (* b c) (* a c))) (else (make-interval (min (* a d) (* b c)) (max (* a c) (* b d)))))))))",
+      "expression": "(mul-fast (make-interval -4 6) (make-interval -3 8))",
+      "expected": "(-32 . 48)",
+      "observed": "(-32 . 48)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(make-center-percent 50 10)",
+      "expected": "(45 . 55)",
+      "observed": "(45 . 55)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(percent (make-center-percent 50 10))",
+      "expected": "10",
+      "observed": "10",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(make-center-percent 100 5)",
+      "expected": "(95 . 105)",
+      "observed": "(95 . 105)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(percent (make-center-percent 100 5))",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(make-center-percent -20 25)",
+      "expected": "(-25 . -15)",
+      "observed": "(-25 . -15)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.12",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (make-center-percent c p) (let ((w (/ (* (abs c) p) 100))) (make-interval (- c w) (+ c w))))\n(define (center i) (/ (+ (lower-bound i) (upper-bound i)) 2))\n(define (percent i) (/ (* 100 (width i)) (abs (center i))))",
+      "expression": "(percent (make-center-percent -20 25))",
+      "expected": "25",
+      "observed": "25",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.14",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (div-interval x y) (mul-interval x (make-interval (/ 1 (upper-bound y)) (/ 1 (lower-bound y)))))\n(define (par1 r1 r2) (div-interval (mul-interval r1 r2) (add-interval r1 r2)))\n(define (par2 r1 r2) (let ((one (make-interval 1 1))) (div-interval one (add-interval (div-interval one r1) (div-interval one r2)))))",
+      "expression": "(par1 (make-interval 1 2) (make-interval 3 4))",
+      "expected": "(1/2 . 2)",
+      "observed": "(1/2 . 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.14",
+      "setup": "(define (make-interval a b) (cons a b))\n(define (lower-bound i) (car i)) (define (upper-bound i) (cdr i))\n(define (add-interval x y) (make-interval (+ (lower-bound x) (lower-bound y)) (+ (upper-bound x) (upper-bound y))))\n(define (sub-interval x y) (make-interval (- (lower-bound x) (upper-bound y)) (- (upper-bound x) (lower-bound y))))\n(define (mul-interval x y) (let ((p1 (* (lower-bound x) (lower-bound y))) (p2 (* (lower-bound x) (upper-bound y))) (p3 (* (upper-bound x) (lower-bound y))) (p4 (* (upper-bound x) (upper-bound y)))) (make-interval (min p1 p2 p3 p4) (max p1 p2 p3 p4))))\n(define (width i) (/ (- (upper-bound i) (lower-bound i)) 2))\n(define (div-interval x y) (mul-interval x (make-interval (/ 1 (upper-bound y)) (/ 1 (lower-bound y)))))\n(define (par1 r1 r2) (div-interval (mul-interval r1 r2) (add-interval r1 r2)))\n(define (par2 r1 r2) (let ((one (make-interval 1 1))) (div-interval one (add-interval (div-interval one r1) (div-interval one r2)))))",
+      "expression": "(par2 (make-interval 1 2) (make-interval 3 4))",
+      "expected": "(3/4 . 4/3)",
+      "observed": "(3/4 . 4/3)",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 45
+  },
+  "note": "2.14 uses exact reciprocal 1 instead of original inexact 1.0; zero-spanning intervals not admitted"
+}

@@ -223,6 +223,10 @@ pub inline fn bindCard(provider: *const console.scratch.card.Provider) void {
     card_provider = provider;
     if (session_active) scratch.card.provider = provider;
 }
+var xy_continuation_active: bool = false;
+var xy_sliced_active: bool = false;
+var xy_sliced_cancel_seen: bool = false;
+var xy_sliced_collections: usize = 0;
 var xy_input_bytes: u32 = 0;
 var last_xy_input_bytes: u32 = 0;
 var last_xy_idle_report: u64 = 0;
@@ -230,8 +234,33 @@ const session_offset = (@sizeOf(Renderer) + @sizeOf(Text) + @alignOf(Session.Mod
 const headless_wasm_session = options.wasm_session_test and !options.console_live;
 var fixture_session: if (headless_wasm_session) Session.Model else void = if (headless_wasm_session) .{} else {};
 const session: *Session.Model = if (headless_wasm_session) &fixture_session else @ptrFromInt(board.framebuffer + board.frame_bytes + session_offset);
-const scratch_offset = (session_offset + @sizeOf(Session.Model) + @alignOf(console.scratch.Model) - 1) & ~@as(usize, @alignOf(console.scratch.Model) - 1);
-const scratch: *console.scratch.Model = @ptrFromInt(board.framebuffer + board.frame_bytes + scratch_offset);
+// Bound once after the reusable PSRAM heap is ready; the lease is retained
+// for the life of the foreground xy workspace.
+// SAFETY: prepareXyWorkspace assigns scratch before session_active becomes true.
+var scratch: *console.scratch.Model = undefined;
+var scratch_lease: ?tasks.memory.reusable.Allocation = null;
+const scratch_bytes = (@sizeOf(console.scratch.Model) + 63) & ~@as(usize, 63);
+const xy_eval_stack_bytes = if (@hasDecl(options, "sqld") and options.sqld) 0 else tasks.memory.stacks.evaluation_bytes;
+pub fn xyEvaluationStack() ?[]u8 {
+    const allocation = scratch_lease orelse return null;
+    if (comptime xy_eval_stack_bytes == 0) return null;
+    return allocation.bytes[scratch_bytes..][0..xy_eval_stack_bytes];
+}
+pub fn prepareXyWorkspace(log: anytype) linksection(".flash.xytext") bool {
+    if (comptime !xy_workspace) return true;
+    if (scratch_lease != null) return true;
+    const before = tasks.memory.reusable.localUsage() orelse return false;
+    const allocation = tasks.memory.allocExternal(scratch_bytes + xy_eval_stack_bytes, 64) catch return false;
+    const after = tasks.memory.reusable.localUsage() orelse {
+        tasks.memory.freeExternal(allocation) catch return false;
+        return false;
+    };
+    scratch = @ptrCast(@alignCast(allocation.bytes.ptr));
+    scratch_lease = allocation;
+    const record = .{ .address = @as(u32, @intCast(@intFromPtr(allocation.bytes.ptr))), .bytes = @as(u32, @intCast(allocation.bytes.len)), .stack_bytes = @as(u32, @intCast(allocation.bytes.len - scratch_bytes)), .reserved = before.free - after.free, .free_after = after.free };
+    log.record("NIHOS_NATIVE_XY_PSRAM", null, .{ "address", "bytes", "stack_bytes", "reserved", "free_after" }, &record);
+    return true;
+}
 var camera_overlay: camera_preview.Overlay = .{};
 var camera_live: camera_preview.Live = .{};
 pub fn cameraLiveActive() bool {
@@ -278,7 +307,7 @@ const SerialSink = struct {
 /// full tail already belongs to the display lease, outside both owner heaps.
 /// No object in this range is a scanout/DMA source.
 pub fn serviceBacking(comptime bytes: usize) *align(64) [bytes]u8 {
-    const used = if (xy_workspace) scratch_offset + @sizeOf(console.scratch.Model) else session_offset + @sizeOf(Session.Model);
+    const used = session_offset + @sizeOf(Session.Model);
     const start = (board.framebuffer + board.frame_bytes + used + 63) & ~@as(usize, 63);
     comptime {
         if (start + bytes > board.framebuffer + board.reserve_bytes)
@@ -296,8 +325,8 @@ var cpu_mhz: u32 = 0;
 comptime {
     if (session_offset + @sizeOf(Session.Model) > board.reserve_bytes - board.frame_bytes or @alignOf(Renderer) > 64)
         @compileError("console renderer exceeds private display tail");
-    if (xy_workspace and scratch_offset + @sizeOf(console.scratch.Model) > board.reserve_bytes - board.frame_bytes)
-        @compileError("xy workspace exceeds private display tail");
+    if (xy_workspace and @sizeOf(console.scratch.Model) > 2 * 1024 * 1024)
+        @compileError("xy workspace exceeds external allocation limit");
 }
 fn palette() console.raster.Palette {
     return @fromBackingInt(@intCast(options.console_palette));
@@ -573,7 +602,7 @@ pub noinline fn input(log: anytype) linksection(if (xy_workspace) ".flash.xytext
     log.record("NIHOS_NATIVE_KEYBOARD", null, .{ "status", "firmware", "mode", "transactions", "error_code", "sources" }, &values);
 }
 // Input dispatch is called by foreground polling, with the Flash mapping active.
-noinline fn action(value: console.keys.Action, source: console.keys.Source, modifiers: u8, usage: u8, log: anytype) linksection(if (options.rust_session) ".flash.text.rust_app" else ".text") void {
+noinline fn action(value: console.keys.Action, source: console.keys.Source, modifiers: u8, usage: u8, log: anytype) linksection(if (options.rust_session) ".flash.text.rust_app" else if (options.devices) ".flash.text.devices" else ".text") void {
     const key: console.boot.Key = switch (value) {
         .logs => .escape,
         .splash => .splash,
@@ -756,8 +785,19 @@ pub fn wasmInteractivePoll(log: anytype) void {
     if (wasmFixtureReserved()) _ = wasmFixtureServiceUi();
 }
 
+inline fn foregroundCore() bool {
+    const hart = asm volatile ("csrr %[hart], mhartid"
+        : [hart] "=r" (-> u32),
+    );
+    return hart == 0;
+}
 pub fn startSession(log: anytype) bool {
+    if (!foregroundCore()) return false;
     if (!options.console_live or model.failure_latched) return false;
+    // Do not replace a workspace while its evaluator or collector owns it.
+    if (comptime xy_workspace) {
+        if (session_active and scratch.vm.running) return false;
+    }
     // Finish the existing milestone-driven splash before handing over input.
     session_pending = true;
     model.details = false;
@@ -1076,7 +1116,8 @@ noinline fn updateSplash(selected: boot.Status, milestone: bool, controls: bool)
     }
     return true;
 }
-pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") bool {
+pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else if (xy_workspace) ".flash.xytext" else ".text") bool {
+    if (!foregroundCore()) return false;
     // Headless repeat uses this same foreground entry and dispatcher; only its
     // UART and presenter are substituted, and no scanout is implied.
     if (options.wasm_interactive_repeat) {
@@ -1089,6 +1130,48 @@ pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") 
     if (observed.fault != 0) return false;
     const now = clock.timer().counter() orelse return false;
     poll(now, log);
+    if (comptime xy_workspace) {
+        if (session_active and scratch.hasContinuation()) {
+            if (!xy_continuation_active) {
+                const event: extern struct { state: u32 } = .{ .state = 1 };
+                if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_CONT_STATE", null, .{"state"}, &event);
+                xy_continuation_active = true;
+                xy_sliced_active = false;
+                xy_sliced_cancel_seen = false;
+                xy_sliced_collections = 0;
+            }
+            nih_xy_resume(scratch);
+            const gc = &scratch.continuation.lease;
+            if (gc.cursor != null and !xy_sliced_active) {
+                const event: extern struct { state: u32 } = .{ .state = 1 };
+                if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_GC_STATE", null, .{"state"}, &event);
+                xy_sliced_active = true;
+            }
+            if (gc.cancel_pending and !xy_sliced_cancel_seen) {
+                const event: extern struct { state: u32 } = .{ .state = 2 };
+                if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_GC_STATE", null, .{"state"}, &event);
+                xy_sliced_cancel_seen = true;
+            }
+            if (gc.collections != xy_sliced_collections) {
+                xy_sliced_collections = gc.collections;
+                const event: extern struct { count: u32 } = .{ .count = @intCast(gc.collections) };
+                if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_GC_DONE", null, .{"count"}, &event);
+                xy_sliced_active = false;
+            }
+
+            if (!scratch.vm.running) {
+                const event: extern struct { state: u32 } = .{ .state = 2 };
+                if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_CONT_STATE", null, .{"state"}, &event);
+                xy_continuation_active = false;
+                scratch.replayInput();
+            }
+        } else if (xy_continuation_active) {
+            const event: extern struct { state: u32 } = .{ .state = 3 };
+            if (comptime xy_trace) log.record("NIHOS_NATIVE_XY_CONT_STATE", null, .{"state"}, &event);
+            xy_continuation_active = false;
+            scratch.replayInput();
+        }
+    }
     if (options.wasm_session_test and wasmFixtureReserved()) {
         _ = wasmFixtureServiceUi();
         if (wasmFixtureReserved()) return true;
@@ -1247,7 +1330,7 @@ pub noinline fn failureFrame() bool {
     defer rendering = false;
     return drawDetails();
 }
-pub noinline fn liveReport(log: anytype, comptime ready: bool) void {
+pub noinline fn liveReport(log: anytype, comptime ready: bool) linksection(if (options.devices) ".flash.text.devices" else ".text") void {
     const values: extern struct { frames: u32, clock_hz: u32, sources: u32, view: u32, progress: u32, target: u32 } = .{ .frames = runtime.snapshot().frames, .clock_hz = @as(u32, 1_000_000), .sources = @as(u32, model.input_sources), .view = @as(u32, @intFromBool(model.details)), .progress = @as(u32, progress), .target = @as(u32, model.dyeTarget()) };
     if (ready) {
         if (renderer_ready) {
@@ -1270,3 +1353,5 @@ noinline fn paintTouchControl() linksection(if (xy_workspace) ".flash.xytext" el
     const box = pointer.view_button;
     return console.raster.paintControl(".flash.rodata.display", frame(), 1440, .{ .left = box.x, .top = box.y, .right = box.x + box.width, .bottom = box.y + box.height }, if (model.details) "SPLASH" else "LOGS", palette());
 }
+
+extern fn nih_xy_resume(*console.scratch.Model) callconv(.c) void;

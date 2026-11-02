@@ -1,0 +1,425 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "source_xml": "xml/chapter1/section2/subsection2.xml",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "original_fib_recursive": "(define (fib n)\n  (cond ((= n 0) 0)\n        ((= n 1) 1)\n        (else (+ (fib (- n 1))\n                 (fib (- n 2))))))",
+  "original_fib_iterative": "(define (fib n)\n  (fib-iter 1 0 n))\n\n(define (fib-iter a b count)\n  (if (= count 0)\n      b\n      (fib-iter (+ a b) a (- count 1))))",
+  "original_count_change": "(define (count-change amount)\n  (cc amount 5))\n\n(define (cc amount kinds-of-coins)\n  (cond ((= amount 0) 1)\n        ((or (< amount 0) (= kinds-of-coins 0)) 0)\n        (else (+ (cc amount\n                     (- kinds-of-coins 1))\n                 (cc (- amount\n                        (first-denomination kinds-of-coins))\n                     kinds-of-coins)))))\n\n(define (first-denomination kinds-of-coins)\n  (cond ((= kinds-of-coins 1) 1)\n        ((= kinds-of-coins 2) 5)\n        ((= kinds-of-coins 3) 10)\n        ((= kinds-of-coins 4) 25)\n        ((= kinds-of-coins 5) 50)))",
+  "exercise_1_11_recursive_candidate": "(define (f-rec n) (if (< n 3) n (+ (f-rec (- n 1)) (* 2 (f-rec (- n 2))) (* 3 (f-rec (- n 3))))))",
+  "exercise_1_11_iterative_candidate": "(define (f-it n) (define (go a b c k) (if (= k 0) c (go (+ a (* 2 b) (* 3 c)) a b (- k 1)))) (if (< n 3) n (go 2 1 0 n)))",
+  "exercise_1_12_candidate": "(define (pascal row col) (if (or (= col 0) (= col row)) 1 (+ (pascal (- row 1) (- col 1)) (pascal (- row 1) col))))",
+  "cases": [
+    {
+      "group": "fib-rec",
+      "expression": "(fib 0)",
+      "expected": "0",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 1)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 2)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 3)",
+      "expected": "2",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 4)",
+      "expected": "3",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 5)",
+      "expected": "5",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 6)",
+      "expected": "8",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 7)",
+      "expected": "13",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 8)",
+      "expected": "21",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 9)",
+      "expected": "34",
+      "status": "match"
+    },
+    {
+      "group": "fib-rec",
+      "expression": "(fib 10)",
+      "expected": "55",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 0)",
+      "expected": "0",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 1)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 2)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 10)",
+      "expected": "55",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 30)",
+      "expected": "832040",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 45)",
+      "expected": "1134903170",
+      "status": "match"
+    },
+    {
+      "group": "fib-it",
+      "expression": "(fib 46)",
+      "expected": "1836311903",
+      "status": "Overflow"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 5)",
+      "expected": "2",
+      "status": "match"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 10)",
+      "expected": "4",
+      "status": "match"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 15)",
+      "expected": "6",
+      "status": "match"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 20)",
+      "expected": "9",
+      "status": "Depth"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 25)",
+      "expected": "13",
+      "status": "Depth"
+    },
+    {
+      "group": "count-change",
+      "expression": "(count-change 100)",
+      "expected": "292",
+      "status": "Depth"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 0)",
+      "expected": "0",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 1)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 2)",
+      "expected": "2",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 3)",
+      "expected": "4",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 4)",
+      "expected": "11",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 5)",
+      "expected": "25",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 6)",
+      "expected": "59",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 7)",
+      "expected": "142",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 8)",
+      "expected": "335",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 9)",
+      "expected": "796",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-rec",
+      "expression": "(f-rec 10)",
+      "expected": "1892",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 0)",
+      "expected": "0",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 1)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 2)",
+      "expected": "2",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 3)",
+      "expected": "4",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 5)",
+      "expected": "25",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 10)",
+      "expected": "1892",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 15)",
+      "expected": "142717",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.11-it",
+      "expression": "(f-it 20)",
+      "expected": "10771211",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 0 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 1 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 1 1)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 2 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 2 1)",
+      "expected": "2",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 2 2)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 3 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 3 1)",
+      "expected": "3",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 3 3)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 4 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 4 2)",
+      "expected": "6",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 4 4)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 5 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 5 2)",
+      "expected": "10",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 5 5)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 6 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 6 3)",
+      "expected": "20",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 6 6)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 7 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 7 3)",
+      "expected": "35",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 7 7)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 8 0)",
+      "expected": "1",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 8 4)",
+      "expected": "70",
+      "status": "match"
+    },
+    {
+      "group": "exercise-1.12",
+      "expression": "(pascal 8 8)",
+      "expected": "1",
+      "status": "match"
+    }
+  ],
+  "matched": 64,
+  "gaps": 4,
+  "test_log": "1/6 cases.test.fib-rec...CASE_0=match\nCASE_1=match\nCASE_2=match\nCASE_3=match\nCASE_4=match\nCASE_5=match\nCASE_6=match\nCASE_7=match\nCASE_8=match\nCASE_9=match\nCASE_10=match\nOK\n2/6 cases.test.fib-it...CASE_11=match\nCASE_12=match\nCASE_13=match\nCASE_14=match\nCASE_15=match\nCASE_16=match\nCASE_17=Overflow\nOK\n3/6 cases.test.count-change...CASE_18=match\nCASE_19=match\nCASE_20=match\nCASE_21=match\nCASE_22=Depth\nCASE_23=Depth\nCASE_24=Depth\nOK\n4/6 cases.test.exercise-1.11-rec...CASE_25=match\nCASE_26=match\nCASE_27=match\nCASE_28=match\nCASE_29=match\nCASE_30=match\nCASE_31=match\nCASE_32=match\nCASE_33=match\nCASE_34=match\nCASE_35=match\nOK\n5/6 cases.test.exercise-1.11-it...CASE_36=match\nCASE_37=match\nCASE_38=match\nCASE_39=match\nCASE_40=match\nCASE_41=match\nCASE_42=match\nCASE_43=match\nOK\n6/6 cases.test.exercise-1.12...CASE_44=match\nCASE_45=match\nCASE_46=match\nCASE_47=match\nCASE_48=match\nCASE_49=match\nCASE_50=match\nCASE_51=match\nCASE_52=match\nCASE_53=match\nCASE_54=match\nCASE_55=match\nCASE_56=match\nCASE_57=match\nCASE_58=match\nCASE_59=match\nCASE_60=match\nCASE_61=match\nCASE_62=match\nCASE_63=match\nCASE_64=match\nCASE_65=match\nCASE_66=match\nCASE_67=match\nOK\nAll 6 tests passed.\n"
+}

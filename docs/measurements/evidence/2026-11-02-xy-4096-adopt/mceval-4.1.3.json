@@ -1,0 +1,129 @@
+{
+  "source_archive_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "reference_checks": [
+    {
+      "name": "frame-variables",
+      "status": "matched"
+    },
+    {
+      "name": "frame-values",
+      "status": "matched"
+    },
+    {
+      "name": "lookup",
+      "status": "matched"
+    },
+    {
+      "name": "mutation",
+      "status": "matched"
+    },
+    {
+      "name": "definition",
+      "status": "matched"
+    },
+    {
+      "name": "shadowing",
+      "status": "matched"
+    },
+    {
+      "name": "procedure-tag",
+      "status": "matched"
+    },
+    {
+      "name": "procedure-body",
+      "status": "matched"
+    }
+  ],
+  "source_member": "ch4-mceval.scm",
+  "section": "4.1.3",
+  "compatibility_definitions": [
+    "(define true #t)",
+    "(define false #f)"
+  ],
+  "source_forms": [
+    "(define (tagged-list? exp tag)\n  (if (pair? exp)\n      (eq? (car exp) tag)\n      false))",
+    "(define (true? x)\n  (not (eq? x false)))",
+    "(define (false? x)\n  (eq? x false))",
+    "(define (make-procedure parameters body env)\n  (list 'procedure parameters body env))",
+    "(define (compound-procedure? p)\n  (tagged-list? p 'procedure))",
+    "(define (procedure-parameters p) (cadr p))",
+    "(define (procedure-body p) (caddr p))",
+    "(define (procedure-environment p) (cadddr p))",
+    "(define (enclosing-environment env) (cdr env))",
+    "(define (first-frame env) (car env))",
+    "(define the-empty-environment '())",
+    "(define (make-frame variables values)\n  (cons variables values))",
+    "(define (frame-variables frame) (car frame))",
+    "(define (frame-values frame) (cdr frame))",
+    "(define (add-binding-to-frame! var val frame)\n  (set-car! frame (cons var (car frame)))\n  (set-cdr! frame (cons val (cdr frame))))",
+    "(define (extend-environment vars vals base-env)\n  (if (= (length vars) (length vals))\n      (cons (make-frame vars vals) base-env)\n      (if (< (length vars) (length vals))\n          (error \"Too many arguments supplied\" vars vals)\n          (error \"Too few arguments supplied\" vars vals))))",
+    "(define (lookup-variable-value var env)\n  (define (env-loop env)\n    (define (scan vars vals)\n      (cond ((null? vars)\n             (env-loop (enclosing-environment env)))\n            ((eq? var (car vars))\n             (car vals))\n            (else (scan (cdr vars) (cdr vals)))))\n    (if (eq? env the-empty-environment)\n        (error \"Unbound variable\" var)\n        (let ((frame (first-frame env)))\n          (scan (frame-variables frame)\n                (frame-values frame)))))\n  (env-loop env))",
+    "(define (set-variable-value! var val env)\n  (define (env-loop env)\n    (define (scan vars vals)\n      (cond ((null? vars)\n             (env-loop (enclosing-environment env)))\n            ((eq? var (car vars))\n             (set-car! vals val))\n            (else (scan (cdr vars) (cdr vals)))))\n    (if (eq? env the-empty-environment)\n        (error \"Unbound variable -- SET!\" var)\n        (let ((frame (first-frame env)))\n          (scan (frame-variables frame)\n                (frame-values frame)))))\n  (env-loop env))",
+    "(define (define-variable! var val env)\n  (let ((frame (first-frame env)))\n    (define (scan vars vals)\n      (cond ((null? vars)\n             (add-binding-to-frame! var val frame))\n            ((eq? var (car vars))\n             (set-car! vals val))\n            (else (scan (cdr vars) (cdr vals)))))\n    (scan (frame-variables frame)\n          (frame-values frame))))"
+  ],
+  "setup": {
+    "completed": 21,
+    "status": "ok"
+  },
+  "recovery": null,
+  "cases": [
+    {
+      "name": "frame-variables",
+      "expression": "(frame-variables (make-frame '(x y) '(1 2)))",
+      "expected": "(x y)",
+      "observed": "(x y)",
+      "status": "matched"
+    },
+    {
+      "name": "frame-values",
+      "expression": "(frame-values (make-frame '(x y) '(1 2)))",
+      "expected": "(1 2)",
+      "observed": "(1 2)",
+      "status": "matched"
+    },
+    {
+      "name": "lookup",
+      "expression": "(lookup-variable-value 'x (extend-environment '(x y) '(1 2) '()))",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "name": "mutation",
+      "expression": "(let ((e (extend-environment '(x) '(1) '()))) (set-variable-value! 'x 9 e) (lookup-variable-value 'x e))",
+      "expected": "9",
+      "observed": "9",
+      "status": "matched"
+    },
+    {
+      "name": "definition",
+      "expression": "(let ((e (extend-environment '(x) '(1) '()))) (define-variable! 'z 3 e) (lookup-variable-value 'z e))",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "name": "shadowing",
+      "expression": "(let* ((outer (extend-environment '(x) '(1) '())) (inner (extend-environment '(x) '(2) outer))) (lookup-variable-value 'x inner))",
+      "expected": "2",
+      "observed": "2",
+      "status": "matched"
+    },
+    {
+      "name": "procedure-tag",
+      "expression": "(compound-procedure? (make-procedure '(x) '((+ x 1)) '()))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "name": "procedure-body",
+      "expression": "(procedure-body (make-procedure '(x) '((+ x 1)) '()))",
+      "expected": "((+ x 1))",
+      "observed": "((+ x 1))",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/1 cases.test.original syntax session...MCE_SETUP\t21\tok\nMCE_CASE\t0\tvalue\t(x y)\nMCE_CASE\t1\tvalue\t(1 2)\nMCE_CASE\t2\tvalue\t1\nMCE_CASE\t3\tvalue\t9\nMCE_CASE\t4\tvalue\t3\nMCE_CASE\t5\tvalue\t2\nMCE_CASE\t6\tvalue\t#t\nMCE_CASE\t7\tvalue\t((+ x 1))\nOK\nAll 1 tests passed.\n"
+}

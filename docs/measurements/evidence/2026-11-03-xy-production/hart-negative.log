@@ -1,0 +1,26 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-scheme-product-20261103/apps/xy-gpui-hart-test-v2)
+    Finished `test` profile [unoptimized] target(s) in 2.77s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+
+thread 'emu::tests::continuation_native_foreground_rejects_other_hart' (15723833) panicked at src/emu/mod.rs:1803:13:
+assertion `left == right` failed: NIHOS_XY_EVALUATE_ENTRY did not reject hart 1
+  left: 1341211608
+ right: 1073742336
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test emu::tests::continuation_native_foreground_rejects_other_hart ... FAILED
+
+failures:
+
+failures:
+    emu::tests::continuation_native_foreground_rejects_other_hart
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `--bin nihos-xy-gpui`

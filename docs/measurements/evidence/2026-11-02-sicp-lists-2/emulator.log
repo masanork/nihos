@@ -1,0 +1,15 @@
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui)
+    Finished `test` profile [unoptimized] target(s) in 13.61s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+sicp_lists source=(map (lambda (x) (* x x)) '(1 2 3 4)) reply=NIHOS_NATIVE_XY_REPLY data=28312034203920313629
+sicp_lists source=(map + '(1 2 3) '(10 20 30)) reply=NIHOS_NATIVE_XY_REPLY data=28313120323220333329
+sicp_lists source=(map + '(1) '(2 3)) reply=NIHOS_NATIVE_XY_REPLY data=57726f6e6720617267756d656e742074797065
+sicp_lists source=(+ 20 22) reply=NIHOS_NATIVE_XY_REPLY data=3432
+test emu::tests::firmware_evaluates_sicp_list_exercises ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 23.17s
+

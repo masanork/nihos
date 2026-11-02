@@ -1,0 +1,5 @@
+1/1 scheme_runtime.test.sliced GC clears a dead weak numeric cache before cell reuse...expected 0, found 17
+FAIL (TestExpectedEqual)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/bf1671b46d2e919e9af5ea19aafb0fd6/root --seed=0xe3cf70b4

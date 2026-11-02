@@ -1,0 +1,26 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui)
+    Finished `test` profile [unoptimized] target(s) in 15.95s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+sicp_lists source=(map (lambda (x) (* x x)) '(1 2 3 4)) reply=NIHOS_NATIVE_XY_REPLY data=28312034203920313629
+sicp_lists source=(map + '(1 2 3) '(10 20 30)) reply=NIHOS_NATIVE_XY_REPLY data=28313120323220333329
+sicp_lists source=(begin (define (many n a) (if (= n 0) a (many (- n 1) (cons 1 a)))) (if (equal? (many 129 '()) (many 129 '())) 709 708)) reply=NIHOS_NATIVE_XY_REPLY data=373039
+sicp_lists source=(if (equal? '(a (b c)) '(a (b c))) 710 711) reply=NIHOS_NATIVE_XY_REPLY data=373130
+sicp_lists source=(if (equal? '(a (b c)) '(a (b d))) 712 713) reply=NIHOS_NATIVE_XY_REPLY data=373133
+sicp_lists source=(memq 'red '(red shoes blue socks)) reply=NIHOS_NATIVE_XY_REPLY data=287265642073686f657320626c756520736f636b7329
+sicp_lists source=(cadr '((x1 x2) (y1 y2))) reply=NIHOS_NATIVE_XY_REPLY data=28793120793229
+test emu::tests::firmware_evaluates_sicp_list_exercises has been running for over 60 seconds
+sicp_lists source=(let* ((x 1) (f (lambda () x)) (x 2)) (f)) reply=NIHOS_NATIVE_XY_REPLY data=31
+sicp_lists source=(let* ((n 6) (d -8) (g (gcd n d)) (a (/ n g)) (b (/ d g))) (cons (- a) (- b))) reply=NIHOS_NATIVE_XY_REPLY data=282d33202e203429
+sicp_lists source=(map + '(1) '(2 3)) reply=NIHOS_NATIVE_XY_REPLY data=57726f6e6720617267756d656e742074797065
+sicp_lists source=(+ 20 22) reply=NIHOS_NATIVE_XY_REPLY data=3432
+test emu::tests::firmware_evaluates_sicp_list_exercises ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 77.52s
+

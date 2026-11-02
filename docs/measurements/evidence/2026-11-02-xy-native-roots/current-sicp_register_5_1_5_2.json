@@ -1,0 +1,91 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "5.1",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 0)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.1",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.1",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 3)",
+      "expected": "6",
+      "observed": "6",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.1",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 5)",
+      "expected": "120",
+      "observed": "120",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.1",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 6)",
+      "expected": "720",
+      "observed": "720",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.2",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 0)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.2",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.2",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 3)",
+      "expected": "6",
+      "observed": "6",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.2",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 5)",
+      "expected": "120",
+      "observed": "120",
+      "status": "matched"
+    },
+    {
+      "exercise": "5.2",
+      "setup": "(define controller '((assign product (const 1)) (assign counter (const 1)) test-counter\n(test (op >) (reg counter) (reg n)) (branch (label fact-done))\n(assign product (op *) (reg counter) (reg product))\n(assign counter (op +) (reg counter) (const 1))\n(goto (label test-counter)) fact-done))\n(define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))\n(define (find-label name xs) (if (null? xs) '() (if (eq? (car xs) name) (cdr xs) (find-label name (cdr xs)))))\n(define (run n)\n (define (loop pc product counter flag)\n  (define (operand spec) (if (eq? (car spec) 'const) (cadr spec) (cond ((eq? (cadr spec) 'n) n) ((eq? (cadr spec) 'product) product) (else counter))))\n  (if (null? pc) product\n   (let ((inst (car pc)))\n    (if (not (pair? inst)) (loop (cdr pc) product counter flag)\n     (cond\n      ((eq? (car inst) 'assign)\n       (let* ((target (cadr inst)) (spec (nth inst 2))\n              (v (if (eq? (car spec) 'const) (cadr spec) (if (eq? (cadr spec) '*) (* (operand (nth inst 3)) (operand (nth inst 4))) (+ (operand (nth inst 3)) (operand (nth inst 4)))))))\n        (if (eq? target 'product) (loop (cdr pc) v counter flag) (loop (cdr pc) product v flag))))\n      ((eq? (car inst) 'test) (loop (cdr pc) product counter (> (operand (nth inst 2)) (operand (nth inst 3)))))\n      ((eq? (car inst) 'branch) (loop (if flag (find-label (cadr (cadr inst)) controller) (cdr pc)) product counter flag))\n      ((eq? (car inst) 'goto) (loop (find-label (cadr (cadr inst)) controller) product counter flag))\n      (else 'unknown-instruction))))))\n (loop controller 0 0 #f))",
+      "expression": "(run 6)",
+      "expected": "720",
+      "observed": "720",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 10
+  },
+  "note": "Independently written factorial controller and tiny fixture support only the operations used here. Not MIT register-machine simulator, graphical design, complete instruction semantics, or full exercise grading."
+}

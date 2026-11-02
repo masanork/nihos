@@ -1,0 +1,98 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "candidates": {
+    "last": "(define (last-pair x) (if (null? (cdr x)) x (last-pair (cdr x))))",
+    "reverse": "(define (reverse x) (define (iter remaining result) (if (null? remaining) result (iter (cdr remaining) (cons (car remaining) result)))) (iter x (quote ())))",
+    "square-rec": "(define (square-list items) (if (null? items) (quote ()) (cons (* (car items) (car items)) (square-list (cdr items)))))",
+    "square-map": "(define (square-list items) (map (lambda (x) (* x x)) items))"
+  },
+  "cases": [
+    {
+      "exercise": "2.17",
+      "candidate": "last",
+      "expression": "(last-pair (list 23 72 149 34))",
+      "expected": "(34)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.17",
+      "candidate": "last",
+      "expression": "(last-pair '(5))",
+      "expected": "(5)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.17",
+      "candidate": "last",
+      "expression": "(last-pair '(1 2 3))",
+      "expected": "(3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.18",
+      "candidate": "reverse",
+      "expression": "(reverse (list 1 4 9 16 25))",
+      "expected": "(25 16 9 4 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.18",
+      "candidate": "reverse",
+      "expression": "(reverse '())",
+      "expected": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.18",
+      "candidate": "reverse",
+      "expression": "(reverse '(a (b c) d))",
+      "expected": "(d (b c) a)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-rec",
+      "expression": "(square-list (list 1 2 3 4))",
+      "expected": "(1 4 9 16)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-rec",
+      "expression": "(square-list '())",
+      "expected": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-rec",
+      "expression": "(square-list '(-2 0 3))",
+      "expected": "(4 0 9)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-map",
+      "expression": "(square-list (list 1 2 3 4))",
+      "expected": "(1 4 9 16)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-map",
+      "expression": "(square-list '())",
+      "expected": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.21",
+      "candidate": "square-map",
+      "expression": "(square-list '(-2 0 3))",
+      "expected": "(4 0 9)",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/12 test.test.case_0...OK\n2/12 test.test.case_1...OK\n3/12 test.test.case_2...OK\n4/12 test.test.case_3...OK\n5/12 test.test.case_4...OK\n6/12 test.test.case_5...OK\n7/12 test.test.case_6...OK\n8/12 test.test.case_7...OK\n9/12 test.test.case_8...OK\n10/12 test.test.case_9...OK\n11/12 test.test.case_10...OK\n12/12 test.test.case_11...OK\nAll 12 tests passed.\n"
+}

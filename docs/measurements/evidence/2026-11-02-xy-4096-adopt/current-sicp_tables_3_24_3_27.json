@@ -1,0 +1,84 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "3.24",
+      "setup": "(define (same-key? a b) (< (abs (- a b)) 2))\n(define (find key records) (cond ((null? records) #f) ((same-key? key (car (car records))) (car records)) (else (find key (cdr records)))))\n(define (make-table) (list '*table*))\n(define (put! t key value) (let ((entry (find key (cdr t)))) (if entry (set-cdr! entry value) (set-cdr! t (cons (cons key value) (cdr t)))) 'ok))\n(define (get t key) (let ((entry (find key (cdr t)))) (if entry (cdr entry) 'missing)))",
+      "expression": "(let ((t (make-table))) (put! t 10 'a) (list (get t 11) (get t 13)))",
+      "expected": "(a missing)",
+      "observed": "(a missing)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.24",
+      "setup": "(define (same-key? a b) (< (abs (- a b)) 2))\n(define (find key records) (cond ((null? records) #f) ((same-key? key (car (car records))) (car records)) (else (find key (cdr records)))))\n(define (make-table) (list '*table*))\n(define (put! t key value) (let ((entry (find key (cdr t)))) (if entry (set-cdr! entry value) (set-cdr! t (cons (cons key value) (cdr t)))) 'ok))\n(define (get t key) (let ((entry (find key (cdr t)))) (if entry (cdr entry) 'missing)))",
+      "expression": "(let ((t (make-table))) (put! t 10 'a) (put! t 11 'b) (get t 10))",
+      "expected": "b",
+      "observed": "b",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.25",
+      "setup": "(define (make-node) (cons 'missing '()))\n(define (find key records) (cond ((null? records) #f) ((equal? key (car (car records))) (car records)) (else (find key (cdr records)))))\n(define (put! node keys value) (if (null? keys) (begin (set-car! node value) 'ok) (let ((entry (find (car keys) (cdr node)))) (if entry (put! (cdr entry) (cdr keys) value) (let ((child (make-node))) (set-cdr! node (cons (cons (car keys) child) (cdr node))) (put! child (cdr keys) value))))))\n(define (get node keys) (if (null? keys) (car node) (let ((entry (find (car keys) (cdr node)))) (if entry (get (cdr entry) (cdr keys)) 'missing))))",
+      "expression": "(let ((t (make-node))) (put! t '(a b) 12) (put! t '(a c) 9) (list (get t '(a b)) (get t '(a c)) (get t '(b))))",
+      "expected": "(12 9 missing)",
+      "observed": "(12 9 missing)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.25",
+      "setup": "(define (make-node) (cons 'missing '()))\n(define (find key records) (cond ((null? records) #f) ((equal? key (car (car records))) (car records)) (else (find key (cdr records)))))\n(define (put! node keys value) (if (null? keys) (begin (set-car! node value) 'ok) (let ((entry (find (car keys) (cdr node)))) (if entry (put! (cdr entry) (cdr keys) value) (let ((child (make-node))) (set-cdr! node (cons (cons (car keys) child) (cdr node))) (put! child (cdr keys) value))))))\n(define (get node keys) (if (null? keys) (car node) (let ((entry (find (car keys) (cdr node)))) (if entry (get (cdr entry) (cdr keys)) 'missing))))",
+      "expression": "(let ((t (make-node))) (put! t '(a) 7) (put! t '(a b) 8) (list (get t '(a)) (get t '(a b))))",
+      "expected": "(7 8)",
+      "observed": "(7 8)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.26",
+      "setup": "(define (make-table) (cons '() '()))\n(define (node key value) (cons key (cons value (cons '() '()))))\n(define (key t) (car t)) (define (value t) (car (cdr t))) (define (left t) (car (cdr (cdr t)))) (define (right t) (cdr (cdr (cdr t))))\n(define (set-left! t x) (set-car! (cdr (cdr t)) x)) (define (set-right! t x) (set-cdr! (cdr (cdr t)) x))\n(define (insert-node t k v) (if (null? t) (node k v) (cond ((= k (key t)) (set-car! (cdr t) v) t) ((< k (key t)) (set-left! t (insert-node (left t) k v)) t) (else (set-right! t (insert-node (right t) k v)) t))))\n(define (put! table k v) (set-car! table (insert-node (car table) k v)) 'ok)\n(define (get-node t k) (cond ((null? t) 'missing) ((= k (key t)) (value t)) ((< k (key t)) (get-node (left t) k)) (else (get-node (right t) k))))\n(define (get table k) (get-node (car table) k))",
+      "expression": "(let ((t (make-table))) (put! t 5 'a) (put! t 2 'b) (put! t 8 'c) (list (get t 2) (get t 5) (get t 8) (get t 4)))",
+      "expected": "(b a c missing)",
+      "observed": "(b a c missing)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.26",
+      "setup": "(define (make-table) (cons '() '()))\n(define (node key value) (cons key (cons value (cons '() '()))))\n(define (key t) (car t)) (define (value t) (car (cdr t))) (define (left t) (car (cdr (cdr t)))) (define (right t) (cdr (cdr (cdr t))))\n(define (set-left! t x) (set-car! (cdr (cdr t)) x)) (define (set-right! t x) (set-cdr! (cdr (cdr t)) x))\n(define (insert-node t k v) (if (null? t) (node k v) (cond ((= k (key t)) (set-car! (cdr t) v) t) ((< k (key t)) (set-left! t (insert-node (left t) k v)) t) (else (set-right! t (insert-node (right t) k v)) t))))\n(define (put! table k v) (set-car! table (insert-node (car table) k v)) 'ok)\n(define (get-node t k) (cond ((null? t) 'missing) ((= k (key t)) (value t)) ((< k (key t)) (get-node (left t) k)) (else (get-node (right t) k))))\n(define (get table k) (get-node (car table) k))",
+      "expression": "(let ((t (make-table))) (put! t 5 'a) (put! t 5 'z) (get t 5))",
+      "expected": "z",
+      "observed": "z",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.27",
+      "setup": "(define table '()) (define misses 0)\n(define (find n xs) (cond ((null? xs) #f) ((= n (car (car xs))) (car xs)) (else (find n (cdr xs)))))\n(define (memo-fib n) (let ((entry (find n table))) (if entry (cdr entry) (begin (set! misses (+ misses 1)) (let ((v (if (< n 2) n (+ (memo-fib (- n 1)) (memo-fib (- n 2)))))) (set! table (cons (cons n v) table)) v)))))",
+      "expression": "(let* ((v (memo-fib 0)) (count misses) (w (memo-fib 0))) (list v count w))",
+      "expected": "(0 1 0)",
+      "observed": "(0 1 0)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.27",
+      "setup": "(define table '()) (define misses 0)\n(define (find n xs) (cond ((null? xs) #f) ((= n (car (car xs))) (car xs)) (else (find n (cdr xs)))))\n(define (memo-fib n) (let ((entry (find n table))) (if entry (cdr entry) (begin (set! misses (+ misses 1)) (let ((v (if (< n 2) n (+ (memo-fib (- n 1)) (memo-fib (- n 2)))))) (set! table (cons (cons n v) table)) v)))))",
+      "expression": "(let* ((v (memo-fib 5)) (count misses) (w (memo-fib 5))) (list v count w))",
+      "expected": "(5 6 5)",
+      "observed": "(5 6 5)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.27",
+      "setup": "(define table '()) (define misses 0)\n(define (find n xs) (cond ((null? xs) #f) ((= n (car (car xs))) (car xs)) (else (find n (cdr xs)))))\n(define (memo-fib n) (let ((entry (find n table))) (if entry (cdr entry) (begin (set! misses (+ misses 1)) (let ((v (if (< n 2) n (+ (memo-fib (- n 1)) (memo-fib (- n 2)))))) (set! table (cons (cons n v) table)) v)))))",
+      "expression": "(let* ((v (memo-fib 10)) (count misses) (w (memo-fib 10))) (list v count w))",
+      "expected": "(55 11 55)",
+      "observed": "Depth",
+      "status": "error"
+    }
+  ],
+  "totals": {
+    "matched": 8,
+    "error": 1
+  },
+  "note": "Finite independently written candidates; comparator 3.24 is a fixture, 3.26 uses an unbalanced BST, memoization counts cache misses. No performance proof, persistence, thread safety or table API standardization claim."
+}

@@ -1,0 +1,4 @@
+1/1 scheme_runtime.test.variadic procedure formals bind positional and rest arguments...FAIL (Type)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/e41720c911d8a35caf99a651a24321e4/root --seed=0x11efeae

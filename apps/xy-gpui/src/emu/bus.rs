@@ -278,10 +278,9 @@ impl Bus {
         self.timer_ticks.saturating_sub(self.timer_epoch[channel]) / 360
     }
 
-    pub fn pending_irq(&mut self, hart: usize) -> Option<u32> {
-        if hart >= 2 {
-            return None;
-        }
+    // Timer status is peripheral state: it latches at the deadline even when
+    // CPU interrupts are masked and no interrupt-delivery poll takes place.
+    fn update_timer_alarms(&mut self) {
         for channel in 0..2 {
             let base = 0x500c_2000 + channel as u32 * 0x24;
             let cfg = self.mmio.get(&base).copied().unwrap_or(0);
@@ -294,6 +293,13 @@ impl Bus {
                 self.mmio.insert(base, cfg & !(1 << 10));
             }
         }
+    }
+
+    pub fn pending_irq(&mut self, hart: usize) -> Option<u32> {
+        if hart >= 2 {
+            return None;
+        }
+        self.update_timer_alarms();
         let enabled = |line: usize| self.clic[hart][0x1000 + line * 4 + 1] & 1 != 0;
         let matrix = 0x500d_6000 + hart as u32 * 0x800;
         let routed =
@@ -389,7 +395,10 @@ impl Bus {
             0x500c_202c => (self.timer_counter(1) >> 32) as u32,
             0x500c_3004 => (self.timer_ticks / 360) as u32,
             0x500c_3008 => ((self.timer_ticks / 360) >> 32) as u32,
-            0x500c_2078 => self.timer_irq,
+            0x500c_2078 => {
+                self.update_timer_alarms();
+                self.timer_irq
+            }
             _ => self.mmio.get(&addr).copied().unwrap_or(0),
         }
     }

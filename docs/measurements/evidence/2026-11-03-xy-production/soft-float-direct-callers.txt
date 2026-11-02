@@ -1,0 +1,8 @@
+0x400702e8 nih_xy_decimal_parse
+0x40072014 __subdf3
+0x40072396 __adddf3
+0x40075cac xy.scheme_runtime.Runtime.apply__func_13
+0x4007c3ee xy.scheme_runtime.Runtime.asInexact
+0x4007f70c xy.scheme_runtime.Runtime.read
+0x4008ab64 xy.scheme_runtime.Runtime.apply__func_286
+All observed direct callers are in xy Flash; indirect calls are not established by this scan.

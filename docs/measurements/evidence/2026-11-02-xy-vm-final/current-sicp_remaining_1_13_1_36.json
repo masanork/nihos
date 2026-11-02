@@ -1,0 +1,198 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "1.13",
+      "setup": "(define (fib n) (define (iter a b n) (if (= n 0) b (iter (+ a b) a (- n 1)))) (iter 1 0 n))",
+      "expression": "(and (= (fib 0) 0) (= (round (/ (- (expt 1.618033988749895 0) (expt -0.618033988749895 0)) 2.23606797749979)) 0))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.13",
+      "setup": "(define (fib n) (define (iter a b n) (if (= n 0) b (iter (+ a b) a (- n 1)))) (iter 1 0 n))",
+      "expression": "(and (= (fib 5) 5) (= (round (/ (- (expt 1.618033988749895 5) (expt -0.618033988749895 5)) 2.23606797749979)) 5))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.13",
+      "setup": "(define (fib n) (define (iter a b n) (if (= n 0) b (iter (+ a b) a (- n 1)))) (iter 1 0 n))",
+      "expression": "(and (= (fib 10) 55) (= (round (/ (- (expt 1.618033988749895 10) (expt -0.618033988749895 10)) 2.23606797749979)) 55))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.14",
+      "setup": "(define calls 0) (define max-depth 0)\n(define (first-denomination k) (cond ((= k 1) 1) ((= k 2) 5) ((= k 3) 10) ((= k 4) 25) (else 50)))\n(define (cc amount k depth) (set! calls (+ calls 1)) (if (> depth max-depth) (set! max-depth depth) 0) (cond ((= amount 0) 1) ((or (< amount 0) (= k 0)) 0) (else (+ (cc amount (- k 1) (+ depth 1)) (cc (- amount (first-denomination k)) k (+ depth 1))))))",
+      "expression": "(let* ((v (cc 0 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(1 1 0)",
+      "observed": "(1 1 0)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.14",
+      "setup": "(define calls 0) (define max-depth 0)\n(define (first-denomination k) (cond ((= k 1) 1) ((= k 2) 5) ((= k 3) 10) ((= k 4) 25) (else 50)))\n(define (cc amount k depth) (set! calls (+ calls 1)) (if (> depth max-depth) (set! max-depth depth) 0) (cond ((= amount 0) 1) ((or (< amount 0) (= k 0)) 0) (else (+ (cc amount (- k 1) (+ depth 1)) (cc (- amount (first-denomination k)) k (+ depth 1))))))",
+      "expression": "(let* ((v (cc 5 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(2 19 9)",
+      "observed": "(2 19 9)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.14",
+      "setup": "(define calls 0) (define max-depth 0)\n(define (first-denomination k) (cond ((= k 1) 1) ((= k 2) 5) ((= k 3) 10) ((= k 4) 25) (else 50)))\n(define (cc amount k depth) (set! calls (+ calls 1)) (if (> depth max-depth) (set! max-depth depth) 0) (cond ((= amount 0) 1) ((or (< amount 0) (= k 0)) 0) (else (+ (cc amount (- k 1) (+ depth 1)) (cc (- amount (first-denomination k)) k (+ depth 1))))))",
+      "expression": "(let* ((v (cc 11 5 0)) (c calls) (d max-depth)) (list v c d))",
+      "expected": "(4 55 15)",
+      "observed": "(4 55 15)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.15",
+      "setup": "(define count 0) (define (p x) (set! count (+ count 1)) (- (* 3 x) (* 4 x x x)))\n(define (sine angle) (if (not (> (abs angle) 0.1)) angle (p (sine (/ angle 3.0)))))",
+      "expression": "(begin (sine 12.15) count)",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.15",
+      "setup": "(define count 0) (define (p x) (set! count (+ count 1)) (- (* 3 x) (* 4 x x x)))\n(define (sine angle) (if (not (> (abs angle) 0.1)) angle (p (sine (/ angle 3.0)))))",
+      "expression": "(let ((v (sine 12.15))) (< (abs (+ v 0.4)) 0.06))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.20",
+      "setup": "(define calls 0) (define (remc a b) (set! calls (+ calls 1)) (remainder a b))\n(define (app-gcd a b) (if (= b 0) a (app-gcd b (remc a b))))\n(define (normal-gcd a b) (if (= (b) 0) (a) (normal-gcd b (lambda () (remc (a) (b))))))",
+      "expression": "(let* ((v (app-gcd 206 40)) (c calls)) (list v c))",
+      "expected": "(2 4)",
+      "observed": "(2 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.20",
+      "setup": "(define calls 0) (define (remc a b) (set! calls (+ calls 1)) (remainder a b))\n(define (app-gcd a b) (if (= b 0) a (app-gcd b (remc a b))))\n(define (normal-gcd a b) (if (= (b) 0) (a) (normal-gcd b (lambda () (remc (a) (b))))))",
+      "expression": "(let* ((v (normal-gcd (lambda () 206) (lambda () 40))) (c calls)) (list v c))",
+      "expected": "(2 18)",
+      "observed": "(2 18)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.22",
+      "setup": "(define divisions 0)\n(define (smallest-divisor n) (define (find d) (set! divisions (+ divisions 1)) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find (+ d 1))))) (find 2))\n(define (prime? n) (= n (smallest-divisor n)))",
+      "expression": "(let* ((v (prime? 1009)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "observed": "(#t 31)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.22",
+      "setup": "(define divisions 0)\n(define (smallest-divisor n) (define (find d) (set! divisions (+ divisions 1)) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find (+ d 1))))) (find 2))\n(define (prime? n) (= n (smallest-divisor n)))",
+      "expression": "(let* ((v (prime? 1013)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "observed": "(#t 31)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.22",
+      "setup": "(define divisions 0)\n(define (smallest-divisor n) (define (find d) (set! divisions (+ divisions 1)) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find (+ d 1))))) (find 2))\n(define (prime? n) (= n (smallest-divisor n)))",
+      "expression": "(let* ((v (prime? 1019)) (c divisions)) (list v c))",
+      "expected": "(#t 31)",
+      "observed": "(#t 31)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.24",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))\n(define (fast-prime? n bases) (if (null? bases) #t (and (fermat? (car bases) n) (fast-prime? n (cdr bases)))))",
+      "expression": "(fast-prime? 1009 '(2 3 5))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.24",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))\n(define (fast-prime? n bases) (if (null? bases) #t (and (fermat? (car bases) n) (fast-prime? n (cdr bases)))))",
+      "expression": "(fast-prime? 1001 '(2 3 5))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.24",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))\n(define (fast-prime? n bases) (if (null? bases) #t (and (fermat? (car bases) n) (fast-prime? n (cdr bases)))))",
+      "expression": "(fast-prime? 561 '(2 3 5))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.25",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(expmod 2 40 101)",
+      "expected": "36",
+      "observed": "36",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.25",
+      "setup": "",
+      "expression": "(remainder (expt 2 40) 101)",
+      "expected": "36",
+      "observed": "Overflow",
+      "status": "error"
+    },
+    {
+      "exercise": "1.26",
+      "setup": "(define calls 0) (define (bad-expmod b n m) (set! calls (+ calls 1)) (cond ((= n 0) 1) ((even? n) (remainder (* (bad-expmod b (quotient n 2) m) (bad-expmod b (quotient n 2) m)) m)) (else (remainder (* b (bad-expmod b (- n 1) m)) m))))",
+      "expression": "(let* ((v (bad-expmod 2 8 17)) (c calls)) (list v c))",
+      "expected": "(1 23)",
+      "observed": "(1 23)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.26",
+      "setup": "(define calls 0) (define (bad-expmod b n m) (set! calls (+ calls 1)) (cond ((= n 0) 1) ((even? n) (remainder (* (bad-expmod b (quotient n 2) m) (bad-expmod b (quotient n 2) m)) m)) (else (remainder (* b (bad-expmod b (- n 1) m)) m))))",
+      "expression": "(let* ((v (bad-expmod 2 16 17)) (c calls)) (list v c))",
+      "expected": "(1 47)",
+      "observed": "(1 47)",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.34",
+      "setup": "(define (f g) (g 2))",
+      "expression": "(f (lambda (x) (* x x)))",
+      "expected": "4",
+      "observed": "4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.34",
+      "setup": "(define (f g) (g 2))",
+      "expression": "(f f)",
+      "expected": "error:Type",
+      "expected_error": "Type",
+      "reference_error_contains": "non procedure application",
+      "observed": "Type",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.36",
+      "setup": "(define (ln x) (define (series z) (define (iter power total k) (if (= k 15) (* 2.0 total) (iter (* power z z) (+ total (/ power (+ (* 2 k) 1))) (+ k 1)))) (iter z 0.0 0))\n (define (reduce y count) (if (> y 2.0) (reduce (/ y 2.0) (+ count 1)) (+ (* count 0.6931471805599453) (series (/ (- y 1.0) (+ y 1.0)))))) (reduce x 0))\n(define visits 0)\n(define (fixed-point f first) (define (iter guess) (set! visits (+ visits 1)) (let ((next (f guess))) (if (< (abs (- guess next)) 0.00001) next (iter next)))) (iter first))\n(define (f x) (/ (ln 1000.0) (ln x)))\n(define (average-damp f) (lambda (x) (/ (+ x (f x)) 2.0)))",
+      "expression": "(let ((v (fixed-point (average-damp f) 2.0))) (< (abs (- v 4.5555)) 0.001))",
+      "expected": "#t",
+      "observed": "Budget",
+      "status": "error"
+    }
+  ],
+  "totals": {
+    "matched": 21,
+    "error": 2
+  },
+  "note": "Finite candidate observations only. 1.13 uses decimal constants; 1.20 explicitly simulates substitution with thunks; 1.22/1.24 use deterministic work/base fixtures instead of wall-clock timing/randomness; 1.36 uses a candidate logarithm and omits printed iteration traces. 1.34 expects a type error."
+}
