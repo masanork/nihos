@@ -111,6 +111,8 @@ names = [
     'probes/c6-sdio/start.S', 'probes/c6-sdio/split-udp-main.zig', 'probes/c6-sdio/pads.c',
     'src/net/hosted_c6_time_exchange.zig', 'src/net/hosted_c6_time.zig', 'src/net/hosted_network_split.zig',
     'src/net/hosted_split_udp_probe.zig', 'src/net/hosted_split_udp_owner.zig',
+    'src/net/hosted_split_udp_generic_owner.zig', 'src/net/hosted_udp_sender.zig',
+    'src/net/hosted_udp_lease.zig', 'src/net/hosted_udp_frame.zig', 'src/net/udp_ipv4.zig',
     'src/platform/native/c6_probe.zig', 'probes/c6-sdio/esp32p4.ld',
     'src/soc/esp32p4/sdio.zig', 'src/soc/esp32p4/timer_group.zig',
     'src/net/c6_sdio.zig', 'src/net/esp_at.zig', 'src/net/at_commands.zig',

@@ -58,6 +58,12 @@ both decoders accept corresponding synthetic replies. This connects the
 fixture packet format to the generic implementation, but does not exercise
 the generic sender, its DMA path, or the receiver on physical hardware.
 
+The later [generic UDP diagnostic](../measurements/2026-11-03-hosted3-generic-udp.md)
+does exercise the generic sender's `poll` and the lease receive decoder on
+Tab5, with the fixture retaining exclusive control-event ownership. It uses
+an explicitly configured same-subnet peer and does not provide an OS socket
+or establish QUIC interoperability.
+
 For a stage 5 failure the fixture reports `wifi_step`: 1 begins the address
 exchange, 2 reads SDIO, 3 decodes/applies frames, 4 checks the clock/deadline,
 5 checks ownership handoff, 6 produces a control request, 7 sends it, and 8
