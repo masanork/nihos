@@ -37,6 +37,16 @@ not connected to the runtime network service or the physical diagnostic.
 UDP port after decoding. It does not authenticate a source or acquire a lease;
 the caller must check address generation before using the borrowed payload.
 
+`hosted_udp_lease.Lease` is an experimental wrapper that captures a complete
+C6 address snapshot and generation, and checks both before frame preparation
+or receive matching. The local port must belong to an externally supplied
+range: this is neither port allocation nor proof of the installed C6 routing
+policy. The caller must prevent port collisions, serialize transport ownership,
+recheck immediately before submission or consumption, and invalidate the
+underlying state on disconnect or reset. It cannot cancel an already-submitted
+transfer and does not authenticate the sender. No runtime network service
+uses this wrapper yet.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
