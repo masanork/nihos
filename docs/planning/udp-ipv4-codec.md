@@ -99,3 +99,12 @@ to support this path without an explicit integration and image audit.
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
+
+`python3 tools/hosted-udp-layout.py` builds an RV32 object with layout markers
+and reports the sizes of the sender, its lease, the existing decoder and the
+long-DMA buffer in `build/hosted-udp-layout/report.json`. The lease is already
+part of the sender and must not be counted twice; the native service already
+has a decoder and receive buffer. The output includes the source commit and
+dirty state. The accompanying `layout.s` permits inspection of initialization
+into caller-provided storage. These are type and object-level measurements,
+not evidence of a linked image's total SRAM, aggregate stack or device behavior.
