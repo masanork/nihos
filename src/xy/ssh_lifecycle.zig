@@ -58,6 +58,60 @@ pub const Profile = struct {
     }
 };
 
+/// Bounded transient input for a future SSH setup screen. Do not route secret
+/// input through the editor, command history, logs or deferred input queues.
+/// The owner must call clear on cancellation, navigation away or failure.
+pub const ProfileForm = struct {
+    pub const Field = enum(u8) { address, port, username, fingerprint, seed };
+    const capacities = [5]u8{ 15, 5, 64, 50, 64 };
+    fields: [5][64]u8 = @splat(@splat(0)),
+    lengths: [5]u8 = @splat(0),
+    selected: Field = .address,
+
+    /// Reject a whole key rather than truncating it or accepting controls.
+    pub fn append(self: *ProfileForm, byte: u8) error{ InvalidInput, Full }!void {
+        const i = @backingInt(self.selected);
+        if (byte < 33 or byte > 126) return error.InvalidInput;
+        if (self.selected == .seed and !std.ascii.isHex(byte)) return error.InvalidInput;
+        if (self.lengths[i] >= capacities[i]) return error.Full;
+        self.fields[i][self.lengths[i]] = byte;
+        self.lengths[i] += 1;
+    }
+    pub fn backspace(self: *ProfileForm) void {
+        const i = @backingInt(self.selected);
+        if (self.lengths[i] == 0) return;
+        self.lengths[i] -= 1;
+        self.fields[i][self.lengths[i]] = 0;
+    }
+    pub fn next(self: *ProfileForm) void {
+        self.selected = @fromBackingInt(@intCast(@min(@backingInt(self.selected) + 1, 4)));
+    }
+    pub fn previous(self: *ProfileForm) void {
+        self.selected = @fromBackingInt(@intCast(@backingInt(self.selected) -| 1));
+    }
+    fn slice(self: *const ProfileForm, field: Field) []const u8 {
+        const i = @backingInt(field);
+        return self.fields[i][0..self.lengths[i]];
+    }
+    /// The seed is never returned for display; the caller may draw a mask
+    /// using length(.seed). No credential bytes are returned by this method.
+    pub fn display(self: *const ProfileForm, field: Field) []const u8 {
+        return if (field == .seed) "" else self.slice(field);
+    }
+    pub fn length(self: *const ProfileForm, field: Field) usize {
+        return self.lengths[@backingInt(field)];
+    }
+    /// Failed validation preserves input for correction. A successful commit
+    /// clears all form bytes; the caller owns and later clears the profile.
+    pub fn submit(self: *ProfileForm, profile: *Profile) error{InvalidProfile}!void {
+        try profile.set(self.slice(.address), self.slice(.port), self.slice(.username), self.slice(.fingerprint), self.slice(.seed));
+        self.clear();
+    }
+    pub fn clear(self: *ProfileForm) void {
+        std.crypto.secureZero(u8, std.mem.asBytes(self));
+    }
+};
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -335,6 +389,52 @@ test "profile validates OpenSSH fingerprint and wipes credentials" {
     try std.testing.expectEqual(ones, p.seed);
     p.clear();
     for (std.mem.asBytes(&p)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "profile form masks and clears key input on submit and cancel" {
+    var form: ProfileForm = .{};
+    var profile: Profile = .{};
+    const values = [_][]const u8{
+        "10.0.2.2",
+        "22",
+        "alice",
+        "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "0101010101010101010101010101010101010101010101010101010101010101",
+    };
+    for (values) |value| {
+        for (value) |byte| try form.append(byte);
+        if (form.selected == .seed) {
+            try std.testing.expectEqualStrings("", form.display(.seed));
+            try std.testing.expectEqual(@as(usize, 64), form.length(.seed));
+            try std.testing.expectError(error.Full, form.append('a'));
+            try std.testing.expectError(error.InvalidInput, form.append('z'));
+        }
+        form.next();
+    }
+    try form.submit(&profile);
+    try std.testing.expect(profile.valid);
+    try std.testing.expectEqualStrings("alice", profile.user());
+    for (std.mem.asBytes(&form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    form.selected = .seed;
+    try form.append('a');
+    form.backspace();
+    try std.testing.expectEqual(@as(u8, 0), form.fields[4][0]);
+    try form.append('b');
+    form.clear();
+    for (std.mem.asBytes(&form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    profile.clear();
+}
+
+test "profile form rejects malformed fields without changing existing profile" {
+    var form: ProfileForm = .{};
+    var profile: Profile = .{};
+    try profile.set("10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101");
+    try form.append('1');
+    try std.testing.expectError(error.InvalidProfile, form.submit(&profile));
+    try std.testing.expectEqualStrings("alice", profile.user());
+    try std.testing.expectEqualStrings("1", form.display(.address));
+    form.clear();
+    profile.clear();
 }
 
 test "lifecycle connects, attaches only when ready, and closes in order" {

@@ -123,7 +123,13 @@ var profile: lifecycle.Profile = .{};
 export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
     profile.clear();
-    profile.set("10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex) catch return false;
+    var form: lifecycle.ProfileForm = .{};
+    defer form.clear();
+    for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
+        for (value) |byte| form.append(byte) catch return false;
+        form.next();
+    }
+    form.submit(&profile) catch return false;
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
     host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
     model.initInPlace();

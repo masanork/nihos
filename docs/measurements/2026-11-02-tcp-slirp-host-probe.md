@@ -100,7 +100,10 @@ is exercised through the same profile lifecycle entry points used by the
 native workspace adapter against the local OpenSSH server, with xy terminal
 input/output and TCP FIN; a wrong fingerprint is rejected and both success and
 failure paths clear the fixture's profile. It does not provide a provisioning
-UI or protected storage. ESP32-P4 RNG output
+UI or protected storage. The fixture fills a bounded transient form before
+starting the profile; its display accessor never returns seed bytes, and its
+submission and cancellation erasure are unit tested. This form is not wired
+to native keyboard, serial or touch input. ESP32-P4 RNG output
 must not be treated as cryptographic entropy without meeting the documented
 [entropy-source conditions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/api-reference/system/random.html);
 the existing SQL random callback does not establish those conditions for SSH.

@@ -9,6 +9,7 @@ const layout = @import("sqld_layout.zig");
 
 pub const Material = lifecycle.Material;
 pub const Profile = lifecycle.Profile;
+pub const ProfileForm = lifecycle.ProfileForm;
 pub const ExchangeEntropy = lifecycle.ExchangeEntropy;
 pub const Model = console.scratch.Model;
 pub const Ui = bridge.Session(network.ExperimentalSshSession, 80, 24, 8);
