@@ -197,6 +197,10 @@ Flash and work without SD or network access. Vertical text keeps Japanese
 upright and turns Latin text sideways with horizontal spacing.
 Press `n` to write, Esc in the document for the Scheme minibuffer, and Ctrl-C
 to return Home. Tab5 documents and settings currently live in RAM.
+On Tab5, the Japanese radio certification mark and number are shown electronically:
+open Home → 表示設定 → 認証情報 (or press `s`, then `g` from Home).
+This information identifies the certified Tab5 design; changes to the radio,
+firmware, or antenna still need to remain within the applicable certification.
 The diagnostic launcher and ASCII shell remain available with
 `NIHOS_NATIVE_XY_WORKSPACE=0`.
 See [native session behaviour and build flags](docs/native-session.md).

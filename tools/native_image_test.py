@@ -99,6 +99,8 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.applyKeyboardPresence'))
         self.assertTrue(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".flash.xytext"[0..13]).poll'))
         self.assertFalse(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".other"[0..6]).poll'))
+        self.assertTrue(MODULE.xy_function('diagnostic_ui.input__func_3'))
+        self.assertFalse(MODULE.xy_function('diagnostic_ui.input__func_bad'))
         self.assertTrue(MODULE.xy_function('xy.navigation.State.touchPortrait'))
         self.assertTrue(MODULE.xy_function('xy.learning_session.Session.touchPortrait'))
         self.assertTrue(MODULE.xy_function('xy.soft_keyboard.keyAt'))
