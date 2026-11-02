@@ -38,9 +38,9 @@ queue failure; normal boot does not call either module yet.
 tracks whole-frame completion, and requires a transport reset after an
 ambiguous partial send. On TCP/RX failure it retires the TCP handle and
 reports the error; callers can continue station maintenance on the next poll.
-The OpenSSH host fixture uses this owner; the normal
-CPU0 network service has codegen-only experimental RX, TX and CPU0-only
-connection operations. The native xy application does not call them.
+The OpenSSH host fixture uses this owner. An opt-in native build includes
+experimental RX, TX and CPU0-only connection operations; native xy does not
+call them. Its image has been linked and audited but not run on a device.
 
 `ssh_hosted_tcp_io.zig` maps the owner's TCP stream to SSH pump partial I/O,
 backpressure, EOF and failure. It requires the serialized caller to advance

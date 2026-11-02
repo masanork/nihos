@@ -26,6 +26,11 @@ if [ "$network" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-network";
 network_test=${NIHOS_NATIVE_NETWORK_TEST:-0}
 case "$network_test" in 0) network_test=false ;; 1) network_test=true ;; *) echo "NETWORK_TEST must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$network_test" = true ] && [ "$network" != true ]; then echo "NETWORK_TEST requires NETWORK=1" >&2; exit 1; fi
+experimental_tcp=${NIHOS_NATIVE_EXPERIMENTAL_TCP:-0}
+case "$experimental_tcp" in 0) experimental_tcp=false; experimental_tcp_cpp=0 ;; 1) experimental_tcp=true; experimental_tcp_cpp=1 ;; *) echo "EXPERIMENTAL_TCP must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$experimental_tcp" = true ] && [ "$network" != true ]; then echo "EXPERIMENTAL_TCP requires NETWORK=1" >&2; exit 1; fi
+if [ "$experimental_tcp" = true ] && [ "${NIHOS_C6_TIME_OFFLOAD:-0}" = 1 ]; then echo "EXPERIMENTAL_TCP does not support C6 time offload" >&2; exit 1; fi
+if [ "$experimental_tcp" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-tcp-experiment"; fi
 devices=${NIHOS_NATIVE_DEVICES:-0}
 case "$devices" in 0) devices=false; devices_cpp=0 ;; 1) devices=true; devices_cpp=1 ;; *) echo "DEVICES must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$camera_id" = true ] && [ "$devices" != true ]; then echo "CAMERA_ID requires DEVICES=1" >&2; exit 1; fi
@@ -510,6 +515,7 @@ esac
 sqld=${NIHOS_NATIVE_SQLD:-0}
 case "$sqld" in 0) sqld=false; sqld_cpp=0 ;; 1) sqld=true; sqld_cpp=1 ;; *) echo "SQLD must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$sqld" = true ] && { [ "$normal_storage" != true ] || [ "$xy_workspace" != true ]; }; then echo "SQLD requires normal storage and xy" >&2; exit 1; fi
+if [ "$experimental_tcp" = true ] && [ "$sqld" != true ]; then echo "EXPERIMENTAL_TCP requires the sqld PSRAM reservation" >&2; exit 1; fi
 if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
     echo "NORMAL_STORAGE requires ordinary integer device live-console boot; qualification/finite probes remain separate" >&2; exit 1
 fi
@@ -578,6 +584,7 @@ fi
 mkdir -p "$build_dir"
 native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
+if [ "$experimental_tcp" = true ]; then native_boot_dir="$native_boot_dir-tcp-experiment"; fi
 if [ "$audio" = true ]; then native_boot_dir="$native_boot_dir-audio"; fi
 if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone"; fi
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
@@ -608,7 +615,7 @@ if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$
     echo "xy runtime requires the ordinary integer workspace/interactive emulator profile" >&2
     exit 1
 fi
-"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_EXPERIMENTAL_TCP="$experimental_tcp_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
@@ -627,6 +634,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_alignment_negative = %s;\n' "$wasm_align_negative"
     printf 'pub const wasm_alignment_corpus = %s;\n' "$wasm_align_corpus"
     printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
+    if [ "$experimental_tcp" = true ]; then echo 'pub const experimental_tcp = true;'; fi
     printf 'pub const xy_trace = %s;\n' "$xy_trace"
     printf 'pub const xy_portrait = %s;\n' "$xy_portrait"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"

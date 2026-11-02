@@ -184,7 +184,10 @@ def audit_time_functions(functions, span):
     require(station in (set(), TIME_STATION) and c6 in (set(), TIME_C6) and
             xy_station in (set(), TIME_STATION) and not (station and xy_station) and
             (not c6 or station == TIME_STATION or xy_station == TIME_STATION), 'incomplete C6 time Flash profile')
-    require(len(names) == len(set(names)) and TIME_FUNCTIONS.issubset(names) and
+    xy_time_poll = [name for name, address, stop in functions
+                    if name == 'network_service.timePoll' and 0x40060000 <= address < stop <= 0x400c0000]
+    require(len(xy_time_poll) <= 1 and not (xy_time_poll and 'network_service.timePoll' in present), 'duplicate network time poll')
+    require(len(names) == len(set(names)) and (TIME_FUNCTIONS - set(xy_time_poll)).issubset(names) and
             all(sum(re.fullmatch(re.escape(prefix) + r'__func_[0-9]+', name) is not None for name in names) == 1 for prefix in TIME_GENERIC), 'missing/duplicate network/time Flash function')
     # Export and Zig debug aliases may describe the same bytes. Every name above
     # must still be approved; only the byte-coverage walk collapses exact aliases.
@@ -218,6 +221,21 @@ def audit_ui_pool(name, kind, flags, address, size, allowed):
 
 
 XY_SECTIONS = {'.flash.xypad', '.flash.xytext', '.flash.xyrodata'}
+TCP_XY_FUNCTIONS = {
+    'network_service.collectRenewals',
+    'hosted_station.Client.finishIfReady', 'hosted_station.Client.afterBluetooth',
+    'hosted_station.Client.afterVersion', 'hosted_station.Client.encodeFrame',
+    'hosted_station.Client.maintain', 'hosted_station.Client.beginDual',
+    'hosted_tcp_owner.Owner.sent', 'hosted_tcp_owner.Owner.retireTcp', 'hosted_tcp_owner.Owner.reset',
+    'hosted_tcp_service.Service.get', 'hosted_tcp_service.Service.retire', 'hosted_tcp_service.Service.sync',
+    'hosted_tcp_service.Service.receive', 'hosted_tcp_service.Service.ready',
+    'hosted_tcp_rx.Queue.clear', 'hosted_tcp_rx.Queue.overflow', 'hosted_tcp_station.refresh',
+    'tcp_link.Link.invalidate', 'tcp_link.Link.check', 'tcp_link.Link.poll',
+    'tcp_stream.Stream.poll', 'tcp_connect.Connect.poll', 'tcp_connect.Connect.makePacket',
+    'tcp_wire.encode', 'tcp_wire.parse', 'tcp_wire.tcpChecksum', 'tcp_wire.ipChecksum',
+    'tcp_wire.Sum.finish', 'tcp_wire.Sum.add', 'arp_resolver.Resolver.check',
+    'arp_resolver.Resolver.result', 'arp_resolver.Resolver.poll',
+}
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
@@ -292,7 +310,7 @@ def xy_function(name):
     keyboard_driver = re.fullmatch(r'board\.tab5\.keyboard\.KeyboardIn\(boot_i2c\.Master\(display_probe\.Pins\),"\.flash\.xytext"\[0\.\.13\]\)\.(?:read|begin|poll)(?:__func_[0-9]+)?', name)
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
-    return bool(document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):

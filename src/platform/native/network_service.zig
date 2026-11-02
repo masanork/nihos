@@ -309,12 +309,7 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             try finishC6Time(received);
         } else {
             try client.receive(frame, received);
-            if (experimental_tcp) {
-                _ = tcp_state.receiveProcessed(client, frame, received) catch |err| blk: {
-                    tcp_error_code = @intFromError(err);
-                    break :blk false;
-                };
-            }
+            if (experimental_tcp) tcpReceive(frame, received);
         }
         collectRenewals();
         if (!offload_active and frame.interface == 1) {
@@ -398,9 +393,17 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
     }
 }
 
+noinline fn tcpReceive(frame: hosted.wire.Frame, now: u64) linksection(".flash.xytext") void {
+    if (!experimental_tcp) return;
+    _ = tcp_state.receiveProcessed(client, frame, now) catch |err| blk: {
+        tcp_error_code = @intFromError(err);
+        break :blk false;
+    };
+}
+
 // Called only inside the CPU0/shared-host lease. The transport borrows no
 // owner buffer after send returns; zero credits leave the staged frame intact.
-noinline fn tcpPoll(now: u64, station_pending: bool, other_pending: bool) linksection(".flash.text.time") !bool {
+noinline fn tcpPoll(now: u64, station_pending: bool, other_pending: bool) linksection(".flash.xytext") !bool {
     if (!experimental_tcp) return false;
     const bytes = (tcp_state.nextTcp(client, now, station_pending, other_pending) catch |err| {
         tcp_error_code = @intFromError(err);
@@ -488,7 +491,7 @@ pub fn configure(join: hosted.Join) !void {
 
 /// Called after the station's own tx() maintenance. Shares its monotonic epoch;
 /// DNS/NTP failures stay local and never reset C6 or revoke the DHCP lease.
-noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
+noinline fn timePoll(now: u64) linksection(if (experimental_tcp) ".flash.xytext" else ".flash.text.time") !bool {
     const v4 = client.dhcp_client orelse {
         state_storage.time.disconnect();
         return false;

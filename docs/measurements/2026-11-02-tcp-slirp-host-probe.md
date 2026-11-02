@@ -60,7 +60,7 @@ the native service and instantiates TCP open, RX, TX completion and reset.
 This checks module compatibility and a 24 KiB owner size ceiling, not a linked
 image, PSRAM placement, or execution on a device.
 
-The native network service has a codegen-only `experimental_tcp` option that
+The native network service has an opt-in `experimental_tcp` option that
 reserves a separate aligned tail for the TCP owner, retires it on network
 stop/retry, and delivers station-processed RX to it. TCP RX failures are kept
 separate from station failures. The architecture probe compiles both settings.
@@ -69,8 +69,16 @@ sender after station, time and BLE work, retaining any staged TCP frame across
 backpressure. An experimental CPU0-only interface offers open, readiness,
 partial I/O and half-close with lease/epoch validation. Callers must supply
 secure connection randomness before production use. Production configuration
-does not enable the option, and xy does not call it. The existing image audits
-therefore do not qualify a TCP-enabled image or its PSRAM reservation.
+does not enable the option, and xy does not call it.
+
+A local `NIHOS_NATIVE_EXPERIMENTAL_TCP=1` connected device image linked and
+passed the image audit: the primary SRAM heap was 50,240 bytes against the
+49,152-byte floor. The network state occupied 21,120 bytes of an explicitly
+bounded 40,960-byte interval at `0x48206000` within the boot-owned sqld
+reservation, disjoint from the copied client buffers and store. The TCP and
+network foreground code was audited in the mapped xy Flash range. This is a
+build/image result; it does not prove startup, SDIO, Wi-Fi, PSRAM behavior, or
+SSH on Tab5. No experimental image was written to a device.
 
 The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
 reads and writes. Its station lease remains synthetic; this is not a live

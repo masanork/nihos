@@ -3,6 +3,9 @@ pub const base: u32 = 0x48200000;
 pub const bytes: u32 = 2 * 1024 * 1024;
 pub const client_request: u32 = base + 0x4000;
 pub const client_response: u32 = base + 0x5000;
+// Experimental CPU0 network state; never part of sqld's allocator or buffers.
+pub const network_experiment: u32 = base + 0x6000;
+pub const network_experiment_bytes: u32 = 0xa000;
 pub const store: u32 = base + 0x10000;
 pub const store_bytes: u32 = 65536;
 pub const service: u32 = base + 0x20000;
@@ -31,6 +34,8 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(store + store_bytes <= service);
     try std.testing.expect(client_request + 604 <= client_response);
     try std.testing.expect(client_response + 1048 <= store);
+    try std.testing.expect(client_response + 1048 <= network_experiment);
+    try std.testing.expect(network_experiment + network_experiment_bytes <= store);
     try std.testing.expect(service + service_bytes <= eval_stack);
     try std.testing.expect(eval_stack + eval_stack_bytes <= heap);
     try std.testing.expect(heap + heap_bytes <= cache);

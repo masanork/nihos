@@ -100,6 +100,13 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".flash.xytext"[0..13]).poll'))
         self.assertTrue(MODULE.xy_function('network_service.startAttempt'))
         self.assertTrue(MODULE.xy_function('network_service.stop'))
+        self.assertTrue(MODULE.xy_function('network_service.tcpPoll'))
+        self.assertTrue(MODULE.xy_function('network_service.tcpReceive'))
+        self.assertTrue(MODULE.xy_function('network_service.timePoll'))
+        self.assertTrue(MODULE.xy_function('tcp_link.Link.poll'))
+        self.assertTrue(MODULE.xy_function('hosted_station.Client.maintain'))
+        self.assertFalse(MODULE.xy_function('hosted_station.Client.unapproved'))
+        self.assertFalse(MODULE.xy_function('tcp_link.Link.unapproved'))
         self.assertFalse(MODULE.xy_function('network_service.poll'))
         self.assertFalse(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".other"[0..6]).poll'))
         self.assertTrue(MODULE.xy_function('xy.navigation.State.touchPortrait'))
@@ -198,6 +205,12 @@ class NativeInstructionTests(unittest.TestCase):
         functions = [(name, start + i*16, start + (i+1)*16) for i, name in enumerate(names)]
         span = (start, start + len(names)*16)
         self.assertEqual(len(MODULE.audit_time_functions(functions, span)), len(names))
+        remaining = [name for name in names if name != 'network_service.timePoll']
+        moved = [(name, start + i*16, start + (i+1)*16) for i, name in enumerate(remaining)]
+        moved.append(('network_service.timePoll', 0x40060000, 0x40060010))
+        self.assertEqual(len(MODULE.audit_time_functions(moved, (start, start + len(remaining)*16))), len(remaining))
+        with self.assertRaises(ValueError):
+            MODULE.audit_time_functions(moved[:-1], (start, start + len(remaining)*16))
         MODULE.audit_flash_section('.flash.time', 1, 6, start, span[1]-start, allow_time=True)
         for changed in (functions[:-1], [('irq.unapproved', *functions[0][1:])] + functions[1:],
                         [(functions[0][0], start, start+20)] + functions[1:]):
