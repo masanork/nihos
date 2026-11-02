@@ -160,6 +160,23 @@ fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !vo
     } else try label(instance, target, 24, 670, "ホーム / Esc      前の一覧        次の一覧      矢印・Enter", 24, 0xffff);
 }
 
+/// The view contains public text or a length only; seed bytes never cross
+/// into the renderer, glyph cache, framebuffer or render stack.
+fn privateSetup(instance: *Session, target: anytype, view: *const protocol.PrivateInputView, x: i32) !void {
+    const titles = [_][]const u8{ "1/5 IPv4 address", "2/5 Port", "3/5 User", "4/5 Host fingerprint (SHA256:...)", "5/5 Ed25519 seed (hex)" };
+    if (view.field >= titles.len or view.text_length > 64 or view.secret_length > 64 or view.invalid > 1) return error.Range;
+    if ((view.field == 4 and view.text_length != 0) or (view.field != 4 and view.secret_length != 0)) return error.Range;
+    try label(instance, target, x, 36, "SSH setup", 32, 0x2147);
+    try label(instance, target, x, 105, titles[view.field], 24, 0x2147);
+    const mask: [64]u8 = @splat('*');
+    const text = if (view.field == 4) mask[0..view.secret_length] else view.text[0..view.text_length];
+    const split = @min(text.len, 32);
+    try label(instance, target, x, 160, text[0..split], 24, 0x2147);
+    if (split < text.len) try label(instance, target, x, 200, text[split..], 24, 0x2147);
+    try label(instance, target, x, 265, "Enter: next / confirm  Arrows: field  Esc: cancel", 20, 0x528a);
+    if (view.invalid != 0) try label(instance, target, x, 305, "Invalid input; review fields", 20, 0xb104);
+}
+
 /// Portrait navigation renders into the panel's native surface.
 pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
     const nav = request.navigation orelse return error.Range;
@@ -169,9 +186,11 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
     _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
     switch (nav.screen) {
         .ssh => {
-            try label(instance, target, 36, 48, "SSH", 36, 0x2147);
-            try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
-            try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            if (request.private_input) |view| try privateSetup(instance, target, view, 36) else {
+                try label(instance, target, 36, 48, "SSH", 36, 0x2147);
+                try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
+                try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            }
         },
         .examples, .exercise => {
             const lessons = request.learning orelse return error.Range;
@@ -282,6 +301,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
         try label(instance, target, 128, 1232, "前の一覧", 20, 0xffff);
         try label(instance, target, 368, 1232, "次の一覧", 20, 0xffff);
     } else try label(instance, target, 8, 1232, "Home", 20, 0xffff);
+    if (nav.screen == .ssh and request.private_input != null) try instance.renderKeyboard(request, target);
 }
 
 /// Portrait Home uses the panel's physical coordinates and shared card geometry.
@@ -317,10 +337,13 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
         .ssh => {
-            try label(instance, target, 48, 48, "SSH", 36, 0x2147);
-            try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
-            try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            if (request.private_input) |view| try privateSetup(instance, target, view, 48) else {
+                try label(instance, target, 48, 48, "SSH", 36, 0x2147);
+                try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
+                try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            }
             try footer(instance, target, false, false);
+            if (request.private_input != null) try instance.renderKeyboard(request, target);
         },
         .examples, .exercise => {
             const l = request.learning orelse return error.Range;

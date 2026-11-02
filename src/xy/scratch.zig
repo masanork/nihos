@@ -49,9 +49,11 @@ pub const TerminalPort = struct {
 /// Foreground-only private input sink. The owner must wipe its own state in
 /// close and keep it alive until detach; input never enters document history.
 pub const PrivateInputPort = struct {
+    pub const View = @import("render_protocol.zig").PrivateInputView;
     context: *anyopaque,
     key: *const fn (*anyopaque, input.Key) bool,
     close: *const fn (*anyopaque) void,
+    snapshot: *const fn (*anyopaque, *View) bool,
 };
 pub const Model = struct {
     pub const TerminalPortType = TerminalPort;
@@ -167,6 +169,10 @@ pub const Model = struct {
         self.utf8_needed = 0;
         port.close(port.context);
         self.changed();
+    }
+    pub fn privateInputSnapshot(self: *const Model, out: *PrivateInputPort.View) linksection(scheme.code_section) bool {
+        const port = self.private_input orelse return false;
+        return port.snapshot(port.context, out);
     }
     fn changed(self: *Model) void {
         self.revision +%= 1;
@@ -890,12 +896,15 @@ test "private input bypasses editor and deferred queues and clears on detach" {
             self.length = 0;
             self.closed = true;
         }
+        fn snapshot(_: *anyopaque, _: *PrivateInputPort.View) bool {
+            return false;
+        }
     };
     // SAFETY: initInPlace initializes all model state.
     var model: Model = undefined;
     model.initInPlace();
     var sink: Sink = .{};
-    const port = PrivateInputPort{ .context = &sink, .key = Sink.key, .close = Sink.close };
+    const port = PrivateInputPort{ .context = &sink, .key = Sink.key, .close = Sink.close, .snapshot = Sink.snapshot };
     try std.testing.expect(!model.attachPrivateInput(port));
     model.nav.screen = .ssh;
     model.vm.running = true;

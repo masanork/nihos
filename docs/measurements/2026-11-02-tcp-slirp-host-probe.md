@@ -103,7 +103,9 @@ failure paths clear the fixture's profile. It does not provide a provisioning
 UI or protected storage. The fixture fills a bounded transient form before
 starting the profile; its display accessor never returns seed bytes, and its
 submission and cancellation erasure are unit tested. This form is not wired
-to a native application or a setup screen. The host fixture feeds it through
+to a native application. A portrait/landscape setup renderer receives only
+public field text or the seed length, never the seed bytes; its masked view
+and soft-keyboard layout were checked in host render tests. The host fixture feeds it through
 the xy model's private serial input port, verifies successful authentication,
 checks cancel-and-erase and rejection of a wrong host fingerprint. The model rejects private
 input while the VM or deferred queues are active and wipes deferred buffers

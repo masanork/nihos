@@ -132,6 +132,9 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     if (!journey.start()) return false;
     journey.setup.form.selected = .seed;
     model.feedSerial('1', now);
+    // SAFETY: a successful snapshot fills the descriptor before use.
+    var masked: console.xy_render_protocol.PrivateInputView = undefined;
+    if (!model.privateInputSnapshot(&masked) or masked.field != 4 or masked.secret_length != 1 or masked.text_length != 0) return false;
     model.handle(.escape);
     if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
     for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;

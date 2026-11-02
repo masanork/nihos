@@ -124,26 +124,34 @@ pub fn ProfileInput(comptime Model: type) type {
         profile: *Profile,
         form: ProfileForm = .{},
         status: Status = .idle,
+        invalid: bool = false,
 
         pub fn init(model: *Model, profile: *Profile) Self {
             return .{ .model = model, .profile = profile };
         }
         pub fn start(self: *Self) bool {
             if (self.status != .idle) return false;
-            if (!self.model.attachPrivateInput(Port{ .context = self, .key = onKey, .close = onClose })) return false;
+            if (!self.model.attachPrivateInput(Port{ .context = self, .key = onKey, .close = onClose, .snapshot = onSnapshot })) return false;
             self.status = .editing;
             return true;
         }
         fn onKey(ctx: *anyopaque, key: Key) bool {
             const self: *Self = @ptrCast(@alignCast(ctx));
             if (self.status != .editing) return false;
+            self.invalid = false;
             switch (key) {
-                .text => |byte| self.form.append(byte) catch return false,
+                .text => |byte| self.form.append(byte) catch {
+                    self.invalid = true;
+                    return false;
+                },
                 .backspace => self.form.backspace(),
                 .left, .up => self.form.previous(),
                 .right, .down => self.form.next(),
                 .enter => if (self.form.selected == .seed) {
-                    self.form.submit(self.profile) catch return false;
+                    self.form.submit(self.profile) catch {
+                        self.invalid = true;
+                        return false;
+                    };
                     self.status = .ready;
                     self.model.detachPrivateInput();
                 } else self.form.next(),
@@ -156,6 +164,14 @@ pub fn ProfileInput(comptime Model: type) type {
             const self: *Self = @ptrCast(@alignCast(ctx));
             self.form.clear();
             if (self.status == .editing) self.status = .canceled;
+        }
+        fn onSnapshot(ctx: *anyopaque, out: *Port.View) bool {
+            const self: *const Self = @ptrCast(@alignCast(ctx));
+            if (self.status != .editing) return false;
+            const field = self.form.selected;
+            const public_text = self.form.display(field);
+            out.* = .{ .field = @backingInt(field), .secret_length = if (field == .seed) @intCast(self.form.length(.seed)) else 0, .invalid = @intFromBool(self.invalid), .text = public_text.ptr, .text_length = public_text.len };
+            return true;
         }
     };
 }
@@ -495,7 +511,13 @@ const TestUi = struct {
 
 const TestPrivateModel = struct {
     pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
-    pub const PrivateInputPortType = struct { context: *anyopaque, key: *const fn (*anyopaque, PrivateInputKey) bool, close: *const fn (*anyopaque) void };
+    pub const PrivateInputPortType = struct {
+        pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
+        context: *anyopaque,
+        key: *const fn (*anyopaque, PrivateInputKey) bool,
+        close: *const fn (*anyopaque) void,
+        snapshot: *const fn (*anyopaque, *View) bool,
+    };
     private_input: ?PrivateInputPortType = null,
     fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
         if (self.private_input != null) return false;
@@ -536,6 +558,20 @@ test "journey wipes the signing seed after authentication and profile on close" 
     try std.testing.expect(journey.start());
     for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
         for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        if (journey.setup.form.selected == .seed) {
+            const port = model.private_input.?;
+            try std.testing.expect(!model.send(.{ .text = 'z' }));
+            // SAFETY: a successful snapshot fills this descriptor.
+            var view: TestPrivateModel.PrivateInputPortType.View = undefined;
+            try std.testing.expect(port.snapshot(port.context, &view));
+            try std.testing.expectEqual(@as(usize, 0), view.text_length);
+            try std.testing.expectEqual(@as(u8, 64), view.secret_length);
+            try std.testing.expectEqual(@as(u8, 1), view.invalid);
+            try std.testing.expect(model.send(.backspace));
+            try std.testing.expect(model.send(.{ .text = '1' }));
+            try std.testing.expect(port.snapshot(port.context, &view));
+            try std.testing.expectEqual(@as(u8, 0), view.invalid);
+        }
         try std.testing.expect(model.send(.enter));
     }
     try journey.begin(10, 100, 20, 50001, 123);

@@ -70,7 +70,14 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         text = text[offset..];
     }
     const annotated = model.mode != .help and model.mode != .system;
-    const request = protocol.Request{ .learning = model.learning, .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .reserved_bottom_px = if (model.softKeyboardVisible()) @intCast(console.scratch.soft_keyboard.geometry(model.touchOrientation()).keyboardHeight()) else 0, .portrait = @intFromBool(model.portrait_touch), .keyboard = if (!model.softKeyboardVisible()) 0 else if (model.soft_keyboard_state.symbols) (if (model.soft_keyboard_state.shift) 4 else 3) else if (model.soft_keyboard_state.shift) 2 else 1, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
+    var request = protocol.Request{ .learning = model.learning, .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .reserved_bottom_px = if (model.softKeyboardVisible()) @intCast(console.scratch.soft_keyboard.geometry(model.touchOrientation()).keyboardHeight()) else 0, .portrait = @intFromBool(model.portrait_touch), .keyboard = if (!model.softKeyboardVisible()) 0 else if (model.soft_keyboard_state.symbols) (if (model.soft_keyboard_state.shift) 4 else 3) else if (model.soft_keyboard_state.shift) 2 else 1, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
+    // The snapshot only borrows public text and a secret length, never seed bytes.
+    // SAFETY: the producer remains stable for this foreground draw.
+    var private_view: protocol.PrivateInputView = undefined;
+    if (experimental_tcp and model.private_input != null) {
+        if (!model.privateInputSnapshot(&private_view)) return false;
+        request.private_input = &private_view;
+    }
     // SAFETY: a successful snapshot initializes this descriptor, and the
     // CPU0-owned producer keeps its cells stable until the draw returns.
     var terminal_view: protocol.TerminalView = undefined;

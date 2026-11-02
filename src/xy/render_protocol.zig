@@ -11,6 +11,14 @@ pub const TerminalView = extern struct {
     cursor_visible: bool,
     cells: [*]const u8,
 };
+/// Only public form text may be borrowed; seed bytes never enter this view.
+pub const PrivateInputView = extern struct {
+    field: u8,
+    secret_length: u8,
+    invalid: u8,
+    text: [*]const u8,
+    text_length: usize,
+};
 pub const Request = extern struct {
     workspace: *anyopaque,
     learning: ?*@import("learning_session.zig").Session = null,
@@ -35,4 +43,5 @@ pub const Request = extern struct {
     ruby_text_length: usize = 0,
     ruby_spans: ?[*]const RubySpan = null,
     ruby_count: usize = 0,
+    private_input: ?*const PrivateInputView = null,
 };

@@ -255,6 +255,16 @@ test "portrait card scene renders synthetic data and returns on touch" {
     nav.screen = .ssh;
     try reading.renderPortrait(instance, &request, pack);
     try reading.render(instance, &request, pack);
+    var private_view = protocol.PrivateInputView{ .field = 4, .secret_length = 3, .invalid = 1, .text = "", .text_length = 0 };
+    var private_request = request;
+    private_request.private_input = &private_view;
+    private_request.keyboard = 1;
+    try reading.renderPortrait(instance, &private_request, pack);
+    try reading.render(instance, &private_request, pack);
+    private_view.text = "S";
+    private_view.text_length = 1;
+    try std.testing.expectError(error.Range, reading.renderPortrait(instance, &private_request, pack));
+    try std.testing.expectError(error.Range, reading.render(instance, &private_request, pack));
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
 
