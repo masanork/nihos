@@ -183,3 +183,70 @@ test "new C6 initialization retires old connection before sending" {
     try std.testing.expectEqual(@as(u32, 0), s.sends);
     try std.testing.expect(s.retired and e.addresses.address == null);
 }
+
+test "burst records sent and echo masks without replaying losses" {
+    var e = exchange();
+    var decoder = wire.Decoder{};
+    // SAFETY: initBurst is called before the owner is read.
+    var o: mod.Owner = undefined;
+    try o.initBurst(&e, &decoder, peer, 3, 2, 10, 1, 100);
+    var s = Fake{ .send_result = 1 };
+    try o.step(&s, 2);
+    try o.step(&s, 3);
+    try o.step(&s, 4);
+    try o.step(&s, 6);
+    try std.testing.expectEqual(@as(u32, 3), o.sent_count);
+    try std.testing.expectEqual(@as(u32, 7), o.sent_mask);
+    var packet: [udp.ethernet_bytes]u8 = undefined;
+    var encoded: [12 + udp.ethernet_bytes]u8 = undefined;
+    var now: u64 = 7;
+    for ([_]u8{ 3, 1, 1 }) |attempt| {
+        const echo = udp.packetAttemptFrom(&packet, peer.mac, peer.ip, peer.port, local, e.addresses.address.?.ip, probe.local_port, attempt);
+        s.input = try wire.frame(&encoded, wire.station_interface, attempt, echo);
+        s.pos = 0;
+        while (s.pos < s.input.len) : (now += 1) try o.step(&s, now);
+    }
+    try std.testing.expectEqual(@as(u32, 5), o.echo_mask);
+    try std.testing.expectEqual(@as(u32, 1), o.duplicate_echoes);
+    s.input = &.{};
+    s.pos = 0;
+    try o.step(&s, 30);
+    try std.testing.expectEqual(mod.Phase.complete, o.phase);
+    try std.testing.expectEqual(@as(u32, 3), s.sends);
+}
+
+test "burst rejects invalid timing and stops on address invalidation" {
+    var e = exchange();
+    var decoder = wire.Decoder{};
+    // SAFETY: successful initBurst initializes the owner before it is read.
+    var o: mod.Owner = undefined;
+    try std.testing.expectError(error.InvalidArgument, o.initBurst(&e, &decoder, peer, 1, 2, 10, 1, 100));
+    try std.testing.expectError(error.InvalidArgument, o.initBurst(&e, &decoder, peer, 3, 0, 10, 1, 100));
+    try std.testing.expectError(error.Deadline, o.initBurst(&e, &decoder, peer, 3, 2, 10, 1, 15));
+    try o.initBurst(&e, &decoder, peer, 3, 2, 10, 1, 100);
+    var s = Fake{ .send_result = 1 };
+    try o.step(&s, 2);
+    try std.testing.expect(e.addresses.invalidate());
+    try std.testing.expectError(error.Stale, o.step(&s, 4));
+    try std.testing.expectEqual(@as(u32, 1), s.sends);
+    try std.testing.expect(s.retired);
+}
+
+test "unsent echo cannot satisfy a burst attempt" {
+    var e = exchange();
+    var decoder = wire.Decoder{};
+    // SAFETY: initBurst is called before the owner is read.
+    var o: mod.Owner = undefined;
+    try o.initBurst(&e, &decoder, peer, 2, 2, 10, 1, 100);
+    var packet: [udp.ethernet_bytes]u8 = undefined;
+    const echo = udp.packetAttemptFrom(&packet, peer.mac, peer.ip, peer.port, local, e.addresses.address.?.ip, probe.local_port, 1);
+    var encoded: [12 + udp.ethernet_bytes]u8 = undefined;
+    var s = Fake{ .input = try wire.frame(&encoded, wire.station_interface, 1, echo), .send_result = 1 };
+    var now: u64 = 2;
+    while (s.pos < s.input.len) : (now += 1) try o.step(&s, now);
+    try std.testing.expectEqual(@as(u32, 0), o.echo_mask);
+    try std.testing.expectEqual(@as(u32, 0), s.sends);
+    try o.step(&s, now);
+    try std.testing.expectEqual(@as(u32, 1), s.sends);
+    try std.testing.expectEqual(@as(u32, 0), o.echo_mask);
+}

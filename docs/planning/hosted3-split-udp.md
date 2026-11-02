@@ -40,3 +40,14 @@ the normal network path. An initial diagnostic build passed the SRAM audit
 with 18,368 bytes of unused heap. This is build and host-model evidence, not a
 physical packet receipt; a real peer-configured rebuild and paired captures
 are still required.
+
+## Bounded burst experiment
+
+An opt-in follow-up sends 16 distinct 1200-byte attempts at a nominal 250 ms
+interval and waits eight seconds after the last complete send. The owner keeps
+separate sent and echoed bitmasks, counts duplicate echoes, rejects responses
+for attempts not yet sent, and never retries an ambiguous or partial write.
+Completion of the observation window does not imply all echoes arrived.
+The same address-generation, disconnect, reset and deadline rules apply.
+A peer must independently record payloads and the run must preserve both
+sent and received masks; a sample is not a general UDP loss-rate estimate.
