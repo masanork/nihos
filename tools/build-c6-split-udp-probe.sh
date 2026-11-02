@@ -12,6 +12,14 @@ if [ "${NIHOS_C6_PROTOCOL:-}" != hosted ] || [ "${NIHOS_C6_LONG_DMA:-}" != 1 ] |
     echo "Split UDP diagnostic requires Hosted, long DMA, saved Wi-Fi, explicit peer and IPv6 disabled" >&2
     exit 1
 fi
+if [ "${NIHOS_C6_UDP_BURST:-0}" = 1 ] &&
+   { [ "${NIHOS_C6_UDP_BURST_COUNT:-16}" != 16 ] || [ "${NIHOS_C6_UDP_INTERVAL_MS:-250}" != 250 ] ||
+     [ "${NIHOS_C6_UDP_SETTLE_MS:-2000}" != 8000 ] || [ "${NIHOS_C6_UDP_REVERSE:-0}" != 0 ] ||
+     [ "${NIHOS_C6_UDP_TAIL_SHORT:-0}" != 0 ] || [ "${NIHOS_C6_UDP_PAUSE_AFTER_16:-0}" != 0 ] ||
+     [ "${NIHOS_C6_UDP_AUDIT_STAGING:-0}" != 0 ]; }; then
+    echo "Split UDP burst requires 16 packets, 250 ms interval and 8000 ms settling" >&2
+    exit 1
+fi
 umask 077
 c6_sdk=${NIHOS_IDF_PATH:-"$HOME/esp32/esp-idf-v5.4.4"}
 if [ ! -f "$c6_sdk/export.sh" ] ||
