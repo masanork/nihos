@@ -18,6 +18,16 @@ The existing diagnostic retains its own packet path. Integrating a general
 codec into a device transport requires separate ownership/backpressure design,
 image-size audit and paired physical qualification.
 
+The codec's 1472-byte limit is a conventional IPv4 MTU limit, not the
+currently supported Hosted send limit. The existing Hosted framer caps its
+entire Ethernet payload at 1500 bytes; after 14 Ethernet, 20 IPv4 and 8 UDP
+header bytes, that permits at most 1458 UDP payload bytes. With the 12-byte
+Hosted header, the resulting 1512-byte logical frame plans a 1536-byte padded
+long transfer. The host test checks these existing code paths and their exact
+boundary; it does not establish that a C6 accepts the transfer. Do not use
+the codec limit as the link's negotiated path MTU or enlarge the Hosted limit
+without separately qualifying the peer and transport.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.

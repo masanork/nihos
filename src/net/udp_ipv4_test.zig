@@ -1,6 +1,8 @@
 const std = @import("std");
 const wire = @import("udp_ipv4.zig");
 const probe = @import("long_udp_probe.zig");
+const hosted = @import("hosted.zig");
+const tx_plan = @import("hosted_tx_plan.zig");
 const testing = std.testing;
 const src = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 1 }, .ip = .{ 192, 0, 2, 1 }, .port = 49152 };
 const dst = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 2 }, .ip = .{ 198, 51, 100, 2 }, .port = 443 };
@@ -77,4 +79,19 @@ test "decodes the existing 1200-byte Network Split diagnostic frame" {
     try testing.expectEqual(@as(usize, 1200), datagram.payload.len);
     try testing.expectEqualStrings("NIHOSUDP", datagram.payload[0..8]);
     try testing.expectEqual(@as(u8, 3), datagram.payload[8]);
+}
+
+test "Hosted framing limits UDP payload to 1458 bytes" {
+    var packet: [1536]u8 = undefined;
+    const payload: [wire.max_payload]u8 = @splat(0x5a);
+    const limit = 1500 - wire.frame_header;
+    const ethernet = try wire.encode(packet[12..], src, dst, payload[0..limit]);
+    try testing.expectEqual(@as(usize, 1500), ethernet.len);
+    const framed = try hosted.frameInPlace(&packet, hosted.station_interface, 1, ethernet.len);
+    try testing.expectEqual(@as(usize, 1512), framed.len);
+    const plan = try tx_plan.longPacket(framed.len);
+    try testing.expectEqual(@as(usize, 1536), plan.wire);
+    try testing.expectEqualSlices(u8, payload[0..limit], (try wire.decode(framed[12..])).payload);
+    const too_long = try wire.encode(packet[12..], src, dst, payload[0 .. limit + 1]);
+    try testing.expectError(error.Capacity, hosted.frameInPlace(&packet, hosted.station_interface, 1, too_long.len));
 }
