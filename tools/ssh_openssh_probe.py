@@ -131,6 +131,11 @@ def run():
             bridge_lib = tmp / ("libbridge." + ext)
             subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(tcp_lib), "src/net/tcp_host_probe.zig"], cwd=ROOT, check=True)
             subprocess.run([os.environ.get("CC", "cc"), "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", "-Wno-deprecated-declarations", "-I" + str(prefix / "include"), "tools/tcp_slirp_bridge.c", "-L" + str(libdir), "-lslirp", str(tcp_lib), "-Wl,-rpath," + str(libdir), "-Wl,-rpath," + str(tmp), "-o", str(bridge_lib)], cwd=ROOT, check=True)
+            tcp_ffi = c.CDLL(str(tcp_lib))
+            tcp_ffi.hosted_ssh_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p]; tcp_ffi.hosted_ssh_begin.restype = c.c_bool
+            tcp_ffi.hosted_ssh_poll.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; tcp_ffi.hosted_ssh_poll.restype = c.c_ssize_t
+            tcp_ffi.hosted_ssh_read.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t]; tcp_ffi.hosted_ssh_read.restype = c.c_ssize_t
+            tcp_ffi.hosted_ssh_write.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t]; tcp_ffi.hosted_ssh_write.restype = c.c_ssize_t
             bridge = c.CDLL(str(bridge_lib))
             bridge.bridge_open.argtypes = [c.c_uint16]; bridge.bridge_open.restype = c.c_bool
             bridge.bridge_poll.restype = c.c_bool
@@ -179,7 +184,9 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
-                auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1"
+                hosted_session = os.environ.get("NIHOS_SSH_HOSTED_SESSION") == "1"
+                if hosted_session and not bridge: raise ValueError("Hosted session requires libslirp")
+                auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1" or hosted_session
                 auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or auto_client
                 auto_ident = os.environ.get("NIHOS_SSH_AUTOIDENT") == "1"
                 if not auto_ident and not auto_connect:
@@ -242,10 +249,17 @@ def run():
                     return result
                 if auto_client:
                     now = time.monotonic_ns() // 1000
-                    p.probe_client_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), now, now + (20_000_000 if bridge else 5_000_000))
+                    if hosted_session:
+                        assert tcp_ffi.hosted_ssh_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin))
+                    else:
+                        p.probe_client_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), now, now + (20_000_000 if bridge else 5_000_000))
                     username = getpass.getuser().encode()
                     while True:
-                        state = p.probe_client_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(username), len(username), seed)
+                        if hosted_session:
+                            if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
+                            state = tcp_ffi.hosted_ssh_poll(buffer(os.urandom(32)), buffer(username), len(username), seed)
+                        else:
+                            state = p.probe_client_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(username), len(username), seed)
                         if state == -2 and bad_pin:
                             print("SSH client rejected the wrong host pin: OK")
                             return
@@ -364,7 +378,12 @@ def run():
                     action(2); wait_event(3)
                 if auto_client:
                     def tty_step():
-                        result = p.probe_terminal_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)))
+                        if hosted_session:
+                            if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
+                            result = tcp_ffi.hosted_ssh_poll(buffer(os.urandom(32)), buffer(username), len(username), seed)
+                            result = 1 if result == 2 else 0 if result == 1 else -1
+                        else:
+                            result = p.probe_terminal_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)))
                         if result < 0: raise RuntimeError("SSH terminal poll failed")
                         if bridge: time.sleep(0.001)
                         else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
@@ -372,7 +391,8 @@ def run():
                     def tty_write(data):
                         deadline = time.monotonic() + (20 if bridge else 5)
                         while data:
-                            count = p.probe_terminal_write(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(data), len(data))
+                            count = (tcp_ffi.hosted_ssh_write(buffer(os.urandom(32)), buffer(data), len(data)) if hosted_session else
+                                     p.probe_terminal_write(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(data), len(data)))
                             if count < 0: raise RuntimeError("SSH terminal write failed")
                             data = data[count:]
                             if tty_step(): raise RuntimeError("SSH terminal closed while writing")
@@ -383,7 +403,8 @@ def run():
                     while b"nihos_ssh_ok" not in output:
                         if tty_step(): raise RuntimeError("SSH terminal closed before output")
                         out = c.create_string_buffer(7)
-                        n = p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out))
+                        n = (tcp_ffi.hosted_ssh_read(buffer(os.urandom(32)), out, len(out)) if hosted_session else
+                             p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out)))
                         if n < 0: raise RuntimeError("SSH terminal read failed")
                         output += out.raw[:n]
                         if time.monotonic() > deadline: raise TimeoutError("SSH terminal read timeout")
@@ -394,7 +415,8 @@ def run():
                         while received < 70000:
                             if tty_step(): raise RuntimeError("SSH terminal closed during large output")
                             out = c.create_string_buffer(257)
-                            n = p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out))
+                            n = (tcp_ffi.hosted_ssh_read(buffer(os.urandom(32)), out, len(out)) if hosted_session else
+                             p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out)))
                             if n < 0: raise RuntimeError("SSH terminal large-output read failed")
                             received += out.raw[:n].count(b"x")
                             if time.monotonic() > deadline: raise TimeoutError(f"SSH terminal output stalled at {received} bytes")
@@ -402,7 +424,9 @@ def run():
                     deadline = time.monotonic() + (20 if bridge else 5)
                     while not tty_step():
                         out = c.create_string_buffer(7)
-                        if p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out)) < 0:
+                        n = (tcp_ffi.hosted_ssh_read(buffer(os.urandom(32)), out, len(out)) if hosted_session else
+                             p.probe_terminal_read(time.monotonic_ns() // 1000, buffer(os.urandom(32)), out, len(out)))
+                        if n < 0:
                             raise RuntimeError("SSH terminal drain failed")
                         if time.monotonic() > deadline: raise TimeoutError("SSH terminal close timeout")
                 else:

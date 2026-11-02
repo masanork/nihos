@@ -115,6 +115,23 @@ pub fn experimentalSshAdapter(handle: ExperimentalTcpHandle, write_timeout_ms: u
     const now = try experimentalTcpNow();
     return ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
 }
+/// Caller-owned SSH state must occupy stable, exclusive memory throughout its
+/// lifetime. Credentials and cryptographic entropy remain caller-owned. This
+/// API is CPU0-only, experimental, and not connected to xy.
+pub const ExperimentalSshSession = hosted.ssh_session_owner.Owner;
+pub fn experimentalSshSessionStart(backing: *ExperimentalSshSession, handle: ExperimentalTcpHandle, deadline_us: u64, write_timeout_ms: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, cols: u32, rows: u32) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    if (deadline_us <= now or cols == 0 or rows == 0) return error.InvalidArgument;
+    const adapter = try ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
+    backing.begin(adapter, now, deadline_us, secret, pin, cookie, cols, rows);
+}
+/// Use the same monotonic source for session poll/read/write. The caller must
+/// continue polling the network owner between SSH operations, and must abort
+/// the session if this clock becomes unavailable or on cancellation.
+pub fn experimentalSshSessionNow() !u64 {
+    return experimentalTcpNow();
+}
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;

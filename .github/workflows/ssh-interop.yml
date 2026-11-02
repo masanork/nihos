@@ -56,3 +56,7 @@ jobs:
           NIHOS_SSH_AUTOCLIENT=1 NIHOS_SSH_BADAUTH=1 python3 tools/ssh_openssh_probe.py
       - name: Terminal receive credit beyond initial SSH window
         run: NIHOS_SSH_AUTOCLIENT=1 NIHOS_SSH_LARGE_OUTPUT=1 python3 tools/ssh_openssh_probe.py
+      - name: Hosted TCP session owner with interactive OpenSSH
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_HOSTED_SESSION=1 python3 tools/ssh_openssh_probe.py

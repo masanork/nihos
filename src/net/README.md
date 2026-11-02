@@ -60,6 +60,8 @@ path and a wrong-pin control. `ssh_client.zig` continues through public-key
 authentication and an interactive PTY shell, with a bounded startup deadline.
 `ssh_terminal.zig` adds bounded partial input and output, receive credit after
 consumption, connection epoch checks and the remote close acknowledgement.
+`ssh_hosted_session.zig` composes these with the Hosted TCP adapter in a
+caller-owned, stable object; an opt-in native factory exposes it on CPU0.
 Production entropy, credential storage and the native application remain
 outside these components.
 

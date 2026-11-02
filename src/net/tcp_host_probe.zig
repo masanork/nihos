@@ -184,3 +184,33 @@ fn refreshStation(now_ms: u64) bool {
     station_tcp.refresh(&owner.service, &host_station, owner.epoch, now_ms *| 1000) catch return false;
     return true;
 }
+
+const ssh_hosted = @import("ssh_hosted_session.zig");
+// SAFETY: hosted_ssh_begin initializes this stable test object before use.
+var ssh_owner: ssh_hosted.Owner = undefined;
+var ssh_started = false;
+export fn hosted_ssh_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8) bool {
+    if (ssh_started) return false;
+    const handle = owner.handle orelse return false;
+    const now = host_now_ms *| 1000;
+    const adapter = ssh_tcp.Adapter.init(&owner, &host_station, handle, now, 12000) catch return false;
+    ssh_owner.begin(adapter, now, now +| 20_000_000, secret.*, pin.*, cookie.*, 80, 24);
+    ssh_started = true;
+    return true;
+}
+export fn hosted_ssh_poll(random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {
+    if (!ssh_started) return -1;
+    return switch (ssh_owner.poll(host_now_ms *| 1000, random, user[0..len], seed.*) catch return -1) {
+        .connecting => 0,
+        .ready => 1,
+        .closed => 2,
+    };
+}
+export fn hosted_ssh_read(random: *const [32]u8, dst: [*]u8, len: usize) isize {
+    if (!ssh_started) return -1;
+    return @intCast(ssh_owner.read(host_now_ms *| 1000, random, dst[0..len]) catch return -1);
+}
+export fn hosted_ssh_write(random: *const [32]u8, src: [*]const u8, len: usize) isize {
+    if (!ssh_started) return -1;
+    return @intCast(ssh_owner.write(host_now_ms *| 1000, random, src[0..len]) catch return -1);
+}
