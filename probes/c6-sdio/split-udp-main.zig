@@ -103,7 +103,7 @@ export fn nih_c6_main() callconv(.c) noreturn {
     const report = if (config.hosted and config.udp_enabled and long_dma_enabled) c6.runHostedSplitUdp(clock, hosted_join) else c6.run(clock, join);
 
     print("NIHOS_NATIVE_C6");
-    inline for (.{ "status", "stage", "error_code", "power_failure", "peer_chip", "fw_known", "fw_major", "fw_minor", "fw_patch", "connected_events", "hosted_phase", "hosted_frames", "hosted_priv", "rpc_status", "rpc_response", "ip", "gateway", "netmask", "long_sent", "long_attempts", "long_burst", "long_echo", "long_echo_mask", "long_final_wait_ms" }) |field| {
+    inline for (.{ "status", "stage", "wifi_step", "error_code", "power_failure", "peer_chip", "fw_known", "fw_major", "fw_minor", "fw_patch", "connected_events", "hosted_phase", "hosted_frames", "hosted_priv", "rpc_status", "rpc_response", "ip", "gateway", "netmask", "long_sent", "long_attempts", "long_burst", "long_echo", "long_echo_mask", "long_final_wait_ms" }) |field| {
         print(" " ++ field ++ "=");
         const value = @field(report, field);
         if (@TypeOf(value) == u32) hex(value) else for (value) |word| hex(word);
