@@ -52,6 +52,12 @@ The same address-generation, disconnect, reset and deadline rules apply.
 A peer must independently record payloads and the run must preserve both
 sent and received masks; a sample is not a general UDP loss-rate estimate.
 
+The host test in `hosted_udp_lease_test.zig` compares all 16 numbered burst
+packets byte for byte with the generic UDP lease encoder, then checks that
+both decoders accept corresponding synthetic replies. This connects the
+fixture packet format to the generic implementation, but does not exercise
+the generic sender, its DMA path, or the receiver on physical hardware.
+
 For a stage 5 failure the fixture reports `wifi_step`: 1 begins the address
 exchange, 2 reads SDIO, 3 decodes/applies frames, 4 checks the clock/deadline,
 5 checks ownership handoff, 6 produces a control request, 7 sends it, and 8
