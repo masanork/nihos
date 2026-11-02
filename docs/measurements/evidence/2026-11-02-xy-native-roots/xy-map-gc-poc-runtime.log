@@ -1,0 +1,76 @@
+1/56 scheme_runtime.test.application operand frames retain evaluated values and unwind on error...OK
+2/56 scheme_runtime.test.pending control forms and initialized bindings survive controlled collection...OK
+3/56 scheme_runtime.test.map and for-each state survives controlled collection in callbacks...OK
+4/56 scheme_runtime.test.lexical closures mutation recursion and GC persist across requests...OK
+5/56 scheme_runtime.test.buffer persistence dispatches save and load separately...OK
+6/56 scheme_runtime.test.unbound storage reports unavailable and provider responses are data...OK
+7/56 scheme_runtime.test.registered closures survive GC and command replacement is live...OK
+8/56 scheme_runtime.test.reader stages all forms and errors return without destroying definitions...OK
+9/56 scheme_runtime.test.bounded malformed requests do not trap or retain ephemeral garbage...OK
+10/56 scheme_runtime.test.real work hits evaluation budget and exhausted heap recovers on next request...OK
+11/56 scheme_runtime.test.view options share an atomic typed contract and survive GC...OK
+12/56 scheme_runtime.test.app capability, callback roots, replacement and atomic plot options...OK
+13/56 scheme_runtime.test.scheme runtime memory footprint and tail call execution...OK
+14/56 scheme_runtime.test.bytecode VM execution: arithmetic, control flow, and local loop...OK
+15/56 scheme_runtime.test.compiler and bytecode VM execution: AST to bytecode...OK
+16/56 scheme_runtime.test.compiler and bytecode VM execution: transparent evaluate...OK
+17/56 scheme_runtime.test.benchmark Phase 4: AST Interpreter vs Bytecode VM...
+
+================ Phase 4 Performance Benchmark ================
+1. Recursive Loop (sum-iter 50 0) x 30 runs (250,000 iterations total):
+   - AST Interpreter: 0.19 ms (124.0 ns/step), heap cells: 150
+   - Bytecode VM:     0.00 ms (1.1 ns/step), heap cells: 0
+   => Speedup:        114.61x faster!
+
+2. Arithmetic Expression (+ (* 12 34) (- 56 78)) x 20000 runs:
+   - AST Interpreter: 1.23 ms (61.3 ns/eval)
+   - Bytecode VM:     0.01 ms (0.4 ns/eval)
+   => Speedup:        140.90x faster!
+
+3. SRAM Footprint:
+   - Phase 2 (Tagged Unions Baseline):  8,248 bytes
+   - Phase 3 (Immediate Tags & In-Place): 7,336 bytes
+   - Runtime footprint: 83056 bytes
+=================================================================
+
+OK
+18/56 scheme_runtime.test.captured and non-tail environments retain lexical bindings...OK
+19/56 scheme_runtime.test.evaluation respects unbound set and redefined numeric procedures...OK
+20/56 scheme_runtime.test.ordered integer comparisons support multiple operands...OK
+21/56 scheme_runtime.test.cond evaluates clauses in order and returns selected values...OK
+22/56 scheme_runtime.test.exact bounded fractions normalize and interoperate with integers...OK
+23/56 scheme_runtime.test.list operations and apply honor bounded arguments and recover from errors...OK
+24/56 scheme_runtime.test.map applies closures across lists and recovers from bounded errors...OK
+25/56 scheme_runtime.test.let star initializes sequentially with distinct lexical bindings...OK
+26/56 scheme_runtime.test.bounded structural equality and list membership...OK
+27/56 scheme_runtime.test.structural equality terminates on cyclic pair graphs...OK
+28/56 scheme_runtime.test.equality agrees with a visited-pair oracle for cyclic graphs...OK
+29/56 scheme_runtime.test.variadic procedure formals bind positional and rest arguments...OK
+30/56 scheme_runtime.test.mutable pairs preserve sharing cycles and collection roots...OK
+31/56 scheme_runtime.test.standard predicates selectors and ordered for-each...OK
+32/56 scheme_runtime.test.dotted datum syntax validates tails and prints immediate values safely...OK
+33/56 scheme_runtime.test.larger text and heap bounds remain enforced...OK
+34/56 scheme_runtime.test.inexact decimals interoperate and survive requests...OK
+35/56 scheme_runtime.test.numeric predicates conversions and nonfinite values...OK
+36/56 scheme_runtime.test.numeric literal exactness and radix prefixes...OK
+37/56 scheme_runtime.test.mixed exact and inexact comparisons preserve transitivity...OK
+38/56 scheme_runtime.test.numeric signs parity and unbiased rounding...OK
+39/56 scheme_runtime.test.integer division and gcd respect signs and exactness...OK
+40/56 scheme_runtime.test.opcode immediate decoder retains all eight payload bits...OK
+41/56 scheme_runtime.test.numerator denominator and square preserve exactness...OK
+42/56 scheme_runtime.test.numeric extrema respect exactness infinities and signed zero...OK
+43/56 scheme_runtime.test.integer powers preserve exactness and bounds...OK
+44/56 scheme_runtime.test.tail apply transfers without growing evaluator depth...OK
+45/56 scheme_runtime.test.cond recipient tail calls reuse evaluation frame...OK
+46/56 scheme_runtime.test.outer tail boundaries reclaim temporary lists and preserve live closures...OK
+47/56 scheme_runtime.test.outer sequences reclaim temporaries while preserving pending forms...OK
+48/56 scheme_runtime.test.outer closure body boundaries retain local and captured values...OK
+49/56 scheme_runtime.test.outer let and selected cond boundaries retain local and pending values...OK
+50/56 scheme_runtime.test.outer logic boundaries retain pending forms and short circuit...OK
+51/56 scheme_runtime.test.outer cond tests and let initializers reclaim while preserving roots...OK
+52/56 storage.test.decimal storage replies round-trip without the std formatter...OK
+53/56 camera.test.unbound camera does not allocate or expose an address...OK
+54/56 card.test.unbound card client errors gracefully...OK
+55/56 scheme_decimal.test.binary64 finite values round-trip through decimal...OK
+56/56 scheme_decimal.test.decimal parser rounds boundaries and halfway cases...OK
+All 56 tests passed.

@@ -16,7 +16,7 @@ pub const ime_omni = @import("ime_omni.zig");
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
-pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_result, scheme_error, command_full, read_only };
+pub const Status = enum { none, buffer_full, undo_full, invalid_input, unknown_command, scheme_result, scheme_error, command_full, read_only, scheme_running, scheme_cancelling };
 
 const default_commands linksection(scheme.data_section) = ("(command/register! \"log\" (lambda () (system/log))) " ++
     "(command/register! \"mem\" (lambda () (system/memory))) " ++
@@ -35,6 +35,8 @@ const status_3 linksection(scheme.data_section) = "Unknown command: Esc, help".*
 const status_4 linksection(scheme.data_section) = "Command too long; cancel or edit before evaluating".*;
 
 const status_5 linksection(scheme.data_section) = "Read-only system buffer".*;
+const status_6 linksection(scheme.data_section) = "Running Scheme (Ctrl-C to cancel)".*;
+const status_7 linksection(scheme.data_section) = "Cancelling Scheme...".*;
 
 pub const LearningSession = @import("learning_session.zig").Session;
 /// CPU0-only terminal attachment. The producer keeps the cells and context
@@ -55,6 +57,7 @@ pub const PrivateInputPort = struct {
     close: *const fn (*anyopaque) void,
     snapshot: *const fn (*anyopaque, *View) bool,
 };
+const DeferredTouchKind = enum { down, move, up, cancel };
 pub const Model = struct {
     pub const TerminalPortType = TerminalPort;
     pub const PrivateInputPortType = PrivateInputPort;
@@ -68,6 +71,8 @@ pub const Model = struct {
     terminal: ?TerminalPort,
     private_input: ?PrivateInputPort,
     vm: scheme.Runtime,
+    continuation: ScratchDispatch,
+    continuation_authority: ScratchDispatchAuthority,
     reply: [128]u8,
     reply_length: usize,
     command_overflow: bool,
@@ -88,6 +93,8 @@ pub const Model = struct {
     deferred_serial_count: u16,
     deferred: [64]input.Key,
     deferred_count: u8,
+    deferred_touch: [8]struct { x: u32, y: u32, kind: DeferredTouchKind },
+    deferred_touch_count: u8,
     deferred_overflow: bool,
     utf8: [4]u8,
     utf8_length: u3,
@@ -149,7 +156,7 @@ pub const Model = struct {
     }
     /// Do not consume or replay input collected before entering private mode.
     pub fn attachPrivateInput(self: *Model, port: PrivateInputPort) linksection(scheme.code_section) bool {
-        if (self.nav.screen != .ssh or self.private_input != null or self.terminal != null or self.vm.running or self.deferred_count != 0 or self.deferred_serial_count != 0 or self.deferred_overflow or self.utf8_length != 0 or self.serial.state != .idle) return false;
+        if (self.nav.screen != .ssh or self.private_input != null or self.terminal != null or self.vm.running or self.deferred_count != 0 or self.deferred_serial_count != 0 or self.deferred_touch_count != 0 or self.deferred_overflow or self.utf8_length != 0 or self.serial.state != .idle) return false;
         std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
         std.crypto.secureZero(u8, &self.deferred_serial);
         std.crypto.secureZero(u8, &self.deferred_serial_delta);
@@ -198,10 +205,12 @@ pub const Model = struct {
             std.crypto.secureZero(u8, &self.deferred_serial_delta);
             self.deferred_count = 0;
             self.deferred_serial_count = 0;
+            self.deferred_touch_count = 0;
             self.deferred_overflow = false;
             self.serial = .{};
             self.utf8_length = 0;
             self.command_length = 0;
+            self.touch_tracking = false;
             self.mode = .edit;
             self.status = .invalid_input;
             self.changed();
@@ -226,6 +235,17 @@ pub const Model = struct {
         std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
         std.crypto.secureZero(u8, &self.deferred_serial);
         std.crypto.secureZero(u8, &self.deferred_serial_delta);
+        while (self.deferred_touch_count != 0) {
+            const event = self.deferred_touch[0];
+            self.deferred_touch_count -= 1;
+            std.mem.copyForwards(@TypeOf(event), self.deferred_touch[0..self.deferred_touch_count], self.deferred_touch[1..][0..self.deferred_touch_count]);
+            switch (event.kind) {
+                .down => self.touchDownNow(event.x, event.y),
+                .move => self.touchMoveNow(event.x, event.y),
+                .up => self.touchNow(event.x, event.y),
+                .cancel => self.touch_tracking = false,
+            }
+        }
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
         if (self.private_input != null) {
@@ -302,6 +322,13 @@ pub const Model = struct {
             }
             self.status = if (port.key(port.context, key)) .none else .invalid_input;
             self.changed();
+            return;
+        }
+        if (self.continuation.current != 0 and key == .cancel) {
+            self.continuation.cancel(.{ .authority = self.continuation.authority.?, .serial = self.continuation.current }) catch |err| {
+                self.schemeError(if (err == error.StaleContinuation) error.Busy else @errorCast(err));
+                self.changed();
+            };
             return;
         }
         if (self.vm.running) {
@@ -494,6 +521,11 @@ pub const Model = struct {
     }
 
     pub fn touchDown(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.vm.running) return self.deferTouch(x, y, .down);
+        if (self.deferred_touch_count != 0 or self.deferred_overflow) self.replayInput();
+        self.touchDownNow(x, y);
+    }
+    fn touchDownNow(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
         self.touch_start_x = x;
         self.touch_start_y = y;
         self.touch_tracking = true;
@@ -503,6 +535,11 @@ pub const Model = struct {
     /// A drag may be a show/hide gesture, but must not become a key or card tap
     /// if it leaves the contact tolerance and returns before release.
     pub fn touchMove(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.vm.running) return self.deferTouch(x, y, .move);
+        if (self.deferred_touch_count != 0 or self.deferred_overflow) self.replayInput();
+        self.touchMoveNow(x, y);
+    }
+    fn touchMoveNow(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
         if (!self.touch_tracking) return;
         const dx = @max(x, self.touch_start_x) - @min(x, self.touch_start_x);
         const dy = @max(y, self.touch_start_y) - @min(y, self.touch_start_y);
@@ -510,6 +547,8 @@ pub const Model = struct {
     }
 
     pub fn touchCancel(self: *Model) linksection(scheme.code_section) void {
+        if (self.vm.running) return self.deferTouch(0, 0, .cancel);
+        if (self.deferred_touch_count != 0 or self.deferred_overflow) self.replayInput();
         self.touch_tracking = false;
     }
 
@@ -538,6 +577,11 @@ pub const Model = struct {
     }
 
     pub fn touch(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
+        if (self.vm.running) return self.deferTouch(x, y, .up);
+        if (self.deferred_touch_count != 0 or self.deferred_overflow) self.replayInput();
+        self.touchNow(x, y);
+    }
+    fn touchNow(self: *Model, x: u32, y: u32) linksection(scheme.code_section) void {
         const tracked = self.touch_tracking;
         const start_x = self.touch_start_x;
         const start_y = self.touch_start_y;
@@ -592,7 +636,34 @@ pub const Model = struct {
         if (self.private_input != null and self.nav.screen != .ssh) self.detachPrivateInput();
         self.changed();
     }
+    fn deferTouch(self: *Model, x: u32, y: u32, kind: DeferredTouchKind) linksection(scheme.code_section) void {
+        if (self.deferred_touch_count == self.deferred_touch.len) {
+            self.deferred_overflow = true;
+            return;
+        }
+        self.deferred_touch[self.deferred_touch_count] = .{ .x = x, .y = y, .kind = kind };
+        self.deferred_touch_count += 1;
+    }
+    pub fn hasContinuation(self: *const Model) bool {
+        return self.continuation.current != 0;
+    }
+    pub fn continuationTick(self: *Model) linksection(scheme.code_section) void {
+        if (!self.hasContinuation()) return;
+        _ = self.continuation.poll(.{ .authority = self.continuation.authority.?, .serial = self.continuation.current }, 16) catch |err| {
+            if (err == error.StaleContinuation) {
+                self.schemeError(error.Busy);
+                self.changed();
+            }
+        };
+    }
     pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
+        // A suspended evaluator owns the heap, including any partially
+        // completed collection. Do not discard it through an external reset.
+        if (self.vm.running) {
+            self.schemeError(error.Busy);
+            self.changed();
+            return;
+        }
         self.vm.initInPlace();
         const result = self.vm.evaluate(&default_commands, self, &self.reply) catch |err| {
             self.schemeError(err);
@@ -606,12 +677,32 @@ pub const Model = struct {
         self.reply_length = text.len;
         self.status = if (err == error.UnknownCommand) .unknown_command else .scheme_error;
     }
+    pub fn evaluationStackUnavailable(self: *Model) linksection(scheme.code_section) void {
+        const text = "Evaluation stack unavailable";
+        @memcpy(self.reply[0..text.len], text);
+        self.reply_length = text.len;
+        self.status = .scheme_error;
+        self.changed();
+    }
     pub fn evaluate(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
         if (comptime @import("builtin").os.tag == .freestanding) return nih_xy_evaluate(self, source.ptr, source.len, named);
         self.evaluateOnStack(source, named);
     }
     extern fn nih_xy_evaluate(*Model, [*]const u8, usize, bool) void;
     pub fn evaluateOnStack(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
+        if (comptime @import("builtin").os.tag == .freestanding) {
+            if (!named) {
+                const selected = self.continuation.start(&self.continuation_authority, self, source) catch |err| {
+                    self.schemeError(if (err == error.StaleContinuation) error.Busy else @errorCast(err));
+                    self.changed();
+                    return;
+                };
+                switch (selected) {
+                    .pending => return,
+                    .fallback => {},
+                }
+            }
+        }
         // A storage wait may present the initial revision before the reply arrives.
         defer self.changed();
         _ = self.doc.beginUndoGroup();
@@ -734,6 +825,13 @@ pub const Model = struct {
             } else if (self.serial.feed(byte, now)) |key| self.handle(key);
             return;
         }
+        if (self.continuation.current != 0 and byte == 3) {
+            self.continuation.cancel(.{ .authority = self.continuation.authority.?, .serial = self.continuation.current }) catch |err| {
+                self.schemeError(if (err == error.StaleContinuation) error.Busy else @errorCast(err));
+                self.changed();
+            };
+            return;
+        }
         if (self.vm.running) {
             if (self.deferred_serial_count == self.deferred_serial.len) {
                 self.deferred_overflow = true;
@@ -816,6 +914,8 @@ pub const Model = struct {
             .scheme_result, .scheme_error => "",
             .command_full => &status_4,
             .read_only => &status_5,
+            .scheme_running => &status_6,
+            .scheme_cancelling => &status_7,
         };
     }
     pub inline fn render(self: *Model, grid: anytype) void {
@@ -910,6 +1010,9 @@ test "private input bypasses editor and deferred queues and clears on detach" {
     model.vm.running = true;
     try std.testing.expect(!model.attachPrivateInput(port));
     model.vm.running = false;
+    model.deferred_touch_count = 1;
+    try std.testing.expect(!model.attachPrivateInput(port));
+    model.deferred_touch_count = 0;
     try std.testing.expect(model.attachPrivateInput(port));
     model.feedSerial('a', 0);
     model.feedHid(0, 5); // b
@@ -989,6 +1092,19 @@ test "UTF8 serial input preserves IVS and combining clusters and colon text" {
     model.feedSerial('x', 0);
     try std.testing.expectEqual(Status.invalid_input, model.status);
     try std.testing.expect(std.unicode.utf8ValidateSlice(model.doc.slice()));
+}
+
+test "unavailable evaluation stack preserves the document and permits recovery" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.insert("notes");
+    model.evaluationStackUnavailable();
+    try std.testing.expectEqual(Status.scheme_error, model.status);
+    try std.testing.expectEqualStrings("Evaluation stack unavailable", model.reply[0..model.reply_length]);
+    try std.testing.expectEqualStrings("notes", model.doc.slice());
+    model.evaluateOnStack("(+ 20 22)", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("42", model.reply[0..model.reply_length]);
 }
 
 test "help and Scheme evaluation preserve scratch text" {
@@ -1243,6 +1359,84 @@ test "storage wait defers UTF8 and rejects an overflowing command as a whole" {
     model.replayInput();
     try std.testing.expectEqualStrings("before日本", model.doc.slice());
     try std.testing.expectEqual(Status.invalid_input, model.status);
+}
+
+test "evaluation defers touch gestures and taps until the VM is idle" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    tapSoftKey(&model, 'x');
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqual(@as(u8, 1), model.deferred_touch_count);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("x", model.doc.slice());
+    // A gesture may start before the VM becomes idle and end afterwards.
+    tapSoftKey(&model, soft_keyboard.label_dismiss);
+    model.vm.running = true;
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.vm.running = false;
+    model.touch(640, soft_keyboard.space_height - 160);
+    try std.testing.expect(model.softKeyboardVisible());
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_touch_count);
+    try std.testing.expect(!model.touch_tracking);
+    // The reverse boundary keeps the pre-existing touch start until replay.
+    tapSoftKey(&model, soft_keyboard.label_dismiss);
+    model.touchDown(640, soft_keyboard.space_height - 4);
+    model.vm.running = true;
+    model.touch(640, soft_keyboard.space_height - 160);
+    try std.testing.expect(!model.softKeyboardVisible());
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expect(model.softKeyboardVisible());
+    try std.testing.expect(!model.touch_tracking);
+}
+
+test "deferred touch overflow drops the whole pending input batch" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    for (0..9) |_| tapSoftKey(&model, 'x');
+    model.feedSerial('y', 0);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqual(Status.invalid_input, model.status);
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_touch_count);
+    try std.testing.expect(!model.touch_tracking);
+}
+
+test "deferred touch preserves drag and cancel across evaluation" {
+    var model: Model = undefined;
+    model.initInPlace();
+    var rects: [soft_keyboard.max_keys]soft_keyboard.KeyRect = undefined;
+    var x: u32 = 0;
+    var y: u32 = 0;
+    for (soft_keyboard.layout(&rects)) |rect| {
+        if (rect.label == 'x') {
+            x = rect.x + rect.w / 2;
+            y = rect.y + rect.h / 2;
+            break;
+        }
+    }
+    try std.testing.expect(x != 0 and y != 0);
+    model.vm.running = true;
+    model.touchDown(x, y);
+    model.touchMove(x + 50, y);
+    model.touchMove(x, y);
+    model.touch(x, y);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expect(!model.touch_tracking);
+    model.vm.running = true;
+    model.touchDown(x, y);
+    model.touchCancel();
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expect(!model.touch_tracking);
+    try std.testing.expectEqualStrings("", model.doc.slice());
 }
 
 test "evaluation publishes a fresh revision after a provider pumps the pending UI" {
@@ -1680,4 +1874,221 @@ test "keyboard orientation switch waits for release and preserves the reading lo
     try std.testing.expect(model.revision != rev);
     try std.testing.expect(model.applyKeyboardPresence(false));
     try std.testing.expect(model.portrait_touch and !model.physical_keyboard);
+}
+
+test "running evaluator defers editing and cancel until replay" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    model.handle(.{ .text = 'x' });
+    model.handle(.cancel);
+    try std.testing.expect(model.vm.running);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqual(@as(u8, 2), model.deferred_count);
+    model.replayInput();
+    try std.testing.expectEqual(@as(u8, 2), model.deferred_count);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_count);
+    try std.testing.expectEqualStrings("x", model.doc.slice());
+}
+
+// Ticketed dispatcher for a scratch evaluation. The authority must outlive
+// all queued tickets issued from it.
+const ScratchDispatchAuthority = struct {
+    serial: u64 = 0,
+    fn issue(self: *@This()) linksection(scheme.code_section) scheme.Error!u64 {
+        if (self.serial == std.math.maxInt(u64)) return error.Overflow;
+        self.serial += 1;
+        return self.serial;
+    }
+};
+const ScratchDispatch = struct {
+    const Error = scheme.Error || error{StaleContinuation};
+    const Ticket = struct { authority: *const ScratchDispatchAuthority, serial: u64 };
+    const Begin = union(enum) { pending: Ticket, fallback };
+    lease: scheme.SlicedContinuation = .{},
+    authority: ?*const ScratchDispatchAuthority = null,
+    model: ?*Model = null,
+    current: u64 = 0,
+    output: [128]u8 = @splat(0),
+
+    fn start(self: *@This(), authority: *ScratchDispatchAuthority, model: *Model, source: []const u8) linksection(scheme.code_section) Error!Begin {
+        if (self.current != 0 or model.vm.running) return error.Busy;
+        const issued = try authority.issue();
+        if (!try self.lease.begin(&model.vm, source)) {
+            if (comptime @import("builtin").os.tag != .freestanding) model.evaluateOnStack(source, false);
+            return .fallback;
+        }
+        self.current = issued;
+        self.authority = authority;
+        self.model = model;
+        model.reply_length = 0;
+        model.status = .scheme_running;
+        model.changed();
+        return .{ .pending = .{ .authority = authority, .serial = issued } };
+    }
+    fn authorized(self: *const @This(), ticket: Ticket) linksection(scheme.code_section) bool {
+        return self.current != 0 and self.authority == ticket.authority and self.current == ticket.serial;
+    }
+    fn cancel(self: *@This(), ticket: Ticket) linksection(scheme.code_section) Error!void {
+        if (!self.authorized(ticket)) return error.StaleContinuation;
+        const model = self.model.?;
+        self.lease.cancel();
+        if (self.lease.cancel_pending) {
+            model.status = .scheme_cancelling;
+            model.changed();
+            return;
+        }
+        self.current = 0;
+        self.authority = null;
+        self.model = null;
+        model.reply_length = 0;
+        model.status = .none;
+        model.changed();
+    }
+    fn poll(self: *@This(), ticket: Ticket, quantum: usize) linksection(scheme.code_section) Error!bool {
+        if (!self.authorized(ticket)) return error.StaleContinuation;
+        const model = self.model.?;
+        const result = self.lease.poll(model, quantum, 64, &self.output) catch |err| {
+            self.current = 0;
+            self.authority = null;
+            self.model = null;
+            model.schemeError(err);
+            model.changed();
+            return err;
+        };
+        if (result == null and self.lease.lease.owner == null) {
+            self.current = 0;
+            self.authority = null;
+            self.model = null;
+            model.reply_length = 0;
+            model.status = .none;
+            model.changed();
+            return true;
+        }
+        if (result) |value| {
+            @memcpy(model.reply[0..value.len], value);
+            model.reply_length = value.len;
+            model.status = .scheme_result;
+            model.changed();
+            self.current = 0;
+            self.authority = null;
+            self.model = null;
+            return true;
+        }
+        return false;
+    }
+    fn key(self: *@This(), model: *Model, value: input.Key) linksection(scheme.code_section) Error!void {
+        if (self.current != 0 and self.model == model and value == .cancel) {
+            return self.cancel(.{ .authority = self.authority.?, .serial = self.current });
+        }
+        model.handle(value);
+    }
+    fn serial(self: *@This(), model: *Model, byte: u8, now: u64) linksection(scheme.code_section) Error!void {
+        if (self.current != 0 and self.model == model and byte == 3) {
+            return self.cancel(.{ .authority = self.authority.?, .serial = self.current });
+        }
+        model.feedSerial(byte, now);
+    }
+    fn hid(self: *@This(), model: *Model, modifiers: u8, usage: u8) linksection(scheme.code_section) Error!void {
+        if (model.hid.feed(modifiers, usage)) |value| try self.key(model, value);
+    }
+};
+
+test "scratch continuation dispatcher prioritizes cancel without weakening synchronous deferral" {
+    var model: Model = undefined;
+    model.initInPlace();
+    var authority = ScratchDispatchAuthority{};
+    var dispatch = ScratchDispatch{};
+    model.evaluateOnStack("(define (count n) (if (= n 0) 0 (+ 1 (count (- n 1)))))", false);
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    const first = (try dispatch.start(&authority, &model, "(count 60)")).pending;
+    try std.testing.expect(!try dispatch.poll(first, 7));
+    try dispatch.key(&model, .{ .text = 'x' });
+    try std.testing.expectEqual(@as(u8, 1), model.deferred_count);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try dispatch.serial(&model, 3, 1000);
+    try std.testing.expect(!model.vm.running and dispatch.current == 0);
+    try std.testing.expectError(error.StaleContinuation, dispatch.poll(first, 7));
+    model.replayInput();
+    try std.testing.expectEqualStrings("x", model.doc.slice());
+    const second = (try dispatch.start(&authority, &model, "(count 60)")).pending;
+    try std.testing.expectError(error.StaleContinuation, dispatch.cancel(first));
+    try std.testing.expect(!try dispatch.poll(second, 7));
+    try dispatch.hid(&model, 1, 6); // Ctrl-C
+    try std.testing.expect(!model.vm.running and dispatch.current == 0);
+    const third = (try dispatch.start(&authority, &model, "(count 5)")).pending;
+    while (!try dispatch.poll(third, 7)) {}
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("5", model.reply[0..model.reply_length]);
+    try std.testing.expectError(error.StaleContinuation, dispatch.poll(second, 7));
+    try std.testing.expectEqualStrings("5", model.reply[0..model.reply_length]);
+    const failing = (try dispatch.start(&authority, &model, "(car 5)")).pending;
+    try std.testing.expectError(error.Type, dispatch.poll(failing, 100));
+    try std.testing.expectEqual(Status.scheme_error, model.status);
+    try std.testing.expectEqualStrings(scheme.message(error.Type), model.reply[0..model.reply_length]);
+    try std.testing.expectError(error.StaleContinuation, dispatch.poll(failing, 7));
+    try std.testing.expectEqualStrings(scheme.message(error.Type), model.reply[0..model.reply_length]);
+    model.evaluateOnStack("(define marker 0)", false);
+    try std.testing.expect((try dispatch.start(&authority, &model, "(begin (set! marker (+ marker 1)) marker)")) == .fallback);
+    try std.testing.expectEqualStrings("1", model.reply[0..model.reply_length]);
+    model.evaluateOnStack("marker", false);
+    try std.testing.expectEqualStrings("1", model.reply[0..model.reply_length]);
+    // Existing synchronous waits keep their deferral policy, including Ctrl-C.
+    model.vm.running = true;
+    try dispatch.serial(&model, 3, 2000);
+    try dispatch.hid(&model, 1, 6);
+    try std.testing.expect(model.vm.running);
+    try std.testing.expectEqual(@as(u16, 1), model.deferred_serial_count);
+    try std.testing.expectEqual(@as(u8, 1), model.deferred_count);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqual(@as(u16, 0), model.deferred_serial_count);
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_count);
+    std.debug.print("SCRATCH_DISPATCH serial=cancel hid=cancel synchronous=deferred stale=reject\n", .{});
+}
+
+test "sliced scratch cancellation drains before releasing ticket" {
+    var model: Model = undefined;
+    model.initInPlace();
+    var authority = ScratchDispatchAuthority{};
+    var dispatch = ScratchDispatch{};
+    var input_buf: [256]u8 = undefined;
+    var f = std.Io.Writer.fixed(&input_buf);
+    try f.writeAll("(define retained '( ");
+    for (0..50) |_| try f.writeAll("0 ");
+    try f.writeAll("))");
+    model.evaluateOnStack(f.buffered(), false);
+    for (0..6) |_| model.evaluateOnStack("(set! retained (append retained retained))", false);
+    model.evaluateOnStack("(define (churn n acc) (if (= n 0) acc (churn (- n 1) (cons n acc)))) (define (nth xs n) (if (= n 0) (car xs) (nth (cdr xs) (- n 1))))", false);
+    const ticket = (try dispatch.start(&authority, &model, "(nth (churn 180 '()) 20)")).pending;
+    var polls: usize = 0;
+    while (dispatch.lease.cursor == null and polls < 10000) : (polls += 1) _ = try dispatch.poll(ticket, 16);
+    try std.testing.expect(dispatch.lease.cursor != null);
+    try std.testing.expectEqualStrings("Running Scheme (Ctrl-C to cancel)", model.statusText());
+    _ = try dispatch.poll(ticket, 16); // Collector is now partially progressed.
+    model.resetScheme();
+    try std.testing.expect(model.vm.running and dispatch.lease.cursor != null);
+    try std.testing.expectEqualStrings(scheme.message(error.Busy), model.reply[0..model.reply_length]);
+    try dispatch.key(&model, .{ .text = 'x' });
+    try dispatch.serial(&model, 3, 1000);
+    try std.testing.expect(dispatch.current != 0 and model.vm.running and dispatch.lease.cancel_pending);
+    try std.testing.expectEqualStrings("Cancelling Scheme...", model.statusText());
+    try std.testing.expectError(error.Busy, dispatch.start(&authority, &model, "42"));
+    while (dispatch.current != 0 and polls < 20000) : (polls += 1) _ = try dispatch.poll(ticket, 16);
+    try std.testing.expect(dispatch.current == 0 and !model.vm.running);
+    try std.testing.expectError(error.StaleContinuation, dispatch.poll(ticket, 16));
+    model.replayInput();
+    try std.testing.expectEqualStrings("x", model.doc.slice());
+    model.evaluateOnStack("(length retained)", false);
+    try std.testing.expectEqualStrings("3200", model.reply[0..model.reply_length]);
+    model.evaluateOnStack("(+ 20 22)", false);
+    try std.testing.expectEqualStrings("42", model.reply[0..model.reply_length]);
+    const normal = (try dispatch.start(&authority, &model, "(nth (churn 180 '()) 20)")).pending;
+    polls = 0;
+    while (dispatch.current != 0 and polls < 20000) : (polls += 1) _ = try dispatch.poll(normal, 16);
+    try std.testing.expect(dispatch.current == 0);
+    try std.testing.expectEqualStrings("21", model.reply[0..model.reply_length]);
+    std.debug.print("SLICED_SCRATCH polls={d} replay=x retained=3200 recovery=42\n", .{polls});
 }

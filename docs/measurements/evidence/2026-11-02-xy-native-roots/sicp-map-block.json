@@ -1,0 +1,12 @@
+{
+  "runtime_sha256": "a4f78083004933a48bac71cf518135894637379bb9b2cf25956532aa1a3639a2",
+  "scope": "host only; temporary nested-GC experiment with raised limits",
+  "exercise": "2.42",
+  "expression": "(length (queens 8))",
+  "expected": "92",
+  "observed": "HeapFull",
+  "steps": 11873,
+  "blocked_boundaries": 36,
+  "nested_collections": 0,
+  "test_log": "1/1 case.test.queens...RESULT HeapFull 11873 36 0\nOK\nAll 1 tests passed.\n"
+}

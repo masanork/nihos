@@ -1,0 +1,5 @@
+1/2 stress.test.and retains pending expressions...and_gc_free_cells=3540
+OK
+2/2 stress.test.or retains pending expressions...or_gc_free_cells=3521
+OK
+All 2 tests passed.

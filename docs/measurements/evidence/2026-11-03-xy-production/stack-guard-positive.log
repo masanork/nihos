@@ -1,0 +1,20 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized] target(s) in 4.28s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+STACK_GUARD observed NIHOS_NATIVE_XY_READY
+STACK_GUARD observed mode=00000001
+STACK_GUARD observed NIHOS_NATIVE_XY_REPLY data=373031
+STACK_GUARD observed mode=00000001
+STACK_GUARD observed NIHOS_NATIVE_XY_CONT_STATE state=00000001
+STACK_GUARD corruption detected before resume
+test emu::tests::continuation_native_resume_rejects_corrupt_stack_guard ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 22.14s
+

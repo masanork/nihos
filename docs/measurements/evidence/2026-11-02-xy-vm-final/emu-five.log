@@ -1,0 +1,28 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui)
+    Finished `test` profile [unoptimized] target(s) in 41.41s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+sicp_five source=(begin (define (xp b n a) (cond ((= n 0) a) ((even? n) (xp (* b b) (quotient n 2) a)) (else (xp b (- n 1) (* a b))))) (xp 3 7 1)) reply=NIHOS_NATIVE_XY_REPLY data=32313837
+test emu::tests::firmware_evaluates_sicp_five_chapter_samples has been running for over 60 seconds
+sicp_five source=(let* ((a (cons -3 2)) (b (cons 5 -4))) (cons (/ (+ (car a) (car b)) 2) (/ (+ (cdr a) (cdr b)) 2))) reply=NIHOS_NATIVE_XY_REPLY data=2831202e202d3129
+sicp_five source=(let* ((a (let ((n 5)) (lambda (x) (set! n (+ n x)) n))) (x (a 10)) (y (a 10))) (list x y)) reply=NIHOS_NATIVE_XY_REPLY data=28313520323529
+sicp_five source=(let ((x (list 1 2))) (set-car! x 7) (set-cdr! (cdr x) x) (list (car x) (list? x))) reply=NIHOS_NATIVE_XY_REPLY data=283720236629
+sicp_five source=(let ((q (cons '() '()))) (let ((n (list 'a))) (set-car! q n) (set-cdr! q n)) (let ((n (list 'b))) (set-cdr! (cdr q) n) (set-cdr! q n)) (car q)) reply=NIHOS_NATIVE_XY_REPLY data=2861206229
+sicp_five source=(let ((e '(define x 3))) (list (pair? e) (eq? (car e) 'call))) reply=NIHOS_NATIVE_XY_REPLY data=28237420236629
+sicp_five source=(begin (define (fact n) (define (iter p c) (if (> c n) p (iter (* c p) (+ c 1)))) (iter 1 1)) (fact 5)) reply=NIHOS_NATIVE_XY_REPLY data=313230
+sicp_five source=(begin (define (same-parity f . r) (define (k xs) (cond ((null? xs) '()) ((= (remainder (abs (car xs)) 2) (remainder (abs f) 2)) (cons (car xs) (k (cdr xs)))) (else (k (cdr xs))))) (cons f (k r))) (same-parity 1 2 3 4 5 6 7)) reply=NIHOS_NATIVE_XY_REPLY data=283120332035203729
+sicp_five source=(list (symbol? 'x) (string? "x") (boolean? #f) (procedure? +)) reply=NIHOS_NATIVE_XY_REPLY data=28237420237420237420237429
+sicp_five source=(list (caddr '(1 2 3)) (caadr '(a (b c)))) reply=NIHOS_NATIVE_XY_REPLY data=2833206229
+sicp_five source=(let ((seen '())) (for-each (lambda (x) (set! seen (cons x seen))) '(1 2 3)) seen) reply=NIHOS_NATIVE_XY_REPLY data=28332032203129
+sicp_five source=(assoc '(a b) '(((x) . 1) ((a b) . 2))) reply=NIHOS_NATIVE_XY_REPLY data=282861206229202e203229
+test emu::tests::firmware_evaluates_sicp_five_chapter_samples ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 343.15s
+

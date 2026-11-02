@@ -1,0 +1,15 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized] target(s) in 17.95s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+xy_backing NIHOS_NATIVE_XY_IDLE render_frames=00000001 scanout_frames=0000013e published_bytes=001c2000 backing_payload=003e7e00 backing_reserved=00400000 dma_error=00000000
+test emu::tests::firmware_reports_xy_backing_allocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 8.82s
+

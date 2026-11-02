@@ -1,0 +1,106 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "source_xml": "xml/chapter1/section1/subsection7.xml",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "original_square": "(define (square x) (* x x))",
+  "original_sqrt_definitions": "(define (sqrt-iter guess x)\n  (if (good-enough? guess x)\n      guess\n      (sqrt-iter (improve guess x)\n                 x)))\n\n(define (improve guess x)\n  (average guess (/ x guess)))\n\n(define (average x y)\n  (/ (+ x y) 2))\n\n(define (good-enough? guess x)\n  (< (abs (- (square guess) x)) 0.001))\n\n(define (sqrt x)\n  (sqrt-iter 1.0 x))",
+  "original_new_if": "(define (new-if predicate then-clause else-clause)\n  (cond (predicate then-clause)\n        (else else-clause)))",
+  "original_new_if_sqrt_iter": "(define (sqrt-iter guess x)\n  (new-if (good-enough? guess x)\n          guess\n          (sqrt-iter (improve guess x)\n                     x)))",
+  "exercise_1_7_candidate": "(define (sqrt-rel x) (define (loop g) (let ((next (/ (+ g (/ x g)) 2))) (if (< (abs (- next g)) (* 0.000000001 (abs next))) next (loop next)))) (if (= x 0) 0.0 (loop 1.0)))",
+  "exercise_1_8_candidate": "(define (cube-root x) (define (loop g) (let ((next (/ (+ (/ x (* g g)) (* 2 g)) 3))) (if (< (abs (- next g)) (* 0.000000001 (abs next))) next (loop next)))) (if (= x 0) 0.0 (loop (if (< x 0) -1.0 1.0))))",
+  "finite_checks": [
+    {
+      "group": "original",
+      "expression": "(sqrt 9)",
+      "reference": "3.00009155413138",
+      "oracle": 3.00009155413138,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "original",
+      "expression": "(sqrt (+ 100 37))",
+      "reference": "11.704699917758145",
+      "oracle": 11.704699917758145,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "original",
+      "expression": "(sqrt (+ (sqrt 2) (sqrt 3)))",
+      "reference": "1.7739279023207892",
+      "oracle": 1.7739279023207892,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "original",
+      "expression": "(square (sqrt 1000))",
+      "reference": "1000.000369924366",
+      "oracle": 1000.000369924366,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "original",
+      "expression": "(sqrt 1e-12)",
+      "reference": "0.031250000010656254",
+      "oracle": 0.031250000010656254,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "relative",
+      "expression": "(sqrt-rel 9)",
+      "reference": "3.0",
+      "oracle": 3.0,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "relative",
+      "expression": "(sqrt-rel 1e-12)",
+      "reference": "0.0009765628413329842",
+      "oracle": 1e-06,
+      "reference_agrees_with_oracle": false
+    },
+    {
+      "group": "relative",
+      "expression": "(sqrt-rel 10000000000000.0)",
+      "reference": "3162277.6601683795",
+      "oracle": 3162277.6601683795,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "relative",
+      "expression": "(sqrt-rel 0)",
+      "reference": "0.0",
+      "oracle": 0.0,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "cube",
+      "expression": "(cube-root 27)",
+      "reference": "3.0",
+      "oracle": 3.0,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "cube",
+      "expression": "(cube-root -8)",
+      "reference": "-2.0",
+      "oracle": -2.0,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "cube",
+      "expression": "(cube-root 1e-12)",
+      "reference": "0.0001",
+      "oracle": 0.0001,
+      "reference_agrees_with_oracle": true
+    },
+    {
+      "group": "cube",
+      "expression": "(cube-root 0)",
+      "reference": "0.0",
+      "oracle": 0.0,
+      "reference_agrees_with_oracle": true
+    }
+  ],
+  "test_log": "1/4 cases.test.original...LARGE_ORIGINAL=Budget\nOK\n2/4 cases.test.relative...OK\n3/4 cases.test.cube...OK\n4/4 cases.test.exercise 1.6...NEW_IF_LIMIT=Depth\nOK\nAll 4 tests passed.\n"
+}

@@ -1,0 +1,648 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "1.16",
+      "setup": "(define (fast-exp b n) (define (iter b n a) (cond ((= n 0) a) ((even? n) (iter (* b b) (quotient n 2) a)) (else (iter b (- n 1) (* a b))))) (iter b n 1))",
+      "expression": "(fast-exp 2 0)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.16",
+      "setup": "(define (fast-exp b n) (define (iter b n a) (cond ((= n 0) a) ((even? n) (iter (* b b) (quotient n 2) a)) (else (iter b (- n 1) (* a b))))) (iter b n 1))",
+      "expression": "(fast-exp 2 10)",
+      "expected": "1024",
+      "observed": "1024",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.16",
+      "setup": "(define (fast-exp b n) (define (iter b n a) (cond ((= n 0) a) ((even? n) (iter (* b b) (quotient n 2) a)) (else (iter b (- n 1) (* a b))))) (iter b n 1))",
+      "expression": "(fast-exp -2 5)",
+      "expected": "-32",
+      "observed": "-32",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.16",
+      "setup": "(define (fast-exp b n) (define (iter b n a) (cond ((= n 0) a) ((even? n) (iter (* b b) (quotient n 2) a)) (else (iter b (- n 1) (* a b))))) (iter b n 1))",
+      "expression": "(fast-exp 3 7)",
+      "expected": "2187",
+      "observed": "2187",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.16",
+      "setup": "(define (fast-exp b n) (define (iter b n a) (cond ((= n 0) a) ((even? n) (iter (* b b) (quotient n 2) a)) (else (iter b (- n 1) (* a b))))) (iter b n 1))",
+      "expression": "(fast-exp 1 20)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.17",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (cond ((= b 0) 0) ((even? b) (double (fast-mul a (halve b)))) (else (+ a (fast-mul a (- b 1))))))",
+      "expression": "(fast-mul 0 0)",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.17",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (cond ((= b 0) 0) ((even? b) (double (fast-mul a (halve b)))) (else (+ a (fast-mul a (- b 1))))))",
+      "expression": "(fast-mul 7 1)",
+      "expected": "7",
+      "observed": "7",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.17",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (cond ((= b 0) 0) ((even? b) (double (fast-mul a (halve b)))) (else (+ a (fast-mul a (- b 1))))))",
+      "expression": "(fast-mul 7 13)",
+      "expected": "91",
+      "observed": "91",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.17",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (cond ((= b 0) 0) ((even? b) (double (fast-mul a (halve b)))) (else (+ a (fast-mul a (- b 1))))))",
+      "expression": "(fast-mul -4 17)",
+      "expected": "-68",
+      "observed": "-68",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.17",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (cond ((= b 0) 0) ((even? b) (double (fast-mul a (halve b)))) (else (+ a (fast-mul a (- b 1))))))",
+      "expression": "(fast-mul 25 32)",
+      "expected": "800",
+      "observed": "800",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.18",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (define (iter a b total) (cond ((= b 0) total) ((even? b) (iter (double a) (halve b) total)) (else (iter a (- b 1) (+ total a))))) (iter a b 0))",
+      "expression": "(fast-mul 0 0)",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.18",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (define (iter a b total) (cond ((= b 0) total) ((even? b) (iter (double a) (halve b) total)) (else (iter a (- b 1) (+ total a))))) (iter a b 0))",
+      "expression": "(fast-mul 7 1)",
+      "expected": "7",
+      "observed": "7",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.18",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (define (iter a b total) (cond ((= b 0) total) ((even? b) (iter (double a) (halve b) total)) (else (iter a (- b 1) (+ total a))))) (iter a b 0))",
+      "expression": "(fast-mul 7 13)",
+      "expected": "91",
+      "observed": "91",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.18",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (define (iter a b total) (cond ((= b 0) total) ((even? b) (iter (double a) (halve b) total)) (else (iter a (- b 1) (+ total a))))) (iter a b 0))",
+      "expression": "(fast-mul -4 17)",
+      "expected": "-68",
+      "observed": "-68",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.18",
+      "setup": "(define (double x) (+ x x)) (define (halve x) (quotient x 2))\n(define (fast-mul a b) (define (iter a b total) (cond ((= b 0) total) ((even? b) (iter (double a) (halve b) total)) (else (iter a (- b 1) (+ total a))))) (iter a b 0))",
+      "expression": "(fast-mul 25 32)",
+      "expected": "800",
+      "observed": "800",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 0)",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 2)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 10)",
+      "expected": "55",
+      "observed": "55",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 20)",
+      "expected": "6765",
+      "observed": "6765",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 30)",
+      "expected": "832040",
+      "observed": "832040",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.19",
+      "setup": "(define (fib n) (define (fib-iter a b p q count) (cond ((= count 0) b) ((even? count) (fib-iter a b (+ (* p p) (* q q)) (+ (* 2 p q) (* q q)) (quotient count 2))) (else (fib-iter (+ (* b q) (* a q) (* a p)) (+ (* b p) (* a q)) p q (- count 1))))) (fib-iter 1 0 0 1 n))",
+      "expression": "(fib 40)",
+      "expected": "102334155",
+      "observed": "102334155",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.21",
+      "setup": "(define (smallest-divisor n) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (+ d 1))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 199)",
+      "expected": "199",
+      "observed": "199",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.21",
+      "setup": "(define (smallest-divisor n) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (+ d 1))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 1999)",
+      "expected": "1999",
+      "observed": "1999",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.21",
+      "setup": "(define (smallest-divisor n) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (+ d 1))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 19999)",
+      "expected": "7",
+      "observed": "7",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.21",
+      "setup": "(define (smallest-divisor n) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (+ d 1))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 121)",
+      "expected": "11",
+      "observed": "11",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.21",
+      "setup": "(define (smallest-divisor n) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (+ d 1))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 561)",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.23",
+      "setup": "(define (smallest-divisor n) (define (next d) (if (= d 2) 3 (+ d 2))) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (next d))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 199)",
+      "expected": "199",
+      "observed": "199",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.23",
+      "setup": "(define (smallest-divisor n) (define (next d) (if (= d 2) 3 (+ d 2))) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (next d))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 1999)",
+      "expected": "1999",
+      "observed": "1999",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.23",
+      "setup": "(define (smallest-divisor n) (define (next d) (if (= d 2) 3 (+ d 2))) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (next d))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 19999)",
+      "expected": "7",
+      "observed": "7",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.23",
+      "setup": "(define (smallest-divisor n) (define (next d) (if (= d 2) 3 (+ d 2))) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (next d))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 121)",
+      "expected": "11",
+      "observed": "11",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.23",
+      "setup": "(define (smallest-divisor n) (define (next d) (if (= d 2) 3 (+ d 2))) (define (find-divisor d) (cond ((> (* d d) n) n) ((= (remainder n d) 0) d) (else (find-divisor (next d))))) (find-divisor 2))",
+      "expression": "(smallest-divisor 561)",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 561)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 561)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 561)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 561)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 561)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 561)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 1105)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 1105)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 1105)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 1105)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 1105)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 1105)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 1729)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 1729)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 1729)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 1729)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 1729)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 1729)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2465)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2465)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2465)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2465)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 2821)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 2821)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2821)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 2821)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 2 6601)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 3 6601)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let ((x (expmod base (quotient exp 2) m))) (remainder (* x x) m))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 6601)",
+      "expected": "#t",
+      "variant": "recursive",
+      "observed": "Depth",
+      "status": "error"
+    },
+    {
+      "exercise": "1.27",
+      "setup": "(define (expmod base exp m) (define (iter b e a) (cond ((= e 0) a) ((even? e) (iter (remainder (* b b) m) (quotient e 2) a)) (else (iter b (- e 1) (remainder (* a b) m))))) (iter base exp 1))\n(define (fermat? a n) (= (expmod a n n) a))",
+      "expression": "(fermat? 10 6601)",
+      "expected": "#t",
+      "variant": "iterative",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 7)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 13)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 9)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 15)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 21)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 2 561)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.28",
+      "setup": "(define (expmod base exp m) (cond ((= exp 0) 1) ((even? exp) (let* ((x (expmod base (quotient exp 2) m)) (s (remainder (* x x) m))) (if (and (= s 1) (not (= x 1)) (not (= x (- m 1)))) 0 s))) (else (remainder (* base (expmod base (- exp 1) m)) m))))\n(define (passes? a n) (= (expmod a (- n 1) n) 1))",
+      "expression": "(passes? 50 561)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 66,
+    "error": 9
+  },
+  "note": "Finite input observations only; all candidate procedures are independently written. Fermat and Miller-Rabin cases test selected bases, not all bases or proof obligations."
+}

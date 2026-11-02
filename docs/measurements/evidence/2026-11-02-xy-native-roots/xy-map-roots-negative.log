@@ -1,0 +1,4 @@
+1/1 scheme_runtime.test.map and for-each state survives controlled collection in callbacks...FAIL (Type)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/5b17fa7025b4b64ba35f3edd4131f98d/root --seed=0x8eff319e

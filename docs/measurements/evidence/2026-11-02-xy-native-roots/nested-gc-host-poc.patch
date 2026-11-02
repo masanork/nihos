@@ -1,0 +1,11 @@
+--- a/src/xy/scheme_runtime.zig
++++ b/src/xy/scheme_runtime.zig
+@@ -975,7 +975,7 @@
+     // Only the outer AST evaluator may call this: all pending expressions
+     // and the environment must be reachable from these two roots.
+     fn maybeCollectBoundary(self: *Runtime, depth: usize, pending: Ref, env: Ref, reclaim_at: *u16, ceiling: u16) linksection(code_section) void {
+-        if (depth == 0 and self.running and self.cell_reserve == 0 and self.eval_sp == 0 and self.call_sp == 0 and self.free_cells <= reclaim_at.*) {
++        if ((depth == 0 or self.ast_root_frame_count != 0) and self.running and self.cell_reserve == 0 and self.eval_sp == 0 and self.call_sp == 0 and self.free_cells <= reclaim_at.*) {
+             self.collectTail(pending, env);
+             reclaim_at.* = if (self.free_cells > ceiling) ceiling else self.free_cells / 2;
+         }

@@ -1,0 +1,165 @@
+{
+  "scope": "fresh host runtimes; individual examples, not conformance",
+  "cases": [
+    {
+      "id": "closure-state",
+      "feature": "closures/set!",
+      "expression": "(begin (define (counter) (let ((n 0)) (lambda () (set! n (+ n 1)) n))) (define c (counter)) (c) (c))",
+      "expected": "2",
+      "observed": "2",
+      "outcome": "match"
+    },
+    {
+      "id": "mutable-pair",
+      "feature": "pairs/mutation",
+      "expression": "(let ((x (cons 1 2))) (set-car! x 3) (set-cdr! x 4) x)",
+      "expected": "(3 . 4)",
+      "observed": "(3 . 4)",
+      "outcome": "match"
+    },
+    {
+      "id": "pair-equality",
+      "feature": "pairs/equality",
+      "expression": "(equal? '(a (b c)) '(a (b c)))",
+      "expected": "#t",
+      "observed": "#t",
+      "outcome": "match"
+    },
+    {
+      "id": "list-map",
+      "feature": "lists/map",
+      "expression": "(map (lambda (x) (* x x)) '(1 2 3))",
+      "expected": "(1 4 9)",
+      "observed": "(1 4 9)",
+      "outcome": "match"
+    },
+    {
+      "id": "member",
+      "feature": "lists/search",
+      "expression": "(member 'b '(a b c))",
+      "expected": "(b c)",
+      "observed": "(b c)",
+      "outcome": "match"
+    },
+    {
+      "id": "let-star",
+      "feature": "binding/let*",
+      "expression": "(let* ((a 1) (b (+ a 2))) b)",
+      "expected": "3",
+      "observed": "3",
+      "outcome": "match"
+    },
+    {
+      "id": "letrec",
+      "feature": "binding/letrec",
+      "expression": "(letrec ((f (lambda (n) (if (= n 0) 0 (f (- n 1)))))) (f 5))",
+      "expected": "0",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "named-let",
+      "feature": "binding/named-let",
+      "expression": "(let loop ((n 5) (a 0)) (if (= n 0) a (loop (- n 1) (+ a n))))",
+      "expected": "15",
+      "observed": "Type",
+      "outcome": "error"
+    },
+    {
+      "id": "quasiquote",
+      "feature": "reader/quasiquote",
+      "expression": "(let ((x 2)) `(1 ,x 3))",
+      "expected": "(1 2 3)",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "symbol-predicate",
+      "feature": "symbols",
+      "expression": "(symbol? 'x)",
+      "expected": "#t",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "character",
+      "feature": "characters",
+      "expression": "(char? #\\a)",
+      "expected": "#t",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "string",
+      "feature": "strings",
+      "expression": "(string-length \"abc\")",
+      "expected": "3",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "vector",
+      "feature": "vectors",
+      "expression": "(let ((v (vector 1 2))) (vector-set! v 0 7) (vector-ref v 0))",
+      "expected": "7",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "bytevector",
+      "feature": "bytevectors",
+      "expression": "(bytevector-u8-ref (bytevector 3 4) 1)",
+      "expected": "4",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "delay-force",
+      "feature": "control/promises",
+      "expression": "(force (delay (+ 1 2)))",
+      "expected": "3",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "call-cc",
+      "feature": "control/continuations",
+      "expression": "(call-with-current-continuation (lambda (k) (+ 1 (k 9))))",
+      "expected": "9",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "multiple-values",
+      "feature": "control/values",
+      "expression": "(call-with-values (lambda () (values 2 3)) +)",
+      "expected": "5",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "hygienic-macro",
+      "feature": "syntax/macros",
+      "expression": "(begin (define-syntax twice (syntax-rules () ((_ x) (+ x x)))) (twice 4))",
+      "expected": "8",
+      "observed": "Unbound",
+      "outcome": "error"
+    },
+    {
+      "id": "large-integer",
+      "feature": "numbers/range",
+      "expression": "(+ 2147483647 1)",
+      "expected": "2147483648",
+      "observed": "Overflow",
+      "outcome": "error"
+    },
+    {
+      "id": "transcendental",
+      "feature": "numbers/transcendentals",
+      "expression": "(sqrt 4)",
+      "expected": "2",
+      "observed": "Unbound",
+      "outcome": "error"
+    }
+  ]
+}

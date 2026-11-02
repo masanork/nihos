@@ -1170,7 +1170,9 @@ EOF
         -Mview_config="$repo_root/src/xy/view_config.zig" -Msurface="$repo_root/src/graphics/surface.zig" -Mterminal_adapter="$repo_root/src/net/terminal_adapter.zig" \
         -femit-bin="$build_dir/xy_render.o"
     "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/xy_render_stack.o"
-    set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
+        "$repo_root/src/xy/scheme_decimal.zig" -femit-bin="$build_dir/xy_decimal.o"
+    set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o" "$build_dir/xy_decimal.o"
 fi
 if [ -n "$pmp_user_object" ]; then
     set -- "$pmp_user_object" "$@"

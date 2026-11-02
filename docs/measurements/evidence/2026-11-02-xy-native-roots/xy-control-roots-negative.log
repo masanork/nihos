@@ -1,0 +1,4 @@
+1/1 scheme_runtime.test.pending control forms and initialized bindings survive controlled collection...FAIL (Type)
+0 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/8a745212598a062f53382962fa08132e/root --seed=0xc73c819d

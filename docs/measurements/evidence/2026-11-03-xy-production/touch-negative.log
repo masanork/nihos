@@ -1,0 +1,20 @@
+1/2 console.test_0...OK
+2/2 xy.scratch.test.deferred touch preserves drag and cancel across evaluation...
+====== expected this output: =========
+␃
+
+======== instead found this: =========
+x␃
+
+======================================
+First difference occurs on line 1:
+expected:
+
+^ (end of string)
+found:
+x
+^ ('\x78')
+FAIL (TestExpectedEqual)
+1 passed; 0 skipped; 1 failed.
+error: the following test command failed with exit code 1:
+.zig-cache/o/7a80aaf152a0244cf795480a8fbc141d/root --seed=0x585d3399

@@ -2,6 +2,9 @@
 pub const C6TimeFlash = true;
 const std = @import("std");
 const options = @import("native_options");
+// Only the normal network service calls this path in this image, from its
+// foreground poll. Standalone network probes retain their own placement.
+pub const ipv6_tx_flash = options.network;
 const storage_runtime = if (options.storage_service) @import("storage_service_abi.zig") else struct {};
 const normal_storage = @hasDecl(options, "normal_storage") and options.normal_storage;
 const normal_fs = @import("normal_fs_abi.zig");
@@ -18,9 +21,9 @@ const ui = display_service.ui;
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
 const network_config = @import("network_config");
-// Foreground Hosted station handling may share the mapped XY code window in
-// the full C6-offload profile; boot and non-XY profiles retain the boot page.
-pub const HostedStationSection = if (options.xy_workspace and network_config.c6_time_offload) ".flash.xytext" else ".flash.text.time";
+// Hosted station and IPv6 foreground polling may share the mapped XY window;
+// boot and non-XY profiles retain their existing placement.
+pub const HostedStationSection = if (options.xy_workspace) ".flash.xytext" else ".flash.text.time";
 const board_devices = @import("board_devices.zig");
 const flash_records = @import("flash_records.zig");
 pub const panic = std.debug.no_panic;
@@ -161,7 +164,7 @@ var camera_screen_state: u32 = 0;
 var camera_screen_frame: u32 = 0;
 var camera_screen_mismatches: u32 = 0xffffffff;
 var camera_screen_tone: u32 = 0;
-noinline fn serviceNetwork() linksection(if (options.camera_id) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
+noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devices and options.network)) ".flash.text.devices" else if (@hasDecl(options, "sqld") and options.sqld) ".flash.sqldtext" else ".text") void {
     if (options.console_live and options.boot_fast) {
         if (options.camera_id and board_devices.cameraStreaming() and !ui.cameraLiveActive()) board_devices.cameraStopStreaming();
         board_devices.poll();
@@ -1151,6 +1154,8 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
         if (reg(0x20801040).* & (1 << 8) != 0 or reg(0x20801044).* & (1 << 8) != 0 or reg(0x20801048).* & (1 << 8) == 0) fail("display-only bootstrap routes");
         if (!tasks.memory.beginExternalWithDisplayIrq()) fail("CPU0 external memory begin");
     } else if (!tasks.memory.beginExternal()) fail("CPU0 external memory begin");
+    if (options.console_live and @hasDecl(options, "xy_workspace") and options.xy_workspace and !ui.prepareXyWorkspace(&logger))
+        fail("xy workspace PSRAM allocation");
     native_psram.memory.releasePeer();
     native_psram.memory.ownerReady(0);
     if (options.wasm_probe and !options.wasm_task) {

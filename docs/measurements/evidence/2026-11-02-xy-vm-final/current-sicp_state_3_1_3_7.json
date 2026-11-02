@@ -1,0 +1,107 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "3.1",
+      "setup": "(define (make-accumulator n) (lambda (x) (set! n (+ n x)) n))",
+      "expression": "(let* ((a (make-accumulator 5)) (x (a 10)) (y (a 10))) (list x y))",
+      "expected": "(15 25)",
+      "observed": "(15 25)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.1",
+      "setup": "(define (make-accumulator n) (lambda (x) (set! n (+ n x)) n))",
+      "expression": "(let* ((a (make-accumulator 2)) (b (make-accumulator 100)) (x (a 3)) (y (b 4)) (z (a -2))) (list x y z))",
+      "expected": "(5 104 3)",
+      "observed": "(5 104 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.2",
+      "setup": "(define (make-monitored f) (let ((n 0)) (lambda (x) (cond ((eq? x 'how-many-calls?) n) ((eq? x 'reset-count) (set! n 0) n) (else (set! n (+ n 1)) (f x))))))",
+      "expression": "(let* ((s (make-monitored (lambda (x) (* x x)))) (a (s 10)) (b (s 3)) (c (s 'how-many-calls?))) (list a b c))",
+      "expected": "(100 9 2)",
+      "observed": "(100 9 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.2",
+      "setup": "(define (make-monitored f) (let ((n 0)) (lambda (x) (cond ((eq? x 'how-many-calls?) n) ((eq? x 'reset-count) (set! n 0) n) (else (set! n (+ n 1)) (f x))))))",
+      "expression": "(let* ((s (make-monitored (lambda (x) (+ x 1)))) (a (s 5)) (reset (s 'reset-count)) (b (s 2)) (count (s 'how-many-calls?))) (list a reset b count))",
+      "expected": "(6 0 3 1)",
+      "observed": "(6 0 3 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.3",
+      "setup": "(define (make-account balance password)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation))) (lambda (x) \"Incorrect password\"))) dispatch)",
+      "expression": "(let* ((a (make-account 100 'secret-password)) (x ((a 'secret-password 'withdraw) 40)) (y ((a 'bad 'deposit) 50)) (z ((a 'secret-password 'deposit) 10))) (list x y z))",
+      "expected": "(60 \"Incorrect password\" 70)",
+      "observed": "(60 \"Incorrect password\" 70)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.3",
+      "setup": "(define (make-account balance password)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation))) (lambda (x) \"Incorrect password\"))) dispatch)",
+      "expression": "(let* ((a (make-account 20 'p)) (x ((a 'p 'withdraw) 30)) (y ((a 'p 'deposit) 1))) (list x y))",
+      "expected": "(\"Insufficient funds\" 21)",
+      "observed": "(\"Insufficient funds\" 21)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.4",
+      "setup": "(define (make-account balance password)\n (define failures 0)\n (define (call-the-cops amount) 'cops)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (begin (set! failures 0) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation)))) (begin (set! failures (+ failures 1)) (if (> failures 7) call-the-cops (lambda (x) \"Incorrect password\"))))) dispatch)",
+      "expression": "(let ((a (make-account 100 'p))) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1))",
+      "expected": "cops",
+      "observed": "cops",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.4",
+      "setup": "(define (make-account balance password)\n (define failures 0)\n (define (call-the-cops amount) 'cops)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (begin (set! failures 0) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation)))) (begin (set! failures (+ failures 1)) (if (> failures 7) call-the-cops (lambda (x) \"Incorrect password\"))))) dispatch)",
+      "expression": "(let* ((a (make-account 100 'p)) (x (begin ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'bad 'withdraw) 1) ((a 'p 'deposit) 0))) (y ((a 'bad 'withdraw) 1))) (list x y))",
+      "expected": "(100 \"Incorrect password\")",
+      "observed": "(100 \"Incorrect password\")",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.6",
+      "setup": "(define (rand-update x) (remainder (+ (* 17 x) 43) 97))\n(define rand (let ((x 7)) (lambda (message) (cond ((eq? message 'generate) (set! x (rand-update x)) x) ((eq? message 'reset) (lambda (seed) (set! x seed) x)) (else 'unknown-message)))))",
+      "expression": "(let* ((a (rand 'generate)) (b (rand 'generate)) (r ((rand 'reset) 7)) (c (rand 'generate)) (d (rand 'generate))) (list a b r c d))",
+      "expected": "(65 81 7 65 81)",
+      "observed": "(65 81 7 65 81)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.6",
+      "setup": "(define (rand-update x) (remainder (+ (* 17 x) 43) 97))\n(define rand (let ((x 7)) (lambda (message) (cond ((eq? message 'generate) (set! x (rand-update x)) x) ((eq? message 'reset) (lambda (seed) (set! x seed) x)) (else 'unknown-message)))))",
+      "expression": "(let* ((r ((rand 'reset) 0)) (a (rand 'generate)) (b (rand 'generate))) (list r a b))",
+      "expected": "(0 43 95)",
+      "observed": "(0 43 95)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.7",
+      "setup": "(define (make-account balance password)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation))) (lambda (x) \"Incorrect password\"))) dispatch)\n(define (make-joint account old-password new-password) (lambda (password operation) (if (eq? password new-password) (account old-password operation) (account password operation))))",
+      "expression": "(let* ((a (make-account 100 'old)) (j (make-joint a 'old 'new)) (x ((j 'new 'withdraw) 40)) (y ((a 'old 'deposit) 10)) (z ((j 'new 'withdraw) 5))) (list x y z))",
+      "expected": "(60 70 65)",
+      "observed": "(60 70 65)",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.7",
+      "setup": "(define (make-account balance password)\n (define (withdraw amount) (if (>= balance amount) (begin (set! balance (- balance amount)) balance) \"Insufficient funds\"))\n (define (deposit amount) (set! balance (+ balance amount)) balance)\n (define (dispatch key operation) (if (eq? key password) (cond ((eq? operation 'withdraw) withdraw) ((eq? operation 'deposit) deposit) (else (lambda (x) 'unknown-operation))) (lambda (x) \"Incorrect password\"))) dispatch)\n(define (make-joint account old-password new-password) (lambda (password operation) (if (eq? password new-password) (account old-password operation) (account password operation))))",
+      "expression": "(let* ((a (make-account 10 'old)) (j (make-joint a 'old 'new)) (x ((j 'bad 'withdraw) 4)) (y ((a 'old 'deposit) 0))) (list x y))",
+      "expected": "(\"Incorrect password\" 10)",
+      "observed": "(\"Incorrect password\" 10)",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 12
+  },
+  "note": "Finite session observations only. Candidates are independently written. Monitor uses a square procedure because sqrt is not yet available; rand uses an explicit deterministic fixture."
+}

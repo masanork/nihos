@@ -1,0 +1,131 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "4.1",
+      "setup": "(define order '())\n(define (eval exp env) (set! order (append order (list exp))) exp)\n(define (no-operands? xs) (null? xs)) (define (first-operand xs) (car xs)) (define (rest-operands xs) (cdr xs))\n(define (list-of-values xs env) (if (no-operands? xs) '() (let* ((a (eval (first-operand xs) env)) (b (list-of-values (rest-operands xs) env))) (cons a b))))",
+      "expression": "(let* ((values (list-of-values '(a b c) 'env)) (observed order)) (list values observed))",
+      "expected": "((a b c) (a b c))",
+      "observed": "((a b c) (a b c))",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.1",
+      "setup": "(define order '())\n(define (eval exp env) (set! order (append order (list exp))) exp)\n(define (no-operands? xs) (null? xs)) (define (first-operand xs) (car xs)) (define (rest-operands xs) (cdr xs))\n(define (list-of-values xs env) (if (no-operands? xs) '() (let* ((a (eval (first-operand xs) env)) (b (list-of-values (rest-operands xs) env))) (cons a b))))",
+      "expression": "(list-of-values '() 'env)",
+      "expected": "()",
+      "observed": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.1",
+      "setup": "(define order '())\n(define (eval exp env) (set! order (append order (list exp))) exp)\n(define (no-operands? xs) (null? xs)) (define (first-operand xs) (car xs)) (define (rest-operands xs) (cdr xs))\n(define (list-of-values xs env) (if (no-operands? xs) '() (let* ((b (list-of-values (rest-operands xs) env)) (a (eval (first-operand xs) env))) (cons a b))))",
+      "expression": "(let* ((values (list-of-values '(a b c) 'env)) (observed order)) (list values observed))",
+      "expected": "((a b c) (c b a))",
+      "observed": "((a b c) (c b a))",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.1",
+      "setup": "(define order '())\n(define (eval exp env) (set! order (append order (list exp))) exp)\n(define (no-operands? xs) (null? xs)) (define (first-operand xs) (car xs)) (define (rest-operands xs) (cdr xs))\n(define (list-of-values xs env) (if (no-operands? xs) '() (let* ((b (list-of-values (rest-operands xs) env)) (a (eval (first-operand xs) env))) (cons a b))))",
+      "expression": "(list-of-values '() 'env)",
+      "expected": "()",
+      "observed": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.2",
+      "setup": "(define (tagged? exp tag) (and (pair? exp) (eq? (car exp) tag)))\n(define (old-application? exp) (pair? exp)) (define (definition? exp) (tagged? exp 'define))\n(define (application? exp) (tagged? exp 'call)) (define (operator exp) (cadr exp)) (define (operands exp) (cdr (cdr exp)))",
+      "expression": "(list (old-application? '(define x 3)) (definition? '(define x 3)) (application? '(define x 3)))",
+      "expected": "(#t #t #f)",
+      "observed": "(#t #t #f)",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.2",
+      "setup": "(define (tagged? exp tag) (and (pair? exp) (eq? (car exp) tag)))\n(define (old-application? exp) (pair? exp)) (define (definition? exp) (tagged? exp 'define))\n(define (application? exp) (tagged? exp 'call)) (define (operator exp) (cadr exp)) (define (operands exp) (cdr (cdr exp)))",
+      "expression": "(list (application? '(call + 1 2)) (operator '(call + 1 2)) (operands '(call + 1 2)))",
+      "expected": "(#t + (1 2))",
+      "observed": "(#t + (1 2))",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.4",
+      "setup": "(define hits 0)\n(define (eval exp env) (if (pair? exp) (begin (set! hits (+ hits 1)) (cadr exp)) exp))\n(define (eval-and xs env) (if (null? xs) #t (let ((value (eval (car xs) env))) (if (eq? value #f) #f (if (null? (cdr xs)) value (eval-and (cdr xs) env))))))\n(define (eval-or xs env) (if (null? xs) #f (let ((value (eval (car xs) env))) (if (eq? value #f) (eval-or (cdr xs) env) value))))",
+      "expression": "(eval-and '() 'env)",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.4",
+      "setup": "(define hits 0)\n(define (eval exp env) (if (pair? exp) (begin (set! hits (+ hits 1)) (cadr exp)) exp))\n(define (eval-and xs env) (if (null? xs) #t (let ((value (eval (car xs) env))) (if (eq? value #f) #f (if (null? (cdr xs)) value (eval-and (cdr xs) env))))))\n(define (eval-or xs env) (if (null? xs) #f (let ((value (eval (car xs) env))) (if (eq? value #f) (eval-or (cdr xs) env) value))))",
+      "expression": "(eval-or '() 'env)",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.4",
+      "setup": "(define hits 0)\n(define (eval exp env) (if (pair? exp) (begin (set! hits (+ hits 1)) (cadr exp)) exp))\n(define (eval-and xs env) (if (null? xs) #t (let ((value (eval (car xs) env))) (if (eq? value #f) #f (if (null? (cdr xs)) value (eval-and (cdr xs) env))))))\n(define (eval-or xs env) (if (null? xs) #f (let ((value (eval (car xs) env))) (if (eq? value #f) (eval-or (cdr xs) env) value))))",
+      "expression": "(let* ((v (eval-and '((effect #f) (effect 2)) 'env)) (h hits)) (list v h))",
+      "expected": "(#f 1)",
+      "observed": "(#f 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.4",
+      "setup": "(define hits 0)\n(define (eval exp env) (if (pair? exp) (begin (set! hits (+ hits 1)) (cadr exp)) exp))\n(define (eval-and xs env) (if (null? xs) #t (let ((value (eval (car xs) env))) (if (eq? value #f) #f (if (null? (cdr xs)) value (eval-and (cdr xs) env))))))\n(define (eval-or xs env) (if (null? xs) #f (let ((value (eval (car xs) env))) (if (eq? value #f) (eval-or (cdr xs) env) value))))",
+      "expression": "(let* ((v (eval-or '((effect 7) (effect 2)) 'env)) (h hits)) (list v h))",
+      "expected": "(7 1)",
+      "observed": "(7 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.4",
+      "setup": "(define hits 0)\n(define (eval exp env) (if (pair? exp) (begin (set! hits (+ hits 1)) (cadr exp)) exp))\n(define (eval-and xs env) (if (null? xs) #t (let ((value (eval (car xs) env))) (if (eq? value #f) #f (if (null? (cdr xs)) value (eval-and (cdr xs) env))))))\n(define (eval-or xs env) (if (null? xs) #f (let ((value (eval (car xs) env))) (if (eq? value #f) (eval-or (cdr xs) env) value))))",
+      "expression": "(eval-and '(1 2 3) 'env)",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.6",
+      "setup": "(define (cddr x) (cdr (cdr x)))\n(define (vars bindings) (if (null? bindings) '() (cons (car (car bindings)) (vars (cdr bindings)))))\n(define (values-of bindings) (if (null? bindings) '() (cons (cadr (car bindings)) (values-of (cdr bindings)))))\n(define (let->combination e) (let ((bindings (cadr e)) (body (cddr e))) (cons (cons 'lambda (cons (vars bindings) body)) (values-of bindings))))",
+      "expression": "(let->combination '(let ((x 2) (y 3)) (+ x y)))",
+      "expected": "((lambda (x y) (+ x y)) 2 3)",
+      "observed": "((lambda (x y) (+ x y)) 2 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.6",
+      "setup": "(define (cddr x) (cdr (cdr x)))\n(define (vars bindings) (if (null? bindings) '() (cons (car (car bindings)) (vars (cdr bindings)))))\n(define (values-of bindings) (if (null? bindings) '() (cons (cadr (car bindings)) (values-of (cdr bindings)))))\n(define (let->combination e) (let ((bindings (cadr e)) (body (cddr e))) (cons (cons 'lambda (cons (vars bindings) body)) (values-of bindings))))",
+      "expression": "(let->combination '(let () 42))",
+      "expected": "((lambda () 42))",
+      "observed": "((lambda () 42))",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.7",
+      "setup": "(define (cddr x) (cdr (cdr x)))\n(define (let*->nested-lets e) (define (wrap bindings body) (if (null? bindings) (cons 'let (cons '() body)) (list 'let (list (car bindings)) (wrap (cdr bindings) body)))) (wrap (cadr e) (cddr e)))",
+      "expression": "(let*->nested-lets '(let* ((x 3) (y (+ x 2))) (+ x y)))",
+      "expected": "(let ((x 3)) (let ((y (+ x 2))) (let () (+ x y))))",
+      "observed": "(let ((x 3)) (let ((y (+ x 2))) (let () (+ x y))))",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.7",
+      "setup": "(define (cddr x) (cdr (cdr x)))\n(define (let*->nested-lets e) (define (wrap bindings body) (if (null? bindings) (cons 'let (cons '() body)) (list 'let (list (car bindings)) (wrap (cdr bindings) body)))) (wrap (cadr e) (cddr e)))",
+      "expression": "(let*->nested-lets '(let* () 42))",
+      "expected": "(let () 42)",
+      "observed": "(let () 42)",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 15
+  },
+  "note": "Isolated candidate helper procedures with stub evaluator, not the complete original metacircular evaluator. Transform results are syntax data, not execution of a full metacircular interpreter."
+}

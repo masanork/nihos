@@ -326,3 +326,31 @@ test "kernel stack switch admits timer capture and round robin then restores boo
     rt.images[boot.slot].?.protection = user_region;
     try std.testing.expect(rt.beginStackSwitch(boot, 0x5000, 0x5800) == null);
 }
+
+test "nested kernel stack switches retain the correct capture bounds across scheduling" {
+    var rt = Runtime(2, 1){};
+    const state = context.ReturnState{ .mstatus = 0x1880, .mcause = 0x80000010 };
+    const boot_frame: *context.IntegerContext = @ptrFromInt(0x1100);
+    const work_frame: *context.IntegerContext = @ptrFromInt(0x3100);
+    const eval_frame: *context.IntegerContext = @ptrFromInt(0x5100);
+    const render_frame: *context.IntegerContext = @ptrFromInt(0x7100);
+    const boot = rt.add(0, .{ .stack_min = 0x1000, .stack_max = 0x1800, .frame = boot_frame, .state = state }).?;
+    _ = rt.add(0, .{ .stack_min = 0x3000, .stack_max = 0x3800, .frame = work_frame, .state = state }).?;
+    try std.testing.expectEqual(boot, rt.policy.schedule().?);
+    const original = rt.beginStackSwitch(boot, 0x5000, 0x5800).?;
+    try std.testing.expect(rt.capture(eval_frame, state));
+    const evaluation = rt.beginStackSwitch(boot, 0x7000, 0x7800).?;
+    try std.testing.expect(!rt.capture(eval_frame, state));
+    try std.testing.expect(rt.capture(render_frame, state));
+    try std.testing.expectEqual(work_frame, rt.select().?.frame);
+    try std.testing.expect(!rt.endStackSwitch(boot, evaluation));
+    try std.testing.expect(rt.capture(work_frame, state));
+    const resumed = rt.select().?;
+    try std.testing.expectEqual(render_frame, resumed.frame);
+    try std.testing.expectEqual(@as(u32, 0x7000), resumed.stack_min);
+    try std.testing.expect(rt.endStackSwitch(boot, evaluation));
+    try std.testing.expect(rt.capture(eval_frame, state));
+    try std.testing.expect(!rt.capture(render_frame, state));
+    try std.testing.expect(rt.endStackSwitch(boot, original));
+    try std.testing.expect(rt.capture(boot_frame, state));
+}

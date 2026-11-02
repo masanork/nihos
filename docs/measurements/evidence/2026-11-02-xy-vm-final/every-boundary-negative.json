@@ -1,0 +1,8 @@
+{
+  "runtime_sha256": "dfcfa60828630576506296efca00936a6c0c2afaf06c9bf92100db58623ac22e",
+  "negative": true,
+  "exit_code": 1,
+  "case_count": 16,
+  "scope": "host-only forced nested collection, not enabled in product",
+  "test_log": "1/1 probe.test.forced nested boundaries...FAIL (Type)\n0 passed; 0 skipped; 1 failed.\nerror: the following test command failed with exit code 1:\n.zig-cache/o/603b493e99a5f54da1d1101276a6d8b4/root --seed=0x781490e6\n"
+}
