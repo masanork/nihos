@@ -154,6 +154,9 @@ def run():
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
         lifecycle_bad_pin = os.environ.get("NIHOS_SSH_LIFECYCLE_BADPIN") == "1"
+        lifecycle_bad_entropy = os.environ.get("NIHOS_SSH_LIFECYCLE_BADENTROPY") == "1"
+        if lifecycle_bad_entropy and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin):
+            raise ValueError("lifecycle entropy failure requires lifecycle over libslirp")
         if lifecycle_bad_pin:
             if os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge:
                 raise ValueError("lifecycle bad-pin control requires lifecycle over libslirp")
@@ -419,6 +422,20 @@ def run():
                     if lifecycle_mode:
                         action_cb = c.CFUNCTYPE(c.c_bool)
                         start_cb = c.CFUNCTYPE(c.c_bool, c.c_void_p, c.c_void_p, c.c_void_p)
+                        entropy_cb = c.CFUNCTYPE(c.c_bool, c.c_void_p, c.c_size_t)
+                        entropy_calls = 0
+                        @entropy_cb
+                        def lifecycle_entropy(dst, length):
+                            nonlocal entropy_calls
+                            entropy_calls += 1
+                            if lifecycle_bad_entropy and entropy_calls == 3:
+                                c.memset(dst, 0xaa, length)
+                                return False
+                            try:
+                                c.memmove(dst, os.urandom(length), length)
+                                return True
+                            except Exception:
+                                return False
                         @start_cb
                         def lifecycle_start(cookie, secret, host_pin):
                             return tcp_ffi.hosted_ssh_begin(cookie, secret, host_pin)
@@ -434,23 +451,22 @@ def run():
                         def lifecycle_close(): return bridge.bridge_close_write()
                         @action_cb
                         def lifecycle_complete(): return bridge.bridge_closed()
-                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, c.c_uint64, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p]
+                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, entropy_cb, c.c_uint64, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p]
                         vt.probe_lifecycle_begin.restype = c.c_bool
-                        vt.probe_lifecycle_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_void_p]
+                        vt.probe_lifecycle_poll.argtypes = [c.c_uint64]
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
                         vt.probe_profile_cleared.restype = c.c_bool
                         vt.probe_seed_cleared.restype = c.c_bool
-                        secret, cookie = buffer(os.urandom(32)), buffer(os.urandom(16))
                         fingerprint = b"SHA256:" + base64.b64encode(pin).rstrip(b"=")
                         seed_hex = seed.raw.hex().encode("ascii")
-                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
+                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, lifecycle_entropy, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
                     else:
                         vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
                     def vt_step():
                         if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
-                        result = (vt.probe_lifecycle_poll(time.monotonic_ns() // 1000, secret, cookie, buffer(os.urandom(32))) if lifecycle_mode else
+                        result = (vt.probe_lifecycle_poll(time.monotonic_ns() // 1000) if lifecycle_mode else
                                   vt.probe_vt_poll(buffer(os.urandom(32)), buffer(username), len(username), seed))
-                        if result < 0 and not (lifecycle_bad_pin and result == -2): raise RuntimeError("VT session failed")
+                        if result < 0 and not (lifecycle_bad_pin and result == -2) and not (lifecycle_bad_entropy and result == -3): raise RuntimeError("VT session failed")
                         time.sleep(0.001)
                         return result
                     deadline = time.monotonic() + 20
@@ -461,8 +477,14 @@ def run():
                             sock.closed_by_controller = True
                             print("SSH profile rejected the wrong host pin and was cleared: OK")
                             return
+                        if lifecycle_bad_entropy and state == -3:
+                            assert vt.probe_profile_cleared(), "profile retained after entropy failure"
+                            sock.closed_by_controller = True
+                            print("SSH entropy failure canceled the session and cleared the profile: OK")
+                            return
                         if state == 1:
                             if lifecycle_bad_pin: raise RuntimeError("SSH profile accepted the wrong host pin")
+                            if lifecycle_bad_entropy: raise RuntimeError("SSH continued after entropy failure")
                             if lifecycle_mode: assert vt.probe_seed_cleared(), "signing seed retained after authentication"
                             break
                         if time.monotonic() > deadline: raise TimeoutError("VT startup timeout")

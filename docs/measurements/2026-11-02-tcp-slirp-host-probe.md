@@ -117,6 +117,16 @@ must not be treated as cryptographic entropy without meeting the documented
 [entropy-source conditions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/api-reference/system/random.html);
 the existing SQL random callback does not establish those conditions for SSH.
 
+The foreground app driver refuses setup if its injected entropy provider is not
+available. It requests fresh bytes for the TCP port and initial sequence, the
+SSH exchange secret and cookie, and each packet-producing tick; failure cancels
+the session and clears its profile. The host fixture supplies `os.urandom` and
+exercises this same driver through OpenSSH. The RV32 probe uses deliberately
+fixed test bytes for code generation only. No qualified native entropy provider
+or device application calls this driver yet. The current TCP service admits
+only one connection attempt per lease epoch; the driver does not reset the
+station or claim automatic reconnect support.
+
 An optional `NIHOS_SSH_AUTOIDENT=1 NIHOS_SSH_AUTOKEX=1` host run exchanges
 identification with `ssh_identification.zig` and advances first key exchange
 using `ssh_kex_driver.zig`; the fixture supplies fresh random bytes. An
