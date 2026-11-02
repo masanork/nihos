@@ -160,6 +160,84 @@ pub fn ProfileInput(comptime Model: type) type {
     };
 }
 
+/// Owns one private setup and its volatile profile through a single session.
+/// The owner, model and controller must remain stable until cleanup finishes.
+/// The caller advances networking and supplies cryptographic entropy.
+pub fn Journey(comptime Model: type, comptime SessionController: type) type {
+    return struct {
+        const Self = @This();
+        pub const Status = enum { idle, editing, active, closed, failed };
+        model: *Model,
+        controller: *SessionController,
+        profile: Profile,
+        setup: ProfileInput(Model),
+        status: Status,
+
+        /// Only initialize fresh storage or storage whose cleanup is complete.
+        pub fn initInPlace(self: *Self, model: *Model, controller: *SessionController) void {
+            self.model = model;
+            self.controller = controller;
+            self.profile = .{};
+            self.setup = ProfileInput(Model).init(model, &self.profile);
+            self.status = .idle;
+        }
+        pub fn start(self: *Self) bool {
+            if (self.status != .idle or !self.setup.start()) return false;
+            self.status = .editing;
+            return true;
+        }
+        /// Observe setup cancellation after input events have been delivered.
+        pub fn syncSetup(self: *Self) Status {
+            if (self.status == .editing and self.setup.status == .canceled) {
+                self.profile.clear();
+                self.status = .closed;
+            }
+            return self.status;
+        }
+        /// Caller selects a secure ephemeral port and sequence number.
+        pub fn begin(self: *Self, now: u64, deadline: u64, close_timeout: u64, local_port: u16, sequence: u32) !void {
+            _ = self.syncSetup();
+            if (self.status != .editing or self.setup.status != .ready) return error.InvalidState;
+            self.controller.beginProfile(&self.profile, now, deadline, close_timeout, local_port, sequence) catch |err| {
+                self.profile.clear();
+                self.status = .failed;
+                return err;
+            };
+            self.status = .active;
+        }
+        pub fn poll(self: *Self, now: u64, exchange: ?*const ExchangeEntropy, padding: *const [32]u8) !State {
+            if (self.status != .active) return error.InvalidState;
+            const result = self.controller.pollProfile(&self.profile, now, exchange, padding) catch |err| {
+                self.profile.clear();
+                self.status = .failed;
+                return err;
+            };
+            if (result == .ready) {
+                // The authenticated terminal no longer needs the signing seed.
+                std.crypto.secureZero(u8, &self.profile.seed);
+            } else if (result == .closed) {
+                self.profile.clear();
+                self.status = .closed;
+            }
+            return result;
+        }
+        /// The controller retains references to any resources whose cleanup
+        /// failed; call retryCleanup before reinitializing this owner.
+        pub fn cancel(self: *Self) void {
+            if (self.model.private_input) |port| {
+                if (@intFromPtr(port.context) == @intFromPtr(&self.setup)) self.model.detachPrivateInput();
+            }
+            if (self.status == .active) self.controller.cancel();
+            self.setup.form.clear();
+            self.profile.clear();
+            self.status = .closed;
+        }
+        pub fn retryCleanup(self: *Self) bool {
+            return self.controller.retryCleanup();
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -414,6 +492,65 @@ const TestUi = struct {
         self.canceled = true;
     }
 };
+
+const TestPrivateModel = struct {
+    pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
+    pub const PrivateInputPortType = struct { context: *anyopaque, key: *const fn (*anyopaque, PrivateInputKey) bool, close: *const fn (*anyopaque) void };
+    private_input: ?PrivateInputPortType = null,
+    fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
+        if (self.private_input != null) return false;
+        self.private_input = port;
+        return true;
+    }
+    fn detachPrivateInput(self: *@This()) void {
+        const port = self.private_input orelse return;
+        self.private_input = null;
+        port.close(port.context);
+    }
+    fn send(self: *@This(), key: PrivateInputKey) bool {
+        const port = self.private_input orelse return false;
+        return port.key(port.context, key);
+    }
+};
+const TestJourneyController = struct {
+    next: State = .handshaking,
+    canceled: bool = false,
+    fn beginProfile(_: *@This(), _: *const Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
+    fn pollProfile(self: *@This(), _: *const Profile, _: u64, _: ?*const ExchangeEntropy, _: *const [32]u8) !State {
+        return self.next;
+    }
+    fn cancel(self: *@This()) void {
+        self.canceled = true;
+    }
+    fn retryCleanup(_: *@This()) bool {
+        return true;
+    }
+};
+
+test "journey wipes the signing seed after authentication and profile on close" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    try std.testing.expect(journey.start());
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    try journey.begin(10, 100, 20, 50001, 123);
+    const padding: [32]u8 = @splat(5);
+    try std.testing.expectEqual(State.handshaking, try journey.poll(11, null, &padding));
+    try std.testing.expectEqual(@as(u8, 1), journey.profile.seed[0]);
+    controller.next = .ready;
+    try std.testing.expectEqual(State.ready, try journey.poll(12, null, &padding));
+    for (journey.profile.seed) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    try std.testing.expect(journey.profile.valid);
+    controller.next = .closed;
+    try std.testing.expectEqual(State.closed, try journey.poll(13, null, &padding));
+    try std.testing.expectEqual(@TypeOf(journey).Status.closed, journey.status);
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
 
 test "profile validates OpenSSH fingerprint and wipes credentials" {
     var p: Profile = .{};

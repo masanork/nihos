@@ -49,6 +49,7 @@ pub const NativeNetwork = struct {
     }
 };
 pub const Controller = lifecycle.Controller(NativeNetwork, Ui, console.scratch.Model);
+pub const Journey = lifecycle.Journey(Model, Controller);
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,

@@ -119,43 +119,39 @@ const Controller = lifecycle.Controller(HostNetwork, Ui, console.scratch.Model);
 var host_network: HostNetwork = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable object before use.
 var controller: Controller = undefined;
-var profile: lifecycle.Profile = .{};
+// SAFETY: probe_lifecycle_begin initializes this stable owner before use.
+var journey: lifecycle.Journey(console.scratch.Model, Controller) = undefined;
 export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
-    profile.clear();
     model.initInPlace();
     model.nav.screen = .ssh;
-    var canceled = lifecycle.ProfileInput(console.scratch.Model).init(&model, &profile);
-    if (!canceled.start()) return false;
-    canceled.form.selected = .seed;
+    backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
+    host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
+    controller = Controller.init(&host_network, &ui, &model);
+    journey.initInPlace(&model, &controller);
+    if (!journey.start()) return false;
+    journey.setup.form.selected = .seed;
     model.feedSerial('1', now);
     model.handle(.escape);
-    if (canceled.status != .canceled or model.private_input != null or profile.valid) return false;
-    for (@import("std").mem.asBytes(&canceled.form)) |byte| if (byte != 0) return false;
-    var setup = lifecycle.ProfileInput(console.scratch.Model).init(&model, &profile);
-    if (!setup.start()) return false;
+    if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
+    for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;
+    journey.initInPlace(&model, &controller);
+    if (!journey.start()) return false;
     for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
         for (value) |byte| {
             model.feedSerial(byte, now);
             if (model.status != .none) {
-                model.detachPrivateInput();
+                journey.cancel();
                 return false;
             }
         }
         model.handle(.enter);
     }
-    if (setup.status != .ready or model.private_input != null) {
-        model.detachPrivateInput();
-        profile.clear();
+    if (journey.setup.status != .ready or model.private_input != null) {
+        journey.cancel();
         return false;
     }
-    backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
-    host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
-    controller = Controller.init(&host_network, &ui, &model);
-    controller.beginProfile(&profile, now, now +| 20_000_000, 20_000_000, 50001, 123) catch {
-        profile.clear();
-        return false;
-    };
+    journey.begin(now, now +| 20_000_000, 20_000_000, 50001, 123) catch return false;
     initialized = true;
     return true;
 }
@@ -163,20 +159,20 @@ export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, cookie: *const [
     if (!initialized) return -1;
     var entropy = lifecycle.ExchangeEntropy{ .secret = secret.*, .cookie = cookie.* };
     defer @import("std").crypto.secureZero(u8, @import("std").mem.asBytes(&entropy));
-    return switch (controller.pollProfile(&profile, now, &entropy, random) catch |err| {
-        profile.clear();
+    return switch (journey.poll(now, &entropy, random) catch |err| {
         return if (err == error.HostKeyMismatch) -2 else -1;
     }) {
         .opening, .need_material, .handshaking, .closing => 0,
         .ready => 1,
-        .closed => blk: {
-            profile.clear();
-            break :blk 2;
-        },
+        .closed => 2,
         .idle, .failed => -1,
     };
 }
 export fn probe_profile_cleared() bool {
-    for (@import("std").mem.asBytes(&profile)) |byte| if (byte != 0) return false;
+    for (@import("std").mem.asBytes(&journey.profile)) |byte| if (byte != 0) return false;
+    return true;
+}
+export fn probe_seed_cleared() bool {
+    for (journey.profile.seed) |byte| if (byte != 0) return false;
     return true;
 }

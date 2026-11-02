@@ -439,6 +439,7 @@ def run():
                         vt.probe_lifecycle_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_void_p]
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
                         vt.probe_profile_cleared.restype = c.c_bool
+                        vt.probe_seed_cleared.restype = c.c_bool
                         secret, cookie = buffer(os.urandom(32)), buffer(os.urandom(16))
                         fingerprint = b"SHA256:" + base64.b64encode(pin).rstrip(b"=")
                         seed_hex = seed.raw.hex().encode("ascii")
@@ -462,6 +463,7 @@ def run():
                             return
                         if state == 1:
                             if lifecycle_bad_pin: raise RuntimeError("SSH profile accepted the wrong host pin")
+                            if lifecycle_mode: assert vt.probe_seed_cleared(), "signing seed retained after authentication"
                             break
                         if time.monotonic() > deadline: raise TimeoutError("VT startup timeout")
                     for byte in b"printf ni%s_ssh_ok hos\n":

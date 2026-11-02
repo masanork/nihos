@@ -107,7 +107,9 @@ to a native application or a setup screen. The host fixture feeds it through
 the xy model's private serial input port, verifies successful authentication,
 checks cancel-and-erase and rejection of a wrong host fingerprint. The model rejects private
 input while the VM or deferred queues are active and wipes deferred buffers
-after replay or overflow. This host test does not qualify physical keyboards,
+after replay or overflow. The session owner erases its signing seed when
+authentication completes and its profile on close or failure; the OpenSSH
+fixture checks both. This host test does not qualify physical keyboards,
 serial transports, display masking or device memory custody. ESP32-P4 RNG output
 must not be treated as cryptographic entropy without meeting the documented
 [entropy-source conditions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/api-reference/system/random.html);
