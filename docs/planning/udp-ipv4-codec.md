@@ -54,6 +54,15 @@ automatically across these separate objects. The tests check payload and
 padding, stale retry and no replay after a failed write, not physical DMA or
 C6 receipt.
 
+`hosted_udp_sender.Sender` is an experimental, single-datagram owner. It owns
+its queued packet and padding, uses short or long writes, retries only a zero
+write, and retires on timeout, stale binding, partial write or transport
+error. It invalidates a still-current address after ambiguous write failures,
+but preserves a newer address generation. Its caller must exclusively own the
+stream and state and drain Hosted control events before every poll. Retirement
+does not prove hardware DMA quiescence; in-flight storage must remain alive as
+required by the backend. It is not connected to the native network service.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.
