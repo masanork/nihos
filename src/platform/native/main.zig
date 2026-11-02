@@ -1517,9 +1517,11 @@ noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (o
                         if (16 + @sizeOf(Live) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(Live) != 0) fail("editor live scratch");
                         const live: *Live = @ptrFromInt(live_address);
                         const XyLive = @import("xy_scratch_live.zig").Live(".flash.rodata.display");
-                        if (16 + @sizeOf(XyLive) > board.reserve_bytes - board.frame_bytes or live_address % @alignOf(XyLive) != 0) fail("xy scratch region");
-                        // Mutually exclusive fixture views borrow the same tail.
-                        const xy_live: *XyLive = @ptrFromInt(live_address);
+                        // The 4,096-cell Scheme workspace no longer fits in the
+                        // display tail; the emulator fixture leases PSRAM instead.
+                        const xy_allocation = tasks.memory.allocExternal(@sizeOf(XyLive), @alignOf(XyLive)) catch fail("xy scratch region");
+                        defer tasks.memory.freeExternal(xy_allocation) catch fail("xy scratch release");
+                        const xy_live: *XyLive = @ptrCast(@alignCast(xy_allocation.bytes.ptr));
                         while (true) {
                             const input = @as(*volatile EmulatedInput, &nih_emulator_input).*;
                             if (input.command == 0) break;

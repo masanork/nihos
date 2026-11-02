@@ -703,6 +703,9 @@ pub const Model = struct {
                 }
             }
         }
+        self.evaluateOnStackSync(source, named);
+    }
+    pub fn evaluateOnStackSync(self: *Model, source: []const u8, named: bool) linksection(scheme.code_section) void {
         // A storage wait may present the initial revision before the reply arrives.
         defer self.changed();
         _ = self.doc.beginUndoGroup();

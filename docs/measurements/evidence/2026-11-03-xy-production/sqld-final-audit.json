@@ -11,9 +11,9 @@
     "transfer_helpers": 0
   },
   "entry": "0x4ff00000",
-  "elf_sha256": "e50d209df41c8ce69a2b234fd2ef1c9c9d876471c0c84439999be20228bcafa9",
+  "elf_sha256": "195c4f5af6dd8d85cf7b04f656b0f014b3df115777d4850474e2142d433801d6",
   "sqld": {
-    "identity": "45480af41fd91fe0d4a599be55fc745bfa24441aa83a6367b4551e8ef7c877ee",
+    "identity": "44b1e4236a15c88745d4007ee691ac7625fc10cf28ba972965c53cc2751630b1",
     "text_bytes": 564608,
     "rodata_bytes": 89388,
     "reservation": [
@@ -222,17 +222,17 @@
     {
       "name": ".flash.xytext",
       "address": "0x40060000",
-      "bytes": 195680
+      "bytes": 195600
     },
     {
       "name": ".flash.xyrodata",
-      "address": "0x4008fc60",
+      "address": "0x4008fc10",
       "bytes": 3306844
     },
     {
       "name": ".flash.sqldpad",
-      "address": "0x403b71bc",
-      "bytes": 298564
+      "address": "0x403b716c",
+      "bytes": 298644
     },
     {
       "name": ".flash.sqldtext",
@@ -300,13 +300,13 @@
       0,
       1
     ],
-    "manifest_sha256": "8920d4816dfd1b0648b7b29c2c0c50318cfb7f414f689a30f112acb77510b895",
+    "manifest_sha256": "6207d8a1c8754b5e9bfaacd5a72daae3694d6243777c7372406582325df8abbe",
     "text_start": "0x40020000",
     "text_bytes": 47872,
     "text_sha256": "193fa3c74419a61e7fbfe5d226d292041007044cb9fcbf4b16d8942bdcb66234",
     "rodata_start": "0x4002bb00",
     "rodata_bytes": 10868,
-    "rodata_sha256": "085043014dcff4e262a9e29e153b1dcb2a30abff8893da8afbbb1434dcfdc488",
+    "rodata_sha256": "1c6dc7fa5daef12ae26c66a3c7d19d76e9571aef172eb0a892b89bde72fdd106",
     "parent_bytes": 65536,
     "worker_stack_bytes": 4096,
     "foreground_only": true,
@@ -394,8 +394,8 @@
   },
   "xy_scheme": {
     "start": "0x40060000",
-    "end": "0x403b71bc",
-    "code_bytes": 195680,
+    "end": "0x403b716c",
+    "code_bytes": 195600,
     "rodata_bytes": 3306844,
     "functions": {
       "render_session.SizedSession(2048).renderKeyboard__func_3": {
@@ -1416,63 +1416,63 @@
       },
       "nih_xy_eval_on_stack": {
         "start": "0x4008da2a",
-        "end": "0x4008ec06"
+        "end": "0x4008ebbe"
       },
       "xy_eval_runtime.nih_xy_eval_on_stack": {
         "start": "0x4008da2a",
-        "end": "0x4008ec06"
+        "end": "0x4008ebbe"
       },
       "xy.scheme_runtime.ContinuationState.condClause": {
-        "start": "0x4008ec06",
-        "end": "0x4008ee32"
+        "start": "0x4008ebbe",
+        "end": "0x4008edea"
       },
       "xy.scheme_runtime.ContinuationState.sequence": {
-        "start": "0x4008ee32",
-        "end": "0x4008ef00"
+        "start": "0x4008edea",
+        "end": "0x4008eeb8"
       },
       "xy.scheme_runtime.ContinuationState.push": {
-        "start": "0x4008ef00",
-        "end": "0x4008ef48"
+        "start": "0x4008eeb8",
+        "end": "0x4008ef00"
       },
       "xy.scheme_runtime.ContinuationAdmission.expression": {
-        "start": "0x4008ef48",
-        "end": "0x4008f638"
+        "start": "0x4008ef00",
+        "end": "0x4008f5f0"
       },
       "xy.scheme_runtime.ContinuationAdmission.isLocal": {
-        "start": "0x4008f638",
-        "end": "0x4008f65c"
+        "start": "0x4008f5f0",
+        "end": "0x4008f614"
       },
       "xy.scheme_runtime.ContinuationAdmission.sequence": {
-        "start": "0x4008f65c",
-        "end": "0x4008f6e0"
+        "start": "0x4008f614",
+        "end": "0x4008f698"
       },
       "nih_xy_resume": {
-        "start": "0x4008f6e0",
-        "end": "0x4008f71e"
+        "start": "0x4008f698",
+        "end": "0x4008f6d6"
       },
       "xy_eval_runtime.nih_xy_resume": {
-        "start": "0x4008f6e0",
-        "end": "0x4008f71e"
+        "start": "0x4008f698",
+        "end": "0x4008f6d6"
       },
       "xy_eval_runtime.evaluateOnForeground": {
-        "start": "0x4008f71e",
-        "end": "0x4008fa0c"
+        "start": "0x4008f6d6",
+        "end": "0x4008f9c4"
       },
       "nih_xy_evaluate": {
-        "start": "0x4008fa0c",
-        "end": "0x4008fa28"
+        "start": "0x4008f9c4",
+        "end": "0x4008f9e0"
       },
       "xy_eval_runtime.nih_xy_evaluate": {
-        "start": "0x4008fa0c",
-        "end": "0x4008fa28"
+        "start": "0x4008f9c4",
+        "end": "0x4008f9e0"
       },
       "sqld_abi.call": {
-        "start": "0x4008fa28",
-        "end": "0x4008fbcc"
+        "start": "0x4008f9e0",
+        "end": "0x4008fb84"
       },
       "diagnostic_ui.input__func_304": {
-        "start": "0x4008fbcc",
-        "end": "0x4008fc58"
+        "start": "0x4008fb84",
+        "end": "0x4008fc10"
       }
     },
     "foreground_only": true,
@@ -1480,14 +1480,14 @@
     "render_stack_bytes": 524288,
     "plot_table": {
       "symbol": "xy.plot_config.sine",
-      "start": "0x403b59d8",
+      "start": "0x403b5988",
       "bytes": 512,
       "readonly_flash": true,
       "sram_copy": false
     },
     "romaji_table": {
       "symbol": "xy.ime_omni.romaji_table",
-      "start": "0x403b64dc",
+      "start": "0x403b648c",
       "bytes": 3288,
       "readonly_flash": true,
       "sram_copy": false

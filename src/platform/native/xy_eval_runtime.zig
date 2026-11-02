@@ -22,6 +22,8 @@ pub export fn nih_xy_resume(model: *console.scratch.Model) linksection(".flash.x
     evaluateOnForeground(model, model.command[0..].ptr, 0, true, true);
 }
 fn evaluateOnForeground(model: *console.scratch.Model, source: [*]const u8, length: usize, named: bool, resuming: bool) linksection(".flash.xytext") void {
+    // The standalone canvas fixture has no xy workspace lease or sliced UI.
+    if (comptime !options.xy_workspace) return model.evaluateOnStackSync(source[0..length], named);
     if (comptime !(@hasDecl(options, "sqld") and options.sqld)) {
         const stack = @import("display_service").ui.xyEvaluationStack() orelse {
             model.evaluationStackUnavailable();
