@@ -72,3 +72,7 @@ jobs:
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_BADPIN=1 python3 tools/ssh_openssh_probe.py
+      - name: SSH session cancels on entropy failure
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_BADENTROPY=1 python3 tools/ssh_openssh_probe.py
