@@ -54,7 +54,8 @@ export fn udp_ipv4_probe_sender(state: *split.State, data: [*]const u8, length: 
     const peer = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 1 }, .ip = .{ 192, 0, 2, 1 }, .port = 443 };
     tx.enqueue(peer, data[0..length], 1, 1, 3) catch return 0;
     var stream: CompileStream = .{};
-    const result = tx.poll(&stream, 2) catch return 0;
+    const decoder: @import("hosted.zig").Decoder = .{};
+    const result = tx.poll(&stream, 2, &decoder, true) catch return 0;
     if (result == .pending) tx.cancel() catch return 0;
     tx.invalidate(&stream);
     return if (result == .pending) 1 else 2;

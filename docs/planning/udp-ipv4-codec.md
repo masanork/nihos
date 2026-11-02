@@ -65,6 +65,16 @@ stream and state and drain Hosted control events before every poll. Retirement
 does not prove hardware DMA quiescence; in-flight storage must remain alive as
 required by the backend. It is not connected to the native network service.
 
+Every poll also requires the current Hosted decoder and an explicit assertion
+that the caller read zero bytes after applying control events while holding the
+same exclusive stream. A false assertion or incomplete frame defers sending;
+a poisoned decoder retires the owner. The flag is supplied by the caller, not
+an independent proof of an empty FIFO. An event arriving after the empty read
+can still race the send. The current native network service
+processes at most one 512-byte receive chunk per poll and can then send, so it
+cannot pass this gate merely because one chunk was processed. Runtime
+integration must preserve bounded fairness while draining and handling events.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.

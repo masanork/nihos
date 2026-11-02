@@ -2,6 +2,7 @@
 const guard = @import("hosted_udp_lease.zig");
 const wire = @import("udp_ipv4.zig");
 const split = @import("hosted_network_split.zig");
+const hosted = @import("hosted.zig");
 
 pub const Phase = enum { idle, queued, retired };
 pub const Outcome = enum { pending, sent };
@@ -54,9 +55,11 @@ pub const Sender = struct {
         if (self.phase != .retired) self.retire(stream, true);
     }
 
-    /// Zero credits means no write began. Nonzero partial writes or any
-    /// transport error are ambiguous and permanently retire this owner.
-    pub fn poll(self: *Sender, stream: anytype, now: u64) !Outcome {
+    /// `drained` is true only after the exclusive caller has received zero
+    /// bytes and applied all decoded control events in this ownership turn.
+    /// An incomplete decoder or undrained input prevents transmission. Zero
+    /// credits means no write began; partial writes and errors retire.
+    pub fn poll(self: *Sender, stream: anytype, now: u64, decoder: *const hosted.Decoder, drained: bool) !Outcome {
         if (self.phase == .retired) return error.Retired;
         if (self.phase != .queued) return error.Busy;
         if (now < self.last_now or now >= self.deadline) {
@@ -68,6 +71,11 @@ pub const Sender = struct {
             self.retire(stream, false);
             return err;
         };
+        if (decoder.poisoned) {
+            self.retire(stream, true);
+            return error.Malformed;
+        }
+        if (!drained or decoder.used != 0) return .pending;
         const frame = self.packet[0..self.length];
         const written = (if (frame.len <= 512) stream.send(frame) else stream.sendLong(frame, &self.padding)) catch |err| {
             self.retire(stream, true);
