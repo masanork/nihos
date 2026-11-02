@@ -65,6 +65,12 @@ Only 848 of the 10,000 preferred madowi ports lie in the P4 range. This is a
 configuration comparison, not a measurement of actual node IDs, an installed
 C6 flash readback, or a failed iroh connection.
 
+The CI host test `tools/hosted3_split_port_test.py` checks that the diagnostic
+port remains within the checked-in candidate's host UDP range, that this range
+does not overlap the coprocessor UDP range, and that the split/default-stack
+and explicit UDP rule settings still match the assumptions above. This test
+does not inspect a firmware image or prove packet routing on a device.
+
 A future P4 endpoint must bind and advertise a port the running C6 routes to
 P4, or use an explicitly verified alternative routing policy. Changing a
 stable port affects saved endpoint addresses and requires the actual selected
