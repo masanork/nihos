@@ -1,0 +1,8 @@
+{
+  "runtime_sha256": "dfcfa60828630576506296efca00936a6c0c2afaf06c9bf92100db58623ac22e",
+  "negative": false,
+  "exit_code": 0,
+  "case_count": 16,
+  "scope": "host-only forced nested collection, not enabled in product",
+  "test_log": "1/1 probe.test.forced nested boundaries...FORCED boundaries=242 callbacks=24\nOK\nAll 1 tests passed.\n"
+}

@@ -1,0 +1,8 @@
+{
+  "cases": 181,
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "reference_binary_sha256": "cc9330e895d21c64f5d54dc9ecf93dc44fe8b53cd9cfc41b28393ac6151a3036",
+  "scope": "bounded exact/inexact arithmetic and list operations; host only",
+  "decimal_cases_using_python_fraction": 32,
+  "explicit_cases": 2
+}

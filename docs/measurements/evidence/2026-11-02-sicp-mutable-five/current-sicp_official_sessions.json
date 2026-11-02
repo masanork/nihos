@@ -1,0 +1,137 @@
+{
+  "source_archive_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "chapter": "ch1.scm",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "sessions": [
+    {
+      "name": "section-1.1.2",
+      "forms": [
+        {
+          "source": "(define size 2)",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "size",
+          "kind": "expression",
+          "reference": "2",
+          "status": "matched"
+        },
+        {
+          "source": "(* 5 size)",
+          "kind": "expression",
+          "reference": "10",
+          "status": "matched"
+        },
+        {
+          "source": "(define pi 3.14159)",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "(define radius 10)",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "(* pi (* radius radius))",
+          "kind": "expression",
+          "reference": "314.159",
+          "status": "matched"
+        },
+        {
+          "source": "(define circumference (* 2 pi radius))",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "circumference",
+          "kind": "expression",
+          "reference": "62.8318",
+          "status": "matched"
+        }
+      ]
+    },
+    {
+      "name": "exercise-1.1",
+      "forms": [
+        {
+          "source": "10",
+          "kind": "expression",
+          "reference": "10",
+          "status": "matched"
+        },
+        {
+          "source": "(+ 5 3 4)",
+          "kind": "expression",
+          "reference": "12",
+          "status": "matched"
+        },
+        {
+          "source": "(- 9 1)",
+          "kind": "expression",
+          "reference": "8",
+          "status": "matched"
+        },
+        {
+          "source": "(/ 6 2)",
+          "kind": "expression",
+          "reference": "3",
+          "status": "matched"
+        },
+        {
+          "source": "(+ (* 2 4) (- 4 6))",
+          "kind": "expression",
+          "reference": "6",
+          "status": "matched"
+        },
+        {
+          "source": "(define a 3)",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "(define b (+ a 1))",
+          "kind": "definition",
+          "status": "executed"
+        },
+        {
+          "source": "(+ a b (* a b))",
+          "kind": "expression",
+          "reference": "19",
+          "status": "matched"
+        },
+        {
+          "source": "(= a b)",
+          "kind": "expression",
+          "reference": "#f",
+          "status": "matched"
+        },
+        {
+          "source": "(if (and (> b a) (< b (* a b))) b a)",
+          "kind": "expression",
+          "reference": "4",
+          "status": "matched"
+        },
+        {
+          "source": "(cond ((= a 4) 6) ((= b 4) (+ 6 7 a)) (else 25))",
+          "kind": "expression",
+          "reference": "16",
+          "status": "matched"
+        },
+        {
+          "source": "(+ 2 (if (> b a) b a))",
+          "kind": "expression",
+          "reference": "6",
+          "status": "matched"
+        },
+        {
+          "source": "(* (cond ((> a b) a) ((< a b) b) (else -1)) (+ a 1))",
+          "kind": "expression",
+          "reference": "16",
+          "status": "matched"
+        }
+      ]
+    }
+  ]
+}

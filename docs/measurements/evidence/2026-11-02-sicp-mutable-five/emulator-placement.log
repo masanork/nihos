@@ -1,0 +1,25 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized] target(s) in 16.14s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+xy_workspace_placement NIHOS_NATIVE_XY_PSRAM address=48280100 bytes=0001c140 stack_bytes=00010000 reserved=00020000 free_after=00e3fd40
+sicp_tree_exercise_1_11_1_12 source=(begin (define (f-rec n) (if (< n 3) n (+ (f-rec (- n 1)) (* 2 (f-rec (- n 2))) (* 3 (f-rec (- n 3)))))) 801) reply=NIHOS_NATIVE_XY_REPLY data=383031
+sicp_tree_exercise_1_11_1_12 source=(f-rec 8) reply=NIHOS_NATIVE_XY_REPLY data=333335
+sicp_tree_exercise_1_11_1_12 source=(f-rec 9) reply=NIHOS_NATIVE_XY_REPLY data=373936
+sicp_tree_exercise_1_11_1_12 source=(+ 20 22) reply=NIHOS_NATIVE_XY_REPLY data=3432
+sicp_tree_exercise_1_11_1_12 source=(begin (define (f-it n) (define (go a b c k) (if (= k 0) c (go (+ a (* 2 b) (* 3 c)) a b (- k 1)))) (if (< n 3) n (go 2 1 0 n))) 802) reply=NIHOS_NATIVE_XY_REPLY data=383032
+sicp_tree_exercise_1_11_1_12 source=(f-it 20) reply=NIHOS_NATIVE_XY_REPLY data=3130373731323131
+test emu::tests::firmware_evaluates_sicp_tree_exercise_1_11_1_12 has been running for over 60 seconds
+sicp_tree_exercise_1_11_1_12 source=(begin (define (pascal row col) (if (or (= col 0) (= col row)) 1 (+ (pascal (- row 1) (- col 1)) (pascal (- row 1) col)))) 803) reply=NIHOS_NATIVE_XY_REPLY data=383033
+sicp_tree_exercise_1_11_1_12 source=(pascal 6 3) reply=NIHOS_NATIVE_XY_REPLY data=3230
+sicp_tree_exercise_1_11_1_12 source=(pascal 8 4) reply=NIHOS_NATIVE_XY_REPLY data=3730
+sicp_tree_exercise_1_11_1_12 source=(+ 19 23) reply=NIHOS_NATIVE_XY_REPLY data=3432
+test emu::tests::firmware_evaluates_sicp_tree_exercise_1_11_1_12 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 71.29s
+

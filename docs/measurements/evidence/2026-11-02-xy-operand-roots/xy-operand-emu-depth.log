@@ -1,0 +1,22 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui)
+    Finished `test` profile [unoptimized] target(s) in 17.69s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+sicp_tree_count_change source=(begin (define (count-change amount) (cc amount 5)) 821) reply=NIHOS_NATIVE_XY_REPLY data=383231
+sicp_tree_count_change source=(begin (define (cc amount kinds-of-coins) (cond ((= amount 0) 1) ((or (< amount 0) (= kinds-of-coins 0)) 0) (else (+ (cc amount (- kinds-of-coins 1)) (cc (- amount (first-denomination kinds-of-coins)) kinds-of-coins))))) 822) reply=NIHOS_NATIVE_XY_REPLY data=383232
+test emu::tests::firmware_evaluates_sicp_tree_count_change has been running for over 60 seconds
+sicp_tree_count_change source=(begin (define (first-denomination kinds-of-coins) (cond ((= kinds-of-coins 1) 1) ((= kinds-of-coins 2) 5) ((= kinds-of-coins 3) 10) ((= kinds-of-coins 4) 25) ((= kinds-of-coins 5) 50))) 823) reply=NIHOS_NATIVE_XY_REPLY data=383233
+sicp_tree_count_change source=(count-change 10) reply=NIHOS_NATIVE_XY_REPLY data=34
+sicp_tree_count_change source=(count-change 100) reply=NIHOS_NATIVE_XY_REPLY data=4e657374696e67206c696d6974
+sicp_stack_watermark source=(count-change 100) low=0x48298740 bytes=65536 observed_used=13424
+sicp_tree_count_change source=(+ 20 22) reply=NIHOS_NATIVE_XY_REPLY data=3432
+test emu::tests::firmware_evaluates_sicp_tree_count_change ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 79.61s
+

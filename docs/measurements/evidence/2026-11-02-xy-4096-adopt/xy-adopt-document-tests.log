@@ -1,0 +1,6 @@
+1/5 document.test.undo offsets retain full bounded and wider document ranges...OK
+2/5 document.test.grapheme cursor and backspace never split IVS or combining dakuten...OK
+3/5 document.test.grouped undo reverts multi-step transaction and rejects stale or unaligned ranges...OK
+4/5 document.test.non-destructive SKK preedit overlay and ruby span shifting on edit...OK
+5/5 document.test.extreme signed movements clamp without overflowing negation...OK
+All 5 tests passed.

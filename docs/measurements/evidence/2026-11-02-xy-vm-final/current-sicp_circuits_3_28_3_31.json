@@ -1,0 +1,192 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "3.28",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 0) (propagate) (get out))",
+      "expected": "0",
+      "sequential_setup": true,
+      "observed": "0",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.28",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.28",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 0) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.28",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.29",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (let ((na (make-wire)) (nb (make-wire)) (both (make-wire))) (inv a na) (inv b nb) (and-gate na nb both) (inv both out)))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 0) (propagate) (get out))",
+      "expected": "0",
+      "sequential_setup": true,
+      "observed": "0",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.29",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (let ((na (make-wire)) (nb (make-wire)) (both (make-wire))) (inv a na) (inv b nb) (and-gate na nb both) (inv both out)))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 0) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.29",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (let ((na (make-wire)) (nb (make-wire)) (both (make-wire))) (inv a na) (inv b nb) (and-gate na nb both) (inv both out)))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 0) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.29",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (let ((na (make-wire)) (nb (make-wire)) (both (make-wire))) (inv a na) (inv b nb) (and-gate na nb both) (inv both out)))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (out (make-wire))) (or-gate a b out) (set a 1) (set b 1) (propagate) (get out))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.28",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire))) (or-gate a b o) (propagate) (let ((start now)) (set a 1) (propagate) (- now start)))",
+      "expected": "5",
+      "sequential_setup": true,
+      "observed": "5",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.29",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (let ((na (make-wire)) (nb (make-wire)) (both (make-wire))) (inv a na) (inv b nb) (and-gate na nb both) (inv both out)))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire))) (or-gate a b o) (propagate) (let ((start now)) (set a 1) (propagate) (- now start)))",
+      "expected": "7",
+      "sequential_setup": true,
+      "observed": "7",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 0) (set a1 0) (set b0 0) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 0)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error"
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 0) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 0)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error"
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 0) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 0 1)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error"
+    },
+    {
+      "exercise": "3.30",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))\n(define (or-gate a b out) (define (action) (let ((v (if (or (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 5 (lambda () (set out v))))) (on a action) (on b action))\n(define (half-adder a b sum carry) (let ((d (make-wire)) (e (make-wire))) (or-gate a b d) (and-gate a b carry) (inv carry e) (and-gate d e sum)))\n(define (full-adder a b cin sum cout) (let ((s (make-wire)) (c1 (make-wire)) (c2 (make-wire))) (half-adder b cin s c1) (half-adder a s sum c2) (or-gate c1 c2 cout)))\n(define (ripple as bs ss cin cout) (if (null? (cdr as)) (full-adder (car as) (car bs) cin (car ss) cout) (let ((next (make-wire))) (full-adder (car as) (car bs) cin (car ss) next) (ripple (cdr as) (cdr bs) (cdr ss) next cout))))",
+      "expression": "(let ((a0 (make-wire)) (a1 (make-wire)) (b0 (make-wire)) (b1 (make-wire)) (s0 (make-wire)) (s1 (make-wire)) (cin (make-wire)) (cout (make-wire))) (ripple (list a0 a1) (list b0 b1) (list s0 s1) cin cout) (set a0 1) (set a1 1) (set b0 1) (set b1 1) (propagate) (list (get s0) (get s1) (get cout)))",
+      "expected": "(0 1 1)",
+      "sequential_setup": true,
+      "observed": "Depth",
+      "stage": "expression",
+      "status": "error"
+    },
+    {
+      "exercise": "3.31",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (o (make-wire))) (inv a o) (propagate) (get o))",
+      "expected": "1",
+      "sequential_setup": true,
+      "observed": "1",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.31",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (o (make-wire))) (inv a o) (propagate) (get o))",
+      "expected": "0",
+      "sequential_setup": true,
+      "observed": "0",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.32",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((< (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire)) (seen '())) (and-gate a b o) (on o (lambda () (set! seen (append seen (list (get o)))))) (set b 1) (propagate) (set! seen '()) (after-delay 1 (lambda () (set a 1))) (after-delay 1 (lambda () (set b 0))) (propagate) seen)",
+      "expected": "(1 0)",
+      "sequential_setup": true,
+      "observed": "(1 0)",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.32",
+      "setup": "(define now 0) (define agenda '())\n(define (insert-event e xs) (cond ((null? xs) (list e)) ((<= (car e) (car (car xs))) (cons e xs)) (else (cons (car xs) (insert-event e (cdr xs))))))\n(define (after-delay d f) (set! agenda (insert-event (cons (+ now d) f) agenda)))\n(define (propagate) (if (null? agenda) 'done (let ((e (car agenda))) (set! agenda (cdr agenda)) (set! now (car e)) ((cdr e)) (propagate))))\n(define (call-each fs) (if (null? fs) 'done (begin ((car fs)) (call-each (cdr fs)))))\n(define (make-wire) (let ((signal 0) (actions '()))\n (define (set!signal v) (if (= v signal) 'done (begin (set! signal v) (call-each actions))))\n (define (accept f) (set! actions (cons f actions)) (f))\n (lambda (m) (cond ((eq? m 'get) signal) ((eq? m 'set) set!signal) ((eq? m 'on) accept) (else #f)))))\n(define (get w) (w 'get)) (define (set w x) ((w 'set) x)) (define (on w f) ((w 'on) f))\n(define (inv a out) (define (action) (let ((v (if (= (get a) 0) 1 0))) (after-delay 2 (lambda () (set out v))))) (on a action))\n(define (and-gate a b out) (define (action) (let ((v (if (and (= (get a) 1) (= (get b) 1)) 1 0))) (after-delay 3 (lambda () (set out v))))) (on a action) (on b action))",
+      "expression": "(let ((a (make-wire)) (b (make-wire)) (o (make-wire)) (seen '())) (and-gate a b o) (on o (lambda () (set! seen (append seen (list (get o)))))) (set b 1) (propagate) (set! seen '()) (after-delay 1 (lambda () (set a 1))) (after-delay 1 (lambda () (set b 0))) (propagate) seen)",
+      "expected": "()",
+      "sequential_setup": true,
+      "observed": "()",
+      "stage": "expression",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 14,
+    "error": 4
+  },
+  "note": "A small independently written event-driven fixture; not the original simulator or hardware timing. 3.31 compares immediate action invocation with its omission."
+}

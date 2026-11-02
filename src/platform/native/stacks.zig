@@ -59,14 +59,15 @@ pub noinline fn begin(core: u32) bool {
     return true;
 }
 
-// CPU0's owner retains this lease across frames. Publication is limited to the
-// synchronous render call; an IRQ may then validate its interrupted PSRAM SP.
+// CPU0 publishes a guarded PSRAM stack only during synchronous foreground
+// rendering or Scheme evaluation, so interrupts can validate the saved SP.
 pub const foreground_bytes = 512 * 1024;
+pub const evaluation_bytes = 64 * 1024;
 var foreground_low: u32 = 0;
 var foreground_high: u32 = 0;
 pub inline fn beginForeground(stack: []u8) bool {
     const low = @intFromPtr(stack.ptr);
-    if (@atomicLoad(u32, &foreground_high, .acquire) != 0 or stack.len != foreground_bytes or
+    if (@atomicLoad(u32, &foreground_high, .acquire) != 0 or (stack.len != foreground_bytes and stack.len != evaluation_bytes) or
         low % 16 != 0 or low < 0x48030000 or low > 0x4a000000 - stack.len) return false;
     foreground_low = @intCast(low);
     @atomicStore(u32, &foreground_high, @intCast(low + stack.len), .release);

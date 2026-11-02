@@ -1,0 +1,323 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "1.29",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (simpson f a b n) (let ((h (/ (- b a) n))) (define (term k) (* (cond ((or (= k 0) (= k n)) 1) ((even? k) 2) (else 4)) (f (+ a (* k h))))) (* (/ h 3) (sum term 0 inc n))))",
+      "expression": "(simpson cube 0 1 2)",
+      "expected": "1/4",
+      "observed": "1/4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.29",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (simpson f a b n) (let ((h (/ (- b a) n))) (define (term k) (* (cond ((or (= k 0) (= k n)) 1) ((even? k) 2) (else 4)) (f (+ a (* k h))))) (* (/ h 3) (sum term 0 inc n))))",
+      "expression": "(simpson cube 0 1 4)",
+      "expected": "1/4",
+      "observed": "1/4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.29",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (simpson f a b n) (let ((h (/ (- b a) n))) (define (term k) (* (cond ((or (= k 0) (= k n)) 1) ((even? k) 2) (else 4)) (f (+ a (* k h))))) (* (/ h 3) (sum term 0 inc n))))",
+      "expression": "(simpson cube 0 1 6)",
+      "expected": "1/4",
+      "observed": "1/4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.29",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (simpson f a b n) (let ((h (/ (- b a) n))) (define (term k) (* (cond ((or (= k 0) (= k n)) 1) ((even? k) 2) (else 4)) (f (+ a (* k h))))) (* (/ h 3) (sum term 0 inc n))))",
+      "expression": "(simpson cube 0 1 10)",
+      "expected": "1/4",
+      "observed": "1/4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.30",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (sum term a next b) (define (iter x result) (if (> x b) result (iter (next x) (+ result (term x))))) (iter a 0))",
+      "expression": "(sum (lambda (x) (* x x)) 1 inc 5)",
+      "expected": "55",
+      "observed": "55",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.30",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (sum term a next b) (define (iter x result) (if (> x b) result (iter (next x) (+ result (term x))))) (iter a 0))",
+      "expression": "(sum (lambda (x) x) 1 inc 50)",
+      "expected": "1275",
+      "observed": "1275",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.31",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (product term a next b) (define (iter x result) (if (> x b) result (iter (next x) (* result (term x))))) (iter a 1))",
+      "expression": "(product (lambda (x) x) 1 inc 0)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.31",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (product term a next b) (define (iter x result) (if (> x b) result (iter (next x) (* result (term x))))) (iter a 1))",
+      "expression": "(product (lambda (x) x) 1 inc 5)",
+      "expected": "120",
+      "observed": "120",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.31",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (product term a next b) (define (iter x result) (if (> x b) result (iter (next x) (* result (term x))))) (iter a 1))",
+      "expression": "(product (lambda (x) x) 1 inc 8)",
+      "expected": "40320",
+      "observed": "40320",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.32",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (accumulate combine null-value term a next b) (if (> a b) null-value (combine (term a) (accumulate combine null-value term (next a) next b))))",
+      "expression": "(accumulate + 0 (lambda (x) (* x x)) 1 inc 5)",
+      "expected": "55",
+      "observed": "55",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.32",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (accumulate combine null-value term a next b) (if (> a b) null-value (combine (term a) (accumulate combine null-value term (next a) next b))))",
+      "expression": "(accumulate * 1 (lambda (x) x) 1 inc 5)",
+      "expected": "120",
+      "observed": "120",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.33",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (filtered-accumulate pred combine null-value term a next b) (if (> a b) null-value (combine (if (pred a) (term a) null-value) (filtered-accumulate pred combine null-value term (next a) next b))))",
+      "expression": "(filtered-accumulate odd? + 0 (lambda (x) (* x x)) 1 inc 9)",
+      "expected": "165",
+      "observed": "165",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.33",
+      "setup": "(define (inc x) (+ x 1)) (define (cube x) (* x x x))\n(define (sum term a next b) (if (> a b) 0 (+ (term a) (sum term (next a) next b))))\n(define (filtered-accumulate pred combine null-value term a next b) (if (> a b) null-value (combine (if (pred a) (term a) null-value) (filtered-accumulate pred combine null-value term (next a) next b))))",
+      "expression": "(filtered-accumulate (lambda (x) (= (gcd x 10) 1)) * 1 (lambda (x) x) 1 inc 10)",
+      "expected": "189",
+      "observed": "189",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.35",
+      "setup": "(define (fixed-point f guess) (let ((next (f guess))) (if (< (abs (- next guess)) 0.00001) next (fixed-point f next))))",
+      "expression": "(let ((v (fixed-point (lambda (x) (+ 1 (/ 1 x))) 1.0))) (and (> v 1.618) (< v 1.619)))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac (lambda (i) 1) (lambda (i) 1) 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac (lambda (i) 1) (lambda (i) 1) 3)",
+      "expected": "2/3",
+      "observed": "2/3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 3)",
+      "expected": "2/3",
+      "observed": "2/3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac (lambda (i) 1) (lambda (i) 1) 5)",
+      "expected": "5/8",
+      "observed": "5/8",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 5)",
+      "expected": "5/8",
+      "observed": "5/8",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac (lambda (i) 1) (lambda (i) 1) 8)",
+      "expected": "21/34",
+      "observed": "21/34",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.37",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(cont-frac-iter (lambda (i) 1) (lambda (i) 1) 8)",
+      "expected": "21/34",
+      "observed": "21/34",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.38",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 3))",
+      "expected": "11/4",
+      "observed": "11/4",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.38",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 5))",
+      "expected": "87/32",
+      "observed": "87/32",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.38",
+      "setup": "(define (cont-frac n d k) (define (iter i) (if (> i k) 0 (/ (n i) (+ (d i) (iter (+ i 1)))))) (iter 1))\n(define (cont-frac-iter n d k) (define (iter i acc) (if (= i 0) acc (iter (- i 1) (/ (n i) (+ (d i) acc))))) (iter k 0))",
+      "expression": "(+ 2 (cont-frac (lambda (i) 1) (lambda (i) (if (= (remainder i 3) 2) (* 2 (quotient (+ i 1) 3)) 1)) 8))",
+      "expected": "1264/465",
+      "observed": "1264/465",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.39",
+      "setup": "(define (tan-cf x k) (define (iter i) (if (> i k) 0 (/ (if (= i 1) x (- (* x x))) (+ (- (* 2 i) 1) (iter (+ i 1)))))) (iter 1))",
+      "expression": "(tan-cf 1 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.39",
+      "setup": "(define (tan-cf x k) (define (iter i) (if (> i k) 0 (/ (if (= i 1) x (- (* x x))) (+ (- (* 2 i) 1) (iter (+ i 1)))))) (iter 1))",
+      "expression": "(tan-cf 1 2)",
+      "expected": "3/2",
+      "observed": "3/2",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.39",
+      "setup": "(define (tan-cf x k) (define (iter i) (if (> i k) 0 (/ (if (= i 1) x (- (* x x))) (+ (- (* 2 i) 1) (iter (+ i 1)))))) (iter 1))",
+      "expression": "(tan-cf 1 3)",
+      "expected": "14/9",
+      "observed": "14/9",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.40",
+      "setup": "(define (cubic a b c) (lambda (x) (+ (* x x x) (* a x x) (* b x) c)))",
+      "expression": "((cubic 1 2 3) 2)",
+      "expected": "19",
+      "observed": "19",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.41",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))",
+      "expression": "(((double (double double)) (lambda (x) (+ x 1))) 5)",
+      "expected": "21",
+      "observed": "21",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.42",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))",
+      "expression": "((compose (lambda (x) (* x x)) (lambda (x) (+ x 1))) 5)",
+      "expected": "36",
+      "observed": "36",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.43",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))",
+      "expression": "((repeated (lambda (x) (* x x)) 2) 5)",
+      "expected": "625",
+      "observed": "625",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.43",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))",
+      "expression": "((repeated (lambda (x) (+ x 1)) 5) 0)",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.44",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))\n(define dx 1) (define (smooth f) (lambda (x) (/ (+ (f (- x dx)) (f x) (f (+ x dx))) 3)))",
+      "expression": "((smooth (lambda (x) (* x x))) 3)",
+      "expected": "29/3",
+      "observed": "29/3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.44",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))\n(define dx 1) (define (smooth f) (lambda (x) (/ (+ (f (- x dx)) (f x) (f (+ x dx))) 3)))",
+      "expression": "(((repeated smooth 2) (lambda (x) (* x x))) 3)",
+      "expected": "31/3",
+      "observed": "31/3",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.45",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))\n(define (fixed-point f guess) (let ((next (f guess))) (if (< (abs (- next guess)) 0.00001) next (fixed-point f next))))\n(define (average-damp f) (lambda (x) (/ (+ x (f x)) 2)))\n(define (nth-root x n count) (fixed-point ((repeated average-damp count) (lambda (y) (/ x (expt y (- n 1))))) 1.0))",
+      "expression": "(let ((r (nth-root 16 4 2))) (< (abs (- r 2.0)) 0.001))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.45",
+      "setup": "(define (double f) (lambda (x) (f (f x))))\n(define (compose f g) (lambda (x) (f (g x))))\n(define (repeated f n) (if (= n 0) (lambda (x) x) (compose f (repeated f (- n 1)))))\n(define (fixed-point f guess) (let ((next (f guess))) (if (< (abs (- next guess)) 0.00001) next (fixed-point f next))))\n(define (average-damp f) (lambda (x) (/ (+ x (f x)) 2)))\n(define (nth-root x n count) (fixed-point ((repeated average-damp count) (lambda (y) (/ x (expt y (- n 1))))) 1.0))",
+      "expression": "(let ((r (nth-root 27 3 1))) (< (abs (- r 3.0)) 0.001))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.46",
+      "setup": "(define (iterative-improve good? improve) (lambda (guess) (if (good? guess) guess ((iterative-improve good? improve) (improve guess)))))",
+      "expression": "((iterative-improve (lambda (x) (= x 5)) (lambda (x) (+ x 1))) 0)",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "1.46",
+      "setup": "(define (iterative-improve good? improve) (lambda (guess) (if (good? guess) guess ((iterative-improve good? improve) (improve guess)))))",
+      "expression": "(let ((r ((iterative-improve (lambda (g) (< (abs (- (* g g) 4.0)) 0.001)) (lambda (g) (/ (+ g (/ 4.0 g)) 2.0))) 1.0))) (< (abs (- (* r r) 4.0)) 0.001))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 39
+  },
+  "note": "Finite independently written candidates; exact Fraction oracles for rational results and tolerance checks for inexact roots. No timing, full proofs, or all-input claims."
+}

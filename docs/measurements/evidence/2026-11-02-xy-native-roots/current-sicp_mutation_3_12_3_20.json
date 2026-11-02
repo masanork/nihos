@@ -1,0 +1,195 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "3.12",
+      "setup": "(define (last-pair x) (if (null? (cdr x)) x (last-pair (cdr x))))\n(define (append! x y) (set-cdr! (last-pair x) y) x)",
+      "expression": "(let* ((x (list 'a 'b)) (y (list 'c 'd)) (z (append x y))) (list z (cdr x)))",
+      "expected": "((a b c d) (b))",
+      "observed": "((a b c d) (b))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.12",
+      "setup": "(define (last-pair x) (if (null? (cdr x)) x (last-pair (cdr x))))\n(define (append! x y) (set-cdr! (last-pair x) y) x)",
+      "expression": "(let* ((x (list 'a 'b)) (y (list 'c 'd)) (w (append! x y))) (list w (cdr x)))",
+      "expected": "((a b c d) (b c d))",
+      "observed": "((a b c d) (b c d))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.13",
+      "setup": "(define (last-pair x) (if (null? (cdr x)) x (last-pair (cdr x))))\n(define (make-cycle x) (set-cdr! (last-pair x) x) x)",
+      "expression": "(let ((z (make-cycle (list 'a 'b 'c)))) (eq? (cdr (cdr (cdr z))) z))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.13",
+      "setup": "(define (last-pair x) (if (null? (cdr x)) x (last-pair (cdr x))))\n(define (make-cycle x) (set-cdr! (last-pair x) x) x)",
+      "expression": "(let ((z (make-cycle (list 'a 'b 'c)))) (list? z))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.14",
+      "setup": "(define (mystery x) (define (loop x y) (if (null? x) y (let ((temp (cdr x))) (set-cdr! x y) (loop temp x)))) (loop x '()))",
+      "expression": "(let* ((v (list 'a 'b 'c 'd)) (w (mystery v))) (list w v))",
+      "expected": "((d c b a) (a))",
+      "observed": "((d c b a) (a))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.14",
+      "setup": "(define (mystery x) (define (loop x y) (if (null? x) y (let ((temp (cdr x))) (set-cdr! x y) (loop temp x)))) (loop x '()))",
+      "expression": "(mystery '())",
+      "expected": "()",
+      "observed": "()",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.15",
+      "setup": "(define (set-to-wow! x) (set-car! (car x) 'wow) x)",
+      "expression": "(let* ((x (list 'a 'b)) (z1 (cons x x)) (z2 (cons (list 'a 'b) (list 'a 'b)))) (set-to-wow! z1) (set-to-wow! z2) (list z1 z2))",
+      "expected": "(((wow b) wow b) ((wow b) a b))",
+      "observed": "(((wow b) wow b) ((wow b) a b))",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.16",
+      "setup": "(define (count-pairs x) (if (not (pair? x)) 0 (+ (count-pairs (car x)) (count-pairs (cdr x)) 1)))",
+      "expression": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b b))) (count-pairs c))",
+      "expected": "7",
+      "observed": "7",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.16",
+      "setup": "(define (count-pairs x) (if (not (pair? x)) 0 (+ (count-pairs (car x)) (count-pairs (cdr x)) 1)))",
+      "expression": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b '()))) (count-pairs c))",
+      "expected": "4",
+      "observed": "4",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.16",
+      "setup": "(define (count-pairs x) (if (not (pair? x)) 0 (+ (count-pairs (car x)) (count-pairs (cdr x)) 1)))",
+      "expression": "(count-pairs (list 'a 'b 'c))",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.17",
+      "setup": "(define (count-pairs x) (let ((seen '())) (define (walk x) (cond ((not (pair? x)) 0) ((memq x seen) 0) (else (set! seen (cons x seen)) (+ 1 (walk (car x)) (walk (cdr x)))))) (walk x)))",
+      "expression": "(let* ((a (list 'x)) (b (cons a a)) (c (cons b b))) (count-pairs c))",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.17",
+      "setup": "(define (count-pairs x) (let ((seen '())) (define (walk x) (cond ((not (pair? x)) 0) ((memq x seen) 0) (else (set! seen (cons x seen)) (+ 1 (walk (car x)) (walk (cdr x)))))) (walk x)))",
+      "expression": "(let ((a (list 'x))) (set-cdr! a a) (count-pairs a))",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.17",
+      "setup": "(define (count-pairs x) (let ((seen '())) (define (walk x) (cond ((not (pair? x)) 0) ((memq x seen) 0) (else (set! seen (cons x seen)) (+ 1 (walk (car x)) (walk (cdr x)))))) (walk x)))",
+      "expression": "(count-pairs (list 'a 'b 'c))",
+      "expected": "3",
+      "observed": "3",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.18",
+      "setup": "(define (cycle? xs) (define (iter p seen) (cond ((not (pair? p)) #f) ((memq p seen) #t) (else (iter (cdr p) (cons p seen))))) (iter xs '()))",
+      "expression": "(cycle? (list 'a 'b 'c))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.18",
+      "setup": "(define (cycle? xs) (define (iter p seen) (cond ((not (pair? p)) #f) ((memq p seen) #t) (else (iter (cdr p) (cons p seen))))) (iter xs '()))",
+      "expression": "(let ((a (list 'x))) (set-cdr! a a) (cycle? a))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.18",
+      "setup": "(define (cycle? xs) (define (iter p seen) (cond ((not (pair? p)) #f) ((memq p seen) #t) (else (iter (cdr p) (cons p seen))))) (iter xs '()))",
+      "expression": "(let* ((a (list 'a 'b 'c)) (b (cdr a))) (set-cdr! (cdr b) b) (cycle? a))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.18",
+      "setup": "(define (cycle? xs) (define (iter p seen) (cond ((not (pair? p)) #f) ((memq p seen) #t) (else (iter (cdr p) (cons p seen))))) (iter xs '()))",
+      "expression": "(cycle? (cons 'a 'b))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.19",
+      "setup": "(define (cycle? xs) (define (iter slow fast) (if (or (not (pair? fast)) (not (pair? (cdr fast)))) #f (let ((a (cdr slow)) (b (cdr (cdr fast)))) (if (eq? a b) #t (iter a b))))) (iter xs xs))",
+      "expression": "(cycle? (list 'a 'b 'c))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.19",
+      "setup": "(define (cycle? xs) (define (iter slow fast) (if (or (not (pair? fast)) (not (pair? (cdr fast)))) #f (let ((a (cdr slow)) (b (cdr (cdr fast)))) (if (eq? a b) #t (iter a b))))) (iter xs xs))",
+      "expression": "(let ((a (list 'x))) (set-cdr! a a) (cycle? a))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.19",
+      "setup": "(define (cycle? xs) (define (iter slow fast) (if (or (not (pair? fast)) (not (pair? (cdr fast)))) #f (let ((a (cdr slow)) (b (cdr (cdr fast)))) (if (eq? a b) #t (iter a b))))) (iter xs xs))",
+      "expression": "(let* ((a (list 'a 'b 'c)) (b (cdr a))) (set-cdr! (cdr b) b) (cycle? a))",
+      "expected": "#t",
+      "observed": "#t",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.19",
+      "setup": "(define (cycle? xs) (define (iter slow fast) (if (or (not (pair? fast)) (not (pair? (cdr fast)))) #f (let ((a (cdr slow)) (b (cdr (cdr fast)))) (if (eq? a b) #t (iter a b))))) (iter xs xs))",
+      "expression": "(cycle? (cons 'a 'b))",
+      "expected": "#f",
+      "observed": "#f",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.20",
+      "setup": "(define (cons x y) (define (set-x! v) (set! x v)) (define (set-y! v) (set! y v)) (lambda (m) (cond ((eq? m 'car) x) ((eq? m 'cdr) y) ((eq? m 'set-car!) set-x!) ((eq? m 'set-cdr!) set-y!))))\n(define (car z) (z 'car)) (define (cdr z) (z 'cdr)) (define (set-car! z v) ((z 'set-car!) v)) (define (set-cdr! z v) ((z 'set-cdr!) v))",
+      "expression": "(let* ((x (cons 1 2)) (z (cons x x))) (set-car! (cdr z) 17) (car x))",
+      "expected": "17",
+      "observed": "17",
+      "status": "matched"
+    },
+    {
+      "exercise": "3.20",
+      "setup": "(define (cons x y) (define (set-x! v) (set! x v)) (define (set-y! v) (set! y v)) (lambda (m) (cond ((eq? m 'car) x) ((eq? m 'cdr) y) ((eq? m 'set-car!) set-x!) ((eq? m 'set-cdr!) set-y!))))\n(define (car z) (z 'car)) (define (cdr z) (z 'cdr)) (define (set-car! z v) ((z 'set-car!) v)) (define (set-cdr! z v) ((z 'set-cdr!) v))",
+      "expression": "(let ((x (cons 1 2))) (set-cdr! x 9) (cdr x))",
+      "expected": "9",
+      "observed": "9",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 23
+  },
+  "note": "Finite isolated sharing/cycle observations. Code is a candidate except where following the printed textbook procedures; diagrams, unbounded behavior and literal mutation are not graded."
+}

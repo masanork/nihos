@@ -1,0 +1,5 @@
+1/2 stress.test.let body retains its local environment...let_gc_free_cells=3525
+OK
+2/2 stress.test.cond body retains the selected clause...cond_gc_free_cells=3531
+OK
+All 2 tests passed.

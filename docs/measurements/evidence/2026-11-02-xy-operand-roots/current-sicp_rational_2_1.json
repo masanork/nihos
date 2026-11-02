@@ -1,0 +1,51 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "candidate": "(define (make-rat n d) (let* ((g (gcd n d)) (a (/ n g)) (b (/ d g)) (sign (if (< b 0) -1 1))) (cons (* sign a) (* sign b))))",
+  "cases": [
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat 6 8)",
+      "expected": "(3 . 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat 6 -8)",
+      "expected": "(-3 . 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat -6 8)",
+      "expected": "(-3 . 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat -6 -8)",
+      "expected": "(3 . 4)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat 0 -5)",
+      "expected": "(0 . 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat 10 2)",
+      "expected": "(5 . 1)",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.1",
+      "expression": "(make-rat 1 1)",
+      "expected": "(1 . 1)",
+      "status": "matched"
+    }
+  ],
+  "test_log": "1/7 cases.test.case_0...OK\n2/7 cases.test.case_1...OK\n3/7 cases.test.case_2...OK\n4/7 cases.test.case_3...OK\n5/7 cases.test.case_4...OK\n6/7 cases.test.case_5...OK\n7/7 cases.test.case_6...OK\nAll 7 tests passed.\n"
+}

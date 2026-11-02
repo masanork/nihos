@@ -317,6 +317,12 @@ SECTIONS
     .flash.xytext : ALIGN(16) {
         __flash_xy_start = .;
         *xy_render.o(.text .text.*)
+        *xy_decimal.o(.text .text.*)
+#if !NIH_NATIVE_SQLD && !NIH_NATIVE_WASM
+        /* The XY-only non-sqld profile uses these soft-float helpers from
+         * foreground decimal arithmetic. Keep them in mapped code with XY. */
+        *(.text.compiler_rt.addf3.* .text.compiler_rt.divdf3.*)
+#endif
         *(.flash.xytext .flash.xytext.*)
 #if NIH_NATIVE_EXPERIMENTAL_TCP
         /* Foreground-only network owner; never used by an IRQ or cache-off path. */
@@ -332,6 +338,7 @@ SECTIONS
     .flash.xyrodata : ALIGN(16) {
         __flash_xy_rodata_start = .;
         *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
+        *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
         /* LLVM's switch tables do not inherit the function's linksection.
          * The bounded Scheme evaluator is foreground-only mapped Flash code;
          * keep its generated read-only tables with that same owner. */

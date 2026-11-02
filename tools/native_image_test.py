@@ -158,6 +158,26 @@ class NativeInstructionTests(unittest.TestCase):
         functions = [('xy.scheme_runtime.Runtime.evaluate__func_1', start, start + 16),
                      ('xy.scheme_runtime.Runtime.collect', start + 16, start + 32)]
         self.assertEqual(len(MODULE.audit_xy_functions(functions, (start, start + 32))), 2)
+        continuation = 'xy.scheme_runtime.ContinuationState.push'
+        candidate = functions + [(continuation, start + 32, start + 48)]
+        self.assertEqual(len(MODULE.audit_xy_functions(candidate, (start, start + 48))), 3)
+        self.assertFalse(MODULE.xy_function('xy.scheme_runtime.ContinuationState.unapproved'))
+        with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
+            MODULE.audit_xy_functions(candidate + [(continuation, 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        soft_float = functions + [('__divdf3', start + 32, start + 48)]
+        self.assertEqual(len(MODULE.audit_xy_functions(soft_float, (start, start + 48))), 3)
+        with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
+            MODULE.audit_xy_functions(soft_float + [('__divdf3', 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        for name in ('normalizeFraction', 'fraction', 'fractionNumber', 'emitInteger', 'parseInexact', 'formatInexact', 'inexactNumber', 'asInexact', 'radixInteger', 'exactDecimal', 'prefixedNumber', 'compareExactInexact', 'compareNumbers', 'roundInexact', 'numericOdd', 'boundedInteger', 'integerResult', 'integerGcd', 'expandApply', 'isApplyProcedure', 'equivalent', 'equalValues', 'formals', 'bindFormals', 'collectTail', 'maybeCollectBoundary'):
+            extra = functions + [(f'xy.scheme_runtime.Runtime.{name}', start + 32, start + 48)]
+            self.assertEqual(len(MODULE.audit_xy_functions(extra, (start, start + 48))), 3)
+        with self.assertRaises(ValueError):
+            MODULE.audit_xy_functions(functions + [('xy.scheme_runtime.Runtime.fractionUnsafe', start + 32, start + 48)], (start, start + 48))
+        self.assertTrue(MODULE.xy_function('fmt.parse_float.parse.tryParseNDigits__func_42'))
+        self.assertFalse(MODULE.xy_function('fmt.parse_float.parse.tryParseNDigits__func_bad'))
+        self.assertFalse(MODULE.xy_function('fmt.parse_float.parse.unapproved__func_42'))
+        self.assertTrue(MODULE.xy_function('diagnostic_ui.prepareXyWorkspace__func_42'))
+        self.assertFalse(MODULE.xy_function('diagnostic_ui.prepareXyWorkspace__func_bad'))
         handoff = functions + [('diagnostic_ui.beginSession__func_1', start + 32, start + 48)]
         self.assertEqual(len(MODULE.audit_xy_functions(handoff, (start, start + 48))), 3)
         for name in ('diagnostic_ui.beginSession__func_bad', 'diagnostic_ui.beginSession__func_1.extra', 'diagnostic_ui.arbitrary__func_1'):
@@ -222,6 +242,8 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertEqual(len(MODULE.audit_time_functions(moved, (start, start + len(remaining)*16))), len(remaining))
         with self.assertRaises(ValueError):
             MODULE.audit_time_functions(moved[:-1], (start, start + len(remaining)*16))
+        self.assertTrue(MODULE.xy_function('ipv6.Client.tx'))
+        self.assertFalse(MODULE.time_function('ipv6.Client.tx'))
         MODULE.audit_flash_section('.flash.time', 1, 6, start, span[1]-start, allow_time=True)
         for changed in (functions[:-1], [('irq.unapproved', *functions[0][1:])] + functions[1:],
                         [(functions[0][0], start, start+20)] + functions[1:]):
@@ -263,10 +285,14 @@ class NativeInstructionTests(unittest.TestCase):
         span = (first, first + len(names) * 16)
         MODULE.audit_flash_section('.flash.devices', 1, 6, first, span[1] - first, allow_devices=True)
         self.assertEqual(len(MODULE.audit_device_functions(functions, span)), len(names))
-        optional = sorted(MODULE.CAMERA_FOREGROUND_FUNCTIONS) + ['diagnostic_ui.input__func_16', 'diagnostic_ui.poll__func_17', 'diagnostic_ui.sessionKey__func_18']
+        optional = sorted(MODULE.CAMERA_FOREGROUND_FUNCTIONS) + ['diagnostic_ui.input__func_16', 'diagnostic_ui.poll__func_17', 'diagnostic_ui.sessionKey__func_18', 'diagnostic_ui.action__func_19', 'diagnostic_ui.liveReport__func_20']
         extended = functions + [(name, span[1] + i * 16, span[1] + (i + 1) * 16) for i, name in enumerate(optional)]
         self.assertEqual(len(MODULE.audit_device_functions(extended, (first, extended[-1][2]))), len(extended))
-        for name in ('diagnostic_ui.input__func_bad', 'diagnostic_ui.input__func_16.extra', 'diagnostic_ui.poll__func_bad', 'diagnostic_ui.sessionKey__func_18.extra', 'board_devices.arbitrary'):
+        for moved in ('board_devices.poll', 'board_devices.requestDevice', 'main.serviceNetwork',
+                      'diagnostic_ui.action__func_19', 'diagnostic_ui.liveReport__func_20'):
+            with self.subTest(name=moved), self.assertRaisesRegex(ValueError, 'copy outside Flash'):
+                MODULE.audit_device_functions(extended + [(moved, 0x4ff01000, 0x4ff01020)], (first, extended[-1][2]))
+        for name in ('diagnostic_ui.input__func_bad', 'diagnostic_ui.input__func_16.extra', 'diagnostic_ui.poll__func_bad', 'diagnostic_ui.sessionKey__func_18.extra', 'diagnostic_ui.action__func_bad', 'diagnostic_ui.liveReport__func_20.extra', 'board_devices.arbitrary'):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 MODULE.audit_device_functions(extended[:-1] + [(name, *extended[-1][1:])], (first, extended[-1][2]))
         for kind, flags, allowed in ((1, 6, False), (8, 6, True), (1, 7, True), (1, 2, True)):
