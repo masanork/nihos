@@ -6,19 +6,22 @@ const hosted = @import("hosted.zig");
 const arp = @import("arp_resolver.zig");
 const tcp = @import("tcp_link.zig");
 const connect = @import("tcp_connect.zig");
-pub const Error = hosted.Error || tcp.Error || error{ NoLease, StaleHandle, EpochExhausted, PartialFrame };
+pub const Error = hosted.Error || tcp.Error || error{ NoLease, StaleHandle, EpochExhausted, PartialFrame, PortAlreadyUsed, AttemptLimit };
 pub const Handle = struct { generation: u64, id: u64 };
 pub const Tx = struct { bytes: []const u8, newly_staged: bool };
 // Normal C6 ProfileStream sends one complete Hosted frame, at most 512 bytes.
 // Current TCP data packets use 12 Hosted + 14 Ethernet + 20 IPv4 + 20 TCP bytes.
 pub const max_frame = 512;
 pub const max_write = max_frame - 12 - 14 - 20 - 20;
+/// Never reuse a local port within a lease generation, even after failure.
+pub const max_attempts = 32;
 pub const Service = struct {
     lease: ?arp.Lease = null,
     generation: u64 = 0,
     next_id: u64 = 0,
     current: ?Handle = null,
-    started: bool = false,
+    used_ports: [max_attempts]u16 = @splat(0),
+    attempts: usize = 0,
     exhausted: bool = false,
     link: ?tcp.Link = null,
     frame: [1512]u8 = @splat(0),
@@ -36,13 +39,18 @@ pub const Service = struct {
         }
         self.generation += 1;
         self.lease = lease;
-        self.started = false;
+        self.used_ports = @splat(0);
+        self.attempts = 0;
     }
     pub fn open(self: *Service, remote: connect.Endpoint, local_port: u16, initial_seq: u32, now: u64, deadline: u64) Error!Handle {
         if (self.exhausted) return error.EpochExhausted;
-        if (self.started) return error.Busy;
+        if (self.current != null) return error.Busy;
         var lease = self.lease orelse return error.NoLease;
         if (lease.epoch == 0) return error.InvalidArgument;
+        for (self.used_ports[0..self.attempts]) |port| {
+            if (port == local_port) return error.PortAlreadyUsed;
+        }
+        if (self.attempts == max_attempts) return error.AttemptLimit;
         if (self.next_id == std.math.maxInt(u64)) {
             self.exhausted = true;
             return error.EpochExhausted;
@@ -57,7 +65,8 @@ pub const Service = struct {
         self.next_id += 1;
         const handle = Handle{ .generation = self.generation, .id = self.next_id };
         self.current = handle;
-        self.started = true;
+        self.used_ports[self.attempts] = local_port;
+        self.attempts += 1;
         return handle;
     }
     /// Caller reserves sequence when newly_staged is true, even if the frame
@@ -168,7 +177,7 @@ test "lease change and ambiguous transmit invalidate handles and frames" {
     try service.sent(handle, 0, 1);
     try std.testing.expectError(error.PartialFrame, service.sent(handle, 1, 2));
     try std.testing.expectError(error.StaleHandle, service.ready(handle));
-    try std.testing.expectError(error.Busy, service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 123, 3, 5000));
+    try std.testing.expectError(error.PortAlreadyUsed, service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 123, 3, 5000));
     try service.sync(null);
     try service.sync(lease);
     const replacement = try service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 124, 4, 5000);
@@ -193,4 +202,24 @@ test "owner reset revokes a staged frame even when address is unchanged" {
     const replacement = try service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 124, 2, 5000);
     try std.testing.expect(!std.meta.eql(old, replacement));
     try std.testing.expect(!(try service.ready(replacement)));
+}
+
+test "sequential attempts use distinct ports and remain bounded" {
+    var service: Service = .{};
+    const lease = arp.Lease{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 }, .epoch = 7 };
+    const remote = connect.Endpoint{ .address = lease.gateway, .port = 22 };
+    try service.sync(lease);
+    var first: Handle = undefined;
+    for (0..max_attempts) |i| {
+        const port: u16 = @intCast(50000 + i);
+        const handle = try service.open(remote, port, 123, 0, 5000);
+        if (i == 0) first = handle else try std.testing.expectError(error.StaleHandle, service.ready(first));
+        try std.testing.expectError(error.Busy, service.open(remote, port + 100, 124, 0, 5000));
+        service.invalidate();
+        try std.testing.expectError(error.PortAlreadyUsed, service.open(remote, port, 124, 0, 5000));
+    }
+    try std.testing.expectError(error.AttemptLimit, service.open(remote, 51000, 124, 0, 5000));
+    try service.sync(null);
+    try service.sync(lease);
+    _ = try service.open(remote, 50000, 125, 0, 5000);
 }
