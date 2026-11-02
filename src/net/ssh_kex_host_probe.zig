@@ -4,6 +4,7 @@ const handshake = @import("ssh_handshake.zig");
 const transport = @import("ssh_transport.zig");
 const socket_pump = @import("ssh_socket_pump.zig");
 const session = @import("ssh_session.zig");
+const kex_driver = @import("ssh_kex_driver.zig");
 var wire: transport.Transport = .{};
 var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
 const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
@@ -34,6 +35,21 @@ export fn probe_pause(paused: bool) void {
 }
 var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
+var driver: ?kex_driver.Driver = null;
+
+export fn probe_driver_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, banner_len: usize) bool {
+    driver = .{ .handshake = .{ .secret = secret.*, .pin = pin.* }, .cookie = cookie.* };
+    const value = if (driver) |*v| v else return false;
+    value.begin(banner[0..banner_len]) catch return false;
+    return true;
+}
+export fn probe_driver_step(random: *const [32]u8) isize {
+    const value = if (driver) |*v| v else return -1;
+    const done = value.step(&wire, random) catch |err| return if (err == error.HostKeyMismatch) -2 else -1;
+    if (!done) return 0;
+    if (ssh_session == null) ssh_session = .{ .session_id = value.session_id orelse return -1 };
+    return 1;
+}
 
 export fn probe_init(out: [*]u8, cap: usize, cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, banner_len: usize) usize {
     hs = .{ .secret = secret.*, .pin = pin.* };

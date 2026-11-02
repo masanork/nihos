@@ -86,6 +86,11 @@ The SSH/libslirp bridge also uses `ssh_hosted_tcp_io.zig` for TCP stream
 reads and writes. Its station lease remains synthetic; this is not a live
 native network-service or device test.
 
+An optional `NIHOS_SSH_AUTOKEX=1` host run advances first key exchange using
+`ssh_kex_driver.zig` rather than the Python test's individual KEX calls. The
+fixture still exchanges identification lines and supplies fresh random bytes.
+An additional host-socket control uses an incorrect pin and expects rejection.
+
 Run the SSH variant with `SLIRP_PREFIX=/path/to/libslirp NIHOS_SSH_SLIRP=1
 ZIG=/path/to/zig python3 tools/ssh_openssh_probe.py`.
 

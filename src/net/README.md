@@ -49,6 +49,12 @@ each operation. The OpenSSH/libslirp host fixture uses this adapter. The
 experimental native network owner can construct one for an established TCP
 handle on CPU0; native xy does not yet use it.
 
+`ssh_kex_driver.zig` advances the first key exchange after the caller has
+exchanged SSH identification lines. It coordinates pending packet writes,
+host-pin verification and NEWKEYS activation, and clears secrets on failure.
+The OpenSSH host fixture exercises the driver and a wrong-pin control; banner
+I/O, production entropy and the native application remain outside this driver.
+
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final
 ACK; its result is only the handoff state for a future data-plane TCP client.

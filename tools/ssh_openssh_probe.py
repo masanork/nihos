@@ -94,6 +94,8 @@ def run():
         subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(lib), "src/net/ssh_kex_host_probe.zig"], cwd=ROOT, check=True)
         p = c.CDLL(str(lib))
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
+        p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
+        p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
         p.probe_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_server_init.restype = c.c_size_t
         p.probe_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_reply.restype = c.c_bool
         p.probe_newkeys.argtypes = [c.c_void_p, c.c_size_t]; p.probe_newkeys.restype = c.c_size_t
@@ -134,6 +136,11 @@ def run():
         key = tmp / "host"
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
+        bad_pin = os.environ.get("NIHOS_SSH_BADPIN") == "1"
+        if bad_pin:
+            if os.environ.get("NIHOS_SSH_AUTOKEX") != "1" or bridge:
+                raise ValueError("bad-pin control requires automatic KEX over a host socket")
+            pin = bytes([pin[0] ^ 1]) + pin[1:]
         with socket.socket() as picker:
             picker.bind(("127.0.0.1", 0)); port = picker.getsockname()[1]
         seed = buffer(os.urandom(32)); user_public = c.create_string_buffer(32)
@@ -203,27 +210,44 @@ def run():
                     if pause: p.probe_pause(True)
                     p.probe_release()
                     return result
-                out = c.create_string_buffer(512)
-                secret = buffer(os.urandom(32))
-                size = p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
-                assert size
-                client_init = out.raw[:size]
-                send(client_init)
-                server_init = raw_receive()
-                assert server_init[0] == 20
-                ecdh = c.create_string_buffer(64)
-                size = p.probe_server_init(buffer(server_init), len(server_init), ecdh, len(ecdh))
-                assert size
-                send(ecdh.raw[:size])
-                reply = raw_receive()
-                assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
-                newkeys = raw_receive(pause=True)
-                key_message = c.create_string_buffer(8)
-                size = p.probe_newkeys(key_message, len(key_message))
-                assert size
-                send(key_message.raw[:size])
-                assert p.probe_activate(buffer(newkeys), len(newkeys))
-                p.probe_pause(False)
+                if os.environ.get("NIHOS_SSH_AUTOKEX") == "1":
+                    assert p.probe_driver_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), buffer(server_banner), len(server_banner))
+                    deadline = time.monotonic() + (20 if bridge else 5)
+                    while True:
+                        state = p.probe_driver_step(buffer(os.urandom(32)))
+                        if state == -2 and bad_pin:
+                            print("SSH KEX driver rejected the wrong host pin: OK")
+                            return
+                        if state < 0: raise RuntimeError("SSH KEX driver failed")
+                        if state == 1:
+                            if bad_pin: raise RuntimeError("SSH KEX driver accepted the wrong host pin")
+                            break
+                        assert p.probe_poll(), "socket pump failed"
+                        if time.monotonic() > deadline: raise TimeoutError("SSH KEX driver timeout")
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                else:
+                    out = c.create_string_buffer(512)
+                    secret = buffer(os.urandom(32))
+                    size = p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
+                    assert size
+                    client_init = out.raw[:size]
+                    send(client_init)
+                    server_init = raw_receive()
+                    assert server_init[0] == 20
+                    ecdh = c.create_string_buffer(64)
+                    size = p.probe_server_init(buffer(server_init), len(server_init), ecdh, len(ecdh))
+                    assert size
+                    send(ecdh.raw[:size])
+                    reply = raw_receive()
+                    assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
+                    newkeys = raw_receive(pause=True)
+                    key_message = c.create_string_buffer(8)
+                    size = p.probe_newkeys(key_message, len(key_message))
+                    assert size
+                    send(key_message.raw[:size])
+                    assert p.probe_activate(buffer(newkeys), len(newkeys))
+                    p.probe_pause(False)
                 request_buffer = c.create_string_buffer(64)
                 request_len = p.probe_service(request_buffer, len(request_buffer))
                 assert request_len
