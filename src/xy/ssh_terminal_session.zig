@@ -76,7 +76,9 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
             return .{ .context = self, .snapshot = Callbacks.snapshot, .write = Callbacks.write, .close = Callbacks.close };
         }
         /// Bounded to one backend poll, one 256-byte read and one partial write.
-        /// Fresh cryptographic padding is needed on every call.
+        /// A fresh cryptographic seed is needed on every call. Separate
+        /// pseudorandom padding for poll, read and write avoids sharing a
+        /// padding value when more than one operation emits a packet.
         pub fn poll(self: *Self, now_us: u64, padding: *const [32]u8, username: []const u8, seed: [32]u8) anyerror!State {
             return self.advance(now_us, padding, username, seed) catch |err| {
                 self.state = .failed;
@@ -89,7 +91,17 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         }
         fn advance(self: *Self, now_us: u64, padding: *const [32]u8, username: []const u8, seed: [32]u8) anyerror!State {
             if (self.state == .failed or self.state == .closed) return error.InvalidState;
-            const status = try self.backend.poll(now_us, padding, username, seed);
+            var poll_padding: [32]u8 = undefined;
+            var read_padding: [32]u8 = undefined;
+            var write_padding: [32]u8 = undefined;
+            defer std.crypto.secureZero(u8, &poll_padding);
+            defer std.crypto.secureZero(u8, &read_padding);
+            defer std.crypto.secureZero(u8, &write_padding);
+            const Hmac = std.crypto.auth.hmac.sha2.HmacSha256;
+            Hmac.create(&poll_padding, "nihos ssh terminal poll", padding);
+            Hmac.create(&read_padding, "nihos ssh terminal read", padding);
+            Hmac.create(&write_padding, "nihos ssh terminal write", padding);
+            const status = try self.backend.poll(now_us, &poll_padding, username, seed);
             switch (status) {
                 .connecting => {
                     if (self.state != .connecting) return error.InvalidState;
@@ -104,12 +116,12 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
                 .ready => self.state = .ready,
             }
             var bytes: [256]u8 = undefined;
-            const n = try self.backend.read(now_us, padding, &bytes);
+            const n = try self.backend.read(now_us, &read_padding, &bytes);
             if (n > bytes.len) return error.InvalidIo;
             self.screen.feed(bytes[0..n]);
             if (n != 0) self.revision +%= 1;
             if (self.input_len != 0) {
-                const sent = try self.backend.write(now_us, padding, self.input[0..self.input_len]);
+                const sent = try self.backend.write(now_us, &write_padding, self.input[0..self.input_len]);
                 if (sent > self.input_len) return error.InvalidIo;
                 std.mem.copyForwards(u8, self.input[0 .. self.input_len - sent], self.input[sent..self.input_len]);
                 std.crypto.secureZero(u8, self.input[self.input_len - sent .. self.input_len]);
@@ -140,17 +152,23 @@ test "terminal bridges fragmented output and preserves partial key writes" {
         allow_write: bool = false,
         aborted: bool = false,
         fail_read: bool = false,
-        fn poll(_: *@This(), _: u64, _: *const [32]u8, _: []const u8, _: [32]u8) !Status {
+        poll_padding: [32]u8 = @splat(0),
+        read_padding: [32]u8 = @splat(0),
+        write_padding: [32]u8 = @splat(0),
+        fn poll(self: *@This(), _: u64, padding: *const [32]u8, _: []const u8, _: [32]u8) !Status {
+            self.poll_padding = padding.*;
             return .ready;
         }
-        fn read(self: *@This(), _: u64, _: *const [32]u8, out: []u8) !usize {
+        fn read(self: *@This(), _: u64, padding: *const [32]u8, out: []u8) !usize {
+            self.read_padding = padding.*;
             if (self.fail_read) return error.Backend;
             if (self.pos == self.source.len) return 0;
             out[0] = self.source[self.pos];
             self.pos += 1;
             return 1;
         }
-        fn write(self: *@This(), _: u64, _: *const [32]u8, bytes: []const u8) !usize {
+        fn write(self: *@This(), _: u64, padding: *const [32]u8, bytes: []const u8) !usize {
+            self.write_padding = padding.*;
             if (!self.allow_write) return 0;
             const n = @min(1, bytes.len);
             @memcpy(self.sent[self.used..][0..n], bytes[0..n]);
@@ -169,6 +187,13 @@ test "terminal bridges fragmented output and preserves partial key writes" {
     try session.key(.arrow_up, null);
     try session.key(.none, 0x3042);
     for (0..5) |i| _ = try session.poll(2 + i, &random, "user", @splat(0));
+    try std.testing.expect(!std.mem.eql(u8, &backend.poll_padding, &backend.read_padding));
+    try std.testing.expect(!std.mem.eql(u8, &backend.poll_padding, &backend.write_padding));
+    try std.testing.expect(!std.mem.eql(u8, &backend.read_padding, &backend.write_padding));
+    const previous_poll_padding = backend.poll_padding;
+    const next_random: [32]u8 = @splat(2);
+    _ = try session.poll(8, &next_random, "user", @splat(0));
+    try std.testing.expect(!std.mem.eql(u8, &previous_poll_padding, &backend.poll_padding));
     try std.testing.expectEqual(@as(usize, 6), session.input_len);
     try std.testing.expectEqual(@as(u32, 'A'), session.view().cells[0].codepoint);
     try std.testing.expectEqual(@as(u32, 0x3042), session.view().cells[1].codepoint);
