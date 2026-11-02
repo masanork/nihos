@@ -121,13 +121,14 @@ var host_network: HostNetwork = undefined;
 var controller: Controller = undefined;
 var profile: lifecycle.Profile = .{};
 export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
+    initialized = false;
     profile.clear();
     profile.set("10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex) catch return false;
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
     host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
     model.initInPlace();
     controller = Controller.init(&host_network, &ui, &model);
-    controller.begin(now, now +| 20_000_000, 20_000_000, profile.address, profile.port, 50001, 123) catch {
+    controller.beginProfile(&profile, now, now +| 20_000_000, 20_000_000, 50001, 123) catch {
         profile.clear();
         return false;
     };
@@ -136,8 +137,9 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
 }
 export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, cookie: *const [16]u8, random: *const [32]u8) isize {
     if (!initialized) return -1;
-    const material = lifecycle.Material{ .secret = secret.*, .pin = profile.pin, .cookie = cookie.* };
-    return switch (controller.poll(now, &material, random, profile.user(), profile.seed) catch |err| {
+    var entropy = lifecycle.ExchangeEntropy{ .secret = secret.*, .cookie = cookie.* };
+    defer @import("std").crypto.secureZero(u8, @import("std").mem.asBytes(&entropy));
+    return switch (controller.pollProfile(&profile, now, &entropy, random) catch |err| {
         profile.clear();
         return if (err == error.HostKeyMismatch) -2 else -1;
     }) {

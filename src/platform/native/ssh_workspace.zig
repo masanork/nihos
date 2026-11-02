@@ -2,7 +2,6 @@
 //! storage. Caller owns this stable controller, services the network owner,
 //! and supplies trusted host pins, client credentials and secure randomness.
 const network = @import("network_service");
-const std = @import("std");
 const console = @import("text_console");
 const bridge = @import("ssh_terminal_session");
 const lifecycle = @import("ssh_lifecycle");
@@ -10,7 +9,7 @@ const layout = @import("sqld_layout.zig");
 
 pub const Material = lifecycle.Material;
 pub const Profile = lifecycle.Profile;
-pub const ExchangeEntropy = struct { secret: [32]u8, cookie: [16]u8 };
+pub const ExchangeEntropy = lifecycle.ExchangeEntropy;
 pub const Model = console.scratch.Model;
 pub const Ui = bridge.Session(network.ExperimentalSshSession, 80, 24, 8);
 comptime {
@@ -65,22 +64,11 @@ pub const Workspace = struct {
     /// Profile must remain unchanged and caller-owned through authentication.
     /// Port and sequence must be securely selected; this API does not generate entropy.
     pub fn beginProfile(self: *Workspace, profile: *const Profile, now_us: u64, deadline_us: u64, close_timeout_us: u64, local_port: u16, sequence: u32) !void {
-        if (!profile.valid) return error.InvalidProfile;
-        try self.controller.begin(now_us, deadline_us, close_timeout_us, profile.address, profile.port, local_port, sequence);
+        try self.controller.beginProfile(profile, now_us, deadline_us, close_timeout_us, local_port, sequence);
     }
     /// Every call needs fresh padding; exchange entropy is needed once TCP is
     /// ready. The caller retains and erases profile and entropy storage.
     pub fn pollProfile(self: *Workspace, profile: *const Profile, now_us: u64, exchange: ?*const ExchangeEntropy, padding: *const [32]u8) !lifecycle.State {
-        if (!profile.valid) {
-            self.controller.cancel();
-            return error.InvalidProfile;
-        }
-        var material: Material = .{ .secret = @splat(0), .pin = @splat(0), .cookie = @splat(0) };
-        defer std.crypto.secureZero(u8, std.mem.asBytes(&material));
-        const supplied: ?*const Material = if (exchange) |entropy| blk: {
-            material = .{ .secret = entropy.secret, .pin = profile.pin, .cookie = entropy.cookie };
-            break :blk &material;
-        } else null;
-        return self.controller.poll(now_us, supplied, padding, profile.user(), profile.seed);
+        return self.controller.pollProfile(profile, now_us, exchange, padding);
     }
 };

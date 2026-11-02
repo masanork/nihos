@@ -4,6 +4,7 @@
 const std = @import("std");
 
 pub const Material = struct { secret: [32]u8, pin: [32]u8, cookie: [16]u8 };
+pub const ExchangeEntropy = struct { secret: [32]u8, cookie: [16]u8 };
 pub const State = enum { idle, opening, need_material, handshaking, ready, closing, closed, failed };
 
 /// Volatile caller-owned connection material. Never copy, persist, log or put
@@ -90,6 +91,27 @@ pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: typ
             self.close_timeout_us = close_timeout;
             self.last_us = now;
             self.state = .opening;
+        }
+        /// Profile remains caller-owned and unchanged throughout authentication.
+        /// The local port and sequence must be selected securely by the caller.
+        pub fn beginProfile(self: *Self, profile: *const Profile, now: u64, deadline: u64, close_timeout: u64, local_port: u16, sequence: u32) !void {
+            if (!profile.valid) return error.InvalidProfile;
+            try self.begin(now, deadline, close_timeout, profile.address, profile.port, local_port, sequence);
+        }
+        /// Caller supplies fresh padding on every call and wipes its profile and
+        /// exchange entropy after use. No entropy source is provided here.
+        pub fn pollProfile(self: *Self, profile: *const Profile, now: u64, exchange: ?*const ExchangeEntropy, padding: *const [32]u8) !State {
+            if (!profile.valid) {
+                self.cancel();
+                return error.InvalidProfile;
+            }
+            var material: Material = .{ .secret = @splat(0), .pin = @splat(0), .cookie = @splat(0) };
+            defer std.crypto.secureZero(u8, std.mem.asBytes(&material));
+            const supplied: ?*const Material = if (exchange) |entropy| blk: {
+                material = .{ .secret = entropy.secret, .pin = profile.pin, .cookie = entropy.cookie };
+                break :blk &material;
+            } else null;
+            return self.poll(now, supplied, padding, profile.user(), profile.seed);
         }
         /// Supply fresh padding for every call. Material is used only when TCP
         /// becomes ready. Username and Ed25519 seed must stay consistent until
@@ -235,13 +257,15 @@ const TestNetwork = struct {
     close_deadline: u64 = 0,
     fail_release: bool = false,
     fail_cancel: bool = false,
+    observed_pin: [32]u8 = @splat(0),
     fn open(_: *@This(), _: [4]u8, _: u16, _: u16, _: u32, _: u64) !Handle {
         return 7;
     }
     fn ready(self: *@This(), _: Handle) !bool {
         return self.established;
     }
-    fn startSsh(self: *@This(), _: Handle, _: u64, _: [32]u8, _: [32]u8, _: [16]u8, _: u32, _: u32) !*Owner {
+    fn startSsh(self: *@This(), _: Handle, _: u64, _: [32]u8, pin: [32]u8, _: [16]u8, _: u32, _: u32) !*Owner {
+        self.observed_pin = pin;
         return &self.owner;
     }
     fn releaseSsh(self: *@This(), _: *Owner) !void {
@@ -340,6 +364,28 @@ test "lifecycle connects, attaches only when ready, and closes in order" {
     try std.testing.expectEqual(State.closing, try c.poll(17, null, &pad, "user", @splat(5)));
     network.close_done = true;
     try std.testing.expectEqual(State.closed, try c.poll(18, null, &pad, "user", @splat(5)));
+    try std.testing.expectEqual(@as(u32, 1), network.canceled);
+}
+
+test "profile lifecycle supplies pin and cancels if profile is erased" {
+    var network: TestNetwork = .{ .established = true };
+    var ui: TestUi = .{};
+    var model: TestModel = .{};
+    var controller = Controller(TestNetwork, TestUi, TestModel).init(&network, &ui, &model);
+    var profile: Profile = .{};
+    const pad: [32]u8 = @splat(4);
+    const entropy = ExchangeEntropy{ .secret = @splat(1), .cookie = @splat(2) };
+    try std.testing.expectError(error.InvalidProfile, controller.beginProfile(&profile, 10, 100, 20, 50001, 123));
+    try profile.set("10.0.2.2", "22", "user", "SHA256:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE", "0101010101010101010101010101010101010101010101010101010101010101");
+    try controller.beginProfile(&profile, 10, 100, 20, 50001, 123);
+    try std.testing.expectEqual(State.need_material, try controller.pollProfile(&profile, 11, null, &pad));
+    try std.testing.expectEqual(State.handshaking, try controller.pollProfile(&profile, 12, &entropy, &pad));
+    try std.testing.expectEqual(profile.pin, network.observed_pin);
+    profile.clear();
+    try std.testing.expectError(error.InvalidProfile, controller.pollProfile(&profile, 13, null, &pad));
+    try std.testing.expectEqual(State.closed, controller.state);
+    try std.testing.expect(ui.canceled and controller.owner == null and controller.handle == null);
+    try std.testing.expectEqual(@as(u32, 1), network.released);
     try std.testing.expectEqual(@as(u32, 1), network.canceled);
 }
 
