@@ -16,6 +16,18 @@ pub fn Guard(comptime Host: type) type {
             return self.host.readWord(address);
         }
 
+        pub fn writeWord(self: *@This(), address: u32, value: u32) TransportError!void {
+            return self.host.writeWord(address, value);
+        }
+
+        pub fn readBytes(self: *@This(), address: u32, destination: []u8) TransportError!void {
+            return self.host.readBytes(address, destination);
+        }
+
+        pub fn writeBytes(self: *@This(), address: u32, bytes: []const u8) TransportError!void {
+            return self.host.writeBytes(address, bytes);
+        }
+
         pub fn writeBlocks(self: *@This(), address: u32, bytes: []const u8) TransportError!void {
             self.host.writeBlocks(address, bytes) catch |err| {
                 self.buffer.retire();
