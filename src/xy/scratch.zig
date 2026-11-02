@@ -46,8 +46,17 @@ pub const TerminalPort = struct {
     write: *const fn (*anyopaque, []const u8) bool,
     close: *const fn (*anyopaque) void,
 };
+/// Foreground-only private input sink. The owner must wipe its own state in
+/// close and keep it alive until detach; input never enters document history.
+pub const PrivateInputPort = struct {
+    context: *anyopaque,
+    key: *const fn (*anyopaque, input.Key) bool,
+    close: *const fn (*anyopaque) void,
+};
 pub const Model = struct {
     pub const TerminalPortType = TerminalPort;
+    pub const PrivateInputPortType = PrivateInputPort;
+    pub const PrivateInputKey = input.Key;
     camera: camera.Client,
     card: card.Client,
     storage_client: scheme.storage.Client,
@@ -55,6 +64,7 @@ pub const Model = struct {
     nav: navigation.State,
     learning: ?*@import("learning_session.zig").Session,
     terminal: ?TerminalPort,
+    private_input: ?PrivateInputPort,
     vm: scheme.Runtime,
     reply: [128]u8,
     reply_length: usize,
@@ -114,7 +124,7 @@ pub const Model = struct {
     /// Caller retains the context and cell storage until detach; no screen is
     /// made available without an attached, explicitly started backend.
     pub fn attachTerminal(self: *Model, port: TerminalPort) linksection(scheme.code_section) bool {
-        if (self.terminal != null or self.vm.running) return false;
+        if (self.terminal != null or self.private_input != null or self.vm.running) return false;
         self.terminal = port;
         self.mode = .edit;
         self.status = .none;
@@ -135,6 +145,29 @@ pub const Model = struct {
     pub fn terminalChanged(self: *Model) linksection(scheme.code_section) void {
         if (self.terminal != null) self.changed();
     }
+    /// Do not consume or replay input collected before entering private mode.
+    pub fn attachPrivateInput(self: *Model, port: PrivateInputPort) linksection(scheme.code_section) bool {
+        if (self.nav.screen != .ssh or self.private_input != null or self.terminal != null or self.vm.running or self.deferred_count != 0 or self.deferred_serial_count != 0 or self.deferred_overflow or self.utf8_length != 0 or self.serial.state != .idle) return false;
+        std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
+        std.crypto.secureZero(u8, &self.deferred_serial);
+        std.crypto.secureZero(u8, &self.deferred_serial_delta);
+        std.crypto.secureZero(u8, &self.utf8);
+        self.serial = .{};
+        self.private_input = port;
+        self.status = .none;
+        self.changed();
+        return true;
+    }
+    pub fn detachPrivateInput(self: *Model) linksection(scheme.code_section) void {
+        const port = self.private_input orelse return;
+        self.private_input = null;
+        self.serial = .{};
+        std.crypto.secureZero(u8, &self.utf8);
+        self.utf8_length = 0;
+        self.utf8_needed = 0;
+        port.close(port.context);
+        self.changed();
+    }
     fn changed(self: *Model) void {
         self.revision +%= 1;
     }
@@ -154,6 +187,9 @@ pub const Model = struct {
     pub fn replayInput(self: *Model) linksection(scheme.code_section) void {
         if (self.vm.running) return;
         if (self.deferred_overflow) {
+            std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
+            std.crypto.secureZero(u8, &self.deferred_serial);
+            std.crypto.secureZero(u8, &self.deferred_serial_delta);
             self.deferred_count = 0;
             self.deferred_serial_count = 0;
             self.deferred_overflow = false;
@@ -181,8 +217,16 @@ pub const Model = struct {
             std.mem.copyForwards(input.Key, self.deferred[0..self.deferred_count], self.deferred[1..][0..self.deferred_count]);
             self.handle(key);
         }
+        std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
+        std.crypto.secureZero(u8, &self.deferred_serial);
+        std.crypto.secureZero(u8, &self.deferred_serial_delta);
     }
     pub fn insert(self: *Model, text: []const u8) linksection(scheme.code_section) void {
+        if (self.private_input != null) {
+            self.status = .invalid_input;
+            self.changed();
+            return;
+        }
         if (self.terminal) |port| {
             self.status = if (port.write(port.context, text)) .none else .buffer_full;
             self.changed();
@@ -244,6 +288,16 @@ pub const Model = struct {
     }
 
     pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
+        if (self.private_input) |port| {
+            if (self.vm.running or self.nav.screen != .ssh) {
+                self.detachPrivateInput();
+                self.status = .invalid_input;
+                return;
+            }
+            self.status = if (port.key(port.context, key)) .none else .invalid_input;
+            self.changed();
+            return;
+        }
         if (self.vm.running) {
             if (self.deferred_count == self.deferred.len) {
                 self.deferred_overflow = true;
@@ -386,6 +440,7 @@ pub const Model = struct {
     /// The document and portrait learning exercise accept soft-key input.
     /// Zero indicates a screen with no soft-keyboard input context.
     fn softKeyboardContext(self: *const Model) u8 {
+        if (self.private_input != null) return 6;
         if (self.terminal != null) return 5;
         if (self.nav.screen == .exercise and self.portrait_touch and self.learning != null) {
             return if (self.learning.?.editing_notes) 4 else 3;
@@ -528,6 +583,7 @@ pub const Model = struct {
         } else if (self.portrait_touch) {
             self.nav.touchPortrait(x, y, &self.vm.view);
         } else self.nav.touch(x, y, &self.vm.view);
+        if (self.private_input != null and self.nav.screen != .ssh) self.detachPrivateInput();
         self.changed();
     }
     pub fn resetScheme(self: *Model) linksection(scheme.code_section) void {
@@ -662,6 +718,16 @@ pub const Model = struct {
         if (self.hid.feed(modifiers, usage)) |key| self.handle(key);
     }
     pub fn feedSerial(self: *Model, byte: u8, now: u64) linksection(scheme.code_section) void {
+        if (self.private_input != null) {
+            if (self.vm.running or self.nav.screen != .ssh) {
+                self.detachPrivateInput();
+                self.status = .invalid_input;
+            } else if (byte >= 128) {
+                self.status = .invalid_input;
+                self.changed();
+            } else if (self.serial.feed(byte, now)) |key| self.handle(key);
+            return;
+        }
         if (self.vm.running) {
             if (self.deferred_serial_count == self.deferred_serial.len) {
                 self.deferred_overflow = true;
@@ -805,6 +871,82 @@ pub const Model = struct {
         } else grid.write(self.statusText());
     }
 };
+
+test "private input bypasses editor and deferred queues and clears on detach" {
+    const Sink = struct {
+        bytes: [16]u8 = @splat(0),
+        length: usize = 0,
+        closed: bool = false,
+        fn key(ctx: *anyopaque, value: input.Key) bool {
+            const self: *@This() = @ptrCast(@alignCast(ctx));
+            if (value != .text or self.length == self.bytes.len) return false;
+            self.bytes[self.length] = value.text;
+            self.length += 1;
+            return true;
+        }
+        fn close(ctx: *anyopaque) void {
+            const self: *@This() = @ptrCast(@alignCast(ctx));
+            std.crypto.secureZero(u8, &self.bytes);
+            self.length = 0;
+            self.closed = true;
+        }
+    };
+    // SAFETY: initInPlace initializes all model state.
+    var model: Model = undefined;
+    model.initInPlace();
+    var sink: Sink = .{};
+    const port = PrivateInputPort{ .context = &sink, .key = Sink.key, .close = Sink.close };
+    try std.testing.expect(!model.attachPrivateInput(port));
+    model.nav.screen = .ssh;
+    model.vm.running = true;
+    try std.testing.expect(!model.attachPrivateInput(port));
+    model.vm.running = false;
+    try std.testing.expect(model.attachPrivateInput(port));
+    model.feedSerial('a', 0);
+    model.feedHid(0, 5); // b
+    model.handle(.{ .text = 'c' });
+    try std.testing.expectEqualStrings("abc", sink.bytes[0..sink.length]);
+    model.insert("not-private");
+    model.feedSerial(0xc3, 0);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqual(@as(u16, 0), model.deferred_serial_count);
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_count);
+    model.vm.running = true;
+    model.feedSerial('x', 1);
+    try std.testing.expect(sink.closed and model.private_input == null);
+    try std.testing.expectEqual(@as(u16, 0), model.deferred_serial_count);
+    for (sink.bytes) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    model.vm.running = false;
+    sink.closed = false;
+    model.setPhysicalKeyboard(true);
+    try std.testing.expect(model.attachPrivateInput(port));
+    model.feedSerial('s', 2);
+    model.touch(10, 670);
+    try std.testing.expectEqual(navigation.Screen.home, model.nav.screen);
+    try std.testing.expect(sink.closed and model.private_input == null);
+    for (sink.bytes) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "replayed and overflowed deferred input is erased" {
+    // SAFETY: initInPlace initializes all model state.
+    var model: Model = undefined;
+    model.initInPlace();
+    model.vm.running = true;
+    model.feedSerial('a', 1);
+    model.handle(.{ .text = 'b' });
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqualStrings("ab", model.doc.slice());
+    for (model.deferred_serial) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    for (std.mem.asBytes(&model.deferred)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    model.vm.running = true;
+    for (0..model.deferred_serial.len + 1) |_| model.feedSerial('x', 2);
+    model.vm.running = false;
+    model.replayInput();
+    try std.testing.expectEqual(Status.invalid_input, model.status);
+    for (model.deferred_serial) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    for (model.deferred_serial_delta) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
 
 test "scratch editing uses shared Document cursor deletion and undo" {
     // SAFETY: all fields are initialized in place before use.

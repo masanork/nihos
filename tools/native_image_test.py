@@ -95,7 +95,7 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(512).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).render'))
         self.assertFalse(MODULE.xy_function('render_session.SizedSession(1024).renderInto__func_0'))
-        for name in ('attachTerminal', 'detachTerminal', 'terminalSnapshot', 'terminalChanged'):
+        for name in ('attachTerminal', 'detachTerminal', 'attachPrivateInput', 'detachPrivateInput', 'terminalSnapshot', 'terminalChanged'):
             with self.subTest(name=name): self.assertTrue(MODULE.xy_function('xy.scratch.Model.' + name))
         self.assertFalse(MODULE.xy_function('xy.scratch.Model.unapprovedTerminal'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.statusText'))

@@ -123,16 +123,34 @@ var profile: lifecycle.Profile = .{};
 export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
     profile.clear();
-    var form: lifecycle.ProfileForm = .{};
-    defer form.clear();
+    model.initInPlace();
+    model.nav.screen = .ssh;
+    var canceled = lifecycle.ProfileInput(console.scratch.Model).init(&model, &profile);
+    if (!canceled.start()) return false;
+    canceled.form.selected = .seed;
+    model.feedSerial('1', now);
+    model.handle(.escape);
+    if (canceled.status != .canceled or model.private_input != null or profile.valid) return false;
+    for (@import("std").mem.asBytes(&canceled.form)) |byte| if (byte != 0) return false;
+    var setup = lifecycle.ProfileInput(console.scratch.Model).init(&model, &profile);
+    if (!setup.start()) return false;
     for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
-        for (value) |byte| form.append(byte) catch return false;
-        form.next();
+        for (value) |byte| {
+            model.feedSerial(byte, now);
+            if (model.status != .none) {
+                model.detachPrivateInput();
+                return false;
+            }
+        }
+        model.handle(.enter);
     }
-    form.submit(&profile) catch return false;
+    if (setup.status != .ready or model.private_input != null) {
+        model.detachPrivateInput();
+        profile.clear();
+        return false;
+    }
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
     host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
-    model.initInPlace();
     controller = Controller.init(&host_network, &ui, &model);
     controller.beginProfile(&profile, now, now +| 20_000_000, 20_000_000, 50001, 123) catch {
         profile.clear();

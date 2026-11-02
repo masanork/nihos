@@ -103,7 +103,12 @@ failure paths clear the fixture's profile. It does not provide a provisioning
 UI or protected storage. The fixture fills a bounded transient form before
 starting the profile; its display accessor never returns seed bytes, and its
 submission and cancellation erasure are unit tested. This form is not wired
-to native keyboard, serial or touch input. ESP32-P4 RNG output
+to a native application or a setup screen. The host fixture feeds it through
+the xy model's private serial input port, verifies successful authentication,
+checks cancel-and-erase and rejection of a wrong host fingerprint. The model rejects private
+input while the VM or deferred queues are active and wipes deferred buffers
+after replay or overflow. This host test does not qualify physical keyboards,
+serial transports, display masking or device memory custody. ESP32-P4 RNG output
 must not be treated as cryptographic entropy without meeting the documented
 [entropy-source conditions](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/api-reference/system/random.html);
 the existing SQL random callback does not establish those conditions for SSH.

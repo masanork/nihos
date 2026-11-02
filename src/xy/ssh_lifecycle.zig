@@ -112,6 +112,54 @@ pub const ProfileForm = struct {
     }
 };
 
+/// Stable, caller-owned private input session. The model and output profile
+/// must outlive it. No connection or persistence is started by this type.
+pub fn ProfileInput(comptime Model: type) type {
+    return struct {
+        const Self = @This();
+        const Key = Model.PrivateInputKey;
+        const Port = Model.PrivateInputPortType;
+        pub const Status = enum { idle, editing, ready, canceled };
+        model: *Model,
+        profile: *Profile,
+        form: ProfileForm = .{},
+        status: Status = .idle,
+
+        pub fn init(model: *Model, profile: *Profile) Self {
+            return .{ .model = model, .profile = profile };
+        }
+        pub fn start(self: *Self) bool {
+            if (self.status != .idle) return false;
+            if (!self.model.attachPrivateInput(Port{ .context = self, .key = onKey, .close = onClose })) return false;
+            self.status = .editing;
+            return true;
+        }
+        fn onKey(ctx: *anyopaque, key: Key) bool {
+            const self: *Self = @ptrCast(@alignCast(ctx));
+            if (self.status != .editing) return false;
+            switch (key) {
+                .text => |byte| self.form.append(byte) catch return false,
+                .backspace => self.form.backspace(),
+                .left, .up => self.form.previous(),
+                .right, .down => self.form.next(),
+                .enter => if (self.form.selected == .seed) {
+                    self.form.submit(self.profile) catch return false;
+                    self.status = .ready;
+                    self.model.detachPrivateInput();
+                } else self.form.next(),
+                .escape, .cancel => self.model.detachPrivateInput(),
+                else => return false,
+            }
+            return true;
+        }
+        fn onClose(ctx: *anyopaque) void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
+            self.form.clear();
+            if (self.status == .editing) self.status = .canceled;
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {

@@ -12,6 +12,7 @@ pub const Profile = lifecycle.Profile;
 pub const ProfileForm = lifecycle.ProfileForm;
 pub const ExchangeEntropy = lifecycle.ExchangeEntropy;
 pub const Model = console.scratch.Model;
+pub const ProfileInput = lifecycle.ProfileInput(Model);
 pub const Ui = bridge.Session(network.ExperimentalSshSession, 80, 24, 8);
 comptime {
     if (@sizeOf(Ui) > layout.ssh_ui_experiment_bytes) @compileError("SSH UI exceeds PSRAM reservation");
