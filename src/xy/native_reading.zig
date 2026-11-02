@@ -140,6 +140,11 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
     nav.chapter_count = try pack.counts();
     _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
     switch (nav.screen) {
+        .ssh => {
+            try label(instance, target, 36, 48, "SSH", 36, 0x2147);
+            try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
+            try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+        },
         .examples, .exercise => {
             const lessons = request.learning orelse return error.Range;
             return @import("learning_view.zig").renderPortrait(instance, request, lessons, nav.screen == .examples);
@@ -266,7 +271,8 @@ pub fn renderPortraitHome(instance: *Session, request: *const protocol.Request) 
         _ = target.fillRect(@intCast(N.portrait_home_x), @intCast(y), N.portrait_home_width, N.portrait_home_card_height, if (nav.home_selection == i) 0x2147 else 0xffff);
         try label(instance, target, @intCast(N.portrait_home_x + 24), @intCast(y + 49), title, 28, if (nav.home_selection == i) 0xffff else 0x2147);
     }
-    try label(instance, target, 36, 1130, "本はオフラインで読めます。", 24, 0x528a);
+    _ = target.fillRect(@intCast(N.portrait_home_x), N.portrait_ssh_top, N.portrait_home_width, N.portrait_ssh_height, if (nav.home_selection == 6) 0x2147 else 0xffff);
+    try label(instance, target, @intCast(N.portrait_home_x + 24), N.portrait_ssh_top + 25, "t  SSH / 準備中", 28, if (nav.home_selection == 6) 0xffff else 0x2147);
     _ = target.fillRect(0, 1208, 720, 72, 0x2147);
     try label(instance, target, 36, 1230, "タッチで選択 / 矢印・Enter", 24, 0xffff);
 }
@@ -280,6 +286,12 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     const config = request.config.*;
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
+        .ssh => {
+            try label(instance, target, 48, 48, "SSH", 36, 0x2147);
+            try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
+            try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            try footer(instance, target, false, false);
+        },
         .examples, .exercise => {
             const l = request.learning orelse return error.Range;
             try @import("learning_view.zig").render(instance, request, l, nav.screen == .examples, false);
@@ -295,7 +307,10 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
                 _ = target.fillRect(x, y, 568, 106, if (nav.home_selection == i) 0x2147 else 0xffff);
                 try label(instance, target, x + 24, y + 34, title, 28, if (nav.home_selection == i) 0xffff else 0x2147);
             }
-            try label(instance, target, 48, 596, "本はオフラインで読めます。タッチでも選べます。", 24, 0x528a);
+            const N = @import("navigation.zig").State;
+            _ = target.fillRect(N.landscape_ssh_x, N.landscape_ssh_y, N.landscape_ssh_width, N.landscape_ssh_height, if (nav.home_selection == 6) 0x2147 else 0xffff);
+            try label(instance, target, N.landscape_ssh_x + 24, N.landscape_ssh_y + 20, "t  SSH / 準備中", 24, if (nav.home_selection == 6) 0xffff else 0x2147);
+            try label(instance, target, 48, 596, "本はオフラインで読めます。", 24, 0x528a);
             try footer(instance, target, false, false);
         },
         .chapters => {

@@ -216,6 +216,13 @@ test "portrait home paints the same cards that touch navigation selects" {
     try std.testing.expectEqual(navmod.Screen.reading, nav.screen);
     try std.testing.expectEqual(@as(u8, 0), nav.book);
     try std.testing.expectError(error.UnsupportedOrientation, reading.renderPortraitHome(instance, &request));
+    nav.home();
+    try reading.renderPortraitHome(instance, &request);
+    const ssh_y = N.portrait_ssh_top + 5;
+    const ssh_index = @as(usize, ssh_y) * 1440 + @as(usize, x) * 2;
+    try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, pixels[ssh_index..][0..2], .little));
+    nav.touchPortraitHome(x, ssh_y);
+    try std.testing.expectEqual(navmod.Screen.ssh, nav.screen);
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
 
@@ -245,6 +252,9 @@ test "portrait card scene renders synthetic data and returns on touch" {
     try std.testing.expectEqual(@as(u16, 0xffff), std.mem.readInt(u16, pixels[index..][0..2], .little));
     nav.touchPortrait(100, 400, &config);
     try std.testing.expectEqual(navmod.Screen.home, nav.screen);
+    nav.screen = .ssh;
+    try reading.renderPortrait(instance, &request, pack);
+    try reading.render(instance, &request, pack);
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
 
