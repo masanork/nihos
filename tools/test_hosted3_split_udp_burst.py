@@ -42,6 +42,15 @@ class BurstEvidence(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.analyze(capture(), bad)
 
+    def test_rejects_short_wait_and_bad_destination_port(self):
+        short = capture().replace(b'long_final_wait_ms=00001f40', b'long_final_wait_ms=00001f3f')
+        with self.assertRaises(ValueError):
+            module.analyze(short, peer())
+        wrong_port = peer()
+        wrong_port[0]['source_port'] = 44444
+        with self.assertRaises(ValueError):
+            module.analyze(capture(), wrong_port)
+
     def test_rejects_incomplete_or_uncorrelated_peer(self):
         with self.assertRaises(ValueError):
             module.analyze(capture(), peer()[:-1])
