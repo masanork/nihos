@@ -4508,14 +4508,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-02",
-    "measuredAt": "2026-11-02T14:59:33.385246+00:00",
+    "measuredAt": "2026-11-02T15:40:00.559904+00:00",
     "project": "nihos",
-    "commit": "7801d31ca8b4f45640e0d745beb4194fb28d678c",
+    "commit": "b5ae4746f7c525239f1a351e40fae770d69fe1f5",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "b986335fcb047a50f62fea45f79d4715b6ae60e3ef46a8f13028a101639690d8",
+    "sourceTreeSha256": "eca563b7a8054726bf42d29c6b64fa23f388533a07803eb9402fec3124d10c03",
     "code": {
-      "implementation": 75376,
-      "tests": 38709,
+      "implementation": 75379,
+      "tests": 38761,
       "tooling": 24748,
       "probes": 17388,
       "vendored": 723,
@@ -4523,8 +4523,8 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 67679,
-        "tests": 28645,
+        "implementation": 67682,
+        "tests": 28697,
         "tooling": 1440,
         "probes": 5642,
         "vendored": 0,
@@ -4621,8 +4621,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 73439,
-        "tests": 28771,
+        "implementation": 73442,
+        "tests": 28823,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -5118,7 +5118,7 @@
         "src/xy/learning_catalog.zig": "a417ddd59259acf6123ce07cca2b122c6984f00bc6e5963b21acdf17ac8b26f6",
         "src/xy/learning_session.zig": "e1ca51b7e6e0908cdca235a0b30b3180cb8c7aaf622b9b72d2cfd5eb14101679",
         "src/xy/learning_view.zig": "45b27376565971e8220e98f929c268f96d2d7dde67dfbd14c9930e2760aebbb5",
-        "src/xy/live_workspace.zig": "f1cf48e080fb3e01df5f259e1276b54abccd0ce9de8c7d5c5dc4788ea6de340d",
+        "src/xy/live_workspace.zig": "229bca544c2e3deda752cf0def679f360c79cb0f0d543959f0b4430025e14411",
         "src/xy/native_reading.zig": "eb752ff8497c805578f16428a0bf9e9954461baa932d0efbc3b8fffc0ad3dd7f",
         "src/xy/native_render_entry.zig": "248f789460dfd03c14cc7e67a75a11233282f738fdfcdc9aa9b74b1233845e1b",
         "src/xy/navigation.zig": "88331bee220adce6362b80be8c4a85da90931580201ca736678a2d8441794ec9",
