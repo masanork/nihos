@@ -105,6 +105,10 @@ and reports the sizes of the sender, its lease, the existing decoder and the
 long-DMA buffer in `build/hosted-udp-layout/report.json`. The lease is already
 part of the sender and must not be counted twice; the native service already
 has a decoder and receive buffer. The output includes the source commit and
-dirty state. The accompanying `layout.s` permits inspection of initialization
+dirty state, relevant source hashes, compiler version, and object/assembly
+hashes. Inputs are checked before and after compilation; a changed input or
+failed build leaves no success report. Concurrent writers are serialized;
+readers must still verify artifact hashes against the report. The
+accompanying `layout.s` permits inspection of initialization
 into caller-provided storage. These are type and object-level measurements,
 not evidence of a linked image's total SRAM, aggregate stack or device behavior.
