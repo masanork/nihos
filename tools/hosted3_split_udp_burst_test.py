@@ -57,6 +57,19 @@ class BurstEvidence(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.analyze(capture() + b'NIHOS_C6_TRAP\n', peer())
 
+    def test_rejects_missing_or_duplicate_device_fields(self):
+        for field in (b'long_echo_mask=00000005 ', b'long_echo=00000002 ',
+                      b'long_final_wait_ms=00001f40 ', b'ip=c0000201'):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                module.analyze(capture().replace(field, b''), peer())
+        duplicated = capture().replace(b'long_echo_mask=00000005 ',
+                                       b'long_echo_mask=00000000 long_echo_mask=00000005 ')
+        with self.assertRaises(ValueError):
+            module.analyze(duplicated, peer())
+        malformed = capture().replace(b'long_echo=00000002', b'long_echo=invalid')
+        with self.assertRaises(ValueError):
+            module.analyze(malformed, peer())
+
 
 if __name__ == '__main__':
     unittest.main()

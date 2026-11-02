@@ -15,14 +15,24 @@ def analyze(device, peer):
         raise ValueError('missing or duplicate device result')
     if any(line.startswith(('NIHOS_C6_TRAP', 'NIHOS_C6_FAIL', 'NIHOS_C6_HOSTED_WIFI_FAIL')) for line in lines):
         raise ValueError('device failure')
-    fields = {key: int(value, 16) for key, value in re.findall(r'(\w+)=([0-9a-f]{8})(?:\s|$)', rows[0])}
+    fields = {}
+    for token in rows[0].split()[1:]:
+        match = re.fullmatch(r'(\w+)=([0-9a-f]{8})', token)
+        if not match:
+            raise ValueError('malformed device field')
+        key, value = match.groups()
+        if key in fields:
+            raise ValueError('duplicate device field')
+        fields[key] = int(value, 16)
     expected = {'status': 1, 'stage': 12, 'error_code': 0, 'peer_chip': 13,
                 'fw_known': 1, 'fw_major': 3, 'fw_minor': 0, 'fw_patch': 10,
                 'long_sent': 1254, 'long_attempts': 16, 'long_burst': 1}
     if any(fields.get(k) != v for k, v in expected.items()):
         raise ValueError('device result mismatch')
-    mask = fields.get('long_echo_mask', 0)
-    if mask >> 16 or fields.get('long_echo', 0) < bin(mask).count('1') or fields.get('long_final_wait_ms', 0) < 8000:
+    if any(k not in fields for k in ('long_echo_mask', 'long_echo', 'long_final_wait_ms', 'ip')):
+        raise ValueError('missing device evidence')
+    mask = fields['long_echo_mask']
+    if mask >> 16 or fields['long_echo'] < bin(mask).count('1') or fields['long_final_wait_ms'] < 8000:
         raise ValueError('invalid echo mask or settling interval')
     source = str(ipaddress.IPv4Address(fields['ip']))
     received = []
