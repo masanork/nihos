@@ -70,7 +70,7 @@ pub const Owner = struct {
     }
     /// Retire an application connection, including a zero-credit staged frame.
     /// Calls are serialized with the transport; sent frames are not recalled.
-    /// The service keeps the tuple unavailable until its lease epoch changes.
+    /// The service keeps the local port unavailable until its lease changes.
     pub fn cancel(self: *Owner, handle: Handle) Error!void {
         try self.check();
         const current = self.handle orelse return error.StaleHandle;
@@ -345,5 +345,8 @@ test "cancel retires a staged connection without allowing tuple reuse" {
     try owner.cancel(h);
     try std.testing.expect(owner.pending == .none and owner.handle == null and owner.service.current == null);
     try std.testing.expectError(error.StaleHandle, owner.cancel(h));
-    try std.testing.expectError(error.Busy, owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 124, 1000, 5000));
+    try std.testing.expectError(error.PortAlreadyUsed, owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 124, 1000, 5000));
+    const next = try owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50002, 125, 1000, 5000);
+    try std.testing.expectError(error.StaleHandle, owner.cancel(h));
+    try owner.cancel(next);
 }
