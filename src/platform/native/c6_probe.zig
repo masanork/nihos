@@ -545,6 +545,43 @@ var hosted_time: hosted.c6_time_exchange.Exchange = .{};
 // SAFETY: the split UDP fixture initializes the owner before stepping it.
 var hosted_split_udp: hosted.split_udp_generic_owner.Owner = undefined;
 
+/// Temporary physical fixture: independently resolve the configured peer, then
+/// compare the result with the known peer before sending the burst. A zero or
+/// partial write aborts rather than retaining a borrowed request across RX.
+noinline fn resolveHostedUdpPeer(clock: timers.Timer, peer_ip: u32, port: u16, deadline_us: u64) ![6]u8 {
+    const bound = try hosted.udp_lease.Lease.open(&hosted_time.addresses, hosted_time.station.mac_address, 49152, .{ .first = 49152, .last = 61439 });
+    var target: [4]u8 = undefined;
+    std.mem.writeInt(u32, &target, peer_ip, .big);
+    var route: hosted.udp_route.Route = .{};
+    const started = clock.counter() orelse return error.Clock;
+    try route.begin(&hosted_time.addresses, bound, target, port, started / 1000, deadline_us / 1000);
+    while (true) {
+        const count = try hosted_stream.receive(&rx);
+        for (rx[0..count]) |byte| if (try hosted_decoder.push(byte)) |frame| {
+            const now = clock.counter() orelse return error.Clock;
+            if (frame.interface == hosted.wire.station_interface) {
+                _ = try route.receive(&hosted_time.addresses, now / 1000, frame);
+            } else if (frame.interface == 5) {
+                return error.Stale;
+            } else if (frame.interface >> 4 == 0) {
+                try hosted_time.receive(frame, now);
+                if (hosted_time.phase != .ready or !hosted_time.station.connected) return error.Stale;
+            }
+        };
+        const now = clock.counter() orelse return error.Clock;
+        if (clock_failed) return error.Clock;
+        if (try route.result(&hosted_time.addresses, now / 1000)) |endpoint| return endpoint.mac;
+        if (count == 0 and hosted_decoder.used == 0) {
+            if (try route.poll(&hosted_time.addresses, now / 1000, 0x7100)) |request| {
+                const sent = try hosted_stream.send(request);
+                if (sent != request.len) return error.ArpSendIncomplete;
+                try route.sent(&hosted_time.addresses, now / 1000);
+            }
+        }
+        host.io.delay(100);
+    }
+}
+
 /// Separate diagnostic: C6 owns DHCP, and one owner sends a single UDP frame.
 noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: hosted.Join) !void {
     const config = @import("root").SplitUdpConfig;
@@ -596,12 +633,17 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
             report.netmask = address.mask;
             report.gateway = address.gateway;
             report.stage = 6;
-            const peer = hosted.split_udp_owner.Peer{ .ip = config.udp_ip, .mac = config.udp_mac, .port = config.udp_port };
-            const deadline = @min(now + 20_000_000, hosted_time.deadline);
+            report.wifi_step = 9; // ARP resolution in progress.
+            const resolved = try resolveHostedUdpPeer(clock, config.udp_ip, config.udp_port, @min(now + 8_000_000, hosted_time.deadline));
+            if (!std.mem.eql(u8, &resolved, &config.udp_mac)) return error.UnexpectedArpPeer;
+            report.wifi_step = 10; // ARP reply matched the independently known peer.
+            const peer = hosted.split_udp_owner.Peer{ .ip = config.udp_ip, .mac = resolved, .port = config.udp_port };
+            const acquired = clock.counter() orelse return error.Clock;
+            const deadline = @min(acquired + 20_000_000, hosted_time.deadline);
             if (config.udp_burst) {
-                try hosted_split_udp.initBurst(&hosted_time, &hosted_decoder, peer, 16, 250_000, 8_000_000, now, deadline);
+                try hosted_split_udp.initBurst(&hosted_time, &hosted_decoder, peer, 16, 250_000, 8_000_000, acquired, deadline);
             } else {
-                try hosted_split_udp.init(&hosted_time, &hosted_decoder, peer, 1, now, deadline);
+                try hosted_split_udp.init(&hosted_time, &hosted_decoder, peer, 1, acquired, deadline);
             }
             report.stage = 7;
             defer {
