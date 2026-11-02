@@ -18,6 +18,12 @@ var transport = stream.ProfileStream(@TypeOf(host), 64){ .host = &host };
 const TimeClient = hosted.sntp.Engine(".flash.text.time");
 const c6_offload = @hasDecl(network_config, "c6_time_offload") and network_config.c6_time_offload;
 const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test;
+// Codegen-only experiment until TCP RX/TX and application ownership are wired.
+const experimental_tcp = @hasDecl(options, "experimental_tcp") and options.experimental_tcp;
+const TcpState = if (experimental_tcp) hosted.tcp_owner.Owner else void;
+comptime {
+    if (@alignOf(TcpState) > 64) @compileError("TCP owner exceeds network backing alignment");
+}
 const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
     time: TimeClient = .{},
@@ -29,7 +35,8 @@ const State = struct {
     ble_length: usize = 0,
     decoder: hosted.wire.Decoder = .{},
 };
-pub const storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
+const station_storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
+pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else 0;
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
 var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
@@ -49,6 +56,122 @@ const InitialTemplate = struct {
 const initial_state linksection(".flash.rodata.display") = InitialTemplate{};
 // SAFETY: begin binds this before any foreground state access.
 var state_storage: *State = undefined;
+// SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
+var tcp_state: *TcpState = undefined;
+var tcp_error_code: u32 = 0;
+/// Last TCP scheduling or RX failure for experimental diagnostics; station errors remain
+/// on the existing network report. No application socket API is exposed yet.
+pub fn experimentalTcpError() u32 {
+    return if (experimental_tcp) tcp_error_code else 0;
+}
+pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
+pub const ExperimentalSshAdapter = hosted.ssh_tcp.Adapter;
+
+// Experimental CPU0-only interface. The caller must supply a securely chosen
+// ephemeral port/sequence before production use and must serialize all calls
+// with poll(). This is not exposed to xy and is disabled in normal builds.
+fn experimentalTcpNow() !u64 {
+    if (!experimental_tcp) return error.TcpDisabled;
+    if (phase != .active or offload_active) return error.NetworkUnavailable;
+    return clock.counter() orelse error.Clock;
+}
+pub fn experimentalTcpOpen(remote: [4]u8, remote_port: u16, local_port: u16, initial_seq: u32, deadline_us: u64) !ExperimentalTcpHandle {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.open(client, .{ .address = remote, .port = remote_port }, local_port, initial_seq, now, deadline_us / 1000);
+}
+pub fn experimentalTcpReady(handle: ExperimentalTcpHandle) !bool {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.ready(client, handle, now);
+}
+/// Zero indicates peer EOF; WouldBlock means no data is available yet.
+pub fn experimentalTcpRead(handle: ExperimentalTcpHandle, out: []u8) !usize {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.read(client, handle, now, out);
+}
+/// The returned count is accepted into TCP, not acknowledged by the peer.
+pub fn experimentalTcpWrite(handle: ExperimentalTcpHandle, bytes: []const u8, deadline_us: u64) !usize {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.write(client, handle, now, deadline_us / 1000, bytes);
+}
+/// CPU0 cancellation retires the handle without reusing its TCP tuple.
+pub fn experimentalTcpCancel(handle: ExperimentalTcpHandle) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    _ = try experimentalTcpNow();
+    try tcp_state.cancel(handle);
+}
+pub fn experimentalTcpCloseWrite(handle: ExperimentalTcpHandle, deadline_us: u64) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.closeWrite(client, handle, now, deadline_us / 1000);
+}
+/// TCP close completion does not replace TIME_WAIT or permit port reuse.
+pub fn experimentalTcpCloseComplete(handle: ExperimentalTcpHandle) !bool {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return tcp_state.closeComplete(client, handle, now);
+}
+/// The adapter borrows the CPU0 network owner. The caller must advance it
+/// before each SSH pump poll and discard it after failure or network reset.
+pub fn experimentalSshAdapter(handle: ExperimentalTcpHandle, write_timeout_ms: u64) !ExperimentalSshAdapter {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    return ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
+}
+/// Caller-owned SSH state must occupy stable, exclusive memory throughout its
+/// lifetime. Credentials and cryptographic entropy remain caller-owned. This
+/// API is CPU0-only, experimental, and not connected to xy.
+pub const ExperimentalSshSession = hosted.ssh_session_owner.Owner;
+pub fn experimentalSshSessionStart(backing: *ExperimentalSshSession, handle: ExperimentalTcpHandle, deadline_us: u64, write_timeout_ms: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, cols: u32, rows: u32) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    const now = try experimentalTcpNow();
+    if (deadline_us <= now or cols == 0 or rows == 0) return error.InvalidArgument;
+    const adapter = try ExperimentalSshAdapter.init(tcp_state, client, handle, now, write_timeout_ms);
+    backing.begin(adapter, now, deadline_us, secret, pin, cookie, cols, rows);
+}
+// The boot path binds this address only after PSRAM reservation admission.
+// SAFETY: accessed only while reserved_ssh_slot is bound on CPU0.
+var reserved_ssh: *ExperimentalSshSession = undefined;
+var reserved_ssh_slot: hosted.ssh_reservation.Slot = .{};
+/// Bind once during CPU0 boot, before begin and before any session exists.
+pub fn bindExperimentalSshStorage(backing: *ExperimentalSshSession) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    try reserved_ssh_slot.bind();
+    reserved_ssh = backing;
+}
+/// Only true after boot admitted and bound the experimental PSRAM region.
+pub fn experimentalSshStorageBound() bool {
+    return experimental_tcp and reserved_ssh_slot.bound;
+}
+/// The returned address is exclusively borrowed until release, including after
+/// a network reset. The owner must not copy it or retain it after release.
+pub fn experimentalSshReservedStart(handle: ExperimentalTcpHandle, deadline_us: u64, write_timeout_ms: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, cols: u32, rows: u32) !*ExperimentalSshSession {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    try reserved_ssh_slot.checkAvailable();
+    try experimentalSshSessionStart(reserved_ssh, handle, deadline_us, write_timeout_ms, secret, pin, cookie, cols, rows);
+    reserved_ssh_slot.claim();
+    return reserved_ssh;
+}
+pub fn experimentalSshReservedRelease(backing: *ExperimentalSshSession) !void {
+    if (comptime !experimental_tcp) return error.TcpDisabled;
+    if (!reserved_ssh_slot.bound or !reserved_ssh_slot.owned or backing != reserved_ssh) return error.InvalidArgument;
+    revokeReservedSsh();
+    try reserved_ssh_slot.release();
+}
+// Keep the borrow reserved until explicit release, so reset cannot hand its
+// storage to a second caller while the first caller still has a pointer.
+fn revokeReservedSsh() void {
+    if (experimental_tcp and reserved_ssh_slot.revoke()) reserved_ssh.abort();
+}
+/// Use the same monotonic source for session poll/read/write. The caller must
+/// continue polling the network owner between SSH operations, and must abort
+/// the session if this clock becomes unavailable or on cancellation.
+pub fn experimentalSshSessionNow() !u64 {
+    return experimentalTcpNow();
+}
 var rx: [512]u8 = @splat(0);
 // SAFETY: begin binds the free-running UI timer before leaving the off phase.
 var clock: timers.Timer = undefined;
@@ -102,6 +225,11 @@ pub const Report = extern struct {
 pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storage_bytes]u8) void {
     const state: *State = @ptrCast(backing);
     state_storage = state;
+    if (experimental_tcp) {
+        tcp_state = @ptrFromInt(@intFromPtr(backing) + station_storage_bytes);
+        tcp_state.init();
+        tcp_error_code = 0;
+    }
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
     client = if (c6_offload) &state.offload.station else &state.client;
@@ -123,8 +251,13 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     if (nih_c6_power_enable() != 1 or pads.clockFailed()) return stop(error.PowerEnable, now);
     startAttempt(now);
 }
-// Foreground only: begin/reconnect run after mapped Flash is available.
+// Foreground-only reconnect path; Flash is mapped before network begin.
 noinline fn startAttempt(now: u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
+    if (experimental_tcp) revokeReservedSsh();
+    if (experimental_tcp) tcp_state.reset() catch {
+        phase = .failed;
+        return;
+    };
     state_storage.time.disconnect();
     pads.useClock(clock);
     nih_c6_pads_init();
@@ -160,8 +293,12 @@ fn collectRenewals() void {
         counted_renewals = v4.renewals;
     }
 }
-// Foreground failure/retry handling shares the mapped XY code window.
 noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
+    if (experimental_tcp) revokeReservedSsh();
+    const tcp_reset_failed = if (experimental_tcp) blk: {
+        tcp_state.reset() catch break :blk true;
+        break :blk false;
+    } else false;
     state_storage.time.disconnect();
     offload_sample = null;
     if (c6_offload and offload_active) state_storage.offload.invalidate();
@@ -176,7 +313,7 @@ noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy
     state_storage.ble = .{};
     state_storage.ble_length = 0;
     nih_c6_reset(0);
-    if (now == null or err == error.Clock or pads.clockFailed()) {
+    if (tcp_reset_failed or now == null or err == error.Clock or pads.clockFailed()) {
         phase = .failed;
         return;
     }
@@ -239,6 +376,7 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             try finishC6Time(received);
         } else {
             try client.receive(frame, received);
+            if (experimental_tcp) tcpReceive(frame, received);
         }
         collectRenewals();
         if (!offload_active and frame.interface == 1) {
@@ -280,6 +418,9 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         if (state_storage.offload.phase == .ready and stamp < offload_due) &.{} else try state_storage.offload.tx(stamp)
     else
         try client.tx(stamp);
+    // A previously staged TCP packet owns the next whole Hosted send, even
+    // when station maintenance has since become ready.
+    if (experimental_tcp and !offload_active and try tcpPoll(stamp, bytes.len != 0, true)) return;
     if (bytes.len != 0) {
         const sent = try transport.send(bytes);
         if (sent != 0 and sent != bytes.len) return error.PartialPacket;
@@ -313,8 +454,39 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
                 ble.sent(clock.counter() orelse return error.Clock);
                 report.tx +|= @intCast(sent);
             }
+        } else if (experimental_tcp and !offload_active) {
+            _ = try tcpPoll(stamp, false, false);
         }
     }
+}
+
+noinline fn tcpReceive(frame: hosted.wire.Frame, now: u64) linksection(".flash.xytext") void {
+    if (!experimental_tcp) return;
+    _ = tcp_state.receiveProcessed(client, frame, now) catch |err| blk: {
+        tcp_error_code = @intFromError(err);
+        break :blk false;
+    };
+}
+
+// Called only inside the CPU0/shared-host lease. The transport borrows no
+// owner buffer after send returns; zero credits leave the staged frame intact.
+noinline fn tcpPoll(now: u64, station_pending: bool, other_pending: bool) linksection(".flash.xytext") !bool {
+    if (!experimental_tcp) return false;
+    const bytes = (tcp_state.nextTcp(client, now, station_pending, other_pending) catch |err| {
+        tcp_error_code = @intFromError(err);
+        return false;
+    }) orelse return false;
+    const sent = try transport.send(bytes);
+    if (sent != 0 and sent != bytes.len) {
+        tcp_state.sent(client, sent, now) catch |err| {
+            tcp_error_code = @intFromError(err);
+        };
+        return error.PartialPacket;
+    }
+    const sent_at = if (sent != 0) clock.counter() orelse return error.Clock else now;
+    try tcp_state.sent(client, sent, sent_at);
+    report.tx +|= @intCast(sent);
+    return true;
 }
 pub fn poll() void {
     if (phase == .off or phase == .failed) return;
@@ -386,7 +558,9 @@ pub fn configure(join: hosted.Join) !void {
 
 /// Called after the station's own tx() maintenance. Shares its monotonic epoch;
 /// DNS/NTP failures stay local and never reset C6 or revoke the DHCP lease.
-noinline fn timePoll(now: u64) linksection(".flash.text.time") !bool {
+// Foreground network work can share the mapped xy Flash page. Keep the boot
+// page for startup and PMP, including in the standard connected xy image.
+noinline fn timePoll(now: u64) linksection(if (experimental_tcp or (@hasDecl(options, "xy_workspace") and options.xy_workspace)) ".flash.xytext" else ".flash.text.time") !bool {
     const v4 = client.dhcp_client orelse {
         state_storage.time.disconnect();
         return false;

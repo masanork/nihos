@@ -10,6 +10,12 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'build/xy-tab5-preview'
 
+class TerminalCell(c.Structure):
+    _fields_=[('codepoint',c.c_uint32),('fg',c.c_uint16),('bg',c.c_uint16),('flags',c.c_uint8)]
+
+class TerminalView(c.Structure):
+    _fields_=[('cols',c.c_uint16),('rows',c.c_uint16),('cursor_col',c.c_uint16),('cursor_row',c.c_uint16),('cursor_visible',c.c_bool),('cells',c.POINTER(TerminalCell))]
+
 class DeviceReader(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -18,6 +24,7 @@ class DeviceReader(unittest.TestCase):
         cls.vm=v=c.CDLL(str(OUT/('libxy_tab5.dylib' if sys.platform=='darwin' else 'libxy_tab5.so')))
         v.xy_tab5_init.argtypes=[c.c_void_p,c.c_uint32];v.xy_tab5_init.restype=c.c_bool
         v.xy_tab5_render.argtypes=[c.c_void_p,c.c_uint32];v.xy_tab5_render.restype=c.c_bool
+        v.xy_tab5_render_terminal.argtypes=[c.c_void_p,c.c_uint32,c.POINTER(TerminalView)];v.xy_tab5_render_terminal.restype=c.c_bool
         v.xy_tab5_key.argtypes=[c.c_uint8];v.xy_tab5_touch.argtypes=[c.c_uint32,c.c_uint32]
         v.xy_tab5_set_portrait.argtypes=[c.c_bool]
         v.xy_tab5_set_portrait_keyboard.argtypes=[c.c_bool]
@@ -43,6 +50,22 @@ class DeviceReader(unittest.TestCase):
             for _ in range(chapter):self.key(129)
             self.key(13)
         return self.render()
+    def test_terminal_preview_preserves_bounds_and_orientation(self):
+        cells=(TerminalCell*(80*24))()
+        for cell in cells: cell.codepoint=32;cell.fg=0xffff;cell.bg=0
+        cells[0]=TerminalCell(32,0x07e0,0xf800,0)
+        cells[1]=TerminalCell(ord('A'),0xffff,0x001f,0)
+        view=TerminalView(80,24,0,0,True,cells)
+        for portrait in (True,False):
+            self.vm.xy_tab5_set_portrait(portrait)
+            self.assertTrue(self.vm.xy_tab5_render_terminal(c.byref(self.pixels,32),720*1280*2,c.byref(view)))
+            self.assertEqual(self.pixels.raw[:32],b'\xa5'*32)
+            self.assertEqual(self.pixels.raw[-32:],b'\xa5'*32)
+            x,y=(4,10) if portrait else (10,1279-4)
+            self.assertEqual(struct.unpack_from('<H',self.pixels,32+(y*720+x)*2)[0],0xf800)
+        view.cols=81
+        self.assertFalse(self.vm.xy_tab5_render_terminal(c.byref(self.pixels,32),720*1280*2,c.byref(view)))
+
     def test_rom_pack_matches_each_source_section_and_ruby(self):
         source=json.loads((ROOT/'assets/xy/library.json').read_text())
         at=0

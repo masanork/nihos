@@ -136,6 +136,8 @@ pub const PacketError = error{
     InvalidPadding,
     MacVerificationFailed,
     BufferTooSmall,
+    InsufficientRandomness,
+    InvalidPacketLength,
 };
 
 pub fn packPacket(
@@ -147,6 +149,7 @@ pub fn packPacket(
     random_bytes: []const u8,
     out_buf: []u8,
 ) PacketError!usize {
+    if (payload.len == 0 or payload.len > SSH_MAX_PKT - 32) return error.PacketTooLarge;
     const block_sz: usize = if (encrypted) 16 else 8;
     const unpadded = 5 + payload.len;
     var pad_len = block_sz - (unpadded & (block_sz - 1));
@@ -156,16 +159,15 @@ pub fn packPacket(
     const total_len = 4 + pkt_len;
     const mac_len: usize = if (encrypted) 32 else 0;
 
+    if (pkt_len > SSH_MAX_PKT) return error.PacketTooLarge;
+    if (random_bytes.len < pad_len) return error.InsufficientRandomness;
     if (total_len + mac_len > out_buf.len) return error.BufferTooSmall;
 
     std.mem.writeInt(u32, out_buf[0..4], @intCast(pkt_len), .big);
     out_buf[4] = @intCast(pad_len);
     @memcpy(out_buf[5 .. 5 + payload.len], payload);
 
-    // Fill padding bytes with provided random bytes or zeroes
-    for (0..pad_len) |i| {
-        out_buf[5 + payload.len + i] = if (i < random_bytes.len) random_bytes[i] else 0;
-    }
+    @memcpy(out_buf[5 + payload.len ..][0..pad_len], random_bytes[0..pad_len]);
 
     if (encrypted) {
         const cipher = enc_cipher orelse return error.BufferTooSmall;
@@ -191,6 +193,8 @@ pub fn packPacket(
     return total_len;
 }
 
+/// On any encrypted packet error, the caller must discard the connection and
+/// cipher state. Decryption advances the stream before the MAC is verified.
 pub fn unpackPacket(
     raw_packet: []u8,
     seq: u32,
@@ -204,6 +208,7 @@ pub fn unpackPacket(
         const key = mac_key orelse return error.BufferTooSmall;
 
         const total_len = raw_packet.len - 32;
+        if (total_len > SSH_MAX_PKT + 4 or total_len % 16 != 0) return error.InvalidPacketLength;
         const rx_mac = raw_packet[total_len .. total_len + 32];
 
         // Decrypt entire packet
@@ -218,25 +223,26 @@ pub fn unpackPacket(
         hmac.update(raw_packet[0..total_len]);
         hmac.final(&exp_mac);
 
-        if (!std.mem.eql(u8, rx_mac, &exp_mac)) {
+        if (!std.crypto.timing_safe.eql([32]u8, rx_mac[0..32].*, exp_mac)) {
             return error.MacVerificationFailed;
         }
 
         const pkt_len = std.mem.readInt(u32, raw_packet[0..4], .big);
-        if (pkt_len < 12 or 4 + pkt_len != total_len) return error.PacketTooShort;
+        if (pkt_len < 12 or @as(usize, pkt_len) + 4 != total_len) return error.InvalidPacketLength;
 
         const pad_len = raw_packet[4];
-        if (1 + @as(usize, pad_len) >= pkt_len) return error.InvalidPadding;
+        if (pad_len < 4 or 1 + @as(usize, pad_len) >= pkt_len) return error.InvalidPadding;
 
         const payload_len = pkt_len - 1 - pad_len;
         return raw_packet[5 .. 5 + payload_len];
     } else {
         if (raw_packet.len < 5) return error.PacketTooShort;
         const pkt_len = std.mem.readInt(u32, raw_packet[0..4], .big);
-        if (4 + pkt_len > raw_packet.len) return error.PacketTooShort;
+        if (pkt_len > SSH_MAX_PKT or pkt_len < 12 or (@as(usize, pkt_len) + 4) % 8 != 0) return error.InvalidPacketLength;
+        if (@as(usize, pkt_len) + 4 != raw_packet.len) return error.InvalidPacketLength;
 
         const pad_len = raw_packet[4];
-        if (1 + @as(usize, pad_len) >= pkt_len) return error.InvalidPadding;
+        if (pad_len < 4 or 1 + @as(usize, pad_len) >= pkt_len) return error.InvalidPadding;
 
         const payload_len = pkt_len - 1 - pad_len;
         return raw_packet[5 .. 5 + payload_len];
@@ -272,12 +278,33 @@ test "SSH packet packing and unpacking (unencrypted)" {
     var out_buf: [128]u8 = undefined;
     const payload = "SSH-TEST-PAYLOAD";
 
-    const pad: [8]u8 = @splat(0);
+    const pad: [16]u8 = @splat(0);
     const packed_len = try packPacket(payload, 0, false, null, null, &pad, &out_buf);
     try std.testing.expect(packed_len > payload.len);
 
     const unpacked = try unpackPacket(out_buf[0..packed_len], 0, false, null, null);
     try std.testing.expectEqualStrings(payload, unpacked);
+}
+
+test "packet validation rejects missing padding entropy, malformed lengths and MAC changes" {
+    var packet: [128]u8 = undefined;
+    try std.testing.expectError(error.InsufficientRandomness, packPacket("x", 0, false, null, null, &.{}, &packet));
+    const n = try packPacket("x", 0, false, null, null, &@as([16]u8, @splat(1)), &packet);
+    var malformed = packet;
+    malformed[4] = 3;
+    try std.testing.expectError(error.InvalidPadding, unpackPacket(malformed[0..n], 0, false, null, null));
+    malformed = packet;
+    malformed[3] -= 1;
+    try std.testing.expectError(error.InvalidPacketLength, unpackPacket(malformed[0..n], 0, false, null, null));
+    try std.testing.expectError(error.InvalidPacketLength, unpackPacket(packet[0 .. n + 1], 0, false, null, null));
+    const key: [16]u8 = @splat(1);
+    const iv: [16]u8 = @splat(2);
+    var mac: [32]u8 = @splat(3);
+    var enc = Aes128Ctr.init(key, iv);
+    var dec = Aes128Ctr.init(key, iv);
+    const encrypted_len = try packPacket("x", 0, true, &enc, &mac, &@as([32]u8, @splat(4)), &packet);
+    packet[encrypted_len - 1] ^= 1;
+    try std.testing.expectError(error.MacVerificationFailed, unpackPacket(packet[0..encrypted_len], 0, true, &dec, &mac));
 }
 
 test "SSH packet packing and unpacking (encrypted with AES-128-CTR and HMAC-SHA256)" {
@@ -291,7 +318,7 @@ test "SSH packet packing and unpacking (encrypted with AES-128-CTR and HMAC-SHA2
     var out_buf: [256]u8 = undefined;
     const payload = "SSH-ENCRYPTED-STREAM-DATA";
 
-    const pad16: [16]u8 = @splat(0);
+    const pad16: [32]u8 = @splat(0);
     const packed_len = try packPacket(payload, 1, true, &enc, &mac_key, &pad16, &out_buf);
     try std.testing.expect(packed_len >= payload.len + 32);
 

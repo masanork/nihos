@@ -29,6 +29,7 @@ pub const EvalError = error{
     ArityMismatch,
     NoPreviousConfigGeneration,
     SqlUnavailable,
+    SshUnavailable,
 } || document.Error;
 
 // ============================================================================
@@ -787,12 +788,9 @@ pub fn XyWorkspace(
             }
 
             if (std.mem.eql(u8, op, "ssh/connect")) {
-                if (args.len < 1) return error.ArityMismatch;
-                const host = try self.evalSymbolOrSelf(args[0]);
-                var tmp: [128]u8 = undefined;
-                const msg = std.fmt.bufPrint(&tmp, "connecting to {s}...", .{host}) catch "connecting...";
-                const str = try self.arena.allocString(msg);
-                return .{ .string = str };
+                if (args.len != 1) return error.ArityMismatch;
+                _ = try self.evalSymbolOrSelf(args[0]);
+                return error.SshUnavailable;
             }
 
             return error.UnknownForm;
@@ -1264,6 +1262,6 @@ test "Scheme Tailscale and SSH terminal queries: (ts/status), (ts/peers), and (s
     const peers_str = ws.arena.formatValue(peers_val, &buf);
     try std.testing.expectEqualStrings("(\"macbook\" \"linux-server\")", peers_str);
 
-    const ssh_res = try ws.evalStr("(ssh/connect \"macbook\")");
-    try std.testing.expectEqualStrings("connecting to macbook...", ssh_res.string);
+    try std.testing.expectError(error.SshUnavailable, ws.evalStr("(ssh/connect \"macbook\")"));
+    try std.testing.expectError(error.ArityMismatch, ws.evalStr("(ssh/connect)"));
 }
