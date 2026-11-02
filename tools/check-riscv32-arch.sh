@@ -99,6 +99,19 @@ echo "Native network owner codegen (normal and diagnostic): ok"
     "-Mhosted_station=$repo_root/src/net/hosted_station.zig"
 echo "Experimental Hosted TCP owner RV32 codegen: ok"
 
+# Force the xy VT bridge against the native Hosted SSH owner. Compile-only.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-vt-owner.o" --dep hosted_station --dep ssh_terminal_session \
+    "-Mroot=$repo_root/tools/probes/ssh-vt-owner.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+    --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
+    --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \
+    --dep view_config "-Mviewport_layout=$repo_root/src/graphics/viewport_layout.zig" \
+    "-Mterminal_adapter=$repo_root/src/net/terminal_adapter.zig" \
+    "-Mview_config=$repo_root/src/xy/view_config.zig"
+echo "SSH VT and Hosted session RV32 codegen: ok"
+
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
     "-Mroot=$repo_root/tools/probes/rtc.zig" \

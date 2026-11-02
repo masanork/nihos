@@ -64,8 +64,11 @@ consumption, connection epoch checks and the remote close acknowledgement.
 caller-owned, stable object; an opt-in native factory exposes it on CPU0.
 The experimental image reserves 128 KiB in the boot-admitted sqld PSRAM
 region, and keeps its single borrow until explicit release after reset.
-Production entropy, credential storage and the native application remain
-outside these components.
+The xy `ssh_terminal_session.zig` bridge feeds received bytes into VT100 and
+queues encoded keys with bounded backpressure; the host OpenSSH fixture checks
+that path through the Hosted session. The home screen and native rendering are
+not wired. Production entropy and credential storage remain outside these
+components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final

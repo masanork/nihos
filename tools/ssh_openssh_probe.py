@@ -184,7 +184,8 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
-                hosted_session = os.environ.get("NIHOS_SSH_HOSTED_SESSION") == "1"
+                hosted_vt = os.environ.get("NIHOS_SSH_HOSTED_VT") == "1"
+                hosted_session = os.environ.get("NIHOS_SSH_HOSTED_SESSION") == "1" or hosted_vt
                 if hosted_session and not bridge: raise ValueError("Hosted session requires libslirp")
                 auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1" or hosted_session
                 auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or auto_client
@@ -376,7 +377,53 @@ def run():
                     action(0); wait_event(1)
                     action(1); wait_event(2)
                     action(2); wait_event(3)
-                if auto_client:
+                if hosted_vt:
+                    vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
+                    subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
+                        "--dep", "ssh_terminal_session", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
+                        "--dep", "vt100", "--dep", "terminal_buffer", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
+                        "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
+                        "--dep", "viewport_layout", "--dep", "terminal_adapter", "--dep", "vt100", "-Mterminal_buffer=src/xy/terminal_buffer.zig",
+                        "--dep", "view_config", "-Mviewport_layout=src/graphics/viewport_layout.zig",
+                        "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig"], cwd=ROOT, check=True)
+                    vt = c.CDLL(str(vt_lib))
+                    poll_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p)
+                    io_cb = c.CFUNCTYPE(c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_size_t)
+                    @poll_cb
+                    def vt_poll_backend(random, user, length, key):
+                        return tcp_ffi.hosted_ssh_poll(random, user, length, key)
+                    @io_cb
+                    def vt_read_backend(random, output, length):
+                        return tcp_ffi.hosted_ssh_read(random, output, length)
+                    @io_cb
+                    def vt_write_backend(random, data, length):
+                        return tcp_ffi.hosted_ssh_write(random, data, length)
+                    vt.probe_vt_begin.argtypes = [poll_cb, io_cb, io_cb]
+                    vt.probe_vt_poll.argtypes = [c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; vt.probe_vt_poll.restype = c.c_ssize_t
+                    vt.probe_vt_key.argtypes = [c.c_uint32]; vt.probe_vt_key.restype = c.c_bool
+                    vt.probe_vt_cell.argtypes = [c.c_size_t]; vt.probe_vt_cell.restype = c.c_uint32
+                    vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
+                    def vt_step():
+                        if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")
+                        result = vt.probe_vt_poll(buffer(os.urandom(32)), buffer(username), len(username), seed)
+                        if result < 0: raise RuntimeError("VT session failed")
+                        time.sleep(0.001)
+                        return result
+                    if vt_step() != 1: raise RuntimeError("VT session did not become ready")
+                    for byte in b"printf ni%s_ssh_ok hos\n":
+                        if not vt.probe_vt_key(byte): raise RuntimeError("VT key queue full")
+                    deadline = time.monotonic() + 20
+                    while True:
+                        if vt_step() == 2: raise RuntimeError("VT session closed before output")
+                        cells = "".join(chr(vt.probe_vt_cell(i)) for i in range(80 * 24))
+                        if "nihos_ssh_ok" in cells: break
+                        if time.monotonic() > deadline: raise TimeoutError("VT output timeout")
+                    for byte in b"exit\n":
+                        if not vt.probe_vt_key(byte): raise RuntimeError("VT exit queue full")
+                    deadline = time.monotonic() + 20
+                    while vt_step() != 2:
+                        if time.monotonic() > deadline: raise TimeoutError("VT close timeout")
+                elif auto_client:
                     def tty_step():
                         if hosted_session:
                             if not bridge.bridge_poll(): raise RuntimeError("TCP bridge failed")

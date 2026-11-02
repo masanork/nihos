@@ -245,6 +245,11 @@ pub fn build(b: *std.Build) void {
     xy_terminal_buffer_module.addImport("terminal_adapter", terminal_adapter_module);
     xy_terminal_buffer_module.addImport("vt100", vt100_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_terminal_buffer_module })).step);
+    const xy_ssh_terminal_session_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_terminal_session.zig"), .target = target, .optimize = optimize });
+    xy_ssh_terminal_session_module.addImport("vt100", vt100_module);
+    xy_ssh_terminal_session_module.addImport("terminal_buffer", xy_terminal_buffer_module);
+    xy_ssh_terminal_session_module.addImport("ssh_hosted_session", ssh_hosted_session_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = xy_ssh_terminal_session_module })).step);
     const lp_core_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/lp_core.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = lp_core_module })).step);
     const suspend_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/suspend.zig"), .target = target, .optimize = optimize });
