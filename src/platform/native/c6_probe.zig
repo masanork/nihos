@@ -576,24 +576,42 @@ noinline fn exerciseHostedSplitUdp(clock: timers.Timer, report: *Report, join: h
         };
         const now = clock.counter() orelse return error.Clock;
         if (clock_failed or now < started) return error.Clock;
-        if (hosted_time.phase == .ready and hosted_decoder.used == 0) {
+        if (now >= hosted_time.deadline) return error.Timeout;
+        const acquisition = try hosted.split_udp_owner.acquisition(&hosted_time, &hosted_decoder);
+        if (acquisition == .drain) {
+            // A split control frame must finish before transferring ownership;
+            // calling tx here would start an unrelated C6 time request.
+            host.io.delay(100);
+            continue;
+        }
+        if (acquisition == .ready) {
             const address = hosted_time.addresses.address orelse return error.Stale;
             report.ip = address.ip;
             report.netmask = address.mask;
             report.gateway = address.gateway;
             report.stage = 6;
-            try hosted_split_udp.init(&hosted_time, &hosted_decoder, .{ .ip = config.udp_ip, .mac = config.udp_mac, .port = config.udp_port }, 1, now, @min(now + 20_000_000, hosted_time.deadline));
+            const peer = hosted.split_udp_owner.Peer{ .ip = config.udp_ip, .mac = config.udp_mac, .port = config.udp_port };
+            const deadline = @min(now + 20_000_000, hosted_time.deadline);
+            if (config.udp_burst) {
+                try hosted_split_udp.initBurst(&hosted_time, &hosted_decoder, peer, 16, 250_000, 8_000_000, now, deadline);
+            } else {
+                try hosted_split_udp.init(&hosted_time, &hosted_decoder, peer, 1, now, deadline);
+            }
             report.stage = 7;
             defer {
-                report.long_sent = if (hosted_split_udp.sent_count == 1) @intCast(hosted_split_udp.output.len) else 0;
+                report.long_sent = if (hosted_split_udp.sent_count != 0) @intCast(hosted_split_udp.output.len) else 0;
                 report.long_attempts = hosted_split_udp.sent_count;
+                report.long_burst = @intFromBool(config.udp_burst);
+                report.long_echo_mask = hosted_split_udp.echo_mask;
+                report.long_echo = @as(u32, @popCount(hosted_split_udp.echo_mask)) +| hosted_split_udp.duplicate_echoes;
+                if (hosted_split_udp.sent_count != 0 and hosted_split_udp.last_now >= hosted_split_udp.last_send)
+                    report.long_final_wait_ms = @intCast(@min((hosted_split_udp.last_now - hosted_split_udp.last_send) / 1000, 0xffffffff));
             }
             while (hosted_split_udp.phase != .complete) {
                 try hosted_split_udp.step(&hosted_stream, clock.counter() orelse return error.Clock);
                 if (clock_failed) return error.Clock;
                 host.io.delay(100);
             }
-            report.long_echo = 1;
             report.status = 1;
             report.stage = 12;
             return;
@@ -621,9 +639,6 @@ pub fn runHostedSplitUdp(clock: timers.Timer, join: hosted.Join) Report {
     var report: Report = .{};
     exerciseHostedSplitUdp(clock, &report, join) catch |err| {
         report.error_code = @intFromError(err);
-        for ("NIHOS_C6_SPLIT_UDP_ERROR name=") |byte| _ = nih_rom_putc(byte);
-        for (@errorName(err)) |byte| _ = nih_rom_putc(byte);
-        for ("\r\n") |byte| _ = nih_rom_putc(byte);
         hosted_stream.invalidate();
     };
     report.fw_known = @intFromBool(hosted_time.station.version_known);
@@ -632,6 +647,11 @@ pub fn runHostedSplitUdp(clock: timers.Timer, join: hosted.Join) Report {
     report.fw_patch = hosted_time.station.version[2];
     report.peer_chip = hosted_time.station.peer_chip;
     report.connected_events = @intFromBool(hosted_time.station.connected);
+    report.hosted_phase = @backingInt(hosted_time.station.phase) + 1;
+    report.hosted_frames = hosted_time.station.frames;
+    report.hosted_priv = hosted_time.station.priv_events;
+    report.rpc_status = hosted_time.station.rpc_status;
+    report.rpc_response = hosted_time.last_rpc_id;
     return snapshot(report);
 }
 noinline fn exerciseHostedTime(clock: timers.Timer, report: *TimeReport, join: hosted.Join) !void {
