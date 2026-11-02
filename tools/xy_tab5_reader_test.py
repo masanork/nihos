@@ -103,6 +103,20 @@ class DeviceReader(unittest.TestCase):
         self.vm.xy_tab5_touch(900,190);self.key('v');self.key(13)
         self.assertEqual(self.state(3),end);self.assertEqual(self.state(6),36)
         self.assertEqual(self.state(7),1);self.render()
+    def test_certification_screen_keyboard_and_touch_in_both_orientations(self):
+        for portrait in (False, True):
+            with self.subTest(portrait=portrait):
+                self.assertTrue(self.vm.xy_tab5_init(self.owner,len(self.data)))
+                self.vm.xy_tab5_set_portrait(portrait)
+                self.key(27);self.key('s')
+                settings=self.render()
+                self.vm.xy_tab5_touch(100,110)
+                self.assertEqual(self.state(0),9)
+                self.assertNotEqual(settings,self.render())
+                self.key(13);self.assertEqual(self.state(0),4)
+                self.key('g');self.assertEqual(self.state(0),9)
+                self.key(27);self.assertEqual(self.state(0),4)
+
     def test_portrait_home_reader_settings_and_contents_touch(self):
         self.vm.xy_tab5_set_portrait(True)
         home=self.render()

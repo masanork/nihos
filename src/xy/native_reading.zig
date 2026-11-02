@@ -120,6 +120,34 @@ fn label(instance: *Session, target: anytype, x: i32, y: i32, text: []const u8, 
         pen += @divTrunc(glyph.metrics.x_advance_26_6 + 32, 64);
     }
 }
+// Form 7 mark, adapted from Shinichi Ohki's CC0 SVG:
+// https://gist.github.com/Shinichi-Ohki/5425a47f67c3650a96ed51749012b6e0
+const giteki_mask linksection(@import("view_config").data_section) = @embedFile("giteki-mask.bin").*;
+fn certificationMark(target: anytype, x: i32, y: i32) void {
+    for (0..96) |row| {
+        var col: usize = 0;
+        while (col < 96) {
+            const start = col;
+            while (col < 96 and (giteki_mask[row * 12 + col / 8] & (@as(u8, 0x80) >> @intCast(col % 8))) == 0) : (col += 1) {}
+            const left = col;
+            while (col < 96 and (giteki_mask[row * 12 + col / 8] & (@as(u8, 0x80) >> @intCast(col % 8))) != 0) : (col += 1) {}
+            if (col > left) _ = target.fillRect(x + @as(i32, @intCast(left)), y + @as(i32, @intCast(row)), @intCast(col - left), 1, 0x2147);
+            if (col == start) break;
+        }
+    }
+}
+fn certification(instance: *Session, target: anytype, x: i32) !void {
+    try label(instance, target, x, 40, "認証情報", 32, 0x2147);
+    certificationMark(target, x, 150);
+    // Form 7 calls for R enclosed in a square alongside the mark and number.
+    _ = target.fillRect(x + 120, 173, 42, 3, 0x2147);
+    _ = target.fillRect(x + 120, 212, 42, 3, 0x2147);
+    _ = target.fillRect(x + 120, 173, 3, 42, 0x2147);
+    _ = target.fillRect(x + 159, 173, 3, 42, 0x2147);
+    try label(instance, target, x + 128, 176, "R", 30, 0x2147);
+    try label(instance, target, x + 178, 176, "219-259093", 32, 0x2147);
+    try label(instance, target, x, 310, "タッチ / Enter で戻る", 24, 0x2147);
+}
 fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !void {
     _ = target.fillRect(0, 648, 1280, 72, 0x2147);
     if (reading) {
@@ -151,6 +179,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
         },
         .settings => {
             try label(instance, target, 36, 40, "自分に合った読み心地に", 32, 0x2147);
+            try label(instance, target, 80, 105, "認証情報 / g", 24, 0x2147);
             var number: [64]u8 = undefined;
             const line = try std.fmt.bufPrint(&number, "-          {d} px          +", .{request.config.style.body_px});
             try label(instance, target, 80, 178, line, 28, 0x2147);
@@ -159,6 +188,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
             try label(instance, target, 80, 478, "明るい紙面 / 暗い紙面", 28, 0x2147);
             try label(instance, target, 80, 578, "設定を反映して戻る", 28, 0x2147);
         },
+        .certification => try certification(instance, target, 36),
         .chapters => {
             const titles = [_][]const u8{ "xyを使ってみる", "草枕 / 夏目漱石", "SICP / Scheme", "小さなOSを育てる" };
             try label(instance, target, 36, 32, titles[nav.book], 32, 0x2147);
@@ -328,6 +358,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
         },
         .settings => {
             try label(instance, target, 48, 40, "自分に合った読み心地に", 36, 0x2147);
+            try label(instance, target, 160, 105, "認証情報 / g", 24, 0x2147);
             var number: [64]u8 = undefined;
             const line = try std.fmt.bufPrint(&number, "-          {d} px          +", .{config.style.body_px});
             try label(instance, target, 160, 178, line, 32, 0x2147);
@@ -335,6 +366,10 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             try label(instance, target, 160, 378, if (config.style.style_id == 0) "明朝    /  f でゴシックへ" else "ゴシック /  f で明朝へ", 32, 0x2147);
             try label(instance, target, 160, 478, "明るい紙面・暗い紙面 / t", 32, 0x2147);
             try label(instance, target, 160, 578, "設定を反映して戻る / Enter", 28, 0x2147);
+            try footer(instance, target, false, false);
+        },
+        .certification => {
+            try certification(instance, target, 48);
             try footer(instance, target, false, false);
         },
         .reading => {

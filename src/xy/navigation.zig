@@ -6,7 +6,7 @@ pub const section = config.section;
 const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
-pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, ssh };
+pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification, ssh };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
 
 pub const CardViewData = struct {
@@ -117,7 +117,7 @@ pub const State = struct {
     pub fn handle(self: *State, key: Key, view: *config.Config) linksection(section) void {
         self.error_code = 0;
         if (key == .escape or key == .cancel) {
-            if (self.screen == .credits) self.screen = .reading else self.home();
+            if (self.screen == .certification) self.screen = .settings else if (self.screen == .credits) self.screen = .reading else self.home();
             return;
         }
         switch (self.screen) {
@@ -176,6 +176,7 @@ pub const State = struct {
                 .up => view.style.body_px = @min(64, view.style.body_px + 4),
                 .down => view.style.body_px = @max(16, view.style.body_px -| 4),
                 .text => |byte| switch (byte) {
+                    'g', 'G' => self.screen = .certification,
                     'v' => view.style.axis = 1 - view.style.axis,
                     'f' => view.style.style_id = 1 - view.style.style_id,
                     't' => {
@@ -188,6 +189,9 @@ pub const State = struct {
                     else => {},
                 },
                 else => {},
+            },
+            .certification => if (key == .enter) {
+                self.screen = .settings;
             },
             .credits => if (key == .enter) {
                 self.screen = .reading;
@@ -278,8 +282,9 @@ pub const State = struct {
             },
             .reading => if (x < 360) self.back() else self.next(),
             .settings => {
-                if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen;
+                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen;
             },
+            .certification => self.screen = .settings,
             .credits => self.screen = .reading,
             .card_view => self.screen = self.return_screen,
             .document => self.home(),
@@ -336,8 +341,9 @@ pub const State = struct {
             },
             .reading => if (x < 640) self.back() else self.next(),
             .settings => {
-                if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560) self.screen = self.return_screen;
+                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560) self.screen = self.return_screen;
             },
+            .certification => self.screen = .settings,
             .credits => self.screen = .reading,
             .card_view => self.screen = self.return_screen,
             .examples, .exercise, .ssh => {},
@@ -427,4 +433,20 @@ test "SSH entry is reachable from home by touch and keyboard" {
     state.handle(.down, &view);
     state.handle(.enter, &view);
     try std.testing.expectEqual(Screen.ssh, state.screen);
+}
+
+test "certification screen opens from settings and returns" {
+    var state = State{};
+    var view = config.Config{};
+    state.home();
+    state.handle(.{ .text = 's' }, &view);
+    state.handle(.{ .text = 'g' }, &view);
+    try std.testing.expectEqual(Screen.certification, state.screen);
+    state.handle(.escape, &view);
+    try std.testing.expectEqual(Screen.settings, state.screen);
+    state.touchPortrait(100, 100, &view);
+    try std.testing.expectEqual(Screen.certification, state.screen);
+    state.handle(.enter, &view);
+    state.touch(100, 100, &view);
+    try std.testing.expectEqual(Screen.certification, state.screen);
 }
