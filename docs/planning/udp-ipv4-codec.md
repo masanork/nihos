@@ -85,6 +85,15 @@ owned. Incomplete input continues to respect the send deadline. This helper
 does not bind into the native service and does not eliminate arrivals racing
 an empty read.
 
+The host integration test also composes `Sender.step`, the existing SDIO
+stream and controller, the long-DMA guard and buffer, and a mock register/cache
+backend. It checks padded packet bytes and quarantine after a simulated DMA
+completion failure. The guard forwards receive and short-write operations;
+long-write errors retire its associated DMA buffer. This is not a target
+driver or a measurement of silicon DMA completion. The native service's
+current bus does not use the long-DMA fixture provider and must not be assumed
+to support this path without an explicit integration and image audit.
+
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link
 or execute a firmware image.

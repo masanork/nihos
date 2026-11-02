@@ -3,6 +3,10 @@ const dma = @import("hosted_long_dma.zig");
 const guard = @import("hosted_long_dma_guard.zig");
 const sender = @import("hosted_long_sender.zig");
 const sd = @import("../soc/esp32p4/sdio.zig");
+const split = @import("hosted_network_split.zig");
+const lease = @import("hosted_udp_lease.zig");
+const udp_sender = @import("hosted_udp_sender.zig");
+const hosted = @import("hosted.zig");
 
 const Failure = enum { none, data_cache, desc_cache, timeout, stop_timeout, invalidate, owned, desc_error };
 const Backend = struct {
@@ -62,8 +66,18 @@ const Host = struct {
     pub const TransportError = sd.Error;
     controller: sd.Controller(*Io),
     credits: u32 = 1,
-    pub fn readWord(self: *@This(), _: u32) TransportError!u32 {
+    pub fn readWord(self: *@This(), address: u32) TransportError!u32 {
+        if (address == @import("c6_sdio.zig").length_register) return 0;
         return self.credits << 16;
+    }
+    pub fn writeWord(self: *@This(), address: u32, value: u32) TransportError!void {
+        try self.controller.writeWord(address, value);
+    }
+    pub fn readBytes(self: *@This(), address: u32, destination: []u8) TransportError!void {
+        try self.controller.readBytes(address, destination);
+    }
+    pub fn writeBytes(self: *@This(), address: u32, bytes: []const u8) TransportError!void {
+        try self.controller.writeBytes(address, bytes);
     }
     pub fn writeBlocks(self: *@This(), address: u32, bytes: []const u8) TransportError!void {
         try self.controller.writeBlocks(address, bytes);
@@ -96,6 +110,84 @@ test "sender controller and DMA buffer complete one padded transaction" {
     try std.testing.expectEqualSlices(u8, &shorter, io.buffer.data[0..shorter.len]);
     try std.testing.expect(std.mem.allEqual(u8, io.buffer.data[shorter.len..], 0));
     try std.testing.expectEqual(dma.State.idle, io.buffer.state);
+}
+
+const Dispatch = struct {
+    pub fn receive(_: *@This(), _: hosted.Frame, _: u64) error{DispatchFailed}!void {}
+};
+
+const ForwardHost = struct {
+    pub const TransportError = error{Failed};
+    operations: u32 = 0,
+    fail: bool = false,
+    pub fn readWord(self: *@This(), _: u32) TransportError!u32 {
+        self.operations += 1;
+        if (self.fail) return error.Failed;
+        return 42;
+    }
+    pub fn writeWord(self: *@This(), _: u32, _: u32) TransportError!void {
+        self.operations += 1;
+        if (self.fail) return error.Failed;
+    }
+    pub fn readBytes(self: *@This(), _: u32, data: []u8) TransportError!void {
+        self.operations += 1;
+        if (self.fail) return error.Failed;
+        @memset(data, 0x5a);
+    }
+    pub fn writeBytes(self: *@This(), _: u32, _: []const u8) TransportError!void {
+        self.operations += 1;
+        if (self.fail) return error.Failed;
+    }
+};
+
+test "DMA guard forwards shared short and receive operations" {
+    var buffer: dma.Buffer = .{};
+    var host: ForwardHost = .{};
+    var guarded: guard.Guard(ForwardHost) = .{ .host = &host, .buffer = &buffer };
+    try std.testing.expectEqual(@as(u32, 42), try guarded.readWord(1));
+    try guarded.writeWord(2, 3);
+    var bytes: [4]u8 = undefined;
+    try guarded.readBytes(4, &bytes);
+    try std.testing.expect(std.mem.allEqual(u8, &bytes, 0x5a));
+    try guarded.writeBytes(5, &bytes);
+    try std.testing.expectEqual(@as(u32, 4), host.operations);
+    try std.testing.expectEqual(dma.State.idle, buffer.state);
+    host.fail = true;
+    try std.testing.expectError(error.Failed, guarded.readBytes(4, &bytes));
+    try std.testing.expectError(error.Failed, guarded.writeBytes(5, &bytes));
+    try std.testing.expectEqual(dma.State.idle, buffer.state);
+}
+
+test "UDP owner uses guarded controller and quarantines failed DMA" {
+    for (0..2) |case| {
+        var io: Io = .{ .backend = .{ .failure = if (case == 0) .none else .invalidate } };
+        var host: Host = .{ .controller = .{ .io = &io, .prepared = true, .selected = true, .four_bit = true, .poll_limit = 2 } };
+        var guarded: guard.Guard(Host) = .{ .host = &host, .buffer = &io.buffer };
+        var stream: sender.ProfileStream(@TypeOf(guarded), 64) = .{ .host = &guarded };
+        var state: split.State = .{ .generation = 7, .address = .{ .ip = 0xc0000201, .mask = 0xffffff00, .gateway = 0xc00002fe, .dns = 0xc00002fe } };
+        const binding = try lease.Lease.open(&state, .{ 2, 0, 0, 0, 0, 1 }, 49152, .{ .first = 49152, .last = 61439 });
+        var tx = try udp_sender.Sender.init(&state, binding);
+        const destination = @import("udp_ipv4.zig").Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 2 }, .ip = .{ 192, 0, 2, 2 }, .port = 443 };
+        const payload: [1200]u8 = @splat(0x5a);
+        try tx.enqueue(destination, &payload, 1, 1, 50);
+        var decoder: hosted.Decoder = .{};
+        var dispatch: Dispatch = .{};
+        var rx: [512]u8 = undefined;
+        if (case == 0) {
+            try std.testing.expectEqual(udp_sender.Outcome.sent, try tx.step(&stream, &decoder, &dispatch, &rx, 2));
+            try std.testing.expectEqual(dma.State.idle, io.buffer.state);
+            try std.testing.expectEqual(@as(u32, 1536), io.buffer.descriptor[1]);
+            const packet = try @import("udp_ipv4.zig").decode(io.buffer.data[12..1254]);
+            try std.testing.expectEqualSlices(u8, &payload, packet.payload);
+            try std.testing.expect(std.mem.allEqual(u8, io.buffer.data[1254..], 0));
+        } else {
+            try std.testing.expectError(error.Dma, tx.step(&stream, &decoder, &dispatch, &rx, 2));
+            try std.testing.expectEqual(dma.State.retired, io.buffer.state);
+            try std.testing.expect(stream.faulted and state.address == null);
+            try std.testing.expectError(error.Retired, tx.step(&stream, &decoder, &dispatch, &rx, 3));
+            try std.testing.expectEqual(@as(usize, 1), io.transfers);
+        }
+    }
 }
 
 test "controller failures quarantine actual buffer and prevent credit consumption or replay" {
