@@ -56,8 +56,10 @@ host-pin verification and NEWKEYS activation, and clears secrets on failure.
 exchange without consuming the next packet. `ssh_connection.zig` coordinates
 both stages on a single socket with a monotonic deadline, epoch checks and
 fail-closed secret cleanup. The OpenSSH host fixture exercises the combined
-path and a wrong-pin control; production entropy and the native application
-remain outside these components.
+path and a wrong-pin control. `ssh_client.zig` continues through public-key
+authentication and an interactive PTY shell, with a bounded startup deadline.
+Production entropy, credential storage and the native application remain
+outside these components.
 
 `tcp_connect.zig` adds a host-tested bounded active-open state machine using
 that codec. It handles SYN retransmission, tuple/ACK validation and a final

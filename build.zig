@@ -185,6 +185,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_socket_pump_module })).step);
     const ssh_kex_driver_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_kex_driver.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_kex_driver_module })).step);
+    const ssh_client_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_client.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_client_module })).step);
     const ssh_connection_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_connection.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_connection_module })).step);
     const ssh_identification_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_identification.zig"), .target = target, .optimize = optimize });

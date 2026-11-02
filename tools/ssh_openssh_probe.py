@@ -96,6 +96,8 @@ def run():
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
         p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
         p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
+        p.probe_client_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]
+        p.probe_client_poll.argtypes = [c.c_uint64, c.c_void_p, c.c_void_p, c.c_size_t, c.c_void_p]; p.probe_client_poll.restype = c.c_ssize_t
         p.probe_connection_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]
         p.probe_connection_poll.argtypes = [c.c_uint64, c.c_void_p]; p.probe_connection_poll.restype = c.c_ssize_t
         p.probe_ident_poll.restype = c.c_ssize_t
@@ -142,15 +144,19 @@ def run():
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
         bad_pin = os.environ.get("NIHOS_SSH_BADPIN") == "1"
         if bad_pin:
-            if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1") or bridge:
+            if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1") or bridge:
                 raise ValueError("bad-pin control requires automatic KEX over a host socket")
             pin = bytes([pin[0] ^ 1]) + pin[1:]
+        bad_auth = os.environ.get("NIHOS_SSH_BADAUTH") == "1"
+        if bad_auth and (os.environ.get("NIHOS_SSH_AUTOCLIENT") != "1" or bridge or bad_pin):
+            raise ValueError("bad-auth control requires automatic client over a host socket")
         with socket.socket() as picker:
             picker.bind(("127.0.0.1", 0)); port = picker.getsockname()[1]
         seed = buffer(os.urandom(32)); user_public = c.create_string_buffer(32)
         assert p.probe_auth_public(seed, user_public)
         authorized = tmp / "authorized_keys"
         authorized.write_bytes(b"ssh-ed25519 " + base64.b64encode(string(b"ssh-ed25519") + string(user_public.raw)) + b"\n")
+        if bad_auth: seed = buffer(os.urandom(32))
         tmp.chmod(0o755); authorized.chmod(0o644)
         config = tmp / "sshd_config"
         config.write_text(f"Port {port}\nListenAddress 127.0.0.1\nHostKey {key}\nPidFile {tmp}/pid\nAuthorizedKeysFile {authorized}\nStrictModes no\nPasswordAuthentication no\nUsePAM no\n")
@@ -170,7 +176,8 @@ def run():
                     time.sleep(0.05)
             with sock:
                 sock.settimeout(20 if bridge else 5)
-                auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1"
+                auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1"
+                auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or auto_client
                 auto_ident = os.environ.get("NIHOS_SSH_AUTOIDENT") == "1"
                 if not auto_ident and not auto_connect:
                     client_banner = b"SSH-2.0-nihos_1.0"
@@ -230,7 +237,26 @@ def run():
                     if pause: p.probe_pause(True)
                     p.probe_release()
                     return result
-                if auto_connect:
+                if auto_client:
+                    now = time.monotonic_ns() // 1000
+                    p.probe_client_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), now, now + (20_000_000 if bridge else 5_000_000))
+                    username = getpass.getuser().encode()
+                    while True:
+                        state = p.probe_client_poll(time.monotonic_ns() // 1000, buffer(os.urandom(32)), buffer(username), len(username), seed)
+                        if state == -2 and bad_pin:
+                            print("SSH client rejected the wrong host pin: OK")
+                            return
+                        if state == -3 and bad_auth:
+                            print("SSH client rejected unauthorized key: OK")
+                            return
+                        if state < 0: raise RuntimeError(f"SSH client startup failed: {state}")
+                        if state == 1:
+                            if bad_pin: raise RuntimeError("SSH client accepted the wrong host pin")
+                            if bad_auth: raise RuntimeError("SSH client accepted an unauthorized key")
+                            break
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                elif auto_connect:
                     now = time.monotonic_ns() // 1000
                     p.probe_connection_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), now, now + (20_000_000 if bridge else 5_000_000))
                     while True:
@@ -282,13 +308,14 @@ def run():
                     send(key_message.raw[:size])
                     assert p.probe_activate(buffer(newkeys), len(newkeys))
                     p.probe_pause(False)
-                request_buffer = c.create_string_buffer(64)
-                request_len = p.probe_service(request_buffer, len(request_buffer))
-                assert request_len
-                request = request_buffer.raw[:request_len]
-                send(request)
-                accepted = raw_receive()
-                assert p.probe_channel_receive(buffer(accepted), len(accepted), c.create_string_buffer(1), 1) == 7
+                if not auto_client:
+                    request_buffer = c.create_string_buffer(64)
+                    request_len = p.probe_service(request_buffer, len(request_buffer))
+                    assert request_len
+                    request = request_buffer.raw[:request_len]
+                    send(request)
+                    accepted = raw_receive()
+                    assert p.probe_channel_receive(buffer(accepted), len(accepted), c.create_string_buffer(1), 1) == 7
                 def receive():
                     while True:
                         result = raw_receive()
@@ -298,18 +325,19 @@ def run():
                             if result[5 + name_len] != 0: send(b"\x52")
                             continue
                         return result
-                username = getpass.getuser().encode()
-                auth = c.create_string_buffer(512)
-                n = p.probe_auth(buffer(username), len(username), seed, auth, len(auth))
-                assert n
-                send(auth.raw[:n])
-                result = receive()
-                event = p.probe_channel_receive(buffer(result), len(result), c.create_string_buffer(1), 1)
-                while event == 9:
+                if not auto_client:
+                    username = getpass.getuser().encode()
+                    auth = c.create_string_buffer(512)
+                    n = p.probe_auth(buffer(username), len(username), seed, auth, len(auth))
+                    assert n
+                    send(auth.raw[:n])
                     result = receive()
                     event = p.probe_channel_receive(buffer(result), len(result), c.create_string_buffer(1), 1)
-                if event != 8:
-                    log.flush(); raise RuntimeError(f"authentication failed: {result.hex()}\n{(tmp / 'sshd.log').read_text()}")
+                    while event == 9:
+                        result = receive()
+                        event = p.probe_channel_receive(buffer(result), len(result), c.create_string_buffer(1), 1)
+                    if event != 8:
+                        log.flush(); raise RuntimeError(f"authentication failed: {result.hex()}\n{(tmp / 'sshd.log').read_text()}")
                 def action(code, data=b""):
                     out = c.create_string_buffer(1024)
                     n = p.probe_channel_action(code, buffer(data), len(data), out, len(out))
@@ -327,9 +355,10 @@ def run():
                         if event == expected: return
                         assert event == 4, event
                     raise RuntimeError(f"channel event {expected} not received")
-                action(0); wait_event(1)
-                action(1); wait_event(2)
-                action(2); wait_event(3)
+                if not auto_client:
+                    action(0); wait_event(1)
+                    action(1); wait_event(2)
+                    action(2); wait_event(3)
                 action(3, b"printf ni%s_ssh_ok hos\n")
                 output = b""
                 for _ in range(256):

@@ -7,6 +7,7 @@ const session = @import("ssh_session.zig");
 const kex_driver = @import("ssh_kex_driver.zig");
 const identification = @import("ssh_identification.zig");
 const connection = @import("ssh_connection.zig");
+const client = @import("ssh_client.zig");
 var wire: transport.Transport = .{};
 var pump = socket_pump.Pump{ .wire = &wire, .epoch = 1 };
 const ReadFn = *const fn ([*]u8, usize) callconv(.c) isize;
@@ -39,6 +40,21 @@ var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
 var driver: ?kex_driver.Driver = null;
 var ident = identification.Exchange{ .epoch = 1 };
+var ssh_client: ?client.Client = null;
+fn activeSession() ?*session.Session {
+    if (ssh_client) |*v| if (v.session) |*s| return s;
+    if (ssh_session) |*s| return s;
+    return null;
+}
+export fn probe_client_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, now: u64, deadline: u64) void {
+    ssh_client = client.Client.init(1, now, deadline, secret.*, pin.*, cookie.*, 80, 24);
+}
+export fn probe_client_poll(now: u64, random: *const [32]u8, user: [*]const u8, len: usize, seed: *const [32]u8) isize {
+    const value = if (ssh_client) |*v| v else return -1;
+    const done = value.poll(&wire, &pump, .{ .context = null, .read = socketRead, .write = socketWrite }, 1, now, random, user[0..len], seed.*) catch |err| return if (err == error.HostKeyMismatch) -2 else if (err == error.AuthenticationFailed) -3 else -1;
+    return if (done) 1 else 0;
+}
+
 var conn: ?connection.Connection = null;
 export fn probe_connection_begin(cookie: *const [16]u8, secret: *const [32]u8, pin: *const [32]u8, now: u64, deadline: u64) void {
     conn = connection.Connection.init(1, now, deadline, secret.*, pin.*, cookie.*);
@@ -130,17 +146,17 @@ export fn probe_auth_public(seed: *const [32]u8, out: *[32]u8) bool {
     return true;
 }
 export fn probe_auth(user: [*]const u8, len: usize, seed: *const [32]u8, out: [*]u8, cap: usize) usize {
-    const s = if (ssh_session) |*v| v else return 0;
+    const s = activeSession() orelse return 0;
     const payload = s.authenticate(out[0..cap], user[0..len], seed.*) catch return 0;
     return payload.len;
 }
 export fn probe_service(out: [*]u8, cap: usize) usize {
-    const s = if (ssh_session) |*v| v else return 0;
+    const s = activeSession() orelse return 0;
     const payload = s.service(out[0..cap]) catch return 0;
     return payload.len;
 }
 export fn probe_channel_action(action: u8, data: [*]const u8, len: usize, out: [*]u8, cap: usize) usize {
-    const s = if (ssh_session) |*v| v else return 0;
+    const s = activeSession() orelse return 0;
     const result = switch (action) {
         0 => s.open(out[0..cap]),
         1 => s.pty(out[0..cap], 80, 24),
@@ -153,7 +169,7 @@ export fn probe_channel_action(action: u8, data: [*]const u8, len: usize, out: [
     return result.len;
 }
 export fn probe_channel_receive(input: [*]const u8, len: usize, output: [*]u8, capacity: usize) isize {
-    const s = if (ssh_session) |*v| v else return -1;
+    const s = activeSession() orelse return -1;
     const top = s.receive(input[0..len]) catch return -1;
     const event = switch (top) {
         .service_ready => return 7,
