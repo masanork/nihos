@@ -1,5 +1,5 @@
 //! Shared, bounded live-definition lifecycle. Persistence belongs to the host.
-//! Prepare is side-effect-free; activation is infallible after durable commit.
+//! Prepare is side-effect-free; activation requires an idle evaluator.
 const std = @import("std");
 pub const scheme = @import("scheme_runtime.zig");
 pub const default_source = @embedFile("bootstrap.scm");
@@ -27,6 +27,7 @@ pub fn Session(comptime Workspace: type) type {
             self.storage_client = .{};
         }
         pub fn prepare(self: *Self, source: []const u8, output: []u8) scheme.Error![]const u8 {
+            if (self.active.running) return error.Busy;
             self.prepared = false;
             self.candidate.initInPlace();
             var host = DefinitionHost{};
@@ -35,7 +36,7 @@ pub fn Session(comptime Workspace: type) type {
             return result;
         }
         pub fn activate(self: *Self) bool {
-            if (!self.prepared) return false;
+            if (!self.prepared or self.active.running) return false;
             self.active = self.candidate;
             self.prepared = false;
             return true;
@@ -81,14 +82,14 @@ pub fn Session(comptime Workspace: type) type {
             return self.transaction(ws, source, if (named) .command else .expression, 0, output);
         }
         pub fn runApp(self: *Self, ws: *Workspace, state: *scheme.plot_config.State, source: []const u8, output: []u8) scheme.Error![]const u8 {
-            if (self.prepared) return error.Busy;
+            if (self.prepared or self.active.running) return error.Busy;
             self.active.app = state.*;
             const result = try self.run(ws, source, false, output);
             state.* = self.active.app;
             return result;
         }
         pub fn frame(self: *Self, ws: *Workspace, state: *scheme.plot_config.State) scheme.Error!void {
-            if (self.prepared) return error.Busy;
+            if (self.prepared or self.active.running) return error.Busy;
             self.active.app = state.*;
             var unused: [0]u8 = .{};
             _ = try self.transaction(ws, "", .frame, state.ticks, &unused);
@@ -101,7 +102,7 @@ pub fn Session(comptime Workspace: type) type {
         const Mode = enum { expression, command, frame };
         fn transaction(self: *Self, ws: *Workspace, source: []const u8, mode: Mode, ticks: i32, output: []u8) scheme.Error![]const u8 {
             // A pending commit must not be invalidated by interactive evaluation.
-            if (self.prepared) return error.Busy;
+            if (self.prepared or self.active.running) return error.Busy;
             if (comptime @hasField(Workspace, "appearance")) {
                 self.active.view = .{ .style = ws.style, .appearance = ws.appearance };
             }
@@ -213,7 +214,7 @@ test "frame budget abort and heap pressure recover transactionally without reset
     try std.testing.expectEqualStrings("42", try live.runApp(&ws, &state, "(+ 20 22)", &out));
     _ = try live.runApp(&ws, &state, "(define saved '()) (app/on-frame! (lambda (t) (set! saved (cons t saved))))", &out);
     var full = false;
-    for (0..256) |_| live.frame(&ws, &state) catch |err| {
+    for (0..scheme.cells) |_| live.frame(&ws, &state) catch |err| {
         try std.testing.expectEqual(error.HeapFull, err);
         full = true;
         break;
@@ -229,4 +230,58 @@ fn repeated(comptime bytes: []const u8, comptime count: usize) [bytes.len * coun
     var result: [bytes.len * count]u8 = undefined;
     for (0..count) |index| @memcpy(result[index * bytes.len ..][0..bytes.len], bytes);
     return result;
+}
+
+test "running session rejects reentry before changing active or rollback state" {
+    var live: Session(TestWorkspace) = undefined;
+    live.init();
+    var ws = TestWorkspace{};
+    var out: [256]u8 = undefined;
+    _ = try live.prepare("(define saved 7)", &out);
+    try std.testing.expect(live.prepared);
+    live.active.running = true;
+    try std.testing.expectError(error.Busy, live.prepare("(define replacement 8)", &out));
+    try std.testing.expect(live.prepared);
+    try std.testing.expect(!live.activate());
+    try std.testing.expect(live.active.running);
+    live.prepared = false;
+    live.candidate.steps = 123456;
+    try std.testing.expectError(error.Busy, live.run(&ws, "(+ 1 2)", false, &out));
+    try std.testing.expectEqual(@as(u32, 123456), live.candidate.steps);
+    live.active.app.ticks = 11;
+    var app = scheme.plot_config.State{};
+    app.ticks = 22;
+    try std.testing.expectError(error.Busy, live.runApp(&ws, &app, "42", &out));
+    try std.testing.expectEqual(@as(i32, 11), live.active.app.ticks);
+    try std.testing.expectError(error.Busy, live.frame(&ws, &app));
+    try std.testing.expectEqual(@as(i32, 11), live.active.app.ticks);
+    live.active.running = false;
+    try std.testing.expectEqualStrings("42", try live.run(&ws, "42", false, &out));
+}
+
+test "native callback cannot overwrite live rollback state" {
+    const Live = Session(TestWorkspace);
+    const Host = struct {
+        live: *Live,
+        ws: *TestWorkspace,
+        calls: usize = 0,
+        pub fn schemeCall(self: *@This(), op: scheme.EditorOp, _: []const u8, _: i32) scheme.Error!void {
+            if (op != .log) return error.EditorFailure;
+            var out: [64]u8 = undefined;
+            if (self.live.prepare("(define changed 9)", &out)) |_| return error.EditorFailure else |err| if (err != error.Busy) return err;
+            if (self.live.run(self.ws, "42", false, &out)) |_| return error.EditorFailure else |err| if (err != error.Busy) return err;
+            self.calls += 1;
+        }
+    };
+    var live: Live = undefined;
+    live.init();
+    live.candidate.initInPlace();
+    live.candidate.steps = 123456;
+    var ws = TestWorkspace{};
+    var host = Host{ .live = &live, .ws = &ws };
+    var out: [64]u8 = undefined;
+    try std.testing.expectEqualStrings("#t", try live.active.evaluate("(system/log)", &host, &out));
+    try std.testing.expectEqual(@as(usize, 1), host.calls);
+    try std.testing.expectEqual(@as(u32, 123456), live.candidate.steps);
+    try std.testing.expectEqualStrings("42", try live.run(&ws, "42", false, &out));
 }
