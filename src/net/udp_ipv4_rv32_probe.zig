@@ -20,3 +20,10 @@ export fn udp_ipv4_probe_hosted(out: [*]u8, capacity: usize, data: [*]const u8, 
     const frame = hosted_udp.prepare(out[0..capacity], source, destination, data[0..length], 1) catch return 0;
     return frame.len;
 }
+
+export fn udp_ipv4_probe_match(data: [*]const u8, length: usize) usize {
+    const local = wire.Endpoint{ .mac = .{ 2, 0, 0, 0, 0, 2 }, .ip = .{ 192, 0, 2, 2 }, .port = 443 };
+    const frame = @import("hosted.zig").Frame{ .interface = 1, .payload = data[0..length] };
+    const packet = (hosted_udp.receive(frame, local) catch return 0) orelse return 0;
+    return packet.payload.len + 1;
+}

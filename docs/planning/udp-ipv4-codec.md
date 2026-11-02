@@ -33,6 +33,9 @@ payload beyond the Hosted limit or an insufficient output buffer before
 writing. It constructs a frame only: the caller must hold the address and
 transport lease, handle port routing and serialize all I/O. This helper is
 not connected to the runtime network service or the physical diagnostic.
+`hosted_udp_frame.receive` checks the station interface and local MAC, IP and
+UDP port after decoding. It does not authenticate a source or acquire a lease;
+the caller must check address generation before using the borrowed payload.
 
 `tools/check-udp-ipv4-rv32.sh` compiles both codec directions for the P4 RV32
 ISA as part of static analysis. This checks compilation only; it does not link

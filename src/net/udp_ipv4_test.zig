@@ -116,3 +116,30 @@ test "Hosted UDP preparation returns one complete frame and rejects oversize bef
     try testing.expectError(error.NoSpace, hosted_udp.prepare(output[0..53], src, dst, "", 17));
     try testing.expect(std.mem.allEqual(u8, &output, 0xa5));
 }
+
+test "Hosted receive filters destination but leaves source unauthenticated" {
+    var buffer: [1536]u8 = undefined;
+    const framed = try hosted_udp.prepare(&buffer, src, dst, "hello", 17);
+    var decoder: hosted.Decoder = .{};
+    var received: ?hosted.Frame = null;
+    for (framed) |byte| if (try decoder.push(byte)) |f| {
+        received = f;
+    };
+    const frame = received orelse return error.TestUnexpectedResult;
+    const accepted = (try hosted_udp.receive(frame, dst)) orelse return error.TestUnexpectedResult;
+    try testing.expectEqualDeep(src, accepted.source);
+    try testing.expectEqualStrings("hello", accepted.payload);
+    var wrong = dst;
+    wrong.port += 1;
+    try testing.expect((try hosted_udp.receive(frame, wrong)) == null);
+    wrong = dst;
+    wrong.ip[3] ^= 1;
+    try testing.expect((try hosted_udp.receive(frame, wrong)) == null);
+    wrong = dst;
+    wrong.mac[5] ^= 1;
+    try testing.expect((try hosted_udp.receive(frame, wrong)) == null);
+    try testing.expect((try hosted_udp.receive(.{ .interface = 2, .payload = frame.payload }, dst)) == null);
+    var corrupt = golden;
+    corrupt[46] ^= 1;
+    try testing.expectError(error.Checksum, hosted_udp.receive(.{ .interface = hosted.station_interface, .payload = &corrupt }, dst));
+}
