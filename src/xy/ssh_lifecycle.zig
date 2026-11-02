@@ -254,6 +254,91 @@ pub fn Journey(comptime Model: type, comptime SessionController: type) type {
     };
 }
 
+/// Foreground driver for one journey. Entropy must be a qualified source:
+/// available() must fail closed and fill() must be bounded and nonblocking,
+/// filling every requested byte with fresh cryptographic randomness or returning
+/// an error. This type supplies no entropy and stores none between ticks.
+pub fn App(comptime JourneyType: type, comptime Entropy: type) type {
+    return struct {
+        const Self = @This();
+        pub const Status = enum { idle, editing, connecting, connected, closing, closed, failed };
+        journey: *JourneyType,
+        entropy: *Entropy,
+        connect_timeout_us: u64,
+        close_timeout_us: u64,
+        status: Status = .idle,
+
+        pub fn init(journey: *JourneyType, entropy: *Entropy, connect_timeout_us: u64, close_timeout_us: u64) !Self {
+            if (connect_timeout_us == 0 or close_timeout_us == 0) return error.InvalidArgument;
+            return .{ .journey = journey, .entropy = entropy, .connect_timeout_us = connect_timeout_us, .close_timeout_us = close_timeout_us };
+        }
+        /// Do not collect credentials without a currently available source.
+        pub fn start(self: *Self) !void {
+            if (self.status != .idle or self.journey.controller.state != .idle) return error.InvalidState;
+            if (!self.entropy.available()) return error.EntropyUnavailable;
+            if (!self.journey.start()) return error.UiBusy;
+            self.status = .editing;
+        }
+        /// Caller polls the network owner separately before each foreground tick.
+        pub fn tick(self: *Self, now: u64) !Status {
+            return self.advance(now) catch |err| {
+                self.journey.cancel();
+                self.status = .failed;
+                return err;
+            };
+        }
+        fn advance(self: *Self, now: u64) !Status {
+            if (self.status == .editing) {
+                if (self.journey.syncSetup() == .closed) {
+                    self.status = .closed;
+                    return .closed;
+                }
+                if (!self.entropy.available()) return error.EntropyUnavailable;
+                if (self.journey.setup.status != .ready) return .editing;
+                const deadline = std.math.add(u64, now, self.connect_timeout_us) catch return error.InvalidDeadline;
+                var tuple: [6]u8 = @splat(0);
+                defer std.crypto.secureZero(u8, &tuple);
+                try self.entropy.fill(&tuple);
+                const local_port = std.mem.readInt(u16, tuple[0..2], .big) & 0x3fff | 0xc000;
+                const sequence = std.mem.readInt(u32, tuple[2..6], .big);
+                try self.journey.begin(now, deadline, self.close_timeout_us, local_port, sequence);
+                self.status = .connecting;
+                return .connecting;
+            }
+            if (self.status != .connecting and self.status != .connected and self.status != .closing) return error.InvalidState;
+            const state = self.journey.controller.state;
+            if (state != .closing and !self.entropy.available()) return error.EntropyUnavailable;
+            var padding: [32]u8 = @splat(0);
+            var exchange: ExchangeEntropy = .{ .secret = @splat(0), .cookie = @splat(0) };
+            defer std.crypto.secureZero(u8, &padding);
+            defer std.crypto.secureZero(u8, std.mem.asBytes(&exchange));
+            // These states do not encode SSH packets, so no padding is consumed.
+            if (state == .handshaking or state == .ready) try self.entropy.fill(&padding);
+            const supplied: ?*const ExchangeEntropy = if (state == .need_material) blk: {
+                try self.entropy.fill(&exchange.secret);
+                try self.entropy.fill(&exchange.cookie);
+                break :blk &exchange;
+            } else null;
+            const result = try self.journey.poll(now, supplied, &padding);
+            self.status = switch (result) {
+                .opening, .need_material, .handshaking => .connecting,
+                .ready => .connected,
+                .closing => .closing,
+                .closed => .closed,
+                .idle, .failed => return error.InvalidState,
+            };
+            return self.status;
+        }
+        pub fn cancel(self: *Self) void {
+            self.journey.cancel();
+            self.status = .closed;
+        }
+        pub fn retryCleanup(self: *Self) bool {
+            return self.journey.retryCleanup();
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -536,9 +621,19 @@ const TestPrivateModel = struct {
 };
 const TestJourneyController = struct {
     next: State = .handshaking,
+    state: State = .idle,
     canceled: bool = false,
-    fn beginProfile(_: *@This(), _: *const Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
-    fn pollProfile(self: *@This(), _: *const Profile, _: u64, _: ?*const ExchangeEntropy, _: *const [32]u8) !State {
+    local_port: u16 = 0,
+    sequence: u32 = 0,
+    exchange_seen: bool = false,
+    fn beginProfile(self: *@This(), _: *const Profile, _: u64, _: u64, _: u64, local_port: u16, sequence: u32) !void {
+        self.local_port = local_port;
+        self.sequence = sequence;
+        self.state = .opening;
+    }
+    fn pollProfile(self: *@This(), _: *const Profile, _: u64, exchange: ?*const ExchangeEntropy, _: *const [32]u8) !State {
+        self.exchange_seen = exchange != null;
+        self.state = self.next;
         return self.next;
     }
     fn cancel(self: *@This()) void {
@@ -548,6 +643,141 @@ const TestJourneyController = struct {
         return true;
     }
 };
+
+const TestEntropy = struct {
+    online: bool = true,
+    fail: bool = false,
+    fail_on: u32 = 0,
+    calls: u32 = 0,
+    fn available(self: *@This()) bool {
+        return self.online;
+    }
+    fn fill(self: *@This(), bytes: []u8) !void {
+        self.calls += 1;
+        if (!self.online or self.fail or self.calls == self.fail_on) {
+            @memset(bytes, 0xaa); // Model a source failing after a partial write.
+            return error.EntropyUnavailable;
+        }
+        @memset(bytes, @intCast(self.calls));
+    }
+};
+
+test "app refuses unavailable entropy and cancels safely if it fails later" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    var entropy: TestEntropy = .{ .online = false };
+    var app = try App(@TypeOf(journey), TestEntropy).init(&journey, &entropy, 100, 20);
+    try std.testing.expectError(error.EntropyUnavailable, app.start());
+    try std.testing.expect(model.private_input == null and !journey.profile.valid);
+    entropy.online = true;
+    controller.state = .closed;
+    try std.testing.expectError(error.InvalidState, app.start());
+    try std.testing.expect(model.private_input == null);
+    controller.state = .idle;
+    try app.start();
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    try std.testing.expectEqual(@TypeOf(app).Status.connecting, try app.tick(10));
+    try std.testing.expectEqual(@as(u16, 0xc101), controller.local_port);
+    try std.testing.expectEqual(@as(u32, 0x01010101), controller.sequence);
+    controller.next = .need_material;
+    try std.testing.expectEqual(@TypeOf(app).Status.connecting, try app.tick(11));
+    try std.testing.expectEqual(@as(u32, 1), entropy.calls);
+    controller.next = .handshaking;
+    try std.testing.expectEqual(@TypeOf(app).Status.connecting, try app.tick(12));
+    try std.testing.expect(controller.exchange_seen);
+    try std.testing.expectEqual(@as(u32, 3), entropy.calls);
+    controller.next = .ready;
+    try std.testing.expectEqual(@TypeOf(app).Status.connected, try app.tick(13));
+    for (journey.profile.seed) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    entropy.fail = true;
+    try std.testing.expectError(error.EntropyUnavailable, app.tick(14));
+    try std.testing.expectEqual(@TypeOf(app).Status.failed, app.status);
+    try std.testing.expect(controller.canceled and app.retryCleanup());
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "app clears configured credentials when initial entropy fails" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    var entropy: TestEntropy = .{};
+    var app = try App(@TypeOf(journey), TestEntropy).init(&journey, &entropy, 100, 20);
+    try app.start();
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    entropy.fail = true;
+    try std.testing.expectError(error.EntropyUnavailable, app.tick(10));
+    try std.testing.expectEqual(@TypeOf(app).Status.failed, app.status);
+    try std.testing.expect(model.private_input == null and controller.state == .idle);
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "app erases an unfinished private form if entropy becomes unavailable" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    var entropy: TestEntropy = .{};
+    var app = try App(@TypeOf(journey), TestEntropy).init(&journey, &entropy, 100, 20);
+    try app.start();
+    journey.setup.form.selected = .seed;
+    try std.testing.expect(model.send(.{ .text = 'a' }));
+    entropy.online = false;
+    try std.testing.expectError(error.EntropyUnavailable, app.tick(10));
+    try std.testing.expectEqual(@TypeOf(app).Status.failed, app.status);
+    try std.testing.expect(model.private_input == null and controller.state == .idle);
+    for (std.mem.asBytes(&journey.setup.form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "app cancels when entropy fails after creating the exchange secret" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    var entropy: TestEntropy = .{ .fail_on = 3 };
+    var app = try App(@TypeOf(journey), TestEntropy).init(&journey, &entropy, 100, 20);
+    try app.start();
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    try std.testing.expectEqual(@TypeOf(app).Status.connecting, try app.tick(10));
+    controller.next = .need_material;
+    try std.testing.expectEqual(@TypeOf(app).Status.connecting, try app.tick(11));
+    try std.testing.expectError(error.EntropyUnavailable, app.tick(12));
+    try std.testing.expectEqual(@as(u32, 3), entropy.calls);
+    try std.testing.expect(controller.canceled and app.retryCleanup());
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "app can finish a TCP close without consuming entropy" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{ .state = .closing, .next = .closed };
+    // SAFETY: initInPlace initializes the owner before use.
+    var journey: Journey(TestPrivateModel, TestJourneyController) = undefined;
+    journey.initInPlace(&model, &controller);
+    journey.status = .active;
+    journey.profile.valid = true;
+    var entropy: TestEntropy = .{ .online = false };
+    var app = try App(@TypeOf(journey), TestEntropy).init(&journey, &entropy, 100, 20);
+    app.status = .closing;
+    try std.testing.expectEqual(@TypeOf(app).Status.closed, try app.tick(10));
+    try std.testing.expectEqual(@as(u32, 0), entropy.calls);
+    for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
 
 test "journey wipes the signing seed after authentication and profile on close" {
     var model: TestPrivateModel = .{};

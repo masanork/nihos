@@ -82,6 +82,7 @@ export fn probe_vt_cell(index: usize) u32 {
 const lifecycle = @import("ssh_lifecycle");
 const Start = *const fn (*const [16]u8, *const [32]u8, *const [32]u8) callconv(.c) bool;
 const Action = *const fn () callconv(.c) bool;
+const Fill = *const fn ([*]u8, usize) callconv(.c) bool;
 const HostNetwork = struct {
     pub const Handle = u8;
     pub const Owner = Backend;
@@ -115,13 +116,28 @@ const HostNetwork = struct {
     }
 };
 const Controller = lifecycle.Controller(HostNetwork, Ui, console.scratch.Model);
+const HostEntropy = struct {
+    fill_fn: Fill,
+    pub fn available(_: *@This()) bool {
+        return true;
+    }
+    pub fn fill(self: *@This(), out: []u8) !void {
+        if (!self.fill_fn(out.ptr, out.len)) return error.EntropyUnavailable;
+    }
+};
+const HostJourney = lifecycle.Journey(console.scratch.Model, Controller);
+const HostApp = lifecycle.App(HostJourney, HostEntropy);
 // SAFETY: probe_lifecycle_begin initializes these stable objects before use.
 var host_network: HostNetwork = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable object before use.
 var controller: Controller = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable owner before use.
-var journey: lifecycle.Journey(console.scratch.Model, Controller) = undefined;
-export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
+var journey: HostJourney = undefined;
+// SAFETY: probe_lifecycle_begin initializes these stable objects before use.
+var host_entropy: HostEntropy = undefined;
+// SAFETY: probe_lifecycle_begin initializes the foreground app before use.
+var app: HostApp = undefined;
+export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
     model.initInPlace();
     model.nav.screen = .ssh;
@@ -139,34 +155,34 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
     for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;
     journey.initInPlace(&model, &controller);
-    if (!journey.start()) return false;
+    host_entropy = .{ .fill_fn = fill };
+    app = HostApp.init(&journey, &host_entropy, 20_000_000, 20_000_000) catch return false;
+    app.start() catch return false;
     for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
         for (value) |byte| {
             model.feedSerial(byte, now);
             if (model.status != .none) {
-                journey.cancel();
+                app.cancel();
                 return false;
             }
         }
         model.handle(.enter);
     }
     if (journey.setup.status != .ready or model.private_input != null) {
-        journey.cancel();
+        app.cancel();
         return false;
     }
-    journey.begin(now, now +| 20_000_000, 20_000_000, 50001, 123) catch return false;
+    if ((app.tick(now) catch return false) != .connecting) return false;
     initialized = true;
     return true;
 }
-export fn probe_lifecycle_poll(now: u64, secret: *const [32]u8, cookie: *const [16]u8, random: *const [32]u8) isize {
+export fn probe_lifecycle_poll(now: u64) isize {
     if (!initialized) return -1;
-    var entropy = lifecycle.ExchangeEntropy{ .secret = secret.*, .cookie = cookie.* };
-    defer @import("std").crypto.secureZero(u8, @import("std").mem.asBytes(&entropy));
-    return switch (journey.poll(now, &entropy, random) catch |err| {
-        return if (err == error.HostKeyMismatch) -2 else -1;
+    return switch (app.tick(now) catch |err| {
+        return if (err == error.HostKeyMismatch) -2 else if (err == error.EntropyUnavailable) -3 else -1;
     }) {
-        .opening, .need_material, .handshaking, .closing => 0,
-        .ready => 1,
+        .editing, .connecting, .closing => 0,
+        .connected => 1,
         .closed => 2,
         .idle, .failed => -1,
     };

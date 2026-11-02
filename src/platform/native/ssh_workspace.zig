@@ -50,6 +50,11 @@ pub const NativeNetwork = struct {
 };
 pub const Controller = lifecycle.Controller(NativeNetwork, Ui, console.scratch.Model);
 pub const Journey = lifecycle.Journey(Model, Controller);
+/// The caller must provide a qualified entropy source; no native source is
+/// assumed or enabled by this experimental adapter.
+pub fn App(comptime Entropy: type) type {
+    return lifecycle.App(Journey, Entropy);
+}
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,
