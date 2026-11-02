@@ -143,7 +143,8 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     if (nih_c6_power_enable() != 1 or pads.clockFailed()) return stop(error.PowerEnable, now);
     startAttempt(now);
 }
-fn startAttempt(now: u64) void {
+// Foreground-only reconnect path; Flash is mapped before network begin.
+noinline fn startAttempt(now: u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     if (experimental_tcp) tcp_state.reset() catch {
         phase = .failed;
         return;
@@ -183,7 +184,7 @@ fn collectRenewals() void {
         counted_renewals = v4.renewals;
     }
 }
-fn stop(err: anyerror, now: ?u64) void {
+noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     const tcp_reset_failed = if (experimental_tcp) blk: {
         tcp_state.reset() catch break :blk true;
         break :blk false;
