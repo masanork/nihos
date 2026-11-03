@@ -3,7 +3,7 @@
 //! independently. This module does not open connections or enable a UI screen.
 const std = @import("std");
 const vt = @import("vt100");
-const terminal = @import("terminal_buffer");
+const terminal = @import("terminal_adapter");
 
 /// Exact compile-time dimensions keep TermView's flat row stride correct.
 /// The backend implements poll/read/write with the Hosted session signatures.
@@ -14,7 +14,6 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         pub const State = enum { connecting, ready, closed, failed };
         backend: *Backend,
         screen: vt.Vt100(cols, rows, history),
-        buffer: terminal.TerminalBuffer,
         state: State = .connecting,
         revision: u32 = 0,
         input: [128]u8 = @splat(0),
@@ -30,7 +29,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         pub fn initInPlace(self: *Self, backend: *Backend, title: []const u8) void {
             self.backend = backend;
             self.screen.initInPlace(cols, rows);
-            self.buffer = terminal.TerminalBuffer.init(title, cols, rows);
+            _ = title;
             self.state = .connecting;
             self.revision = 0;
             self.input = @splat(0);
@@ -40,7 +39,7 @@ pub fn Session(comptime Backend: type, comptime cols: u16, comptime rows: u16, c
         pub fn key(self: *Self, code: terminal.KeyCode, cp: ?u21) error{ NotReady, InputFull, InvalidKey }!void {
             if (self.state != .ready) return error.NotReady;
             var bytes: [4]u8 = undefined;
-            const len = terminal.TerminalBuffer.encodeKey(code, cp, &bytes);
+            const len = terminal.encodeKey(code, cp, &bytes);
             if (len == 0) return error.InvalidKey;
             try self.queueBytes(bytes[0..len]);
         }

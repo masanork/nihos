@@ -239,6 +239,12 @@ const session: *Session.Model = if (headless_wasm_session) &fixture_session else
 // SAFETY: prepareXyWorkspace assigns scratch before session_active becomes true.
 var scratch: *console.scratch.Model = undefined;
 var scratch_lease: ?tasks.memory.reusable.Allocation = null;
+/// CPU0-only borrow. The SSH owner must stop before this model is reset.
+pub fn sshForegroundModel() ?*console.scratch.Model {
+    if (comptime !xy_workspace) return null;
+    if (!session_active or session_pending) return null;
+    return scratch;
+}
 const scratch_bytes = (@sizeOf(console.scratch.Model) + 63) & ~@as(usize, 63);
 const xy_eval_stack_bytes = if (@hasDecl(options, "sqld") and options.sqld) 0 else tasks.memory.stacks.evaluation_bytes;
 pub fn xyEvaluationStack() ?[]u8 {

@@ -3,6 +3,74 @@
 
 const std = @import("std");
 
+pub const KeyCode = enum(u16) {
+    none = 0,
+    enter = 10,
+    tab = 9,
+    backspace = 127,
+    escape = 27,
+    arrow_up = 256,
+    arrow_down = 257,
+    arrow_right = 258,
+    arrow_left = 259,
+    page_up = 260,
+    page_down = 261,
+    home = 262,
+    end = 263,
+};
+
+pub fn encodeKey(key: KeyCode, ch: ?u21, out_buf: []u8) usize {
+    if (out_buf.len == 0) return 0;
+
+    switch (key) {
+        .none => {
+            if (ch) |cp| {
+                if (cp < 0x80) {
+                    out_buf[0] = @intCast(cp);
+                    return 1;
+                }
+                var tmp: [4]u8 = undefined;
+                const len = std.unicode.utf8Encode(cp, &tmp) catch return 0;
+                if (len <= out_buf.len) {
+                    @memcpy(out_buf[0..len], tmp[0..len]);
+                    return len;
+                }
+            }
+            return 0;
+        },
+        .enter => {
+            out_buf[0] = '\r';
+            return 1;
+        },
+        .tab => {
+            out_buf[0] = '\t';
+            return 1;
+        },
+        .backspace => {
+            out_buf[0] = 0x7F; // DEL
+            return 1;
+        },
+        .escape => {
+            out_buf[0] = 0x1B;
+            return 1;
+        },
+        .arrow_up => return copySeq(out_buf, "\x1b[A"),
+        .arrow_down => return copySeq(out_buf, "\x1b[B"),
+        .arrow_right => return copySeq(out_buf, "\x1b[C"),
+        .arrow_left => return copySeq(out_buf, "\x1b[D"),
+        .page_up => return copySeq(out_buf, "\x1b[5~"),
+        .page_down => return copySeq(out_buf, "\x1b[6~"),
+        .home => return copySeq(out_buf, "\x1b[H"),
+        .end => return copySeq(out_buf, "\x1b[F"),
+    }
+}
+
+fn copySeq(dst: []u8, seq: []const u8) usize {
+    if (dst.len < seq.len) return 0;
+    @memcpy(dst[0..seq.len], seq);
+    return seq.len;
+}
+
 pub const Cell = extern struct {
     codepoint: u32 = 0x20, // ' '
     fg_rgb565: u16 = 0xFFFF, // White

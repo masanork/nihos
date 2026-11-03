@@ -108,10 +108,8 @@ echo "Experimental Hosted TCP owner RV32 codegen: ok"
     --dep view_config --dep canvas "-Mtext_console=$repo_root/src/console.zig" \
     --dep surface "-Mcanvas=$repo_root/src/graphics/canvas.zig" \
     "-Msurface=$repo_root/src/graphics/surface.zig" \
-    --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep vt100 --dep terminal_adapter "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
     --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
-    --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \
-    --dep view_config "-Mviewport_layout=$repo_root/src/graphics/viewport_layout.zig" \
     "-Mterminal_adapter=$repo_root/src/net/terminal_adapter.zig" \
     "-Mview_config=$repo_root/src/xy/view_config.zig"
 echo "SSH VT and Hosted session RV32 codegen: ok"
@@ -137,10 +135,8 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
     --dep view_config --dep canvas "-Mtext_console=$repo_root/src/console.zig" \
     --dep surface "-Mcanvas=$repo_root/src/graphics/canvas.zig" \
     "-Msurface=$repo_root/src/graphics/surface.zig" \
-    --dep vt100 --dep terminal_buffer "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep vt100 --dep terminal_adapter "-Mssh_terminal_session=$repo_root/src/xy/ssh_terminal_session.zig" \
     --dep terminal_adapter "-Mvt100=$repo_root/src/net/vt100.zig" \
-    --dep viewport_layout --dep terminal_adapter --dep vt100 "-Mterminal_buffer=$repo_root/src/xy/terminal_buffer.zig" \
-    --dep view_config "-Mviewport_layout=$repo_root/src/graphics/viewport_layout.zig" \
     "-Mterminal_adapter=$repo_root/src/net/terminal_adapter.zig" \
     "-Mview_config=$repo_root/src/xy/view_config.zig" \
     "-Mssh_lifecycle=$repo_root/src/xy/ssh_lifecycle.zig"

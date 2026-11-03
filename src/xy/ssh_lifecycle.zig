@@ -339,6 +339,47 @@ pub fn App(comptime JourneyType: type, comptime Entropy: type) type {
     };
 }
 
+/// One visit to the SSH screen. Poll after the network owner and after input
+/// delivery; the owner must stop this visit before replacing the xy model.
+/// A failed start is not retried until a fresh visit is initialized.
+pub fn Foreground(comptime Model: type, comptime SessionController: type, comptime Entropy: type) type {
+    return struct {
+        const Self = @This();
+        const JourneyType = Journey(Model, SessionController);
+        const AppType = App(JourneyType, Entropy);
+        pub const Status = AppType.Status;
+        journey: JourneyType,
+        app: AppType,
+        attempted: bool = false,
+
+        /// Initialize only fresh storage or after stop returned true.
+        pub fn initInPlace(self: *Self, model: *Model, controller: *SessionController, entropy: *Entropy, connect_timeout_us: u64, close_timeout_us: u64) !void {
+            self.journey.initInPlace(model, controller);
+            self.app = try AppType.init(&self.journey, entropy, connect_timeout_us, close_timeout_us);
+            self.attempted = false;
+        }
+        pub fn poll(self: *Self, visible: bool, now: u64) !Status {
+            if (!visible) {
+                if (!self.stop()) return error.CleanupPending;
+                return .closed;
+            }
+            if (!self.attempted) {
+                self.attempted = true;
+                try self.app.start();
+            }
+            return switch (self.app.status) {
+                .editing, .connecting, .connected, .closing => try self.app.tick(now),
+                .idle, .closed, .failed => self.app.status,
+            };
+        }
+        /// Never recycle the controller or model while cleanup has failed.
+        pub fn stop(self: *Self) bool {
+            if (self.attempted and self.app.status != .idle and self.app.status != .closed and self.app.status != .failed) self.app.cancel();
+            return self.app.retryCleanup();
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -626,6 +667,7 @@ const TestJourneyController = struct {
     local_port: u16 = 0,
     sequence: u32 = 0,
     exchange_seen: bool = false,
+    cleanup_ok: bool = true,
     fn beginProfile(self: *@This(), _: *const Profile, _: u64, _: u64, _: u64, local_port: u16, sequence: u32) !void {
         self.local_port = local_port;
         self.sequence = sequence;
@@ -639,10 +681,44 @@ const TestJourneyController = struct {
     fn cancel(self: *@This()) void {
         self.canceled = true;
     }
-    fn retryCleanup(_: *@This()) bool {
-        return true;
+    fn retryCleanup(self: *@This()) bool {
+        return self.cleanup_ok;
     }
 };
+
+test "foreground visit gates secrets and cleans up before reuse" {
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var entropy: TestEntropy = .{ .online = false };
+    // SAFETY: initInPlace initializes the visit before use.
+    var foreground: Foreground(TestPrivateModel, TestJourneyController, TestEntropy) = undefined;
+    try foreground.initInPlace(&model, &controller, &entropy, 100, 20);
+    try std.testing.expectError(error.EntropyUnavailable, foreground.poll(true, 1));
+    try std.testing.expect(model.private_input == null);
+    entropy.online = true;
+    try std.testing.expectEqual(@TypeOf(foreground).Status.idle, try foreground.poll(true, 2));
+    try std.testing.expect(foreground.stop());
+    try foreground.initInPlace(&model, &controller, &entropy, 100, 20);
+    try std.testing.expectEqual(@TypeOf(foreground).Status.editing, try foreground.poll(true, 3));
+    foreground.journey.setup.form.selected = .seed;
+    try std.testing.expect(model.send(.{ .text = 'a' }));
+    try std.testing.expectEqual(@TypeOf(foreground).Status.closed, try foreground.poll(false, 4));
+    try std.testing.expect(model.private_input == null);
+    for (std.mem.asBytes(&foreground.journey.setup.form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    try foreground.initInPlace(&model, &controller, &entropy, 100, 20);
+    _ = try foreground.poll(true, 5);
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    try std.testing.expectEqual(@TypeOf(foreground).Status.connecting, try foreground.poll(true, 6));
+    controller.cleanup_ok = false;
+    try std.testing.expectError(error.CleanupPending, foreground.poll(false, 7));
+    try std.testing.expect(controller.canceled);
+    for (std.mem.asBytes(&foreground.journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    controller.cleanup_ok = true;
+    try std.testing.expect(foreground.stop());
+}
 
 const TestEntropy = struct {
     online: bool = true,

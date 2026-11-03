@@ -18,6 +18,8 @@ const text_console = @import("text_console");
 const display_service = @import("display_service");
 const card_boot = @import("card_boot.zig");
 const ui = display_service.ui;
+const native_ssh_foreground = @hasDecl(options, "experimental_tcp") and options.experimental_tcp and options.xy_workspace;
+var ssh_foreground: if (native_ssh_foreground) @import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) @import("ssh_foreground.zig").Runtime.init() else {};
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
 const network_config = @import("network_config");
@@ -1764,6 +1766,15 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         flushDisplayReport();
         serviceNetwork();
         serviceStorage();
+        if (comptime native_ssh_foreground) {
+            const region = @import("sqld_layout.zig");
+            const SshUi = @import("ssh_workspace").Ui;
+            comptime {
+                if (@sizeOf(SshUi) > region.ssh_ui_experiment_bytes) @compileError("SSH UI exceeds PSRAM reservation");
+                if (region.ssh_ui_experiment % @alignOf(SshUi) != 0) @compileError("SSH UI reservation misaligned");
+            }
+            ssh_foreground.poll(ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
+        }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
         if (native_sqld) serviceSqld();
         if (!ui.service(&logger)) fail("normal console idle");
