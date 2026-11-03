@@ -185,6 +185,13 @@ echo "SSH seeded CSPRNG RV32 codegen: ok (not target execution)"
     "-Mssh_seed_collector=$repo_root/src/xy/ssh_seed_collector.zig"
 echo "SSH seed collector RV32 codegen: ok (not target execution)"
 
+# Register addresses are compiled only; this does not exercise physical I2C.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/p4-sar-regi2c.o" --dep sar_regi2c \
+    "-Mroot=$repo_root/tools/probes/p4-sar-regi2c.zig" \
+    "-Msar_regi2c=$repo_root/src/soc/esp32p4/sar_regi2c.zig"
+echo "P4 SAR analog I2C RV32 codegen: ok (not target execution)"
+
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
     "-Mroot=$repo_root/tools/probes/rtc.zig" \
