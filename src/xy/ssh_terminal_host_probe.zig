@@ -80,6 +80,7 @@ export fn probe_vt_cell(index: usize) u32 {
 }
 
 const lifecycle = @import("ssh_lifecycle");
+const seeded_entropy = @import("ssh_entropy");
 const Start = *const fn (*const [16]u8, *const [32]u8, *const [32]u8) callconv(.c) bool;
 const Action = *const fn () callconv(.c) bool;
 const Fill = *const fn ([*]u8, usize) callconv(.c) bool;
@@ -118,11 +119,26 @@ const HostNetwork = struct {
 const Controller = lifecycle.Controller(HostNetwork, Ui, console.scratch.Model);
 const HostEntropy = struct {
     fill_fn: Fill,
-    pub fn available(_: *@This()) bool {
-        return true;
+    generator: seeded_entropy.Entropy = .{},
+    seeded: bool = false,
+    pub fn available(self: *@This()) bool {
+        return if (self.seeded) self.generator.available() else true;
     }
     pub fn fill(self: *@This(), out: []u8) !void {
+        if (self.seeded) return self.generator.fill(out);
         if (!self.fill_fn(out.ptr, out.len)) return error.EntropyUnavailable;
+    }
+    fn clear(self: *@This()) void {
+        self.generator.clear();
+    }
+};
+const HostSeedSource = struct {
+    fill_fn: Fill,
+    pub fn qualified(_: *@This()) bool {
+        return true; // Host-only: the callback supplies OS cryptographic random bytes.
+    }
+    pub fn fillSeed(self: *@This(), out: *[seeded_entropy.seed_bytes]u8) !void {
+        if (!self.fill_fn(out, out.len)) return error.EntropyUnavailable;
     }
 };
 const HostJourney = lifecycle.Journey(console.scratch.Model, Controller);
@@ -137,7 +153,7 @@ var journey: HostJourney = undefined;
 var host_entropy: HostEntropy = undefined;
 // SAFETY: probe_lifecycle_begin initializes the foreground app before use.
 var foreground: HostForeground = undefined;
-export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
+export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, use_seeded: bool, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
     model.initInPlace();
     model.nav.home();
@@ -157,6 +173,12 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
     for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;
     host_entropy = .{ .fill_fn = fill };
+    defer if (!initialized) host_entropy.clear();
+    if (use_seeded) {
+        var source: HostSeedSource = .{ .fill_fn = fill };
+        host_entropy.generator.seedFrom(&source) catch return false;
+        host_entropy.seeded = true;
+    }
     foreground.initInPlace(&model, &controller, &host_entropy, 20_000_000, 20_000_000) catch return false;
     if ((foreground.poll(true, now) catch return false) != .editing) return false;
     for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
@@ -180,11 +202,15 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
 export fn probe_lifecycle_poll(now: u64) isize {
     if (!initialized) return -1;
     return switch (foreground.poll(model.nav.screen == .ssh, now) catch |err| {
+        host_entropy.clear();
         return if (err == error.HostKeyMismatch) -2 else if (err == error.EntropyUnavailable) -3 else -1;
     }) {
         .editing, .connecting, .closing => 0,
         .connected => 1,
-        .closed => 2,
+        .closed => blk: {
+            host_entropy.clear();
+            break :blk 2;
+        },
         .idle, .failed => -1,
     };
 }
@@ -200,5 +226,6 @@ export fn probe_lifecycle_leave(now: u64) bool {
     if (!initialized) return false;
     model.nav.home();
     if ((foreground.poll(false, now) catch return false) != .closed) return false;
+    host_entropy.clear();
     return model.terminal == null and model.private_input == null and probe_profile_cleared();
 }
