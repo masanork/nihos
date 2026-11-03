@@ -112,3 +112,17 @@ readers must still verify artifact hashes against the report. The
 accompanying `layout.s` permits inspection of initialization
 into caller-provided storage. These are type and object-level measurements,
 not evidence of a linked image's total SRAM, aggregate stack or device behavior.
+
+`hosted_udp_route.Route` composes the split-address lease with the existing
+ARP resolver for one explicit UDP destination. The caller sends its Hosted
+station ARP request as a whole frame, queues incoming frames while TX is
+borrowed, and supplies current control state and monotonic milliseconds on
+each operation. Same-subnet destinations resolve directly; other destinations
+resolve the configured gateway but retain the original IP in the UDP endpoint.
+A changed address snapshot, link reset, deadline, or ambiguous transport write
+invalidates the route. The bounded result is not an authenticated peer or a
+MAC cache, and must be passed to the existing sender under exclusive ownership.
+One [bounded Tab5 diagnostic](../measurements/2026-11-03-hosted-split-arp-udp.md)
+resolved a same-subnet Mac and used it for a 16-packet UDP round trip. Gateway
+resolution remains host-tested only, and application socket integration is
+not implemented.
