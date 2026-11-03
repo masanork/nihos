@@ -1,0 +1,28 @@
+{
+  "runtime_sha256": "ea36f7253613cb3dc8795e20b85f5a99d0629202e4a92e43b28a159415831359",
+  "groups": [
+    "sicp_abstraction_2_2_2_14",
+    "sicp_circuits_3_28_3_31",
+    "sicp_exercises_1_2_1_5",
+    "sicp_fast_processes_1_16_1_28",
+    "sicp_higher_order_1_29_1_46",
+    "sicp_lists_2_17_2_21",
+    "sicp_metacircular_4_1_4_7",
+    "sicp_mutation_3_12_3_20",
+    "sicp_official_sessions",
+    "sicp_queues_3_21_3_23",
+    "sicp_rational_2_1",
+    "sicp_recursion_1_9_1_10",
+    "sicp_register_5_1_5_2",
+    "sicp_remaining_1_13_1_36",
+    "sicp_roots_1_6_1_8",
+    "sicp_sequences_2_33_2_42",
+    "sicp_state_3_1_3_7",
+    "sicp_symbols_2_53_2_55",
+    "sicp_tables_3_24_3_27",
+    "sicp_tree_1_11_1_12",
+    "sicp_trees_2_19_2_32",
+    "sicp_recursive_bindings_4_8_4_20"
+  ],
+  "scope": "host only; selected finite observations"
+}

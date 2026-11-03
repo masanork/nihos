@@ -1,0 +1,42 @@
+{
+  "groups": 21,
+  "changed_groups": [],
+  "added_groups": [
+    "current-sicp_recursive_bindings_4_8_4_20.json"
+  ],
+  "coverage_before": {
+    "all_original_expression_steps": 1,
+    "sampled": 121,
+    "not_tested": 234
+  },
+  "coverage_after": {
+    "all_original_expression_steps": 1,
+    "sampled": 123,
+    "not_tested": 232
+  },
+  "chapters_after": {
+    "1": {
+      "all_original_expression_steps": 1,
+      "sampled": 45
+    },
+    "2": {
+      "sampled": 42,
+      "not_tested": 55
+    },
+    "3": {
+      "sampled": 27,
+      "not_tested": 55
+    },
+    "4": {
+      "sampled": 7,
+      "not_tested": 72
+    },
+    "5": {
+      "sampled": 2,
+      "not_tested": 50
+    }
+  },
+  "before_runtime_sha256": "1c5e8e2ce923aa9573328136f9147ca9f2253922d0ae23362a68a6091f6d9359",
+  "after_runtime_sha256": "ea36f7253613cb3dc8795e20b85f5a99d0629202e4a92e43b28a159415831359",
+  "scope": "host-only selected finite observations; compares complete parsed JSON in each group"
+}
