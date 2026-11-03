@@ -393,3 +393,44 @@
             eprintln!("STRINGS_NATIVE {source} => {answer}");
         }
     }
+
+    #[test]
+    #[ignore = "requires traced native xy ELF with continuation selectors"]
+    fn continuation_selectors_native_smoke() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        fn wait(emu: &mut Emulator, start: usize, marker: &str) {
+            for _ in 0..1500 {
+                emu.step_frame(1_000_000);
+                assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
+                let output = String::from_utf8_lossy(&emu.bus.console_output[start..]);
+                assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+                if output.contains(marker) { return; }
+            }
+            panic!("missing {marker}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+        }
+        fn command(emu: &mut Emulator, source: &str) -> usize {
+            assert!(source.len() < 256);
+            let start = emu.bus.console_output.len();
+            emu.send_key(0x1b);
+            wait(emu, start, "mode=00000001");
+            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            start
+        }
+        wait(&mut emu, 0, "NIHOS_NATIVE_XY_READY");
+        emu.step_frame(30_000_000);
+        emu.send_key(b'n');
+        emu.step_frame(30_000_000);
+        let setup = command(&mut emu, "(begin (define (seek k xs) (if (null? xs) 0 (if (eq? k (caar xs)) 1 (+ 1 (seek k (cdr xs)))))) 701)");
+        wait(&mut emu, setup, "NIHOS_NATIVE_XY_REPLY data=373031");
+        let source = format!("(begin (define d '({}(target))) 702)", "(o) ".repeat(30));
+        let data = command(&mut emu, &source);
+        wait(&mut emu, data, "NIHOS_NATIVE_XY_REPLY data=373032");
+        let run = command(&mut emu, "(seek 'target d)");
+        wait(&mut emu, run, "NIHOS_NATIVE_XY_CONT_STATE state=00000001");
+        wait(&mut emu, run, "NIHOS_NATIVE_XY_REPLY data=3331");
+        wait(&mut emu, run, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
+        let last = command(&mut emu, "(cadddr '(a b c d))");
+        wait(&mut emu, last, "NIHOS_NATIVE_XY_REPLY data=64");
+        eprintln!("SELECTORS_NATIVE suspended recursion=31 cadddr=d");
+    }
