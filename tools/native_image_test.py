@@ -85,9 +85,9 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
 
     def test_quasiquote_flash_allowlist_is_limited_to_runtime_methods(self):
-        for name in ('xy.scheme_runtime.Runtime.quasiquote__func_37', 'xy.scheme_runtime.Runtime.quasiquoteKind'):
+        for name in ('xy.scheme_runtime.Runtime.quasiquote__func_37', 'xy.scheme_runtime.Runtime.quasiquoteKind', 'xy.scheme_runtime.Runtime.stringScalarCount'):
             self.assertTrue(MODULE.xy_function(name))
-        for name in ('xy.scheme_runtime.Runtime.quasiquoteUnexpected', 'other.Runtime.quasiquote__func_37'):
+        for name in ('xy.scheme_runtime.Runtime.quasiquoteUnexpected', 'other.Runtime.quasiquote__func_37', 'xy.scheme_runtime.Runtime.stringScalarCountUnexpected'):
             self.assertFalse(MODULE.xy_function(name))
 
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
