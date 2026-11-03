@@ -109,3 +109,12 @@ test "AP event matching validates nested BSSID and keeps malformed data unknown"
     try t.expectEqual(@as(u32, 0), smoke.compareApEvent(&short, expected));
     try t.expectEqual(@as(u32, 0), smoke.compareApEvent(&matched, @splat(0)));
 }
+
+test "SSID event comparison uses declared length and rejects malformed data" {
+    const matched = [_]u8{ 0x12, 9, 0x0a, 5, 't', 'e', 's', 't', 0, 0x10, 4 };
+    const invalid = [_]u8{ 0x12, 9, 0x0a, 5, 't', 'e', 's', 't', 0, 0x10, 6 };
+    try t.expectEqual(@as(u32, 1), smoke.compareSsidEvent(&matched, "test"));
+    try t.expectEqual(@as(u32, 2), smoke.compareSsidEvent(&matched, "else"));
+    try t.expectEqual(@as(u32, 0), smoke.compareSsidEvent(&invalid, "test"));
+    try t.expectEqual(@as(u32, 0), smoke.compareSsidEvent(&matched, ""));
+}
