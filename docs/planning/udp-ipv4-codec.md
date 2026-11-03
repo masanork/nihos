@@ -158,3 +158,19 @@ These host-model observations do not establish device socket behavior.
 An RV32 freestanding size-only object built with ReleaseSafe reports 9,280
 bytes for `Owner`, including its socket and decoder. It is not a linked-image
 measurement or a memory reservation for normal boot.
+
+`hosted_udp_shared.Shared` is a separate host-tested adapter for a network
+owner that already owns its decoder and processes control/station frames. It
+receives only frames already processed by that owner, accounts a full UDP slot
+as a drop without overwriting it, and takes an explicit station/other-producer
+priority and RX-drained state before submitting UDP. A zero-credit UDP attempt
+starts no transfer, so another producer may run. Timeouts still expire while
+another producer has priority; ambiguous writes retire the stream and revoke
+only the still-current address snapshot. A stale lease during RX retires the
+adapter, and the caller must invalidate/recover the shared transport. The
+caller must enforce exclusive stream ownership, ensure priority flags reflect
+all staged/in-flight transfers, invalidate state on reset, and quiesce DMA.
+It is not wired to `network_service.zig`, and these are host-model results.
+An RV32 ReleaseSafe size-only object reports 4,648 bytes for `Shared`, which
+excludes the already-owned decoder and transport. This is not a linked-image
+measurement or an allocation in the normal boot profile.
