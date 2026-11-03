@@ -29,6 +29,43 @@ const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, n
 const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, quasiquote, unquote, unquote_splicing, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc, string_length_proc, string_append_proc, string_equal_proc };
 const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00quasiquote\x00unquote\x00unquote-splicing\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00string-length\x00string-append\x00string=?\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
+// Each admitted native operation has bounded work and performs no callbacks.
+// Keep admission and execution in sync so fallback happens before side effects.
+inline fn continuationPrimitiveAllowed(op: Op) bool {
+    return switch (op) {
+        .add,
+        .sub,
+        .mul,
+        .equal,
+        .less,
+        .greater,
+        .less_equal,
+        .greater_equal,
+        .quotient_proc,
+        .remainder_proc,
+        .modulo_proc,
+        .evenq,
+        .cons,
+        .car,
+        .cdr,
+        .nullq,
+        .pairq,
+        .not,
+        .eq_proc,
+        .eqv_proc,
+        .cadr_proc,
+        .caar_proc,
+        .cdar_proc,
+        .cddr_proc,
+        .caddr_proc,
+        .caadr_proc,
+        .cdadr_proc,
+        .cdddr_proc,
+        .cadddr_proc,
+        => true,
+        else => false,
+    };
+}
 pub const eval_stack_size = 128;
 const int_bias: i32 = 16384;
 // An invalid immediate opcode is an internal marker for recursive bindings.
@@ -5739,10 +5776,7 @@ const ContinuationState = struct {
                 continue;
             }
             if (!isImmediateOp(procedure)) return error.Type;
-            switch (toImmediateOp(procedure)) {
-                .add, .sub, .mul, .equal, .less, .greater, .less_equal, .greater_equal, .quotient_proc, .remainder_proc, .modulo_proc, .evenq, .cons, .car, .cdr, .nullq, .pairq, .not => {},
-                else => return error.CannotCompile,
-            }
+            if (!continuationPrimitiveAllowed(toImmediateOp(procedure))) return error.CannotCompile;
             self.value = try vm.apply(procedure, frame.values[0..frame.count], 0, host);
             self.environment = frame.environment;
             self.count -= 1;
@@ -6022,10 +6056,7 @@ const ContinuationAdmission = struct {
             if (vm.tagOf(procedure) != .closure or !self.closure(vm, procedure, depth + 1)) return false;
         } else {
             const builtin = op orelse return false;
-            switch (builtin) {
-                .add, .sub, .mul, .equal, .less, .greater, .less_equal, .greater_equal, .quotient_proc, .remainder_proc, .modulo_proc, .evenq, .cons, .car, .cdr, .nullq, .pairq, .not => {},
-                else => return false,
-            }
+            if (!continuationPrimitiveAllowed(builtin)) return false;
         }
         for (args) |arg| if (!self.expression(vm, arg, depth + 1)) return false;
         return true;
@@ -6201,6 +6232,83 @@ test "continuation prototype leased lifecycle and cancellation" {
     try std.testing.expect(!vm.running and slot.owner == null);
     try std.testing.expectEqualStrings("42", try vm.evaluate("42", &host, &out));
     std.debug.print("LEASE bytes={d} yields={d} cancellation=ok errors=ok reentry=busy\n", .{ @sizeOf(ContinuationLease), yields });
+}
+
+test "continuation admits bounded pair selectors and equivalence safely" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    const examples = [_]struct { source: []const u8, expected: []const u8 }{
+        .{ .source = "(eq? 'alpha 'alpha)", .expected = "#t" },
+        .{ .source = "(eqv? 1 2)", .expected = "#f" },
+        .{ .source = "(cadr '(a b c))", .expected = "b" },
+        .{ .source = "(caar '((a b) c))", .expected = "a" },
+        .{ .source = "(cdar '((a b) c))", .expected = "(b)" },
+        .{ .source = "(cddr '(a b c))", .expected = "(c)" },
+        .{ .source = "(caddr '(a b c d))", .expected = "c" },
+        .{ .source = "(caadr '(a (b c)))", .expected = "b" },
+        .{ .source = "(cdadr '(a (b c)))", .expected = "(c)" },
+        .{ .source = "(cdddr '(a b c d))", .expected = "(d)" },
+        .{ .source = "(cadddr '(a b c d))", .expected = "d" },
+    };
+    for (examples) |example| {
+        try std.testing.expectEqualStrings(example.expected, try vm.evaluate(example.source, &host, &out));
+        var lease = SlicedContinuation{};
+        try std.testing.expect(try lease.begin(&vm, example.source));
+        while (true) {
+            if (try lease.poll(&host, 1, 17, &out)) |actual| {
+                try std.testing.expectEqualStrings(example.expected, actual);
+                break;
+            }
+            // Exercise each published suspension independently of pressure.
+            vm.collect();
+        }
+        try std.testing.expectEqual(@as(u8, 0), vm.ast_root_frame_count);
+    }
+
+    var bad = SlicedContinuation{};
+    try std.testing.expect(try bad.begin(&vm, "(caddr '(a))"));
+    while (true) {
+        const result = bad.poll(&host, 1, 17, &out) catch |err| {
+            try std.testing.expectEqual(error.Type, err);
+            break;
+        };
+        if (result != null) return error.TestUnexpectedResult;
+    }
+    try std.testing.expect(!vm.running);
+    try std.testing.expectEqualStrings("42", try vm.evaluate("(+ 20 22)", &host, &out));
+
+    _ = try vm.evaluate("(define (seek k xs) (if (null? xs) 0 (if (eq? k (caar xs)) 1 (+ 1 (seek k (cdr xs))))))", &host, &out);
+    const recursive = "(seek 'target '(" ++ repeat("(other) ", 30) ++ "(target)))";
+    try std.testing.expectError(error.Depth, vm.evaluate(recursive, &host, &out));
+    var recursive_lease = SlicedContinuation{};
+    try std.testing.expect(try recursive_lease.begin(&vm, recursive));
+    var yields: usize = 0;
+    while (true) {
+        if (try recursive_lease.poll(&host, 7, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("31", actual);
+            break;
+        }
+        vm.collect();
+        yields += 1;
+    }
+    try std.testing.expect(yields > 1);
+    try std.testing.expectEqual(@as(u8, 0), vm.ast_root_frame_count);
+
+    // A locally shadowed procedure must take the existing synchronous path.
+    var shadow = SlicedContinuation{};
+    try std.testing.expect(!try shadow.begin(&vm, "(let ((eq? (lambda (a b) #f))) (eq? 1 1))"));
+    try std.testing.expectEqualStrings("#f", try vm.evaluate("(let ((eq? (lambda (a b) #f))) (eq? 1 1))", &host, &out));
+    _ = try vm.evaluate("(define side 0) (define (eq? a b) (set! side (+ side 1)) #t)", &host, &out);
+    var rebound = SlicedContinuation{};
+    try std.testing.expect(!try rebound.begin(&vm, "(eq? 1 2)"));
+    try std.testing.expectEqualStrings("0", try vm.evaluate("side", &host, &out));
+    try std.testing.expectEqualStrings("#t", try vm.evaluate("(eq? 1 2)", &host, &out));
+    try std.testing.expectEqualStrings("1", try vm.evaluate("side", &host, &out));
+    var unbounded = SlicedContinuation{};
+    try std.testing.expect(!try unbounded.begin(&vm, "(append '(1) '(2))"));
+    try std.testing.expect(!try unbounded.begin(&vm, "(memq 'a '(a))"));
 }
 
 // Retain the VM and published roots until sliced collection completes,
