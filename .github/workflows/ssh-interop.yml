@@ -12,7 +12,7 @@ jobs:
   openssh-slirp:
     name: OpenSSH over experimental TCP
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -84,3 +84,7 @@ jobs:
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_LEAVE=1 python3 tools/ssh_openssh_probe.py
+      - name: OpenSSH with a seeded foreground CSPRNG
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_SEEDED=1 python3 tools/ssh_openssh_probe.py
