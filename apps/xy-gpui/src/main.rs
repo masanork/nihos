@@ -1,5 +1,6 @@
 mod core;
 pub mod emu;
+mod worker;
 use core::{Core, Key};
 use gpui::{prelude::*, *};
 use std::{sync::Arc, time::Instant};
@@ -22,7 +23,7 @@ struct Workspace {
     status: Arc<RenderImage>,
     scale: f32,
     status_key: (u32, u32, bool),
-    emulator: Option<emu::Emulator>,
+    emulator: Option<worker::Worker>,
     emu_image: Option<Arc<RenderImage>>,
     emu_render_revision: FrameRevision,
     emu_mode: bool,
@@ -43,32 +44,16 @@ impl Workspace {
         let editor = frame(core.bgra(true, width, height), width, height);
         let graph = frame(core.bgra(false, width, height), width, height);
 
-        let mut emulator = None;
-        let mut emu_image = None;
         let mut emu_error = None;
-        match load_emulator() {
-            Ok(mut emu) => {
-                emu.step_frame(1_000_000);
-                if let Some(fault) = emu.fault() {
-                    emu_error = Some(format!("Emulator stopped: {fault}"));
-                }
-                let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
-                emu.render_to_bgra(&mut bgra);
-                emu_image = Some(frame(
-                    bgra,
-                    emu::bus::FB_WIDTH as u32,
-                    emu::bus::FB_HEIGHT as u32,
-                ));
-                emulator = Some(emu);
+        let emulator = match load_emulator() {
+            Ok(emu) => Some(worker::Worker::new(emu)),
+            Err(error) => {
+                emu_error = Some(error);
+                None
             }
-            Err(error) => emu_error = Some(error),
-        }
-
-        let emu_render_revision = FrameRevision(
-            emulator
-                .as_ref()
-                .map(|emu| (emu.bus.scanout_revision(), false)),
-        );
+        };
+        let emu_image = None;
+        let emu_render_revision = FrameRevision(None);
         let emu_powered = emulator.is_some() && emu_error.is_none();
         let emu_mode = true;
         if emu_mode {
@@ -135,7 +120,7 @@ impl Workspace {
     fn retry_firmware(&mut self, window: &mut Window) {
         match load_emulator() {
             Ok(emu) => {
-                self.emulator = Some(emu);
+                self.emulator = Some(worker::Worker::new(emu));
                 self.emu_render_revision.invalidate();
                 self.emu_powered = true;
                 self.emu_error = None;
@@ -176,37 +161,29 @@ impl Workspace {
         self.editor_generation = self.core.editor_generation();
     }
     fn refresh_emulator(&mut self, window: &mut Window) {
-        if !self.emu_powered || self.emulator.as_ref().is_some_and(|emu| emu.paused) {
-            return;
-        }
-        if let Some(emu) = &mut self.emulator {
-            emu.step_frame(500_000);
-            if let Some(fault) = emu.fault() {
-                self.emu_error = Some(format!("Emulator stopped: {fault}"));
+        if let Some(emu) = &self.emulator {
+            let (_, _, error) = emu.snapshot();
+            if let Some(error) = error.filter(|_| !emu.control_pending()) {
+                self.emu_error = Some(error);
                 self.emu_powered = false;
-                self.render_emulator_image(window);
-                return;
-            }
-            let output = String::from_utf8_lossy(&emu.bus.console_output);
-            if let Some(line) = output
-                .lines()
-                .find(|line| line.starts_with("NIHOS_NATIVE_FAIL "))
-            {
-                self.emu_error = Some(format!("Guest stopped: {line}"));
-                self.emu_powered = false;
-                self.render_emulator_image(window);
-                return;
             }
         }
         self.render_emulator_image(window);
     }
     fn render_emulator_image(&mut self, window: &mut Window) {
-        if let Some((bgra, w, h)) = self.emulator.as_ref().and_then(|emu| {
-            render_changed_frame(emu, self.emu_portrait, &mut self.emu_render_revision)
-        }) {
-            let next = frame(bgra, w, h);
-            if let Some(old) = self.emu_image.replace(next) {
-                retire(old, window);
+        if let Some(emu) = &self.emulator {
+            emu.request_frame();
+            let (image, revision, _) = emu.snapshot();
+            let current = (revision, self.emu_portrait);
+            if self.emu_render_revision.needs_update(current)
+                && let Some(image) = image
+            {
+                let (bgra, w, h) = orient_frame((*image).clone(), self.emu_portrait);
+                let next = frame(bgra, w, h);
+                if let Some(old) = self.emu_image.replace(next) {
+                    retire(old, window);
+                }
+                self.emu_render_revision.record(current);
             }
         }
     }
@@ -226,7 +203,7 @@ impl Workspace {
         ) {
             self.emu_touch_down = true;
             if let Some(emu) = &mut self.emulator {
-                emu.bus.touch(Some(point));
+                emu.touch(Some(point));
             }
         }
     }
@@ -234,7 +211,7 @@ impl Workspace {
         if self.emu_touch_down {
             self.emu_touch_down = false;
             if let Some(emu) = &mut self.emulator {
-                emu.bus.touch(None);
+                emu.touch(None);
             }
         }
     }
@@ -254,7 +231,11 @@ impl Workspace {
     }
     fn schedule(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if (self.emu_mode
-            && (!self.emu_powered || self.emulator.as_ref().is_none_or(|emu| emu.paused)))
+            && (!self.emu_powered
+                || self
+                    .emulator
+                    .as_ref()
+                    .is_none_or(|emu| emu.paused && !emu.control_pending())))
             || self.tick_pending
             || (!self.emu_mode && (self.core.state().paused != 0 || self.core.state().stopped != 0))
         {
@@ -654,6 +635,7 @@ impl FrameRevision {
     }
 }
 
+#[cfg(test)]
 fn render_changed_frame(
     emu: &emu::Emulator,
     portrait: bool,
@@ -720,6 +702,7 @@ fn load_emulator() -> Result<emu::Emulator, String> {
     emu::Emulator::new(path, dictionary).map_err(|error| format!("Cannot load firmware: {error}"))
 }
 
+#[cfg(test)]
 fn reset_emulator(emu: &mut emu::Emulator, stopped: bool) -> std::io::Result<()> {
     emu.reset()?;
     if stopped {
@@ -859,7 +842,7 @@ impl Render for Workspace {
                                 if this.emu_powered
                                     && let Some(emu) = &mut this.emulator
                                 {
-                                    emu.paused = !emu.paused;
+                                    emu.set_paused(!emu.paused);
                                 }
                                 cx.notify();
                             })),
@@ -878,20 +861,15 @@ impl Render for Workspace {
                                     this.touch_end();
                                     if this.emu_powered {
                                         this.emu_powered = false;
-                                    } else if let Some(emu) = &mut this.emulator {
-                                        match emu.reset() {
-                                            Ok(()) => {
-                                                emu.paused = false;
-                                                this.emu_render_revision.invalidate();
-                                                this.emu_powered = true;
-                                                this.emu_error = None;
-                                            }
-                                            Err(err) => {
-                                                this.emu_error =
-                                                    Some(format!("Power on failed: {err}"))
-                                            }
+                                        if let Some(emu) = &this.emulator {
+                                            emu.power_off();
                                         }
-                                        this.refresh_emulator(window);
+                                    } else if let Some(emu) = &mut this.emulator {
+                                        emu.reset(true);
+                                        this.emu_render_revision.invalidate();
+                                        this.emu_powered = true;
+                                        this.emu_error = None;
+                                        this.render_emulator_image(window);
                                     } else {
                                         this.retry_firmware(window);
                                     }
@@ -905,18 +883,10 @@ impl Render for Workspace {
                                     this.touch_end();
                                     if this.emu_powered || this.emu_error.is_some() {
                                         if let Some(emu) = &mut this.emulator {
-                                            match reset_emulator(emu, !this.emu_powered) {
-                                                Ok(()) => {
-                                                    this.emu_render_revision.invalidate();
-                                                    this.emu_powered = true;
-                                                    this.emu_error = None;
-                                                }
-                                                Err(err) => {
-                                                    this.emu_powered = false;
-                                                    this.emu_error =
-                                                        Some(format!("Reset failed: {err}"));
-                                                }
-                                            }
+                                            emu.reset(!this.emu_powered);
+                                            this.emu_render_revision.invalidate();
+                                            this.emu_powered = true;
+                                            this.emu_error = None;
                                         } else {
                                             this.retry_firmware(window);
                                         }

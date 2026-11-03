@@ -112,8 +112,8 @@ For the same candidate and 152 million CPU0 instructions on this host, a debug
 interpreter took 16.4 seconds to `XY_READY`; compiling just this crate with
 `opt-level=2` took 4.2 seconds. These are individual headless measurements, not
 an emulated-time or device-speed comparison. The dev profile now uses that
-crate-level optimization. CPU execution and frame conversion still run on the
-UI thread; responsive behavior under sustained load has not been qualified.
+crate-level optimization. CPU execution and frame conversion run on a dedicated worker thread; the UI
+receives the latest frame and sends input and control commands asynchronously.
 
 Unsupported major opcodes, compressed opcodes and unmapped ROM calls stop the
 emulator with an address. This is not a complete ISA validation: some instruction
