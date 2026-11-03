@@ -39,6 +39,12 @@ export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_b
         network.experimentalTcpCloseWrite(handle, 5_000_000) catch return 0;
         _ = network.experimentalTcpCloseComplete(handle) catch false;
     } else |err| tcp_result = @intFromError(err);
+    if (network.experimentalUdpBind(49152)) |handle| {
+        var buffer: [8]u8 = @splat(0);
+        network.experimentalUdpSend(handle, .{ .mac = .{ 2, 0, 0, 0, 0, 2 }, .ip = .{ 192, 0, 2, 2 }, .port = 44444 }, &buffer, 5_000_000) catch return 0;
+        _ = network.experimentalUdpRead(handle, &buffer) catch return 0;
+        network.experimentalUdpClose(handle) catch return 0;
+    } else |err| tcp_result +|= @intFromError(err);
     network.configure(.disabled) catch return 0;
     network.scanBluetooth() catch return network.bluetoothSnapshot().phase;
     return network.snapshot().phase +| tcp_result;

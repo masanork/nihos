@@ -49,6 +49,7 @@ if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
     build_dir="$build_dir-network"
 fi
 if [ "${NIHOS_NATIVE_EXPERIMENTAL_TCP:-0}" = 1 ]; then build_dir="$build_dir-tcp-experiment"; fi
+if [ "${NIHOS_NATIVE_EXPERIMENTAL_UDP:-0}" = 1 ]; then build_dir="$build_dir-udp-experiment"; fi
 if [ "${NIHOS_NATIVE_AUDIO:-0}" = 1 ]; then build_dir="$build_dir-audio"; fi
 if [ "${NIHOS_NATIVE_MICROPHONE:-0}" = 1 ]; then build_dir="$build_dir-microphone"; fi
 if [ "${NIHOS_NATIVE_RS485:-0}" = 1 ]; then build_dir="$build_dir-rs485"; fi
