@@ -36,7 +36,7 @@ check_hash "$build_dir/m5os.bin" 2802acccea64410dee3e0caea5fd683d499a84b5818d766
 check_hash "$build_dir/m5os.elf" 6c5f827b436e00b268971f21a17ba9306391b74da68abfbe872ac75db5ea4e18
 check_hash "$rom_path" 948f2c7d108d04a9c3a982f9c1c498fb17f2c4a68abc51f87782592034d7ce44
 
-repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 unset NIHOS_EMU_EXPECT_BUDGET NIHOS_EMU_EXPECT_BREAK_TEXT NIHOS_EMU_EXPECT_STOP NIHOS_EMU_STOP_ON_LOG
 unset NIHOS_EMU_EXPECT_PC NIHOS_EMU_BREAK_HITS NIHOS_EMU_INPUT NIHOS_EMU_INPUT_AFTER
 unset NIHOS_EMU_TEST_ST7121
