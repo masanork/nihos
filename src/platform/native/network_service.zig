@@ -20,9 +20,13 @@ const c6_offload = @hasDecl(network_config, "c6_time_offload") and network_confi
 const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test;
 // Codegen-only experiment until TCP RX/TX and application ownership are wired.
 const experimental_tcp = @hasDecl(options, "experimental_tcp") and options.experimental_tcp;
+const experimental_udp = @hasDecl(options, "experimental_udp") and options.experimental_udp;
 const TcpState = if (experimental_tcp) hosted.tcp_owner.Owner else void;
+const UdpState = if (experimental_udp) hosted.udp_shared.Shared else void;
 comptime {
     if (@alignOf(TcpState) > 64) @compileError("TCP owner exceeds network backing alignment");
+    if (@alignOf(UdpState) > 64) @compileError("UDP owner exceeds network backing alignment");
+    if (experimental_udp and (!c6_offload or experimental_tcp)) @compileError("UDP experiment requires C6 offload and excludes TCP experiment");
 }
 const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
@@ -36,7 +40,7 @@ const State = struct {
     decoder: hosted.wire.Decoder = .{},
 };
 const station_storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
-pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else 0;
+pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else if (experimental_udp) ((@sizeOf(UdpState) + 63) & ~@as(usize, 63)) else 0;
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
 var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
@@ -58,11 +62,66 @@ const initial_state linksection(".flash.rodata.display") = InitialTemplate{};
 var state_storage: *State = undefined;
 // SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
 var tcp_state: *TcpState = undefined;
+// SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
+var udp_state: *UdpState = undefined;
+var udp_error_code: u32 = 0;
+var udp_dropped: u32 = 0;
+var udp_invalid: u32 = 0;
 var tcp_error_code: u32 = 0;
 /// Last TCP scheduling or RX failure for experimental diagnostics; station errors remain
 /// on the existing network report. No application socket API is exposed yet.
 pub fn experimentalTcpError() u32 {
     return if (experimental_tcp) tcp_error_code else 0;
+}
+pub const ExperimentalUdpHandle = hosted.udp_socket.Handle;
+pub const ExperimentalUdpReceived = hosted.udp_socket.Received;
+pub const experimental_udp_max_payload = hosted.udp_shared.short_payload_limit;
+
+/// CPU0-only, short-transfer experiment. The caller owns address resolution
+/// and must serialize every call with poll(). Not an application socket API.
+fn experimentalUdpNow() !u64 {
+    if (!experimental_udp) return error.UdpDisabled;
+    if (phase != .active or !offload_active or !client.connected or client.phase != .done) return error.NetworkUnavailable;
+    if (client.peer_chip != 13 or !client.version_known or
+        !@import("std").mem.eql(u32, &client.version, &.{ 3, 0, 10 }) or
+        client.peer_rpc_version != 2 or client.peer_mode != 1 or client.peer_sdio_buffer_blocks == null) return error.UnsupportedPeer;
+    return clock.counter() orelse error.Clock;
+}
+pub fn experimentalUdpBind(port: u16) !ExperimentalUdpHandle {
+    if (comptime !experimental_udp) return error.UdpDisabled;
+    _ = try experimentalUdpNow();
+    const handle = try udp_state.bind(&state_storage.offload.addresses, client.mac_address, port, .{ .first = 49152, .last = 61439 });
+    udp_error_code = 0;
+    return handle;
+}
+pub fn experimentalUdpSend(handle: ExperimentalUdpHandle, peer: hosted.udp_ipv4.Endpoint, payload: []const u8, deadline_us: u64) !void {
+    if (comptime !experimental_udp) return error.UdpDisabled;
+    const now = try experimentalUdpNow();
+    const std = @import("std");
+    const ip = std.mem.readInt(u32, &peer.ip, .big);
+    if (peer.port == 0 or peer.mac[0] & 1 != 0 or std.mem.allEqual(u8, &peer.mac, 0) or
+        ip >> 24 == 0 or ip >> 24 == 127 or ip >> 24 >= 224 or ip >> 16 == 0xa9fe) return error.InvalidArgument;
+    try udp_state.socket.sendTo(handle, peer, payload, client.sequence, now, deadline_us);
+    client.sequence +%= 1;
+}
+pub fn experimentalUdpRead(handle: ExperimentalUdpHandle, out: []u8) !?ExperimentalUdpReceived {
+    if (comptime !experimental_udp) return error.UdpDisabled;
+    _ = try experimentalUdpNow();
+    return udp_state.socket.read(handle, out);
+}
+pub fn experimentalUdpClose(handle: ExperimentalUdpHandle) !void {
+    if (comptime !experimental_udp) return error.UdpDisabled;
+    _ = try experimentalUdpNow();
+    try udp_state.socket.close(handle);
+}
+pub fn experimentalUdpError() u32 {
+    return if (experimental_udp) udp_error_code else 0;
+}
+pub fn experimentalUdpDrops() u32 {
+    return if (experimental_udp) udp_dropped else 0;
+}
+pub fn experimentalUdpInvalid() u32 {
+    return if (experimental_udp) udp_invalid else 0;
 }
 pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
 pub const ExperimentalSshAdapter = hosted.ssh_tcp.Adapter;
@@ -230,6 +289,13 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
         tcp_state.init();
         tcp_error_code = 0;
     }
+    if (experimental_udp) {
+        udp_state = @ptrFromInt(@intFromPtr(backing) + station_storage_bytes);
+        udp_state.init();
+        udp_error_code = 0;
+        udp_dropped = 0;
+        udp_invalid = 0;
+    }
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
     client = if (c6_offload) &state.offload.station else &state.client;
@@ -254,6 +320,7 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
 // Foreground-only reconnect path; Flash is mapped before network begin.
 noinline fn startAttempt(now: u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     if (experimental_tcp) revokeReservedSsh();
+    if (experimental_udp) udp_state.init();
     if (experimental_tcp) tcp_state.reset() catch {
         phase = .failed;
         return;
@@ -295,6 +362,10 @@ fn collectRenewals() void {
 }
 noinline fn stop(err: anyerror, now: ?u64) linksection(if (@hasDecl(options, "xy_workspace") and options.xy_workspace) ".flash.xytext" else ".text") void {
     if (experimental_tcp) revokeReservedSsh();
+    if (experimental_udp) {
+        udp_state.socket.invalidate();
+        udp_state.retired = true;
+    }
     const tcp_reset_failed = if (experimental_tcp) blk: {
         tcp_state.reset() catch break :blk true;
         break :blk false;
@@ -374,6 +445,7 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
             try state_storage.offload.receive(frame, received);
             try finishC6Time(received);
+            if (experimental_udp) try udpReceive(frame);
         } else {
             try client.receive(frame, received);
             if (experimental_tcp) tcpReceive(frame, received);
@@ -418,6 +490,8 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
         if (state_storage.offload.phase == .ready and stamp < offload_due) &.{} else try state_storage.offload.tx(stamp)
     else
         try client.tx(stamp);
+    // Age an unsent UDP deadline even while another producer has priority.
+    if (experimental_udp and offload_active) _ = try udpPoll(stamp, count == 0, bytes.len != 0, true);
     // A previously staged TCP packet owns the next whole Hosted send, even
     // when station maintenance has since become ready.
     if (experimental_tcp and !offload_active and try tcpPoll(stamp, bytes.len != 0, true)) return;
@@ -456,8 +530,48 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
             }
         } else if (experimental_tcp and !offload_active) {
             _ = try tcpPoll(stamp, false, false);
+        } else if (experimental_udp and offload_active) {
+            _ = try udpPoll(stamp, count == 0, false, false);
         }
     }
+}
+
+// Deliberately denies long DMA in this profile, even if a caller bypasses the
+// 458-byte socket admission limit. No DMA buffer or peer long-frame contract
+// is established by the normal network provider.
+const ShortUdpStream = struct {
+    stream: *@TypeOf(transport),
+    pub fn send(self: *@This(), bytes: []const u8) !usize {
+        return self.stream.send(bytes);
+    }
+    pub fn sendLong(_: *@This(), _: []const u8, _: *[1536]u8) !usize {
+        return error.LongUdpDisabled;
+    }
+    pub fn invalidate(self: *@This()) void {
+        self.stream.invalidate();
+    }
+};
+
+noinline fn udpReceive(frame: hosted.wire.Frame) linksection(".flash.xytext") !void {
+    if (!experimental_udp) return;
+    const handle = udp_state.socket.current orelse return;
+    const result = try udp_state.receiveProcessed(handle, frame);
+    if (result == .dropped) udp_dropped +|= 1;
+    if (result == .invalid) udp_invalid +|= 1;
+}
+
+noinline fn udpPoll(now: u64, drained: bool, station_pending: bool, other_pending: bool) linksection(".flash.xytext") !bool {
+    if (!experimental_udp) return false;
+    const handle = udp_state.socket.current orelse return false;
+    const length = if (udp_state.socket.sender) |*value| value.length else 0;
+    var short: ShortUdpStream = .{ .stream = &transport };
+    const result = udp_state.poll(handle, &short, decoder, now, drained, station_pending, other_pending) catch |err| {
+        udp_error_code = @intFromError(err);
+        if (err == error.Deadline) return false;
+        return err;
+    };
+    if (result == .sent) report.tx +|= @intCast(length);
+    return result == .sent;
 }
 
 noinline fn tcpReceive(frame: hosted.wire.Frame, now: u64) linksection(".flash.xytext") void {
