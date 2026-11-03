@@ -145,6 +145,7 @@ report = {
     'protocol': 'hosted' if dest.name in ('c6-split-udp-probe', 'c6-hosted-probe', 'c6-hosted-long-probe', 'c6-ipv6-probe') else 'at',
     'long_dma_enabled': dest.name == 'c6-split-udp-probe',
     'udp_probe_enabled': 'pub const udp_enabled = true;' in (dest / 'wifi-config.zig').read_text(),
+    'udp_split_arp_enabled': 'pub const udp_split_arp = true;' in (dest / 'wifi-config.zig').read_text(),
     'ipv6_enabled': 'pub const ipv6 = true;' in (dest / 'wifi-config.zig').read_text(),
     'wifi_enabled': dest.name != 'c6-sdio-probe',
     'private_artifacts': dest.name != 'c6-sdio-probe',
