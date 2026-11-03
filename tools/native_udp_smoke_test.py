@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class NativeUdpSmokeConfig(unittest.TestCase):
     def test_private_peer_validation_and_secret_redaction(self):
-        cases = [({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444}, 0o600, True),
+        cases = [({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': '02:00:00:00:00:03'}, 0o600, True),
+                 ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': 'ff:ff:ff:ff:ff:ff'}, 0o600, False),
+                 ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444}, 0o600, True),
                  ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444}, 0o644, False),
                  ({'ip': '224.0.0.1', 'mac': '02:00:00:00:00:02', 'port': 44444}, 0o600, False),
                  ({'ip': '192.0.2.2', 'mac': 'ff:ff:ff:ff:ff:ff', 'port': 44444}, 0o600, False),
