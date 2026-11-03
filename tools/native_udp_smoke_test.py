@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class NativeUdpSmokeConfig(unittest.TestCase):
     def test_private_peer_validation_and_secret_redaction(self):
-        cases = [({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': '02:00:00:00:00:03'}, 0o600, True),
+        cases = [({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'ssid': 'example'}, 0o600, True),
+                 ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'ssid': 'x' * 33}, 0o600, False),
+                 ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': '02:00:00:00:00:03'}, 0o600, True),
                  ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': 'ff:ff:ff:ff:ff:ff'}, 0o600, False),
                  ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444, 'bssid': '<redacted>'}, 0o600, False),
                  ({'ip': '192.0.2.2', 'mac': '02:00:00:00:00:02', 'port': 44444}, 0o600, True),
@@ -31,6 +33,8 @@ class NativeUdpSmokeConfig(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, valid)
                 self.assertNotIn(data['ip'], result.stdout + result.stderr)
                 self.assertNotIn(data['mac'], result.stdout + result.stderr)
+                if data.get('ssid'):
+                    self.assertNotIn(data['ssid'], result.stdout + result.stderr)
                 if valid:
                     text = destination.read_text()
                     self.assertIn('pub const udp_smoke_port: u16 = 44444;', text)
