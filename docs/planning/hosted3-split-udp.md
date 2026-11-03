@@ -106,3 +106,17 @@ not authorization. This repository currently provides only the bounded UDP
 diagnostic, not the UDP socket, QUIC/TLS endpoint, credential validation or
 madowi sync. These layers and their resource/partial-I/O limits remain
 separate implementation and physical interoperability gates.
+
+## Opt-in ARP diagnostic
+
+The split UDP fixture can first resolve its explicit same-subnet peer with
+`NIHOS_C6_UDP_SPLIT_ARP=1`. It requires the configured peer IP and MAC and
+compares the ARP result against that independently known MAC before sending.
+The option defaults off. During resolution `wifi_step=9` means in progress;
+`wifi_step=10` means the reply matched. A zero or partial ARP write aborts the
+fixture and requires transport recovery. This is a bounded test, not a
+runtime ARP service. Use `--require-arp` with
+`tools/analyze-hosted3-split-udp-burst.py` to require the matching completion
+marker along with the normal paired packet evidence. It does not authenticate
+the peer. The [prior physical measurement](../measurements/2026-11-03-hosted-split-arp-udp.md)
+belongs to the exact candidate recorded there, not this later fixture revision.

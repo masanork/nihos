@@ -9,6 +9,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FactoryC6BoundaryTests(unittest.TestCase):
+    def test_split_arp_requires_explicit_peer_and_is_opt_in(self):
+        cases = [('0', '192.0.2.2', '02:00:00:00:00:02', '0', True),
+                 ('1', '192.0.2.2', '02:00:00:00:00:02', '0', True),
+                 ('1', '', '', '0', False),
+                 ('1', '192.0.2.2', '02:00:00:00:00:02', '1', False),
+                 ('2', '192.0.2.2', '02:00:00:00:00:02', '0', False)]
+        with tempfile.TemporaryDirectory() as directory:
+            for flag, ip, mac, ipv6, valid in cases:
+                dest = Path(directory) / 'config.zig'
+                env = {**os.environ, 'NIHOS_C6_LONG_DMA': '1', 'NIHOS_C6_UDP_SPLIT_ARP': flag,
+                       'NIHOS_C6_IPV6': ipv6, 'NIHOS_C6_UDP_PEER_IP': ip, 'NIHOS_C6_UDP_PEER_MAC': mac}
+                result = subprocess.run(['python3', str(ROOT / 'tools/c6-wifi-config.py'), str(dest), '', 'hosted'],
+                                        env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, valid)
+                if valid:
+                    self.assertIn('pub const udp_split_arp = ' + ('true' if flag == '1' else 'false') + ';', dest.read_text())
+
     def test_time_fault_injection_requires_explicit_offload(self):
         with tempfile.TemporaryDirectory() as directory:
             for fault, offload, valid in [('0', '0', True), ('0', '1', True),

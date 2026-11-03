@@ -29,6 +29,14 @@ def peer():
 
 
 class BurstEvidence(unittest.TestCase):
+    def test_arp_evidence_must_be_explicitly_present(self):
+        with self.assertRaises(ValueError):
+            module.analyze(capture(), peer(), require_arp=True)
+        complete = capture().replace(b'status=00000001 ', b'status=00000001 wifi_step=0000000a ')
+        self.assertEqual(module.analyze(complete, peer(), require_arp=True)['p4_echo_mask'], 5)
+        with self.assertRaises(ValueError):
+            module.analyze(complete.replace(b'wifi_step=0000000a', b'wifi_step=00000009'), peer(), require_arp=True)
+
     def test_paired_counts_and_mask(self):
         result = module.analyze(capture(), peer())
         self.assertEqual((result['sent_count'], result['peer_received_mask'], result['p4_echo_mask']), (16, 5, 5))
