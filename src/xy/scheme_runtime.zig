@@ -26,8 +26,8 @@ pub const depth_limit = 24;
 pub const step_limit = 8192;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword, rational, inexact };
-const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, quasiquote, unquote, unquote_splicing, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00quasiquote\x00unquote\x00unquote-splicing\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00".*;
+const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, quasiquote, unquote, unquote_splicing, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc, string_length_proc, string_append_proc, string_equal_proc };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00quasiquote\x00unquote\x00unquote-splicing\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00string-length\x00string-append\x00string=?\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 pub const eval_stack_size = 128;
 const int_bias: i32 = 16384;
@@ -598,6 +598,10 @@ pub const Runtime = struct {
         const offset = self.heap[r].textOffset();
         const len = self.heap[r].textLen();
         return self.text_storage[offset..][0..len];
+    }
+
+    noinline fn stringScalarCount(bytes: []const u8) linksection(code_section) Error!usize {
+        return std.unicode.utf8CountCodepoints(bytes) catch error.Type;
     }
     fn findSymbol(self: *const Runtime, bytes: []const u8) linksection(code_section) ?Ref {
         for (1..cells) |idx| {
@@ -2664,6 +2668,34 @@ pub const Runtime = struct {
                 if (self.tagOf(tail) != .pair) return error.Type;
                 return self.heap[tail].a;
             },
+            .string_length_proc => {
+                if (args.len != 1) return error.Arity;
+                if (self.tagOf(args[0]) != .string) return error.Type;
+                const count = try stringScalarCount(self.string(args[0]));
+                return self.number(@intCast(count));
+            },
+            .string_append_proc => {
+                var result: [text_bytes]u8 = @splat(0);
+                var used: usize = 0;
+                for (args) |arg| {
+                    if (self.tagOf(arg) != .string) return error.Type;
+                    const bytes = self.string(arg);
+                    _ = try stringScalarCount(bytes);
+                    if (bytes.len > result.len - used) return error.TextFull;
+                    @memcpy(result[used..][0..bytes.len], bytes);
+                    used += bytes.len;
+                }
+                return self.text(.string, result[0..used]);
+            },
+            .string_equal_proc => {
+                if (args.len < 2) return error.Arity;
+                for (args) |arg| {
+                    if (self.tagOf(arg) != .string) return error.Type;
+                    _ = try stringScalarCount(self.string(arg));
+                }
+                for (args[1..]) |arg| if (!std.mem.eql(u8, self.string(args[0]), self.string(arg))) return self.no;
+                return self.yes;
+            },
             .symbolq, .stringq, .booleanq, .procedureq => {
                 if (args.len != 1) return error.Arity;
                 const tag = self.tagOf(args[0]);
@@ -3452,14 +3484,14 @@ pub const Runtime = struct {
         try self.emitBcOp(.halt);
         return entry;
     }
-    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) bool {
+    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) linksection(code_section) bool {
         var cursor = forms;
         while (cursor != 0) : (cursor = self.heap[cursor].b) {
             if (!self.safeArithmetic(self.heap[cursor].a, 0)) return false;
         }
         return true;
     }
-    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) bool {
+    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) linksection(code_section) bool {
         if (depth >= depth_limit) return false;
         if (isImmediateInt(expr) or expr == self.yes or expr == self.no) return true;
         if (self.tagOf(expr) == .integer) return true;
@@ -4601,6 +4633,31 @@ test "evaluation respects unbound set and redefined numeric procedures" {
     try std.testing.expectError(error.Unbound, vm.evaluate("(set! missing 1)", &host, &out));
     _ = try vm.evaluate("(define + (lambda (a b) 9))", &host, &out);
     try std.testing.expectEqualStrings("9", try vm.evaluate("(+ 1 2)", &host, &out));
+}
+
+test "bounded strings count Unicode scalars append and compare" {
+    var vm: Runtime = undefined; // SAFETY: initialized before use.
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [256]u8 = undefined;
+    try expectValue(&vm, &host, "(string-length \"\")", "0");
+    try expectValue(&vm, &host, "(string-length \"a日本😀é\")", "6");
+    try expectValue(&vm, &host, "(string-append \"a\" \"日本\" \"😀\")", "\"a日本😀\"");
+    try expectValue(&vm, &host, "(string-append)", "\"\"");
+    try expectValue(&vm, &host, "(string=? \"日本\" \"日本\" \"日本\")", "#t");
+    try expectValue(&vm, &host, "(string=? \"é\" \"é\")", "#f");
+    try std.testing.expectError(error.Type, vm.evaluate("(string-length 1)", &host, &out));
+    try std.testing.expectError(error.Type, vm.evaluate("(string-append \"a\" 1)", &host, &out));
+    try std.testing.expectError(error.Arity, vm.evaluate("(string=? \"a\")", &host, &out));
+    try expectValue(&vm, &host, "(string-length (string-append \"" ++ repeat("a", text_bytes - 1) ++ "\" \"b\"))", "128");
+    try std.testing.expectError(error.TextFull, vm.evaluate("(string-append \"" ++ repeat("a", text_bytes) ++ "\" \"b\")", &host, &out));
+    try std.testing.expectError(error.Syntax, vm.evaluate("(string-length \"\xff\")", &host, &out));
+    try std.testing.expectError(error.Type, Runtime.stringScalarCount("\xff"));
+    try std.testing.expectError(error.Type, Runtime.stringScalarCount("\xe0\x80\x80"));
+    try std.testing.expectError(error.Type, Runtime.stringScalarCount("\xed\xa0\x80"));
+    try std.testing.expectError(error.Type, Runtime.stringScalarCount("\xf4\x90\x80\x80"));
+    try std.testing.expectError(error.Type, Runtime.stringScalarCount("\xf0\x9f\x98"));
+    try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
 test "list quasiquote observes nesting splicing dotted tails and errors" {

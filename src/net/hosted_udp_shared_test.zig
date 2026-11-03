@@ -13,6 +13,7 @@ fn ready() split.State {
 }
 const Stream = struct {
     writes: usize = 0,
+    long_writes: usize = 0,
     mode: enum { full, zero, partial } = .full,
     retired: bool = false,
     pub fn send(self: *@This(), bytes: []const u8) !usize {
@@ -24,12 +25,19 @@ const Stream = struct {
         };
     }
     pub fn sendLong(self: *@This(), bytes: []const u8, _: *[1536]u8) !usize {
+        self.long_writes += 1;
         return self.send(bytes);
     }
     pub fn invalidate(self: *@This()) void {
         self.retired = true;
     }
 };
+
+test "in-place initialization matches the shared defaults" {
+    var value: shared.Shared = undefined;
+    value.init();
+    try t.expect(std.meta.eql(shared.Shared{}, value));
+}
 
 const SdioHost = struct {
     pub const TransportError = error{WriteFailed};
@@ -66,6 +74,25 @@ test "station, other producers and partial RX take precedence over UDP" {
     try t.expectEqual(@as(usize, 1), stream.writes);
 }
 
+test "default short profile rejects long sends before transport submission" {
+    var state = ready();
+    var owner: shared.Shared = .{};
+    const h = try owner.bind(&state, local, 49152, range);
+    try t.expectEqual(@as(usize, 458), shared.short_payload_limit);
+    const too_long: [shared.short_payload_limit + 1]u8 = @splat(0x5a);
+    try t.expectError(error.TooLarge, owner.socket.sendTo(h, peer, &too_long, 1, 1, 100));
+    var stream: Stream = .{};
+    const decoder: hosted.Decoder = .{};
+    try t.expectEqual(shared.Send.idle, try owner.poll(h, &stream, &decoder, 2, true, false, false));
+    try t.expectEqual(@as(usize, 0), stream.writes);
+    try t.expect(!stream.retired and state.address != null);
+    const exact: [shared.short_payload_limit]u8 = @splat(0x5a);
+    try owner.socket.sendTo(h, peer, &exact, 2, 3, 100);
+    try t.expectEqual(shared.Send.sent, try owner.poll(h, &stream, &decoder, 4, true, false, false));
+    try t.expectEqual(@as(usize, 1), stream.writes);
+    try t.expectEqual(@as(usize, 0), stream.long_writes);
+}
+
 test "zero credit allows other producer before retry" {
     var state = ready();
     var owner: shared.Shared = .{};
@@ -83,7 +110,7 @@ test "zero credit allows other producer before retry" {
 test "shared priority and credits gate a 1200-byte SDIO frame" {
     var state = ready();
     var owner: shared.Shared = .{};
-    const h = try owner.bind(&state, local, 49152, range);
+    const h = try owner.bindLongDiagnostic(&state, local, 49152, range);
     const payload: [1200]u8 = @splat(0x5a);
     try owner.socket.sendTo(h, peer, &payload, 1, 1, 100);
     var host: SdioHost = .{};

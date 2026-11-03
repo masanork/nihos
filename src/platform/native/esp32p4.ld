@@ -332,6 +332,19 @@ SECTIONS
         *(.text.hosted_station.Client.afterVersion .text.hosted_station.Client.encodeFrame)
         *(.text.hosted_station.Client.maintain .text.hosted_station.Client.beginDual)
 #endif
+#if NIH_NATIVE_EXPERIMENTAL_UDP
+        /* Foreground-only UDP helpers. The network owner and its DMA paths
+         * never call these while Flash is unavailable. */
+        *(.text.hosted_udp_lease.Lease.check)
+        *(.text.hosted_udp_socket.Socket.get .text.hosted_udp_socket.Socket.check)
+        *(.text.hosted_udp_socket.Socket.close .text.hosted_udp_socket.Socket.retire)
+        *(.text.hosted_udp_sender.Sender.retire*)
+        *(.text.udp_ipv4.checksum .text.udp_ipv4.pseudo .text.udp_ipv4.sumWords)
+        *(.text.network_service.experimentalUdpNow .text.network_service.experimentalUdpBind)
+        *(.text.network_service.experimentalUdpSend .text.network_service.experimentalUdpRead)
+        *(.text.network_service.experimentalUdpClose)
+        *(.text.hosted_udp_smoke.Probe.fail* .text.hosted_udp_smoke.payload)
+#endif
         . = ALIGN(16);
         __flash_xy_text_end = .;
     } > flash_xy
