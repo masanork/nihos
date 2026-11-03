@@ -1,0 +1,78 @@
+ESP-ROM:esp32p4-20230811
+Build:Aug 11 2023
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x183c
+load:0x4ff2abd0,len:0xff4
+load:0x4ff2cbd0,len:0x344c
+entry 0x4ff2abda
+W (5) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (5) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+I (6) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (6) boot: compile time Oct 23 2026 13:32:58
+W (6) boot: Unicore bootloader
+I (6) boot: chip revision: v1.3
+I (6) boot: efuse block revision: v0.0
+I (6) qio_mode: Enabling default flash chip QIO
+I (6) boot.esp32p4: SPI Speed      : 80MHz
+I (6) boot.esp32p4: SPI Mode       : QIO
+I (6) boot.esp32p4: SPI Flash Size : 16MB
+I (6) boot: Enabling RNG early entropy source...
+I (6) boot: Partition Table:
+I (6) boot: ## Label            Usage          Type ST Offset   Length
+I (6) boot:  0              nvs        WiFi data 01 02 00009000 00006000
+I (6) boot:  1         phy_init          RF data 01 01 0000f000 00001000
+I (6) boot:  2          factory      factory app 00 00 00010000 003e0000
+I (6) boot:  3          imedict     Unknown data 01 40 00400000 00600000
+I (6) boot:  4         wasmapps     Unknown data 01 41 00a00000 00200000
+I (6) boot: End of partition table
+I (6) esp_image: segment 0: paddr=00010020 vaddr=40090020 size=3091c0h (3183040) map
+I (213) esp_image: segment 1: paddr=003191e8 vaddr=30100000 size=00068h (   104) load
+I (213) esp_image: segment 2: paddr=00319258 vaddr=4ff00000 size=06dc0h ( 28096) load
+I (216) esp_image: segment 3: paddr=00320020 vaddr=40000020 size=8af5ch (569180) map
+I (253) esp_image: segment 4: paddr=003aaf84 vaddr=4ff06dc0 size=08f48h ( 36680) load
+I (256) esp_image: segment 5: paddr=003b3ed4 vaddr=4ff0fd80 size=053e4h ( 21476) load
+I (258) esp_image: segment 6: paddr=003b92c0 vaddr=50108080 size=0001ch (    28) load
+I (261) boot: Loaded app from partition at offset 0x10000
+I (261) boot: Disabling RNG early entropy source...
+W (263) pmu_pvt: blk_version is less than 2, pvt auto dbias init not supported in efuse.
+I (264) hex_psram: vendor id    : 0x0d (AP)
+I (264) hex_psram: Latency      : 0x01 (Fixed)
+I (264) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (264) hex_psram: dev id       : 0x01 (generation 2)
+I (264) hex_psram: density      : 0x07 (256 Mbit)
+I (264) hex_psram: good-die     : 0x06 (Pass)
+I (264) hex_psram: SRF          : 0x00 (Slow Refresh)
+I (264) hex_psram: BurstType    : 0x00 ( Wrap)
+I (264) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (264) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (264) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)
+I (264) hex_psram: DriveStrength: 0x00 (1/1)
+I (264) MSPI DQS: tuning success, best phase id is 0
+I (359) MSPI DQS: tuning success, best delayline id is 15
+I (359) esp_psram: Found 32MB PSRAM device
+I (359) esp_psram: Speed: 200MHz
+I (360) hex_psram: psram CS IO is dedicated
+I (360) cpu_start: Unicore app
+I (360) cpu_start: Single core mode
+I (331) cpu_start: Pro cpu start user code
+I (331) cpu_start: cpu freq: 360000000 Hz
+I (331) app_init: Application information:
+I (331) app_init: Project name:     m5os
+I (331) app_init: App version:      5d82fc1-dirty
+I (331) app_init: Compile time:     Oct 23 2026 14:59:23
+I (331) app_init: ELF file SHA256:  cd87b2656...
+I (331) app_init: ESP-IDF:          v5.4.4
+I (331) efuse_init: Min chip rev:     v0.1
+I (331) efuse_init: Max chip rev:     v1.99 
+I (331) efuse_init: Chip rev:         v1.3
+I (331) heap_init: Initializing. RAM available for dynamic allocation:
+I (331) heap_init: At 4FF16020 len 00024FA0 (147 KiB): RETENT_RAM
+I (331) heap_init: At 4FF3AFC0 len 00004BE4 (18 KiB): RAM
+I (331) heap_init: At 4FF9E8C0 len 00001740 (5 KiB): RAM
+I (331) heap_init: At 5010809C len 00007F64 (31 KiB): RTCRAM
+I (331) heap_init: At 30100068 len 00001F98 (7 KiB): TCM
+I (331) spi_flash: detected chip: generic
+I (331) spi_flash: flash io: qio
+I (331) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (331) sleep_gpio: Enable automatic switching of GPIO sleep configuration

@@ -1,0 +1,17 @@
+main.fail () at /private/tmp/nihos-emulator-comparison-20261102/src/platform/native/main.zig:454
+454	    while (true) asm volatile ("nop");
+pc             0x4ff0ef7c	0x4ff0ef7c <main.fail+150>
+=> 0x4ff0ef7c <main.fail+150>:	nop
+   0x4ff0ef7e <main.fail+152>:	j	0x4ff0ef7c <main.fail+150>
+   0x4ff0ef80 <stacks.begin>:	mv	a1,a0
+   0x4ff0ef82 <stacks.begin+2>:	lui	a2,0x4ff6e
+   0x4ff0ef86 <stacks.begin+6>:	mv	a2,a2
+   0x4ff0ef8a <stacks.begin+10>:	lui	a3,0x4ff6e
+   0x4ff0ef8e <stacks.begin+14>:	li	a0,0
+   0x4ff0ef90 <stacks.begin+16>:	bne	a2,a3,0x4ff0f020 <stacks.begin+160>
+#0  main.fail () at /private/tmp/nihos-emulator-comparison-20261102/src/platform/native/main.zig:454
+#1  0x4ff074b4 in main.bootMemory () at /private/tmp/nihos-emulator-comparison-20261102/src/platform/native/main.zig:925
+#2  0x4ff02a1e in main.nih_native_main () at /private/tmp/nihos-emulator-comparison-20261102/src/platform/native/main.zig:1049
+#3  0x4ff000b4 in nih_native_start () at /private/tmp/nihos-emulator-comparison-20261102/src/platform/native/start.S:83
+Backtrace stopped: frame did not save the PC
+[Inferior 1 (Remote target) detached]

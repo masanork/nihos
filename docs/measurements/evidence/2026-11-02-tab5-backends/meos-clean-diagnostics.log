@@ -1,0 +1,65 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.50.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 16777216 bytes
+[INFO  machine] WiFi SoftAP: WPA2/WPA3 transition enabled (PWE Both) for SSID 'myssid'
+[INFO  net_user] user-net: DNS forwarder upstream [100.64.0.9:53, 100.64.64.9:53], restrict=false
+[INFO  net_user] user-net: backend ready (gateway 192.168.4.1, 0 hostfwd rules)
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: /Users/masanork/.espressif/tools/esp-rom-elfs/20241011/esp32p4_rev0_rom.elf (243316 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2083 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  esp_emu] Loaded eFuse file: 336 bytes
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  esp_emu] Console forced to UsbJtag
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Loaded application ELF /private/tmp/meos-emulator-clean-20261102/build-tab5/m5os.elf: 9261160 bytes
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+[INFO  machine] App m5os 5d82fc1 from flash offset 0x10000: application ELF #1 is its build
+[INFO  machine] DWARF line info loaded from application ELF #1
+[INFO  periph::ble_hci] BLE: no VHCI symbols found (firmware may not use Bluetooth)
+[INFO  periph::thread_radio] Thread: no IEEE 802.15.4 symbols found (firmware may not use Thread)
+[INFO  machine] Panic intercept: 'esp_system_abort' at 0x4FF07D5E
+[INFO  machine] Panic intercept: 'abort' at 0x4FF0DE90
+[INFO  machine] Panic intercept: 'esp_panic_handler' at 0x40001BFA
+[WARN  machine] Firmware abort on hart0: 'assert failed: usb_dwc_hal_init /IDF/components/hal/usb_dwc_hal.c:137 (core_id == CORE_REG_GSNPSID_4_00a || core_id == CORE_REG_GSNPSID_4_30a)' (panic_handler entered from PC=0x4FF07D5E, mepc=0x4FF07D5E)
+
+Firmware abort: assert failed: usb_dwc_hal_init /IDF/components/hal/usb_dwc_hal.c:137 (core_id == CORE_REG_GSNPSID_4_00a || core_id == CORE_REG_GSNPSID_4_30a)
+CPU fault at PC=0x4FF07D5E after 80372951 cycles
+[WARN  mem::bus] Bus fault: hart0 read32 unmapped 0x3FFFFFFC
+[WARN  mem::bus] Bus fault: read16 unmapped 0x3FFFFFFE
+Backtrace:
+  #0  0x4ff07d5e in esp_system_abort () at components/esp_system/port/esp_system_chip.c:86
+  #1  0x4ff0e06c in __assert_func () at components/newlib/assert.c:80
+  #2  0x4ff114c8 in <unknown> ()
+  #3  0x40110c10 in <unknown> ()
+  #4  0x4ff114ac in <unknown> ()
+  #5  0x40090ed0 in <unknown> ()
+  #6  0x4ff114d8 in <unknown> ()
+  #7  0x4ff49f34 in <unknown> ()
+  #8  0x4ff114dc in <unknown> ()
+  #9  0x40090ef4 in <unknown> ()
+  #10 0x4ff11cf0 in <unknown> ()
+  #11 0x43203d3d in <unknown> ()
+  #12 0x4ff00e02 in heap_caps_malloc () at components/heap/heap_caps.c:84
+  #13 0x4ff00e5e in heap_caps_malloc_default () at components/heap/heap_caps.c:110
+  #14 0x4ff0e0d8 in _calloc_r () at components/newlib/heap.c:65
+  #15 0x4ff01562 in periph_rcc_exit () at components/esp_hw_support/periph_ctrl.c:32
+  #16 0x40000000 in <unknown> ()
+  #17 0x4ff8f454 in <unknown> ()
+  #18 0x40062e36 in usb_dwc_hal_init () at components/hal/usb_dwc_hal.c:137
+  #19 0x4ff8f000 in <unknown> ()
+  #20 0x4003943e in hal_usbh_init () at usb_host.c:70
+  #21 0x4002fbda in usbkbd_task () at usbkbd.c:184
+  #22 0x4002fbe6 in usbkbd_task () at usbkbd.c:186
+  #23 0x4002fbda in usbkbd_task () at usbkbd.c:184
+  #24 0x4ff01df0 in arch_task_trampoline () at context_switch.S:91
+[INFO  esp_emu] eFuse state saved to 'build/comparison/meos/clean-usb.efuse'
