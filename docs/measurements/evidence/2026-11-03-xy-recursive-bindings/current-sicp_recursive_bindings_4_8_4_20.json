@@ -1,0 +1,75 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 0)",
+      "expected": "0",
+      "observed": "0",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 1)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 2)",
+      "expected": "1",
+      "observed": "1",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 5)",
+      "expected": "5",
+      "observed": "5",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 10)",
+      "expected": "55",
+      "observed": "55",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 20)",
+      "expected": "6765",
+      "observed": "6765",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.8",
+      "setup": "(define (fib n)\n  (let fib-iter ((a 1)\n                 (b 0)\n                 (count n))\n    (if (= count 0)\n        b\n        (fib-iter (+ a b) a (- count 1)))))",
+      "expression": "(fib 30)",
+      "expected": "832040",
+      "observed": "832040",
+      "status": "matched"
+    },
+    {
+      "exercise": "4.20",
+      "setup": "",
+      "expression": "(letrec ((fact\n            (lambda (n)\n               (if (= n 1)\n                   1\n                   (* n (fact (- n 1)))))))\n        (fact 10))",
+      "expected": "3628800",
+      "observed": "3628800",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 8
+  },
+  "note": "Original 4.8 named-let Fibonacci example on finite inputs and 4.20 factorial expression; evaluator transformations remain untested."
+}
