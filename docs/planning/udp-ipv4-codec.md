@@ -126,3 +126,16 @@ One [bounded Tab5 diagnostic](../measurements/2026-11-03-hosted-split-arp-udp.md
 resolved a same-subnet Mac and used it for a 16-packet UDP round trip. Gateway
 resolution remains host-tested only, and application socket integration is
 not implemented.
+
+`hosted_udp_socket.Socket` is a host-tested, single-owner experiment that
+combines a lease-bound UDP sender with one copied receive slot. It accepts an
+externally resolved endpoint, admits one queued transmit, reports a full
+receive slot instead of overwriting it, and distinguishes no datagram from a
+zero-length datagram. An undersized read leaves the datagram queued. Handles
+carry the address generation and a monotonically allocated local ID; close,
+lease changes, and send errors retire them. A stale handle must not retire a
+new socket's transport. The caller owns exclusive polling, control events,
+port allocation, ARP and the bounded policy for a full receive slot.
+The owner must invalidate transport and establish DMA quiescence after reset
+or ambiguous I/O. This experiment is not connected to normal boot or exposed
+to applications, and is not physical socket, QUIC or iroh evidence.
