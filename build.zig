@@ -55,7 +55,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = leased_stack_tests })).step);
     test_step.dependOn(appTests(b, target, optimize));
     test_step.dependOn(&run_module_tests.step);
-    inline for (.{ "udp_ipv4_test.zig", "hosted_udp_lease_test.zig", "hosted_udp_route_test.zig", "hosted_udp_socket_test.zig", "hosted_udp_sender_test.zig", "hosted_network_split_test.zig", "hosted_split_udp_probe_test.zig", "hosted_split_udp_owner_test.zig", "hosted_split_udp_generic_owner_test.zig", "hosted_c6_time_exchange_test.zig", "hosted_c6_time_policy_test.zig", "hosted_c6_ota_info_test.zig", "hosted_c6_ota_info_exchange_test.zig", "hosted_c6_app_desc_test.zig" }) |name| {
+    inline for (.{ "udp_ipv4_test.zig", "hosted_udp_lease_test.zig", "hosted_udp_route_test.zig", "hosted_udp_socket_test.zig", "hosted_udp_owner_test.zig", "hosted_udp_sender_test.zig", "hosted_network_split_test.zig", "hosted_split_udp_probe_test.zig", "hosted_split_udp_owner_test.zig", "hosted_split_udp_generic_owner_test.zig", "hosted_c6_time_exchange_test.zig", "hosted_c6_time_policy_test.zig", "hosted_c6_ota_info_test.zig", "hosted_c6_ota_info_exchange_test.zig", "hosted_c6_app_desc_test.zig" }) |name| {
         const experimental_c6_test = b.createModule(.{ .root_source_file = b.path("src/net/" ++ name), .target = target, .optimize = optimize });
         test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = experimental_c6_test })).step);
     }
