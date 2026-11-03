@@ -1,0 +1,18 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling nihos-xy-gpui v0.1.0 (/private/tmp/nihos-xy-scheme-quasiquote-20261103/apps/xy-gpui-quasiquote-check)
+    Finished `test` profile [unoptimized] target(s) in 12.25s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6, proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/main.rs (/private/tmp/nihos-xy-r7rs-growth-20261102/apps/xy-gpui/target/debug/deps/nihos_xy_gpui-396f4c5fd4a0175a)
+
+running 1 test
+QUASIQUOTE_NATIVE (let ((x 2)) `(1 ,x 3)) => 28312032203329
+QUASIQUOTE_NATIVE `(a ,(+ 1 2) ,@(list 4 5) . ,(+ 2 5)) => 2861203320342035202e203729
+QUASIQUOTE_NATIVE (let ((x 2)) `(a `(b ,x ,,x) ,x)) => 28612028717561736971756f74652028622028756e71756f74652078292028756e71756f74652032292929203229
+QUASIQUOTE_NATIVE (+ 20 22) => 3432
+test emu::tests::quasiquote_native_smoke ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 41 filtered out; finished in 35.50s
+

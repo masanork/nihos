@@ -1,0 +1,99 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`a",
+      "expected": "a",
+      "observed": "a",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(a b c)",
+      "expected": "(a b c)",
+      "observed": "(a b c)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "(let ((x 2)) `(1 ,x 3))",
+      "expected": "(1 2 3)",
+      "observed": "(1 2 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(a ,(+ 1 2) ,@(list 4 5) . ,(+ 2 5))",
+      "expected": "(a 3 4 5 . 7)",
+      "observed": "(a 3 4 5 . 7)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "(let ((x 2)) `(a `(b ,x ,,x) ,x))",
+      "expected": "(a (quasiquote (b (unquote x) (unquote 2))) 2)",
+      "observed": "(a (quasiquote (b (unquote x) (unquote 2))) 2)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(a ,@(list) b)",
+      "expected": "(a b)",
+      "observed": "(a b)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(a unquote (+ 1 2))",
+      "expected": "(a . 3)",
+      "observed": "(a . 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "(let ((x '(9 8))) `(1 ,@x 3))",
+      "expected": "(1 9 8 3)",
+      "observed": "(1 9 8 3)",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(quasiquote (a (unquote (+ 1 2))))",
+      "expected": "(quasiquote (a (unquote (+ 1 2))))",
+      "observed": "(quasiquote (a (unquote (+ 1 2))))",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "(let ((x 'a)) `(list ,x ',x))",
+      "expected": "(list a (quote a))",
+      "observed": "(list a (quote a))",
+      "status": "matched"
+    },
+    {
+      "exercise": "list-quasiquote",
+      "setup": "",
+      "expression": "`(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)",
+      "expected": "(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)",
+      "observed": "(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 11
+  },
+  "note": "Finite list and pair examples only; vectors, macro hygiene, and full R7RS remain untested."
+}
