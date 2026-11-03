@@ -273,6 +273,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devic
     }
     if (!options.network) return;
     network.poll();
+    if (@hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke) network.experimentalUdpSmokePoll();
     serviceTime();
     const now = ui.timer().counter() orelse fail("network report clock");
     const state = network.snapshot();
@@ -293,6 +294,10 @@ noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devic
     network_report_at = now + 5_000_000;
     logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us", "renewals", "reconnects", "acquisitions", "failures", "disconnect_reason", "failed_station" }, &state);
     logger.record("NIHOS_NATIVE_CONNECTIVITY", null, .{ "configured", "capabilities", "bluetooth_status" }, &state);
+    if (@hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke) {
+        const udp = network.experimentalUdpSmokeSnapshot();
+        logger.record("NIHOS_NATIVE_UDP_SMOKE", null, .{ "phase", "queued", "matched", "rejected", "error_code", "close_error_code" }, &udp);
+    }
     if (@hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test) {
         const fault = network.timeFaultSnapshot();
         logger.record("NIHOS_NATIVE_C6_TIME_FAULT", null, .{ "stage", "dropped", "expired" }, &fault);

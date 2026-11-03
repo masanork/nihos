@@ -37,6 +37,13 @@ if [ "$experimental_udp" = true ] && { [ "$network" != true ] || [ "${NIHOS_C6_T
     echo "EXPERIMENTAL_UDP requires NETWORK=1, C6_TIME_OFFLOAD=1 and TCP experiment disabled" >&2; exit 1
 fi
 if [ "$experimental_udp" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-udp-experiment"; fi
+udp_smoke=${NIHOS_NATIVE_UDP_SMOKE:-0}
+case "$udp_smoke" in 0) udp_smoke=false ;; 1) udp_smoke=true ;; *) echo "UDP_SMOKE must be 0 or 1" >&2; exit 1 ;; esac
+if [ "$udp_smoke" = true ] && { [ "$experimental_udp" != true ] || [ -z "${NIHOS_NATIVE_UDP_SMOKE_PEER:-}" ]; }; then
+    echo "UDP_SMOKE requires EXPERIMENTAL_UDP=1 and a private peer file" >&2; exit 1
+fi
+if [ "$udp_smoke" = false ] && [ -n "${NIHOS_NATIVE_UDP_SMOKE_PEER:-}" ]; then echo "UDP_SMOKE_PEER requires UDP_SMOKE=1" >&2; exit 1; fi
+if [ "$udp_smoke" = true ] && [ "$#" -lt 2 ]; then build_dir="$build_dir-udp-smoke"; fi
 devices=${NIHOS_NATIVE_DEVICES:-0}
 case "$devices" in 0) devices=false; devices_cpp=0 ;; 1) devices=true; devices_cpp=1 ;; *) echo "DEVICES must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$camera_id" = true ] && [ "$devices" != true ]; then echo "CAMERA_ID requires DEVICES=1" >&2; exit 1; fi
@@ -593,6 +600,7 @@ native_boot_dir="$repo_root/build/native-$profile"
 if [ "$network" = true ]; then native_boot_dir="$native_boot_dir-network"; fi
 if [ "$experimental_tcp" = true ]; then native_boot_dir="$native_boot_dir-tcp-experiment"; fi
 if [ "$experimental_udp" = true ]; then native_boot_dir="$native_boot_dir-udp-experiment"; fi
+if [ "$udp_smoke" = true ]; then native_boot_dir="$native_boot_dir-udp-smoke"; fi
 if [ "$audio" = true ]; then native_boot_dir="$native_boot_dir-audio"; fi
 if [ "$microphone" = true ]; then native_boot_dir="$native_boot_dir-microphone"; fi
 if [ "$rs485" = true ]; then native_boot_dir="$native_boot_dir-rs485"; fi
@@ -617,6 +625,9 @@ else
 fi
 export NIHOS_C6_IPV6
 python3 "$repo_root/tools/c6-wifi-config.py" "$build_dir/network-config.zig" "$network_json" hosted >/dev/null
+if [ "$udp_smoke" = true ]; then
+    python3 "$repo_root/tools/native-udp-smoke-config.py" "$build_dir/network-config.zig" "$NIHOS_NATIVE_UDP_SMOKE_PEER" >/dev/null
+fi
 xy_cpp=0
 if [ "$xy_workspace" = true ] || [ "$canvas_interactive" = true ]; then xy_cpp=1; fi
 if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$keypad_cpp" != 0 ]; }; then
@@ -644,6 +655,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
     if [ "$experimental_tcp" = true ]; then echo 'pub const experimental_tcp = true;'; fi
     if [ "$experimental_udp" = true ]; then echo 'pub const experimental_udp = true;'; fi
+    if [ "$udp_smoke" = true ]; then echo 'pub const experimental_udp_smoke = true;'; fi
     printf 'pub const xy_trace = %s;\n' "$xy_trace"
     printf 'pub const xy_portrait = %s;\n' "$xy_portrait"
     printf 'pub const boot_test: u32 = %s;\n' "$boot_test"

@@ -197,3 +197,15 @@ must not infer that the normal runtime supports it. In particular, this short
 path cannot send a QUIC Initial requiring at least 1,200 bytes of UDP payload.
 The opt-in profile and its codegen/link audit do not establish physical socket
 operation, ARP in normal boot, general P2P, QUIC or iroh interoperability.
+
+For a finite, opt-in native smoke test, set `NIHOS_NATIVE_UDP_SMOKE=1` along
+with `NIHOS_NATIVE_EXPERIMENTAL_UDP=1` and provide a mode-0600
+`NIHOS_NATIVE_UDP_SMOKE_PEER` JSON file containing only `ip`, `mac` and `port`.
+The CPU0 foreground binds local port 49152 and queues one deterministic
+458-byte datagram after the C6-owned address becomes ready. It waits at most
+120 seconds from network initialization, requires the configured source IP,
+MAC, port and full payload to match on the echoed datagram, and emits
+`NIHOS_NATIVE_UDP_SMOKE` with phase, queued, matched, rejected and error
+counts. A matching echo proves only this diagnostic exchange; IP/MAC are not
+peer authentication. The option does not enable long DMA or QUIC. The
+independent peer and capture are required for device evidence.

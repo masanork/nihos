@@ -21,12 +21,16 @@ const time_fault_test = @hasDecl(network_config, "c6_time_fault_test") and netwo
 // Codegen-only experiment until TCP RX/TX and application ownership are wired.
 const experimental_tcp = @hasDecl(options, "experimental_tcp") and options.experimental_tcp;
 const experimental_udp = @hasDecl(options, "experimental_udp") and options.experimental_udp;
+const udp_smoke_enabled = @hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke;
 const TcpState = if (experimental_tcp) hosted.tcp_owner.Owner else void;
 const UdpState = if (experimental_udp) hosted.udp_shared.Shared else void;
+const UdpSmoke = if (udp_smoke_enabled) hosted.udp_smoke.Probe else void;
 comptime {
     if (@alignOf(TcpState) > 64) @compileError("TCP owner exceeds network backing alignment");
     if (@alignOf(UdpState) > 64) @compileError("UDP owner exceeds network backing alignment");
     if (experimental_udp and (!c6_offload or experimental_tcp)) @compileError("UDP experiment requires C6 offload and excludes TCP experiment");
+    if (udp_smoke_enabled and !experimental_udp) @compileError("UDP smoke requires the UDP experiment");
+    if (@alignOf(UdpSmoke) > 64) @compileError("UDP smoke exceeds network backing alignment");
 }
 const Offload = if (c6_offload) hosted.c6_time_exchange.Exchange else void;
 const State = struct {
@@ -40,7 +44,9 @@ const State = struct {
     decoder: hosted.wire.Decoder = .{},
 };
 const station_storage_bytes = (@sizeOf(State) + 63) & ~@as(usize, 63);
-pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else if (experimental_udp) ((@sizeOf(UdpState) + 63) & ~@as(usize, 63)) else 0;
+const udp_storage_bytes = if (experimental_udp) ((@sizeOf(UdpState) + 63) & ~@as(usize, 63)) else 0;
+const udp_smoke_storage_bytes = if (udp_smoke_enabled) ((@sizeOf(UdpSmoke) + 63) & ~@as(usize, 63)) else 0;
+pub const storage_bytes = station_storage_bytes + if (experimental_tcp) ((@sizeOf(TcpState) + 63) & ~@as(usize, 63)) else udp_storage_bytes + udp_smoke_storage_bytes;
 // SAFETY: begin binds these exclusively reserved CPU0 PSRAM objects before poll.
 var client: *hosted.Client = undefined;
 // SAFETY: begin binds this with client; neither object is passed to DMA.
@@ -64,6 +70,8 @@ var state_storage: *State = undefined;
 var tcp_state: *TcpState = undefined;
 // SAFETY: experimental builds bind this CPU0-only tail before startAttempt.
 var udp_state: *UdpState = undefined;
+// SAFETY: only smoke builds bind this separate, aligned PSRAM tail in begin.
+var udp_smoke_state: *UdpSmoke = undefined;
 var udp_error_code: u32 = 0;
 var udp_dropped: u32 = 0;
 var udp_invalid: u32 = 0;
@@ -122,6 +130,31 @@ pub fn experimentalUdpDrops() u32 {
 }
 pub fn experimentalUdpInvalid() u32 {
     return if (experimental_udp) udp_invalid else 0;
+}
+const UdpSmokeIo = struct {
+    pub fn bind(_: *@This(), port: u16) !ExperimentalUdpHandle {
+        return experimentalUdpBind(port);
+    }
+    pub fn send(_: *@This(), handle: ExperimentalUdpHandle, peer: hosted.udp_ipv4.Endpoint, data: []const u8, deadline: u64) !void {
+        return experimentalUdpSend(handle, peer, data, deadline);
+    }
+    pub fn read(_: *@This(), handle: ExperimentalUdpHandle, out: []u8) !?ExperimentalUdpReceived {
+        return experimentalUdpRead(handle, out);
+    }
+    pub fn close(_: *@This(), handle: ExperimentalUdpHandle) !void {
+        return experimentalUdpClose(handle);
+    }
+};
+/// One bounded, explicit-peer diagnostic. It never executes in normal builds.
+pub noinline fn experimentalUdpSmokePoll() linksection(".flash.xytext") void {
+    if (comptime !udp_smoke_enabled) return;
+    const now = clock.counter() orelse return;
+    var io: UdpSmokeIo = .{};
+    udp_smoke_state.step(&io, now);
+}
+pub fn experimentalUdpSmokeSnapshot() hosted.udp_smoke.Report {
+    if (comptime !udp_smoke_enabled) return .{};
+    return udp_smoke_state.snapshot();
 }
 pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
 pub const ExperimentalSshAdapter = hosted.ssh_tcp.Adapter;
@@ -296,6 +329,10 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
         udp_dropped = 0;
         udp_invalid = 0;
     }
+    if (udp_smoke_enabled) {
+        udp_smoke_state = @ptrFromInt(@intFromPtr(backing) + station_storage_bytes + udp_storage_bytes);
+        udp_smoke_state.* = .{};
+    }
     @memcpy(@import("std").mem.asBytes(state)[0..@sizeOf(InitialTemplate)], @import("std").mem.asBytes(&initial_state));
     state.decoder.reset();
     client = if (c6_offload) &state.offload.station else &state.client;
@@ -312,6 +349,11 @@ pub fn begin(timer: timers.Timer, join: hosted.Join, backing: *align(64) [storag
     time_fault = .{};
     offload_report = .{ .phase = 0, .attempts = 0, .replies = 0, .rejected = 0, .failures = 0, .server = 0, .stratum = 0, .rtt_us = 0, .unix_high = 0, .unix_low = 0 };
     const now = clock.counter() orelse return stop(error.Clock, null);
+    if (udp_smoke_enabled) udp_smoke_state.start(.{
+        .ip = network_config.udp_smoke_ip,
+        .mac = network_config.udp_smoke_mac,
+        .port = network_config.udp_smoke_port,
+    }, now, now +| 120_000_000) catch return stop(error.InvalidArgument, now);
     pads.useClock(clock);
     nih_c6_pads_init();
     if (nih_c6_power_enable() != 1 or pads.clockFailed()) return stop(error.PowerEnable, now);

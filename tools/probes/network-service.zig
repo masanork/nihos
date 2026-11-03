@@ -45,6 +45,8 @@ export fn nih_network_owner_compile_probe(backing: *align(64) [network.storage_b
         _ = network.experimentalUdpRead(handle, &buffer) catch return 0;
         network.experimentalUdpClose(handle) catch return 0;
     } else |err| tcp_result +|= @intFromError(err);
+    network.experimentalUdpSmokePoll();
+    _ = network.experimentalUdpSmokeSnapshot();
     network.configure(.disabled) catch return 0;
     network.scanBluetooth() catch return network.bluetoothSnapshot().phase;
     return network.snapshot().phase +| tcp_result;
