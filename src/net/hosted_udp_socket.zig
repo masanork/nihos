@@ -104,6 +104,10 @@ pub const Socket = struct {
         if (sender.phase == .queued) try sender.cancel();
         self.retire();
     }
+    /// Revalidate without consuming a datagram or mutating the transport.
+    pub fn check(self: *Socket, handle: Handle) Error!void {
+        _ = try self.get(handle);
+    }
     pub fn invalidate(self: *Socket) void {
         self.retire();
     }

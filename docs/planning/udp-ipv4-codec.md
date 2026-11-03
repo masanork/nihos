@@ -139,3 +139,39 @@ port allocation, ARP and the bounded policy for a full receive slot.
 The owner must invalidate transport and establish DMA quiescence after reset
 or ambiguous I/O. This experiment is not connected to normal boot or exposed
 to applications, and is not physical socket, QUIC or iroh evidence.
+
+`hosted_udp_owner.Owner` is a further host-tested exclusive-stream experiment
+stacked on the UDP socket. It consumes at most one 512-byte Hosted RX chunk
+per turn, calls the supplied control/station handler before UDP demultiplexing,
+checks the binding again after every callback, and submits queued UDP only
+after an empty RX read and a complete decoder. A full receive slot preserves
+the older datagram and reports the number of new datagrams dropped in that
+turn. Framing errors, new peer INIT, control callback failures and ambiguous
+writes retire the socket and stream; callers must reset the transport and
+establish DMA quiescence. Retirement revokes the bound address only if that
+snapshot remains current, leaving any newer address untouched. A stale old
+handle must not disrupt a new one.
+The handler must apply control events synchronously and not retain borrowed
+frames or reenter the owner. ARP resolution, arbitration with other network
+producers, and native service integration remain the caller's responsibility.
+These host-model observations do not establish device socket behavior.
+An RV32 freestanding size-only object built with ReleaseSafe reports 9,280
+bytes for `Owner`, including its socket and decoder. It is not a linked-image
+measurement or a memory reservation for normal boot.
+
+`hosted_udp_shared.Shared` is a separate host-tested adapter for a network
+owner that already owns its decoder and processes control/station frames. It
+receives only frames already processed by that owner, accounts a full UDP slot
+as a drop without overwriting it, and takes an explicit station/other-producer
+priority and RX-drained state before submitting UDP. A zero-credit UDP attempt
+starts no transfer, so another producer may run. Timeouts still expire while
+another producer has priority and cancel only the unsent UDP socket. Ambiguous
+writes retire the stream and revoke only the still-current address snapshot.
+A stale lease during RX retires the
+adapter, and the caller must invalidate/recover the shared transport. The
+caller must enforce exclusive stream ownership, ensure priority flags reflect
+all staged/in-flight transfers, invalidate state on reset, and quiesce DMA.
+It is not wired to `network_service.zig`, and these are host-model results.
+An RV32 ReleaseSafe size-only object reports 4,648 bytes for `Shared`, which
+excludes the already-owned decoder and transport. This is not a linked-image
+measurement or an allocation in the normal boot profile.
