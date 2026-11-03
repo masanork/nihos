@@ -41,11 +41,25 @@ Tab5 equivalence remain unqualified. Build and launch from the repository root.
 
 The MeOS probes in `tools/run-meos-emulator-probe.sh` are test-only direct-app
 experiments using an explicitly supplied MeOS image, ROM and synthetic devices.
-They do not make MeOS selectable in the GPUI app or implement a real bootloader,
-persistent flash, or the ST7123 LCD driver. The alternate ST7121 probe changes
+The default GPUI build does not select MeOS. The fixtures do not implement a
+real bootloader, persistent flash, or the ST7123 LCD driver. The alternate ST7121 probe changes
 only the synthetic touch identity and does not qualify a physical panel.
 The interrupt model currently defers all other hardware interrupts until the
 active handler executes `mret`; CLIC priority and nesting are not modeled.
+
+An opt-in development build can launch the pinned MeOS fixture in the GPUI
+window. It requires the exact image and ROM hashes used by the probes:
+
+```sh
+NIHOS_EXPERIMENTAL_MEOS_APP=/path/to/build-tab5/m5os.bin \
+NIHOS_EXPERIMENTAL_MEOS_ROM=/path/to/esp32p4_rev0_rom.elf \
+cargo run --manifest-path apps/xy-gpui/Cargo.toml --features experimental-meos
+```
+
+The window identifies the session as experimental and volatile. Reset creates
+fresh fixture flash; no guest data is retained. This uses the synthetic ST7121,
+ROM, clock and USB fixtures, not a real bootloader or ST7123 panel. It supports
+only the identified image and ROM, not arbitrary MeOS builds.
 
 ## Boot investigation
 
