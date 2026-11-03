@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 
-def analyze(device, peer):
+def analyze(device, peer, require_arp=False):
     lines = device.decode('ascii', 'replace').splitlines()
     rows = [line for line in lines if line.startswith('NIHOS_NATIVE_C6 ')]
     if len(rows) != 1 or sum(line.startswith('NIHOS_C6_HOSTED_WIFI_PASS ') for line in lines) != 1:
@@ -29,6 +29,8 @@ def analyze(device, peer):
                 'long_sent': 1254, 'long_attempts': 16, 'long_burst': 1}
     if any(fields.get(k) != v for k, v in expected.items()):
         raise ValueError('device result mismatch')
+    if require_arp and fields.get('wifi_step') != 10:
+        raise ValueError('missing matching ARP resolution evidence')
     if any(k not in fields for k in ('long_echo_mask', 'long_echo', 'long_final_wait_ms', 'ip')):
         raise ValueError('missing device evidence')
     mask = fields['long_echo_mask']
@@ -73,8 +75,9 @@ def main():
     parser.add_argument('--device', type=Path, required=True)
     parser.add_argument('--peer', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--require-arp', action='store_true', help='require completed ARP peer verification')
     args = parser.parse_args()
-    result = analyze(args.device.read_bytes(), json.loads(args.peer.read_text()))
+    result = analyze(args.device.read_bytes(), json.loads(args.peer.read_text()), args.require_arp)
     args.output.write_text(json.dumps(result, indent=2) + '\n')
     print('Paired burst evidence validated; address details withheld')
 
