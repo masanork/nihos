@@ -71,3 +71,18 @@ entire flash verified against that backup (SHA-256
 `06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`).
 A subsequent passive serial capture observed the restored native firmware.
 No C6 firmware was written. Raw network observations remain private.
+
+## Recheck after reconnection
+
+The same candidate was run again after reconnecting the Tab5. The Mac's peer
+IP and MAC still matched its active interface; the C6 obtained a network
+address, but the peer again failed `PeerNotDirect` before queueing (`queued=0`,
+`sent=0`, error code 120). The Mac observed no UDP payload. Redacted macOS
+SSID/BSSID values were not treated as access-point identity. This result
+establishes another subnet mismatch, not the identity of either access point.
+
+The original P4 flash was restored and all 16 MiB verified against the
+pre-write backup (SHA-256
+`06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`).
+Passive serial capture observed the restored native firmware. No C6 firmware
+was written.
