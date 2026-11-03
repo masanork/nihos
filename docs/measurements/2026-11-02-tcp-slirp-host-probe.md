@@ -135,6 +135,13 @@ The TCP service permits at most
 it retains used ports until the lease changes. The driver does not reset the
 station or claim automatic reconnect support.
 
+An optional host fixture seeds Zig's ChaCha-based CSPRNG once from the host OS
+and uses its output through the foreground SSH session. The wrapper requires
+the same non-reusable source lease across seed acquisition, caps each request
+and the lifetime output, and clears its state on failure or explicit teardown.
+This does not qualify an ESP32-P4 entropy source, persistent key storage, or
+the native execution path; the RV32 CSPRNG probe is compile-only.
+
 The separate `tools/tcp_reconnect_probe.py` fixture keeps one synthetic station
 lease and libslirp instance while opening two TCP sessions. It exchanges data
 and completes FIN for both, rejects the first local port on reuse, and accepts
