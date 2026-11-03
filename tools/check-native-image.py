@@ -248,7 +248,11 @@ UDP_XY_FUNCTIONS = {
     'hosted_udp_lease.Lease.check',
     'hosted_udp_socket.Socket.get', 'hosted_udp_socket.Socket.check',
     'hosted_udp_socket.Socket.close', 'hosted_udp_socket.Socket.retire',
-    'hosted_udp_sender.Sender.retire', 'udp_ipv4.checksum', 'udp_ipv4.pseudo',
+    'hosted_udp_sender.Sender.retire', 'udp_ipv4.checksum', 'udp_ipv4.pseudo', 'udp_ipv4.sumWords',
+    'network_service.experimentalUdpNow', 'network_service.experimentalUdpBind',
+    'network_service.experimentalUdpSend', 'network_service.experimentalUdpRead',
+    'network_service.experimentalUdpClose', 'network_service.experimentalUdpSmokePoll',
+    'hosted_udp_smoke.Probe.fail', 'hosted_udp_smoke.payload',
 }
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
@@ -361,7 +365,7 @@ def xy_function(name):
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
     decimal_name = re.sub(r'__func_[0-9]+$', '', name)
-    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_xy_functions(functions, span):
