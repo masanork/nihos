@@ -1,0 +1,17 @@
+0x4003c720 in arch_cpu_idle () at /Users/masanork/repo/MeOS/hal/esp32p4/irq.c:56
+56	}
+pc             0x4003c720	0x4003c720 <arch_cpu_idle+8>
+=> 0x4003c720 <arch_cpu_idle+8>:	ret
+   0x4003c722 <m5_tick_dispatch>:	addi	sp,sp,-16
+   0x4003c724 <m5_tick_dispatch+2>:	sw	ra,12(sp)
+   0x4003c726 <m5_tick_dispatch+4>:	sw	s0,8(sp)
+   0x4003c728 <m5_tick_dispatch+6>:	lui	s0,0x4ff9e
+   0x4003c72c <m5_tick_dispatch+10>:	lui	a5,0x4ff9e
+   0x4003c730 <m5_tick_dispatch+14>:	lw	a4,1740(a5)
+   0x4003c734 <m5_tick_dispatch+18>:	lw	a5,1744(s0)
+#0  0x4003c720 in arch_cpu_idle () at /Users/masanork/repo/MeOS/hal/esp32p4/irq.c:56
+#1  0x4000a118 in kernel_main () at /Users/masanork/repo/MeOS/kernel/boot/kmain.c:510
+#2  0x4000a01c in __wrap_esp_startup_start_app () at /Users/masanork/repo/MeOS/kernel/boot/boot_hook.c:25
+#3  0x40001e98 in start_cpu0_default () at /Users/masanork/esp32/esp-idf-v5.4.4/components/esp_system/startup.c:216
+#4  0x4ff00496 in call_start_cpu0 () at /Users/masanork/esp32/esp-idf-v5.4.4/components/riscv/include/riscv/rv_utils.h:76
+[Inferior 1 (Remote target) detached]
