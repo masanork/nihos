@@ -18,8 +18,18 @@ absence. The host rotation control remains manual. Input is
 released on focus loss, rotation, pause, power off, or reset. Power off stops CPU execution and blanks the screen; power on
 and Reset reload the ELF into a new emulated machine. This model does not yet
 preserve flash or other storage across power cycles.
+If guest execution stops on an emulator error, the last frame remains visible
+with the reason underneath; Reset reloads the firmware and resumes execution.
+When manually paused, Reset instead keeps the new machine paused. If firmware
+could not be loaded at startup, correct the file and use Reset or Power on to
+retry without restarting the app. An explicitly configured firmware path remains
+authoritative even when the file is missing.
 
 The RV32 CPU and peripheral model is experimental, not a complete Tab5 emulator.
+The GPIO 31/32 bit-banged bus has separate register-file fixtures at expander
+addresses `0x43` and `0x44`; the latter can be used by board power setup. These
+fixtures do not model electrical pin effects or the expanders' complete reset
+and GPIO semantics, and their presence does not establish MeOS compatibility.
 Firmware is selected by `NIHOS_EMULATOR_ELF` if explicitly set, otherwise
 from the app bundle, then from `build/xy-emulator-firmware/nihos-native.elf`
 relative to the current directory. The packaging script bundles the fixture when
@@ -28,6 +38,14 @@ firmware has booted to its home and RAM document; ASCII navigation and editing
 have been demonstrated. Single-contact touch is modeled; IME, persistence,
 multi-touch, full peripherals and physical
 Tab5 equivalence remain unqualified. Build and launch from the repository root.
+
+The MeOS probes in `tools/run-meos-emulator-probe.sh` are test-only direct-app
+experiments using an explicitly supplied MeOS image, ROM and synthetic devices.
+They do not make MeOS selectable in the GPUI app or implement a real bootloader,
+persistent flash, or the ST7123 LCD driver. The alternate ST7121 probe changes
+only the synthetic touch identity and does not qualify a physical panel.
+The interrupt model currently defers all other hardware interrupts until the
+active handler executes `mret`; CLIC priority and nesting are not modeled.
 
 ## Boot investigation
 
