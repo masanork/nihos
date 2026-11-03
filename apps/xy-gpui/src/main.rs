@@ -686,9 +686,14 @@ fn select_firmware(
 
 fn load_emulator() -> Result<emu::Emulator, String> {
     // An explicit path remains authoritative even if it is missing or invalid.
-    let bundle = std::env::current_exe()
-        .ok()
-        .and_then(|path| path.parent()?.parent().map(|p| p.join("Resources")));
+    let bundle = std::env::current_exe().ok().and_then(|path| {
+        let directory = path.parent()?;
+        if cfg!(target_os = "macos") {
+            Some(directory.parent()?.join("Resources"))
+        } else {
+            Some(directory.join("Resources"))
+        }
+    });
     let candidates = [
         "build/xy-emulator-firmware/nihos-native.elf".into(),
         "../../build/xy-emulator-firmware/nihos-native.elf".into(),
