@@ -44,7 +44,7 @@ station-connected event and fails closed if the event is absent, malformed,
 or different. Only a numeric match state is logged; no SSID, BSSID, or
 password is logged by this comparison. Exact BSSID equality is an optional
 experiment precondition, not a general test of reachability across a mesh or
-multiple access points. This update has not yet been qualified on hardware.
+multiple access points. The optional BSSID comparison has not yet been exercised on hardware.
 
 ## Subnet guard physical attempt
 
