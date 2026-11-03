@@ -6228,24 +6228,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-03",
-    "measuredAt": "2026-11-03T08:54:37.593958+00:00",
+    "measuredAt": "2026-11-03T10:58:28.610413+00:00",
     "project": "nihos",
-    "commit": "11eda76cb5c0be8cc69a9e48cc391b2d31a0e5a2",
+    "commit": "94bfd96d5c7042061fba6c0128a5c4ca231f0dfd",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "5d1f014931828f1e143eeb2a28321cf8e581f31a69397c833d3296823f2432b0",
+    "sourceTreeSha256": "cae1d97b1269532873b04f045e93d64448fccd4b998bc5fdf6d1677dfe5603a7",
     "code": {
-      "implementation": 83641,
-      "tests": 44164,
-      "tooling": 30055,
+      "implementation": 83857,
+      "tests": 44348,
+      "tooling": 30413,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 75926,
-        "tests": 33377,
-        "tooling": 1626,
+        "implementation": 76142,
+        "tests": 33501,
+        "tooling": 1647,
         "probes": 5642,
         "vendored": 0,
         "generated": 0
@@ -6276,8 +6276,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 10628,
-        "tooling": 21944,
+        "tests": 10688,
+        "tooling": 22105,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -6293,7 +6293,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4562,
+        "tooling": 4670,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -6301,7 +6301,7 @@
       "Include/data": {
         "implementation": 44,
         "tests": 0,
-        "tooling": 1382,
+        "tooling": 1450,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6311,7 +6311,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 306,
+        "tooling": 308,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6341,8 +6341,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 81704,
-        "tests": 33503,
+        "implementation": 81920,
+        "tests": 33627,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -6358,8 +6358,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 10661,
-        "tooling": 29749,
+        "tests": 10721,
+        "tooling": 30105,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6892,11 +6892,12 @@
         "src/xy/render_session.zig": "fe34a48eee71aa796e40da253fbd89cc946176bfd0c6a0af4c17b4c69f734e38",
         "src/xy/scheme_bridge.zig": "4874c4e3696b17f33e01b739d4ff68eef8eb489f6f72a3950e79e6be61dfaece",
         "src/xy/scheme_decimal.zig": "8682778ff3768736c0fc9f949af3b13214adb5d90942b139a701cfcf6f50024e",
-        "src/xy/scheme_runtime.zig": "ea36f7253613cb3dc8795e20b85f5a99d0629202e4a92e43b28a159415831359",
-        "src/xy/scratch.zig": "06b63b96718ba775e7979ce4c75f49053851904d8d223437917c8bd5e0330974",
+        "src/xy/scheme_runtime.zig": "92e3f65b0697badfe5dec910c2cc4d447251c4679526bedad6643c54eec1ef53",
+        "src/xy/scratch.zig": "3699d287f8e58b26fed7c548e95a2090c8afcf11a1abc93004ed17f4218e2dc4",
         "src/xy/soft_keyboard.zig": "19b2c16b30a3a9f7b40a6067e4e0f87afc97b23c6ba42d90ff0e58193794047c",
+        "src/xy/ssh_entropy.zig": "4e5d59cecb8357931d0d950aaff85e90b1e65c234e1b12710a814a846b445954",
         "src/xy/ssh_lifecycle.zig": "a87d487822146cbe6ce41d208f768ea119422e152398bd28715b23e5aa5703d7",
-        "src/xy/ssh_terminal_host_probe.zig": "cd58982ce2d273603f0015ea515617d17d465c2585bea94f2de1a3e78a1601a0",
+        "src/xy/ssh_terminal_host_probe.zig": "9c0629a87aa6204a18f2555d24aaa05395b61d16eaf8d2fadfc40ed977a7b2ff",
         "src/xy/ssh_terminal_session.zig": "0561c93220c27caeaff4eeea39286b64b7b83a5ab28f9a0446a5da99a09159dc",
         "src/xy/storage.zig": "6bcbddf0275bf072588b3197ac0616c12b6ae5f2d5f2d335e7eb8aa67fc810de",
         "src/xy/system_buffer.zig": "2e9e8838cd2c16427bafea051d816165ffb24947a66070b7261da2e20cc0a80f",
@@ -6904,9 +6905,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 16672,
-        "count": 17730,
-        "percent": 94.03271291596165
+        "covered": 16761,
+        "count": 17819,
+        "percent": 94.06251753746001
       },
       "files": {
         "src/app/animation.zig": {
@@ -7566,8 +7567,8 @@
           "count": 60
         },
         "src/xy/scheme_runtime.zig": {
-          "covered": 2750,
-          "count": 2955
+          "covered": 2839,
+          "count": 3044
         },
         "src/xy/scratch.zig": {
           "covered": 609,
@@ -7950,6 +7951,7 @@
         "src/xy/render_protocol.zig",
         "src/xy/render_session.zig",
         "src/xy/scheme_bridge.zig",
+        "src/xy/ssh_entropy.zig",
         "src/xy/ssh_lifecycle.zig",
         "src/xy/ssh_terminal_host_probe.zig",
         "src/xy/ssh_terminal_session.zig",
