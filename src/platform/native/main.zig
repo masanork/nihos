@@ -1663,6 +1663,7 @@ noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (o
 
 extern fn nih_wamr_alignment_negative() callconv(.c) u32;
 const native_sqld = @hasDecl(options, "sqld") and options.sqld;
+const native_udp_smoke = @hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke;
 const sqld = @import("sqld_abi.zig");
 comptime {
     if ((@hasDecl(options, "xy_workspace") and options.xy_workspace) or options.canvas_interactive) _ = @import("xy_eval_runtime.zig");
@@ -1726,10 +1727,11 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
         print("NIHOS_RUST_SESSION_READY\n");
     }
-    if (native_sqld) {
+    if (native_sqld and !native_udp_smoke) {
         if (!tasks.startSqld()) fail("sqld task start");
         ui.bindStorage(&sqld.provider);
     }
+    if (native_udp_smoke) print("NIHOS_NATIVE_UDP_SMOKE_STORAGE_DISABLED\n");
     var idle_checked = false;
     while (true) {
         if (options.wasm_interactive and !options.wasm_interactive_repeat) {
@@ -1783,7 +1785,7 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
             ssh_foreground.poll(ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
         }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
-        if (native_sqld) serviceSqld();
+        if (native_sqld and !native_udp_smoke) serviceSqld();
         if (!ui.service(&logger)) fail("normal console idle");
         if (options.wasm_interactive_repeat) {
             const fixture = @import("wasm_session_fixture.zig");

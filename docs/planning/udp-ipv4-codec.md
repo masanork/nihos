@@ -209,3 +209,5 @@ MAC, port and full payload to match on the echoed datagram, and emits
 counts. A matching echo proves only this diagnostic exchange; IP/MAC are not
 peer authentication. The option does not enable long DMA or QUIC. The
 independent peer and capture are required for device evidence.
+The smoke profile does not start or bind the writable sqld service; shared SD
+controller setup and read-only filesystem initialization remain enabled.
