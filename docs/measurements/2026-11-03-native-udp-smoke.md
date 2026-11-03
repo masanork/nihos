@@ -17,10 +17,10 @@ the device reported `phase=4`, `queued=1`, `matched=0`, `rejected=0`,
 observed zero matching datagrams and sent zero echoes. These observations do
 not establish whether the datagram was transmitted by the C6, filtered, or
 routed to the intended peer. The P4 and Mac addresses were in different /24
-and /16 networks; although the Mac's Wi-Fi identity matched the preflight,
-the C6's saved AP identity was not independently established. A shared SSID
-or BSSID observed on the Mac alone does not establish that both devices share
-a reachable link. The experiment uses an explicit peer MAC and does not
+and /16 networks. The Mac preflight's apparent Wi-Fi identity match was invalid:
+macOS returned redacted SSID and BSSID values, so it compared placeholders.
+Neither device's AP identity was independently established. Even a shared
+SSID or BSSID would not alone establish peer reachability. The experiment uses an explicit peer MAC and does not
 implement gateway routing.
 
 The test profile reported that writable SQLite service startup was disabled.
