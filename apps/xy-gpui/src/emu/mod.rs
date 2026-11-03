@@ -286,6 +286,91 @@ mod tests {
 
     #[cfg(feature = "experimental-meos")]
     #[test]
+    #[ignore = "requires the pinned MeOS app and ROM"]
+    fn experimental_meos_shooter_arrow_moves_ship() {
+        fn ship_x(emu: &Emulator) -> Option<usize> {
+            let frame = emu.bus.scanout()?;
+            // Shooter uses this RGB565 color for its ship and scales the 16px
+            // sprite to 32px. Search only the bottom of its playfield.
+            for x in 400..880 {
+                for y in 616..648 {
+                    let offset = ((1279 - x) * 720 + y) * 2;
+                    if u16::from_le_bytes([frame[offset], frame[offset + 1]]) == 0x5e5f {
+                        return Some(x);
+                    }
+                }
+            }
+            None
+        }
+        let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
+        let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
+        let mut emu = Emulator::new_meos(app, rom).unwrap();
+        for _ in 0..800 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(4).any(|w| w == b"\r\n> ") {
+                break;
+            }
+        }
+        assert!(emu.bus.console_output.windows(4).any(|w| w == b"\r\n> "));
+        let pixel_offset = ((1279 - 60) * 720 + 460) * 2;
+        let shell_pixel = {
+            let frame = emu.bus.scanout().expect("shell scanout missing");
+            u16::from_le_bytes([frame[pixel_offset], frame[pixel_offset + 1]])
+        };
+        assert_ne!(shell_pixel, 0, "on-screen keyboard pixel missing");
+        for byte in b"run /apps/shooter.wasm\n" {
+            emu.send_key(*byte);
+        }
+        let mut initial = None;
+        for _ in 0..1200 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if let Some(x) = ship_x(&emu) {
+                initial = Some(x);
+                break;
+            }
+        }
+        let initial = initial.expect("shooter ship did not appear");
+        let frame = emu.bus.scanout().unwrap();
+        assert_ne!(
+            u16::from_le_bytes([frame[pixel_offset], frame[pixel_offset + 1]]),
+            shell_pixel
+        );
+        emu.step_frame(50_000_000);
+        assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+        assert_eq!(ship_x(&emu), Some(initial), "ship moved without input");
+        super::super::send_emulator_arrow(&mut emu, "right");
+        let mut moved = false;
+        for _ in 0..1200 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if let Some(x) = ship_x(&emu)
+                && x > initial
+            {
+                assert_eq!(x, initial + 18);
+                println!("shooter ship moved from x={initial} to x={x}");
+                moved = true;
+                break;
+            }
+        }
+        assert!(moved, "shooter ship did not move right from x={initial}");
+        emu.send_key(b'q');
+        for _ in 0..1200 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if let Some(frame) = emu.bus.scanout()
+                && u16::from_le_bytes([frame[pixel_offset], frame[pixel_offset + 1]]) == shell_pixel
+            {
+                println!("shooter returned to shell keyboard");
+                return;
+            }
+        }
+        panic!("shooter did not return to shell keyboard");
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
     fn experimental_meos_profile_rejects_unknown_image() {
         let error = match Emulator::new_meos("/dev/null", "/dev/null") {
             Ok(_) => panic!("unexpectedly accepted an unknown image"),
