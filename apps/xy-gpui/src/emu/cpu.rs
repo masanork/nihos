@@ -1,6 +1,7 @@
 //! RV32IMAFC CPU emulator for nihos firmware execution.
 
 use super::bus::Bus;
+use rustc_apfloat::{Float, Round, Status, ieee::Single};
 
 pub struct Cpu {
     pub x: [u32; 32],
@@ -11,15 +12,19 @@ pub struct Cpu {
     pub mstatus: u32,
     pub mie: u32,
     pub mtvec: u32,
+    pub mtvt: u32,
     pub mscratch: u32,
     pub mepc: u32,
     pub mcause: u32,
     pub mtval: u32,
     pub mip: u32,
     pub mhartid: u32,
+    pub fcsr: u32,
+    in_interrupt: bool,
 
     pub instructions_executed: u64,
     pub fault: Option<String>,
+    pub(super) qsort: Option<super::rom_qsort::Sort>,
 }
 
 impl Cpu {
@@ -31,14 +36,18 @@ impl Cpu {
             mstatus: 0x1800, // MPP = Machine mode
             mie: 0,
             mtvec: 0,
+            mtvt: 0,
             mscratch: 0,
             mepc: 0,
             mcause: 0,
             mtval: 0,
             mip: 0,
             mhartid: 0,
+            fcsr: 0,
+            in_interrupt: false,
             instructions_executed: 0,
             fault: None,
+            qsort: None,
         };
         // Initial stack pointer: 0x4ff6e000 (standard nihos stack top)
         cpu.x[2] = 0x4ff6_e000;
@@ -55,12 +64,47 @@ impl Cpu {
         }
     }
 
+    fn fp_rounding(&self, encoded: u32) -> Option<Round> {
+        let rm = if encoded == 7 {
+            (self.fcsr >> 5) & 7
+        } else {
+            encoded
+        };
+        match rm {
+            0 => Some(Round::NearestTiesToEven),
+            1 => Some(Round::TowardZero),
+            2 => Some(Round::TowardNegative),
+            3 => Some(Round::TowardPositive),
+            4 => Some(Round::NearestTiesToAway),
+            _ => None,
+        }
+    }
+
+    fn accumulate_fp_status(&mut self, status: Status) {
+        for (exception, flag) in [
+            (Status::INVALID_OP, 0x10),
+            (Status::DIV_BY_ZERO, 0x08),
+            (Status::OVERFLOW, 0x04),
+            (Status::UNDERFLOW, 0x02),
+            (Status::INEXACT, 0x01),
+        ] {
+            if status.contains(exception) {
+                self.fcsr |= flag;
+            }
+        }
+    }
+
     pub fn step(&mut self, bus: &mut Bus) -> bool {
         if self.fault.is_some() {
             return false;
         }
         bus.active_hart = self.mhartid as usize;
-        if self.instructions_executed & 63 == 0
+        if let Err(error) = super::rom_qsort::check_budget(self) {
+            self.fault = Some(error);
+            return false;
+        }
+        if !self.in_interrupt
+            && self.instructions_executed & 63 == 0
             && self.mstatus & 8 != 0
             && let Some(line) = bus.pending_irq(self.mhartid as usize)
         {
@@ -68,32 +112,76 @@ impl Cpu {
             self.mcause = 0x8000_0000 | line;
             self.mtval = 0;
             self.mstatus = (self.mstatus & !(1 << 3)) | (1 << 7) | (3 << 11);
-            self.pc = self.mtvec & !0x3f;
+            self.in_interrupt = true;
+            if bus.irq_vectored(self.mhartid as usize, line) {
+                let entry = self.mtvt.wrapping_add(line * 4);
+                if self.mtvt == 0 || !(0x4ff0_0000..0x5000_0000).contains(&entry) {
+                    self.fault = Some(format!("unsupported CLIC vector table {:#010x}", self.mtvt));
+                    return false;
+                }
+                self.pc = bus.read_u32(entry);
+                if self.pc & 1 != 0 || !(0x4ff0_0000..0x5000_0000).contains(&self.pc) {
+                    self.fault = Some(format!("unsupported CLIC vector {:#010x}", self.pc));
+                    return false;
+                }
+            } else {
+                self.pc = self.mtvec & !0x3f;
+            }
         }
         // Handle timer ticks periodically
         if self.instructions_executed & 0xff == 0 {
             bus.timer_ticks = bus.timer_ticks.wrapping_add(256);
         }
 
-        // ROM Call HLE Dispatch (0x4fc0_0000..=0x4fc0_ffff)
-        if (0x4fc0_0000..=0x4fc0_ffff).contains(&self.pc) {
-            self.handle_rom_call(bus);
+        if self.pc == super::rom_qsort::RETURN_PC {
+            if let Err(error) = super::rom_qsort::returned(self, bus) {
+                self.fault = Some(error);
+            }
             self.instructions_executed += 1;
             return self.fault.is_none();
         }
 
+        // The optional ELF-backed investigation mode executes ROM internals;
+        // public jump-table entries still use the modeled ROM call boundary.
+        if (0x4fc0_0000..=0x4fc1_ffff).contains(&self.pc) {
+            let executable = bus.rom_execute
+                && self.pc >= 0x4fc0_0b00
+                && bus.rom_executable.iter().any(|&(start, end)| {
+                    self.pc >= start && self.pc.checked_add(4).is_some_and(|pc| pc <= end)
+                });
+            if !executable {
+                self.handle_rom_call(bus);
+                if self.fault.is_none() {
+                    self.fault = bus.fault.take();
+                }
+                self.instructions_executed += 1;
+                return self.fault.is_none();
+            }
+        }
+
         // Fetch instruction (support 16-bit compressed or 32-bit standard)
         let raw16 = bus.read_u16(self.pc);
+        if let Some(error) = bus.fault.take() {
+            self.fault = Some(error);
+            self.instructions_executed += 1;
+            return false;
+        }
         if (raw16 & 0x03) != 0x03 {
             // Compressed 16-bit instruction (RVC)
             self.execute_c(raw16, bus);
             self.instructions_executed += 1;
+            if self.fault.is_none() {
+                self.fault = bus.fault.take();
+            }
             return self.fault.is_none();
         }
 
         let inst = bus.read_u32(self.pc);
         self.execute_32(inst, bus);
         self.instructions_executed += 1;
+        if self.fault.is_none() {
+            self.fault = bus.fault.take();
+        }
         self.fault.is_none()
     }
 
@@ -108,6 +196,101 @@ impl Cpu {
         let mut next_pc = self.pc.wrapping_add(4);
 
         match opcode {
+            // FCVT.WU.S clips invalid results per RISC-V, not APFloat's NaN default.
+            0x53 if funct7 == 0x60 && rs2 == 1 => {
+                if let Some(rounding) = self.fp_rounding(funct3) {
+                    let source = Single::from_bits(self.f[rs1 as usize].to_bits().into());
+                    let mut exact = false;
+                    let result = source.to_u128_r(32, rounding, &mut exact);
+                    self.set_reg(
+                        rd,
+                        if source.is_nan() {
+                            u32::MAX
+                        } else {
+                            result.value as u32
+                        },
+                    );
+                    self.accumulate_fp_status(result.status);
+                } else {
+                    self.fault = Some(format!(
+                        "invalid floating-point rounding mode at {:#010x}",
+                        self.pc
+                    ));
+                }
+            }
+            // FLW preserves the exact payload bits, including signaling NaNs.
+            0x07 if funct3 == 2 => {
+                let offset = ((inst as i32) >> 20) as u32;
+                let bits = bus.read_u32(self.reg(rs1).wrapping_add(offset));
+                if bus.fault.is_none() {
+                    self.f[rd as usize] = f32::from_bits(bits);
+                }
+            }
+            // FMUL.S / FDIV.S with RISC-V rounding, canonical NaNs and sticky flags.
+            0x53 if funct7 == 0x08 || funct7 == 0x0c => {
+                let rm = if funct3 == 7 {
+                    (self.fcsr >> 5) & 7
+                } else {
+                    funct3
+                };
+                let rounding = self.fp_rounding(funct3);
+                if let Some(rounding) = rounding {
+                    let left = Single::from_bits(self.f[rs1 as usize].to_bits().into());
+                    let right = Single::from_bits(self.f[rs2 as usize].to_bits().into());
+                    let result = if funct7 == 0x08 {
+                        left.mul_r(right, rounding)
+                    } else {
+                        left.div_r(right, rounding)
+                    };
+                    let bits = if result.value.is_nan() {
+                        0x7fc0_0000
+                    } else {
+                        result.value.to_bits() as u32
+                    };
+                    self.f[rd as usize] = f32::from_bits(bits);
+                    self.accumulate_fp_status(result.status);
+                } else {
+                    self.fault = Some(format!(
+                        "invalid floating-point rounding mode {rm} at {:#010x}",
+                        self.pc
+                    ));
+                }
+            }
+            // FCVT.S.WU: unsigned RV32 integer to IEEE-754 binary32.
+            0x53 if funct7 == 0x68 && rs2 == 1 => {
+                let rm = if funct3 == 7 {
+                    (self.fcsr >> 5) & 7
+                } else {
+                    funct3
+                };
+                if rm > 4 {
+                    self.fault = Some(format!(
+                        "invalid floating-point rounding mode {rm} at {:#010x}",
+                        self.pc
+                    ));
+                } else {
+                    let value = self.reg(rs1) as u64;
+                    let exponent = 63u32.saturating_sub(value.leading_zeros());
+                    let shift = exponent.saturating_sub(23);
+                    let unit = 1u64 << shift;
+                    let remainder = value & (unit - 1);
+                    let base = value - remainder;
+                    let increment = match rm {
+                        0 => {
+                            remainder * 2 > unit
+                                || (remainder * 2 == unit && (base / unit) & 1 != 0)
+                        }
+                        1 | 2 => false,
+                        3 => remainder != 0,
+                        4 => remainder != 0 && remainder * 2 >= unit,
+                        _ => unreachable!(),
+                    };
+                    self.f[rd as usize] = (base + if increment { unit } else { 0 }) as f32;
+                    if remainder != 0 {
+                        self.fcsr |= 1;
+                    }
+                }
+            }
             // LUI
             0x37 => {
                 self.set_reg(rd, inst & 0xffff_f000);
@@ -396,6 +579,7 @@ impl Cpu {
                         0x18 => {
                             // MRET
                             next_pc = self.mepc;
+                            self.in_interrupt = false;
                             let mpie = (self.mstatus >> 7) & 1;
                             self.mstatus = (self.mstatus & !0x88) | (mpie << 3) | (1 << 7);
                         }
@@ -449,9 +633,11 @@ impl Cpu {
                         | (((inst >> 5) & 0x1) << 3)
                         | (((inst >> 6) & 0x1) << 2);
                     let rd = 8 + ((inst >> 2) & 0x7);
-                    if imm != 0 {
-                        self.set_reg(rd, self.reg(2).wrapping_add(imm));
+                    if imm == 0 {
+                        self.fault = Some(format!("illegal C.ADDI4SPN at {:#010x}", self.pc));
+                        return;
                     }
+                    self.set_reg(rd, self.reg(2).wrapping_add(imm));
                 }
                 // C.LW
                 0b010 => {
@@ -684,9 +870,13 @@ impl Cpu {
 
     fn read_csr(&self, csr: u32, bus: &Bus) -> u32 {
         match csr {
+            0x001 => self.fcsr & 0x1f,
+            0x002 => (self.fcsr >> 5) & 7,
+            0x003 => self.fcsr & 0xff,
             0x300 => self.mstatus,
             0x304 => self.mie,
             0x305 => self.mtvec,
+            0x307 => self.mtvt,
             0x340 => self.mscratch,
             0x341 => self.mepc,
             0x342 => self.mcause,
@@ -703,9 +893,13 @@ impl Cpu {
 
     fn write_csr(&mut self, csr: u32, val: u32) {
         match csr {
+            0x001 => self.fcsr = (self.fcsr & !0x1f) | (val & 0x1f),
+            0x002 => self.fcsr = (self.fcsr & !0xe0) | ((val & 7) << 5),
+            0x003 => self.fcsr = val & 0xff,
             0x300 => self.mstatus = val,
             0x304 => self.mie = val,
             0x305 => self.mtvec = val,
+            0x307 => self.mtvt = val & !0x3f,
             0x340 => self.mscratch = val,
             0x341 => self.mepc = val,
             0x342 => self.mcause = val,
@@ -717,20 +911,711 @@ impl Cpu {
 
     fn handle_rom_call(&mut self, bus: &mut Bus) {
         match self.pc {
+            0x4fc0_0290 => {
+                let start = u64::from(self.reg(10));
+                let len = u64::from(self.reg(11));
+                let valid = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ]
+                .iter()
+                .any(|&(lo, hi)| {
+                    start >= lo
+                        && start + len <= hi
+                        && !(bus.cache_l2_suspended && lo == 0x4800_0000)
+                });
+                if !valid || len > 1024 * 1024 || !bus.mapped_backing_range(start as u32, len) {
+                    self.fault = Some("ROM bzero invalid range".into());
+                    return;
+                }
+                for address in start..start + len {
+                    bus.write_u8(address as u32, 0);
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_027c => {
+                let (dest, src, count) = (self.reg(10), self.reg(11), self.reg(12));
+                let start = u64::from(dest);
+                let valid_dest = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ]
+                .iter()
+                .any(|&(a, b)| {
+                    start >= a
+                        && start + u64::from(count) <= b
+                        && !(bus.cache_l2_suspended && a == 0x4800_0000)
+                });
+                if count > 65536 || !valid_dest || !bus.mapped_backing_range(dest, u64::from(count))
+                {
+                    self.fault = Some("ROM strncpy invalid destination".into());
+                    return;
+                }
+                let mut bytes = Vec::with_capacity(count as usize);
+                let mut ended = false;
+                for offset in 0..count {
+                    if ended {
+                        bytes.push(0);
+                        continue;
+                    }
+                    let Some(address) = src.checked_add(offset) else {
+                        self.fault = Some("ROM strncpy pointer overflow".into());
+                        return;
+                    };
+                    if !super::rom_printf::readable(address, 1)
+                        || !bus.mapped_backing_range(address, 1)
+                    {
+                        self.fault = Some("ROM strncpy invalid source".into());
+                        return;
+                    }
+                    if u64::from(address) >= start && u64::from(address) < start + u64::from(count)
+                    {
+                        self.fault = Some("ROM strncpy overlapping ranges".into());
+                        return;
+                    }
+                    let byte = bus.read_u8(address);
+                    ended = byte == 0;
+                    bytes.push(byte);
+                }
+                for (offset, byte) in bytes.into_iter().enumerate() {
+                    bus.write_u8(dest + offset as u32, byte);
+                }
+                self.pc = self.reg(1);
+            }
+            #[cfg(test)]
+            0x4fc0_014c | 0x4fc0_0154 | 0x4fc0_0158 | 0x4fc0_015c if bus.rom_flash.is_some() => {
+                match super::rom_flash::call(bus, self.pc, self.reg(10), self.reg(11), self.reg(12))
+                {
+                    Ok(()) => {
+                        self.set_reg(10, 0);
+                        self.pc = self.reg(1);
+                    }
+                    Err(error) => self.fault = Some(format!("ROM flash fixture: {error}")),
+                }
+            }
+            0x4fc0_0570 => {
+                let (pin, signal, out_inv, enable_inv) =
+                    (self.reg(10), self.reg(11), self.reg(12), self.reg(13));
+                if pin > 56 || signal > 0x1ff || out_inv > 1 || enable_inv > 1 {
+                    self.fault = Some("unsupported GPIO matrix output arguments".into());
+                    return;
+                }
+                bus.write_u32(
+                    0x500e_0558 + pin * 4,
+                    signal | (out_inv << 9) | (enable_inv << 11),
+                );
+                let (register, bit) = if pin < 32 {
+                    (0x500e_0024, pin)
+                } else {
+                    (0x500e_0030, pin - 32)
+                };
+                bus.write_u32(register, 1 << bit);
+                self.pc = self.reg(1);
+            }
+            // rev0 ROM selects function 1 in the corresponding IO_MUX pad.
+            0x4fc0_0590 => {
+                let pin = self.reg(10);
+                if pin <= 56 {
+                    let address = 0x500e_1004 + pin * 4;
+                    let value = bus.read_u32(address);
+                    bus.write_u32(address, (value & !0x7000) | 0x1000);
+                    self.set_reg(10, address);
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0508 => {
+                if bus.cache_l2_suspended || bus.cache_l2_mode.is_none() {
+                    self.fault = Some("unsupported L2 cache suspend state".into());
+                    return;
+                }
+                let autoload = u32::from(bus.cache_l2_autoload);
+                let control = bus.read_u32(0x5008_c03c);
+                bus.write_u32(0x5008_c03c, control | (1 << 31));
+                bus.cache_l2_suspended = true;
+                bus.cache_l2_autoload = false;
+                self.set_reg(10, autoload);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_050c => {
+                let autoload = self.reg(10);
+                if !bus.cache_l2_suspended || autoload > 1 {
+                    self.fault = Some("unsupported L2 cache resume state".into());
+                    return;
+                }
+                let control = bus.read_u32(0x5008_c03c);
+                bus.write_u32(0x5008_c03c, control & !(1 << 31));
+                bus.cache_l2_suspended = false;
+                bus.cache_l2_autoload = autoload != 0;
+                self.pc = self.reg(1);
+            }
+            // Backing RAM is coherent in this functional model; no cache lines
+            // or cache-suspension ordering are represented.
+            0x4fc0_0414 => {
+                if self.reg(10) != 16 {
+                    self.fault = Some(format!(
+                        "unsupported cache writeback map {:#x}",
+                        self.reg(10)
+                    ));
+                    return;
+                }
+                self.set_reg(10, 0);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_033c => {
+                let numerator = self.reg(10) as i32;
+                let denominator = self.reg(11) as i32;
+                if denominator == 0 || (numerator == i32::MIN && denominator == -1) {
+                    self.fault = Some("ROM div unsupported operands".into());
+                    return;
+                }
+                self.set_reg(10, (numerator / denominator) as u32);
+                self.set_reg(11, (numerator % denominator) as u32);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_035c
+                if bus.rom_execute
+                    && bus.read_u16(0x4fc1_9746) == 0xbf65
+                    && bus
+                        .rom_executable
+                        .iter()
+                        .any(|&(a, b)| a <= 0x4fc1_96fe && b >= 0x4fc1_9748) =>
+            {
+                self.pc = 0x4fc1_9746;
+            }
+            0x4fc0_0374
+                if bus.rom_execute
+                    && bus.read_u32(0x4fc1_9436) == 0x1101_499c
+                    && bus
+                        .rom_executable
+                        .iter()
+                        .any(|&(a, b)| a <= 0x4fc1_9436 && b >= 0x4fc1_9490) =>
+            {
+                self.pc = 0x4fc1_9436;
+            }
+            0x4fc0_0270 => {
+                let (dest, src, len) = (self.reg(10), self.reg(11), self.reg(12));
+                let start = u64::from(dest);
+                let size = u64::from(len);
+                let dest_ok = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ]
+                .iter()
+                .any(|&(lo, hi)| start >= lo && start + size <= hi);
+                if len > 1024 * 1024
+                    || !dest_ok
+                    || !super::rom_printf::readable(src, len as usize)
+                    || !bus.mapped_backing_range(dest, size)
+                    || !bus.mapped_backing_range(src, size)
+                {
+                    self.fault = Some("ROM memmove invalid range".into());
+                    return;
+                }
+                let bytes: Vec<_> = (0..len).map(|i| bus.read_u8(src + i)).collect();
+                for (i, byte) in bytes.into_iter().enumerate() {
+                    bus.write_u8(dest + i as u32, byte);
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_02dc => {
+                let (start, byte, count) = (self.reg(10), self.reg(11) as u8, self.reg(12));
+                if count > 1024 * 1024 {
+                    self.fault = Some("ROM memchr exceeds limit".into());
+                    return;
+                }
+                let mut result = 0;
+                for offset in 0..count {
+                    let Some(address) = start.checked_add(offset) else {
+                        self.fault = Some("ROM memchr pointer overflow".into());
+                        return;
+                    };
+                    if !super::rom_printf::readable(address, 1)
+                        || !bus.mapped_backing_range(address, 1)
+                    {
+                        self.fault = Some("ROM memchr unmapped input".into());
+                        return;
+                    }
+                    if bus.read_u8(address) == byte {
+                        result = address;
+                        break;
+                    }
+                }
+                self.set_reg(10, result);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0390
+                if bus.rom_execute
+                    && bus.read_u32(0x4fc1_b388) == 0xc422_1141
+                    && bus
+                        .rom_executable
+                        .iter()
+                        .any(|&(a, b)| a <= 0x4fc1_b388 && b >= 0x4fc1_b498) =>
+            {
+                self.pc = 0x4fc1_b388;
+            }
+            // These rev0 ROM functions only store/retrieve the guest pointer;
+            // this does not implement guarded flash operations or callbacks.
+            0x4fc0_01f0 => {
+                bus.write_u32(0x4ff3_fff0, self.reg(10));
+                self.pc = self.reg(1);
+            }
+            0x4fc0_01f4 => {
+                self.set_reg(10, bus.read_u32(0x4ff3_fff0));
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0280 | 0x4fc0_0284 => {
+                let strcmp = self.pc == 0x4fc0_0280;
+                let (left, right) = (self.reg(10), self.reg(11));
+                let count = if strcmp { 65536 } else { self.reg(12) };
+                if count > 1024 * 1024 {
+                    self.fault = Some("ROM strncmp exceeds limit".into());
+                    return;
+                }
+                let mut result = 0i32;
+                let mut finished = false;
+                for offset in 0..count {
+                    let (Some(a), Some(b)) = (left.checked_add(offset), right.checked_add(offset))
+                    else {
+                        self.fault = Some("ROM strncmp pointer overflow".into());
+                        return;
+                    };
+                    if !super::rom_printf::readable(a, 1)
+                        || !super::rom_printf::readable(b, 1)
+                        || !bus.mapped_backing_range(a, 1)
+                        || !bus.mapped_backing_range(b, 1)
+                    {
+                        self.fault = Some("ROM strncmp unmapped input".into());
+                        return;
+                    }
+                    let (x, y) = (bus.read_u8(a), bus.read_u8(b));
+                    if x != y {
+                        result = i32::from(x) - i32::from(y);
+                        finished = true;
+                        break;
+                    }
+                    if x == 0 {
+                        finished = true;
+                        break;
+                    }
+                }
+                if strcmp && !finished {
+                    self.fault = Some("ROM strcmp exceeds limit".into());
+                    return;
+                }
+                self.set_reg(10, result as u32);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0278 => {
+                let (dest, src) = (self.reg(10), self.reg(11));
+                let value = match super::rom_printf::c_string(bus, src) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.fault = Some(format!("ROM strcpy: {error}"));
+                        return;
+                    }
+                };
+                let len = value.len() as u64 + 1;
+                let start = u64::from(dest);
+                let source = u64::from(src);
+                let valid = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ]
+                .iter()
+                .any(|&(lo, hi)| start >= lo && start + len <= hi);
+                if !valid
+                    || !bus.mapped_backing_range(dest, len)
+                    || (start < source + len && source < start + len)
+                {
+                    self.fault = Some("ROM strcpy invalid or overlapping destination".into());
+                    return;
+                }
+                for (offset, byte) in value.into_iter().chain([0]).enumerate() {
+                    bus.write_u8(dest + offset as u32, byte);
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0288 => match super::rom_printf::c_string(bus, self.reg(10)) {
+                Ok(value) => {
+                    self.set_reg(10, value.len() as u32);
+                    self.pc = self.reg(1);
+                }
+                Err(error) => self.fault = Some(format!("ROM strlen: {error}")),
+            },
+            // ESP32-P4 rev0 ROM copies the two pointed-to lock values into
+            // the ROM newlib recursive and ordinary lock objects, respectively.
+            0x4fc0_0264 => {
+                let (recursive, ordinary) = (self.reg(10), self.reg(11));
+                let backed_word = |addr: u32| {
+                    let start = u64::from(addr);
+                    addr & 3 == 0
+                        && [
+                            (0x3010_0000, 0x3010_2000),
+                            (0x4800_0000, 0x4a00_0000),
+                            (0x4ff0_0000, 0x5000_0000),
+                            (0x5010_8000, 0x5011_0000),
+                        ]
+                        .iter()
+                        .any(|&(lo, hi)| start >= lo && start + 4 <= hi)
+                };
+                if !backed_word(recursive) || !backed_word(ordinary) {
+                    self.fault = Some("invalid ROM newlib mutex pointer".into());
+                    return;
+                }
+                let recursive_value = bus.read_u32(recursive);
+                bus.write_u32(0x4ff3_ff8c, recursive_value);
+                let ordinary_value = bus.read_u32(ordinary);
+                bus.write_u32(0x4ff3_ff88, ordinary_value);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0234 => match super::rom_systimer::counter(bus, self.reg(10), self.reg(11)) {
+                Ok(value) => {
+                    self.set_reg(10, value as u32);
+                    self.set_reg(11, (value >> 32) as u32);
+                    self.pc = self.reg(1);
+                }
+                Err(error) => self.fault = Some(format!("ROM systimer: {error}")),
+            },
+            0x4fc0_0254 | 0x4fc0_0258 | 0x4fc0_025c | 0x4fc0_0260 => {
+                match super::rom_systimer::call(
+                    bus,
+                    self.pc,
+                    self.reg(10),
+                    self.reg(11),
+                    self.reg(12),
+                    self.reg(13),
+                ) {
+                    Ok(()) => self.pc = self.reg(1),
+                    Err(error) => self.fault = Some(format!("ROM systimer: {error}")),
+                }
+            }
+            // systimer HAL stores the two guest callbacks in the context;
+            // subsequent timer APIs must actually invoke them when needed.
+            0x4fc0_0230 => {
+                let (ctx, ops) = (self.reg(10), self.reg(11));
+                let ram = |addr: u32, len: u64| {
+                    let start = u64::from(addr);
+                    [
+                        (0x3010_0000, 0x3010_2000),
+                        (0x4800_0000, 0x4a00_0000),
+                        (0x4ff0_0000, 0x5000_0000),
+                        (0x5010_8000, 0x5011_0000),
+                    ]
+                    .iter()
+                    .any(|&(a, b)| start >= a && start + len <= b)
+                };
+                if ctx & 3 != 0 || ops & 3 != 0 || !ram(ctx, 12) || !ram(ops, 8) {
+                    self.fault = Some("invalid systimer context or callbacks pointer".into());
+                    return;
+                }
+                let first = bus.read_u32(ops);
+                let second = bus.read_u32(ops + 4);
+                let executable = |p: u32| {
+                    p & 1 == 0
+                        && [
+                            (0x3010_0000, 0x3010_2000),
+                            (0x4000_0000, 0x4100_0000),
+                            (0x4ff0_0000, 0x5000_0000),
+                        ]
+                        .iter()
+                        .any(|&(a, b)| p >= a && p < b)
+                };
+                if !executable(first) || !executable(second) {
+                    self.fault = Some("unsupported systimer callback address".into());
+                    return;
+                }
+                bus.write_u32(ctx + 4, first);
+                bus.write_u32(ctx + 8, second);
+                self.pc = self.reg(1);
+            }
+            // libgcc ffs: 1-based least-significant set bit, zero for zero.
+            0x4fc0_07a0 => {
+                let value = self.reg(10);
+                self.set_reg(
+                    10,
+                    if value == 0 {
+                        0
+                    } else {
+                        value.trailing_zeros() + 1
+                    },
+                );
+                self.pc = self.reg(1);
+            }
+            // rev0/rev1 libgcc helper; zero returns 32 in this ROM table.
+            0x4fc0_0770 => {
+                self.set_reg(10, self.reg(10).leading_zeros());
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0348 => {
+                if let Err(error) = super::rom_qsort::begin(self, bus) {
+                    self.fault = Some(format!("ROM qsort: {error}"));
+                }
+            }
+            // rev0/rev1 ROM writes priority into the selected CLIC control byte.
+            0x4fc0_05b8 => {
+                let (line, priority) = (self.reg(10), self.reg(11));
+                if line >= 32 || priority >= 8 {
+                    self.fault = Some(format!(
+                        "unsupported interrupt priority line={line} priority={priority}"
+                    ));
+                    return;
+                }
+                bus.write_u8(0x2080_1043 + 4 * line, (priority << 5) as u8);
+                self.pc = self.reg(1);
+            }
+            // rev0/rev1 ROM routes source to CLIC interrupt number + 16.
+            0x4fc0_05d0 => {
+                let (hart, source, line) = (self.reg(10), self.reg(11), self.reg(12));
+                if hart > 1 || source >= 136 || line >= 32 {
+                    self.fault = Some(format!(
+                        "unsupported interrupt route hart={hart} source={source} line={line}"
+                    ));
+                    return;
+                }
+                bus.write_u32(0x500d_6000 + hart * 0x800 + source * 4, line + 16);
+                self.pc = self.reg(1);
+            }
+            // rev0/rev1 ROM maps bit n to CLIC interrupt n+16 enable byte.
+            0x4fc0_05c0 | 0x4fc0_05c4 => {
+                let enabled = u8::from(self.pc == 0x4fc0_05c0);
+                let mask = self.reg(10);
+                for bit in 0..32 {
+                    if mask & (1 << bit) != 0 {
+                        bus.write_u8(0x2080_1041 + 4 * bit, enabled);
+                    }
+                }
+                self.pc = self.reg(1);
+            }
+            // ROM serial port 6 is USB Serial/JTAG. This fixture appends output
+            // synchronously, so there is no pending transmit queue to drain.
+            0x4fc0_0078 => {
+                if self.reg(10) != 6 {
+                    self.fault = Some(format!("unsupported ROM console port {}", self.reg(10)));
+                    return;
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0204 | 0x4fc0_0208 | 0x4fc0_020c | 0x4fc0_0214 | 0x4fc0_021c => {
+                match super::rom_wdt::call(
+                    bus,
+                    self.pc,
+                    self.reg(10),
+                    self.reg(11),
+                    self.reg(12),
+                    self.reg(13),
+                ) {
+                    Ok(()) => self.pc = self.reg(1),
+                    Err(error) => self.fault = Some(format!("ROM watchdog: {error}")),
+                }
+            }
+            // RV32 ABI passes and returns 64-bit integers in low/high pairs.
+            0x4fc0_0844 | 0x4fc0_0854 => {
+                let dividend = u64::from(self.reg(10)) | (u64::from(self.reg(11)) << 32);
+                let divisor = u64::from(self.reg(12)) | (u64::from(self.reg(13)) << 32);
+                if divisor == 0 {
+                    self.fault = Some("ROM unsigned 64-bit division by zero".into());
+                    return;
+                }
+                let result = if self.pc == 0x4fc0_0844 {
+                    dividend / divisor
+                } else {
+                    dividend % divisor
+                };
+                self.set_reg(10, result as u32);
+                self.set_reg(11, (result >> 32) as u32);
+                self.pc = self.reg(1);
+            }
+            // P4 PSRAM IDF fixture: MSPI3 in OPI DTR mode. Command setup and
+            // execution remain separate ROM calls and fail until modeled.
+            0x4fc0_0110 => {
+                let mode = (self.reg(10), self.reg(11));
+                bus.rom_psram_command = None;
+                bus.rom_spi_mode = None;
+                if mode != (3, 7) {
+                    self.fault = Some(format!("unsupported ROM SPI mode {mode:?}"));
+                    return;
+                }
+                bus.rom_spi_mode = Some(mode);
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0108 => match super::rom_psram::configure(bus, self.reg(10), self.reg(11)) {
+                Ok(()) => self.pc = self.reg(1),
+                Err(error) => self.fault = Some(format!("ROM PSRAM config: {error}")),
+            },
+            0x4fc0_010c => match super::rom_psram::start(
+                bus,
+                self.reg(10),
+                self.reg(11),
+                self.reg(12),
+                self.reg(13),
+                self.reg(14),
+            ) {
+                Ok(()) => self.pc = self.reg(1),
+                Err(error) => self.fault = Some(format!("ROM PSRAM start: {error}")),
+            },
+            // Format into a temporary buffer so invalid guest pointers/formats
+            // cannot produce misleading partial output.
+            0x4fc0_0024 => match super::rom_printf::format(self, bus) {
+                Ok(output) => {
+                    self.set_reg(10, output.len() as u32);
+                    bus.console_output.extend_from_slice(&output);
+                    self.pc = self.reg(1);
+                }
+                Err(error) => self.fault = Some(format!("unsupported ROM printf: {error}")),
+            },
+            // Advance the same functional clock used by the timer model, not
+            // host wall-clock time. Large delays are deliberately bounded.
+            0x4fc0_003c => {
+                let micros = self.reg(10);
+                if micros > 1_000_000 {
+                    self.fault = Some(format!("ROM delay too large: {micros} us"));
+                    return;
+                }
+                bus.timer_ticks = bus.timer_ticks.wrapping_add(u64::from(micros) * 360);
+                self.pc = self.reg(1);
+            }
+            // rtc_get_reset_reason: this fixture currently models a power-on reset.
+            0x4fc0_0018 => {
+                self.set_reg(10, 1);
+                self.pc = self.reg(1);
+            }
+            // ROM memset: allow only backed RAM, never MMIO or wrapped ranges.
+            0x4fc0_0268 => {
+                let start = self.reg(10) as u64;
+                let end = start + self.reg(12) as u64;
+                let in_ram = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ]
+                .iter()
+                .any(|&(a, b)| start >= a && end <= b);
+                if !in_ram || !bus.mapped_backing_range(start as u32, end - start) {
+                    self.fault = Some(format!(
+                        "ROM memset outside RAM: {start:#010x}..{end:#010x}"
+                    ));
+                    return;
+                }
+                for address in start..end {
+                    bus.write_u8(address as u32, self.reg(11) as u8);
+                }
+                self.pc = self.reg(1);
+            }
+            // ROM memcpy: retain source/destination and reject MMIO or overlap.
+            0x4fc0_026c => {
+                let dest = self.reg(10) as u64;
+                let src = self.reg(11) as u64;
+                let len = self.reg(12) as u64;
+                let ram = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ];
+                let dest_ok = ram.iter().any(|&(a, b)| dest >= a && dest + len <= b);
+                let src_ok = ram
+                    .iter()
+                    .chain([(0x4000_0000, 0x4100_0000)].iter())
+                    .any(|&(a, b)| src >= a && src + len <= b);
+                if !dest_ok
+                    || !src_ok
+                    || !bus.mapped_backing_range(dest as u32, len)
+                    || !bus.mapped_backing_range(src as u32, len)
+                    || (len != 0 && dest < src + len && src < dest + len)
+                {
+                    self.fault = Some(format!(
+                        "ROM memcpy unsupported: dst={dest:#010x} src={src:#010x} len={len}"
+                    ));
+                    return;
+                }
+                for offset in 0..len {
+                    let value = bus.read_u8((src + offset) as u32);
+                    bus.write_u8((dest + offset) as u32, value);
+                }
+                self.pc = self.reg(1);
+            }
+            0x4fc0_0274 => {
+                let left = self.reg(10) as u64;
+                let right = self.reg(11) as u64;
+                let len = self.reg(12) as u64;
+                let regions = [
+                    (0x3010_0000, 0x3010_2000),
+                    (0x4000_0000, 0x4100_0000),
+                    (0x4800_0000, 0x4a00_0000),
+                    (0x4ff0_0000, 0x5000_0000),
+                    (0x5010_8000, 0x5011_0000),
+                ];
+                let valid =
+                    |start: u64| regions.iter().any(|&(a, b)| start >= a && start + len <= b);
+                if len > 1024 * 1024
+                    || !valid(left)
+                    || !valid(right)
+                    || !bus.mapped_backing_range(left as u32, len)
+                    || !bus.mapped_backing_range(right as u32, len)
+                {
+                    self.fault = Some(format!(
+                        "ROM memcmp unsupported: left={left:#010x} right={right:#010x} len={len}"
+                    ));
+                    return;
+                }
+                let mut difference = 0i32;
+                for offset in 0..len {
+                    difference = i32::from(bus.read_u8((left + offset) as u32))
+                        - i32::from(bus.read_u8((right + offset) as u32));
+                    if difference != 0 {
+                        break;
+                    }
+                }
+                self.set_reg(10, difference as u32);
+                self.pc = self.reg(1);
+            }
+            // IDF 5.4 P4 cache_hal_init_l2_cache profile. The bus is coherent;
+            // this tracks configuration, not real cache contents or timing.
+            0x4fc0_03d4 => {
+                let mode = (self.reg(10), self.reg(11), self.reg(12));
+                if mode != (9, 8, 3) {
+                    self.fault = Some(format!("unsupported L2 cache mode {mode:?}"));
+                    return;
+                }
+                bus.cache_l2_mode = Some(mode);
+                self.pc = self.reg(1);
+            }
+            // Cache_Invalidate_All(CACHE_MAP_L2_CACHE), after the above setup.
+            0x4fc0_0404 => {
+                if self.reg(10) != 32 || bus.cache_l2_mode.is_none() {
+                    self.fault = Some(format!(
+                        "unsupported cache invalidate map {:#x}",
+                        self.reg(10)
+                    ));
+                    return;
+                }
+                bus.cache_l2_invalidations = bus.cache_l2_invalidations.saturating_add(1);
+                self.set_reg(10, 0);
+                self.pc = self.reg(1);
+            }
             // nih_rom_putc
             0x4fc0_0054 => {
                 let ch = self.reg(10) as u8; // a0
                 bus.console_output.push(ch);
                 self.pc = self.reg(1);
             }
-            // nih_rom_get_cpu_ticks
+            // ets_get_cpu_frequency / nih_rom_get_cpu_ticks (ticks per us).
             0x4fc0_0040 => {
-                self.set_reg(10, bus.timer_ticks as u32);
+                self.set_reg(10, bus.rom_cpu_mhz);
                 self.pc = self.reg(1);
             }
-            // nih_rom_set_cpu_ticks
+            // ets_update_cpu_frequency / nih_rom_set_cpu_ticks.
             0x4fc0_0044 => {
-                bus.timer_ticks = self.reg(10) as u64;
+                bus.rom_cpu_mhz = self.reg(10);
                 self.pc = self.reg(1);
             }
             // nih_rom_set_cpu1_entry

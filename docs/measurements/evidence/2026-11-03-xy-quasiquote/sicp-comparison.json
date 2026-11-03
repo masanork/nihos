@@ -1,0 +1,40 @@
+{
+  "groups": 22,
+  "changed_groups": [],
+  "added_groups": [],
+  "coverage_before": {
+    "all_original_expression_steps": 1,
+    "sampled": 123,
+    "not_tested": 232
+  },
+  "coverage_after": {
+    "all_original_expression_steps": 1,
+    "sampled": 123,
+    "not_tested": 232
+  },
+  "chapters_after": {
+    "1": {
+      "all_original_expression_steps": 1,
+      "sampled": 45
+    },
+    "2": {
+      "sampled": 42,
+      "not_tested": 55
+    },
+    "3": {
+      "sampled": 27,
+      "not_tested": 55
+    },
+    "4": {
+      "sampled": 7,
+      "not_tested": 72
+    },
+    "5": {
+      "sampled": 2,
+      "not_tested": 50
+    }
+  },
+  "before_runtime_sha256": "ea36f7253613cb3dc8795e20b85f5a99d0629202e4a92e43b28a159415831359",
+  "after_runtime_sha256": "7c48f9089de3387f42afd255bfc2a3c4f00dde8ec57a2e99a54eceb06a1d7584",
+  "scope": "host-only selected finite observations; compares complete parsed JSON in each group"
+}

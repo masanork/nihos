@@ -3,7 +3,18 @@
 pub mod bus;
 pub mod cpu;
 pub mod elf;
+#[cfg(test)]
+mod esp_image;
+#[cfg(test)]
+mod rom_flash;
+mod rom_printf;
+mod rom_psram;
+mod rom_qsort;
+mod rom_systimer;
+mod rom_wdt;
 mod tab5_i2c;
+#[cfg(test)]
+mod usb_dwc;
 
 use bus::{Bus, FB_HEIGHT, FB_WIDTH};
 use cpu::Cpu;
@@ -31,6 +42,21 @@ pub struct Emulator {
 }
 
 impl Emulator {
+    #[cfg(test)]
+    pub(crate) fn empty_for_display_test() -> Self {
+        Self {
+            bus: Bus::new(),
+            cpu: Cpu::new(bus::SRAM_BASE),
+            cpu1: None,
+            elf_path: PathBuf::new(),
+            dict_path: None,
+            paused: false,
+            total_steps: 0,
+            mips: 0.0,
+            gc_probe: None,
+        }
+    }
+
     pub fn new(
         elf_path: impl AsRef<Path>,
         dict_path: Option<impl AsRef<Path>>,
@@ -158,7 +184,7 @@ impl Emulator {
             let x = i % FB_WIDTH;
             let y = i / FB_WIDTH;
             let physical = ((FB_WIDTH - 1 - x) * FB_HEIGHT + y) * 2;
-            let p565 = self.bus.scanout.as_ref().map_or(0, |frame| {
+            let p565 = self.bus.scanout().map_or(0, |frame| {
                 u16::from_le_bytes([frame[physical], frame[physical + 1]])
             });
             // Extract RGB565 components and scale to 8-bit
@@ -193,10 +219,243 @@ mod tests {
         let mut bus = Bus::new();
         bus.psram[0] = 17;
         bus.write_u8(bus::FB_BASE, 42);
-        assert_eq!(bus.framebuffer_byte(0), 42);
+        assert_eq!(bus.framebuffer_byte(0), Some(42));
         bus.mmu_table[3] = 7;
         bus.psram[7 * 65536] = 99;
-        assert_eq!(bus.framebuffer_byte(0), 99);
+        assert_eq!(bus.framebuffer_byte(0), Some(99));
+    }
+
+    #[test]
+    fn uncached_internal_sram_alias_shares_data_and_is_bounded() {
+        let mut bus = Bus::new();
+        let cached = bus::SRAM_BASE + 0x13c80;
+        let alias = bus::SRAM_UNCACHED_BASE + 0x13c80;
+        bus.write_u32(alias + 1, 0x1234_5678);
+        assert_eq!(bus.read_u32(cached + 1), 0x1234_5678);
+        bus.write_u16(cached + 2, 0xabcd);
+        assert_eq!(bus.read_u32(alias + 1), 0x12ab_cd78);
+        let last = bus::SRAM_UNCACHED_BASE + bus::SRAM_UNCACHED_SIZE as u32 - 1;
+        bus.write_u16(last, 0xbbaa);
+        assert_eq!(bus.read_u8(last), 0xaa);
+        assert_eq!(bus.read_u8(last + 1), 0);
+        assert_eq!(
+            bus.read_u8(bus::SRAM_BASE + bus::SRAM_UNCACHED_SIZE as u32),
+            0
+        );
+    }
+
+    #[test]
+    fn dma_reads_descriptors_written_through_uncached_alias() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_3c80;
+        let alias = desc + 0x4000_0000;
+        bus.write_u32(bus::FB_BASE, 0xf800_f800);
+        bus.write_u32(bus::FB_BASE + 4, 0xf800_f800);
+        bus.write_u32(alias, bus::FB_BASE);
+        bus.write_u32(alias + 8, 0x5010_5000);
+        bus.write_u32(alias + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(alias + 32, 0x310);
+        bus.write_u32(alias + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!(bus.scanout_frames, 1);
+        assert_eq!(&bus.scanout().unwrap()[..4], &[0, 0xf8, 0, 0xf8]);
+    }
+
+    #[test]
+    fn identical_dma_preserves_completion_but_does_not_change_pixels_revision() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        bus.write_u32(bus::FB_BASE, 0xf800_f800);
+        bus.write_u32(bus::FB_BASE + 4, 0xf800_f800);
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (1, 1));
+        bus.timer_ticks += 1_000_000;
+        assert_eq!(bus.read_u32(0x5008_1188), 2);
+        bus.write_u32(0x5008_1198, 2);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (2, 1));
+        assert_eq!(bus.read_u32(0x5008_1188), 0);
+        bus.timer_ticks += 1_000_000;
+        assert_eq!(bus.read_u32(0x5008_1188), 2);
+        bus.write_u32(bus::FB_BASE, 0x001f_001f);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 2));
+        assert_eq!(&bus.scanout().unwrap()[..4], &[0x1f, 0, 0x1f, 0]);
+        bus.write_u32(0x5008_1198, 2);
+        bus.write_u32(0x5008_e380, 3);
+        bus.write_u32(0x5008_e37c, 0);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.timer_ticks += 1_000_000;
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 2));
+        assert_eq!(bus.read_u32(0x5008_1188), 0);
+    }
+
+    #[test]
+    fn nonfixed_dma_replaces_cached_fixed_pattern() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        let offset = (bus::FB_BASE - bus::PSRAM_BASE) as usize;
+        for pixel in bus.psram[offset..offset + bus::FB_SIZE].chunks_exact_mut(2) {
+            pixel.copy_from_slice(&[0xe0, 0x07]);
+        }
+        bus.write_u32(bus::FB_BASE, 0x001f_001f);
+        bus.write_u32(bus::FB_BASE + 4, 0x001f_001f);
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.write_u32(desc + 32, 0x300);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!(&bus.scanout().unwrap()[8..10], &[0xe0, 0x07]);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 3));
+        assert_eq!(&bus.scanout().unwrap()[8..10], &[0x1f, 0]);
+    }
+
+    #[test]
+    fn nonfixed_dma_defers_publication_until_all_pages_validate() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        let src = bus::FB_BASE + 1;
+        let offset = (src - bus::PSRAM_BASE) as usize;
+        bus.psram[offset..offset + bus::FB_SIZE].fill(0x55);
+        bus.write_u32(desc, src);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x300);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (2, 1));
+        bus.psram[offset + bus::FB_SIZE - 1] = 0xaa;
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 2));
+        assert_eq!(bus.scanout().unwrap()[bus::FB_SIZE - 1], 0xaa);
+        let previous = bus.scanout().map(<[u8]>::to_vec);
+        bus.psram[offset] = 0xcc;
+        bus.write_u32(0x5008_e380, 4);
+        bus.write_u32(0x5008_e37c, 0);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.timer_ticks += 1_000_000;
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 2));
+        assert_eq!(bus.scanout(), previous.as_deref());
+        assert_eq!(bus.read_u32(0x5008_1188), 0);
+    }
+
+    #[test]
+    fn dma_rejects_suspended_cache_for_fixed_and_nonfixed_sources() {
+        for control in [0x300, 0x310] {
+            let mut bus = Bus::new();
+            let desc = 0x4ff1_0000;
+            bus.write_u32(desc, bus::FB_BASE);
+            bus.write_u32(desc + 8, 0x5010_5000);
+            bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+            bus.write_u32(desc + 32, control);
+            bus.write_u32(desc + 36, 0xc000_0000);
+            bus.write_u32(0x5008_1128, desc);
+            bus.write_u32(0x5008_1018, 0x101);
+            assert_eq!((bus.scanout_frames, bus.scanout_revision()), (1, 1));
+            bus.timer_ticks += 1_000_000;
+            assert_eq!(bus.read_u32(0x5008_1188), 2);
+            bus.write_u32(0x5008_1198, 2);
+            bus.psram[(bus::FB_BASE - bus::PSRAM_BASE) as usize] = 0x42;
+            bus.cache_l2_suspended = true;
+            bus.write_u32(0x5008_1018, 0x101);
+            bus.timer_ticks += 1_000_000;
+            assert_eq!((bus.scanout_frames, bus.scanout_revision()), (1, 1));
+            assert_eq!(bus.scanout().unwrap()[0], 0);
+            assert_eq!(bus.read_u32(0x5008_1188), 0);
+            bus.cache_l2_suspended = false;
+            bus.write_u32(0x5008_1018, 0x101);
+            assert_eq!((bus.scanout_frames, bus.scanout_revision()), (2, 2));
+            assert_eq!(bus.scanout().unwrap()[0], 0x42);
+            bus.timer_ticks += 1_000_000;
+            assert_eq!(bus.read_u32(0x5008_1188), 2);
+        }
+    }
+
+    #[test]
+    fn fixed_dma_uses_current_psram_mapping_before_reusing_frame() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.write_u32(0x5008_e380, 3);
+        bus.write_u32(0x5008_e37c, 0xc00 | 7);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (2, 1));
+        bus.psram[7 * 65536] = 0x33;
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (3, 2));
+        assert_eq!(bus.scanout().unwrap()[0], 0x33);
+    }
+
+    #[test]
+    #[ignore = "manual fixed-pattern DMA microbenchmark"]
+    fn benchmark_duplicate_fixed_dma() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        bus.write_u32(bus::FB_BASE, 0xf800_f800);
+        bus.write_u32(bus::FB_BASE + 4, 0xf800_f800);
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        for _ in 0..3 {
+            let start = std::time::Instant::now();
+            for _ in 0..20 {
+                bus.write_u32(0x5008_1018, 0x101);
+            }
+            eprintln!("20 duplicate fixed DMA transfers: {:?}", start.elapsed());
+        }
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (61, 1));
+    }
+
+    #[test]
+    #[ignore = "manual non-fixed DMA microbenchmark"]
+    fn benchmark_duplicate_nonfixed_dma() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        let offset = (bus::FB_BASE - bus::PSRAM_BASE) as usize;
+        bus.psram[offset..offset + bus::FB_SIZE].fill(0xa5);
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x300);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        for _ in 0..3 {
+            let start = std::time::Instant::now();
+            for _ in 0..20 {
+                bus.write_u32(0x5008_1018, 0x101);
+            }
+            eprintln!(
+                "20 duplicate non-fixed DMA transfers: {:?}",
+                start.elapsed()
+            );
+        }
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (61, 1));
     }
 
     #[test]
@@ -209,18 +468,83 @@ mod tests {
         bus.write_u32(desc + 32, 3 << 8);
         bus.write_u32(0x5008_1128, desc);
         bus.write_u32(0x5008_1018, 0x101);
-        assert!(bus.scanout.is_none());
+        assert!(bus.scanout().is_none());
         assert_eq!(bus.read_u32(0x5008_1188), 0);
         bus.write_u8(bus::FB_BASE, 0xab);
         bus.write_u32(desc + 36, 0xc000_0000);
         bus.write_u32(0x5008_1018, 0x101);
-        assert_eq!(bus.scanout.as_ref().unwrap()[0], 0xab);
+        assert_eq!(bus.scanout().unwrap()[0], 0xab);
         bus.timer_ticks += 1_000_000;
         assert_eq!(bus.read_u32(0x5008_1188), 2);
         bus.write_u8(bus::FB_BASE, 0xcd);
-        assert_eq!(bus.scanout.as_ref().unwrap()[0], 0xab);
+        assert_eq!(bus.scanout().unwrap()[0], 0xab);
         bus.write_u32(0x5008_1198, 2);
         assert_eq!(bus.read_u32(0x5008_1188), 0);
+        bus.write_u32(0x5008_e380, 4);
+        bus.write_u32(0x5008_e37c, 0);
+        let previous_frames = bus.scanout_frames;
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!(bus.scanout_frames, previous_frames);
+        assert_eq!(bus.scanout().unwrap()[0], 0xab);
+        assert_eq!(bus.read_u32(0x5008_1188), 0);
+    }
+
+    #[test]
+    fn dma_software_reset_clears_modeled_state_and_self_clears() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1018, 0x101);
+        bus.timer_ticks += 1_000_000;
+        assert_eq!(bus.read_u32(0x5008_1188), 2);
+        let frame = bus.scanout().unwrap().to_vec();
+        bus.write_u32(0x5008_1058, 0);
+        assert_eq!(bus.read_u32(0x5008_1128), desc);
+        bus.write_u32(0x5008_1058, 1);
+        assert_eq!(bus.read_u32(0x5008_1058) & 1, 0);
+        assert_eq!(bus.read_u32(0x5008_1128), 0);
+        assert_eq!(bus.read_u32(0x5008_1188), 0);
+        assert_eq!(bus.read_u32(0x500a_0814), 0);
+        assert_eq!(bus.scanout(), Some(frame.as_slice()));
+        assert_eq!((bus.scanout_frames, bus.scanout_revision()), (1, 1));
+    }
+
+    #[test]
+    fn dma_global_status_and_interrupt_follow_masks_and_matrix_route() {
+        let mut bus = Bus::new();
+        let desc = 0x4ff1_0000;
+        bus.write_u32(desc, bus::FB_BASE);
+        bus.write_u32(desc + 8, 0x5010_5000);
+        bus.write_u32(desc + 16, (bus::FB_SIZE / 8 - 1) as u32);
+        bus.write_u32(desc + 32, 0x310);
+        bus.write_u32(desc + 36, 0xc000_0000);
+        bus.write_u32(0x5008_1128, desc);
+        bus.write_u32(0x5008_1010, 3);
+        bus.write_u32(0x5008_1190, 2);
+        bus.write_u8(0x2080_1000 + 23 * 4 + 1, 1);
+        bus.write_u32(0x5008_1018, 0x101);
+        assert_eq!(bus.read_u32(0x5008_1030), 0);
+        bus.timer_ticks += 1_000_000;
+        assert_eq!(bus.read_u32(0x5008_1030), 1);
+        assert_eq!(bus.pending_irq(0), None); // not routed
+        bus.write_u32(0x500d_6000 + 24 * 4, 23);
+        assert_eq!(bus.pending_irq(0), Some(23));
+        assert_eq!(bus.pending_irq(1), None);
+        bus.write_u32(0x5008_1010, 1); // global interrupt disabled
+        assert_eq!(bus.pending_irq(0), None);
+        bus.write_u32(0x5008_1010, 3);
+        bus.write_u32(0x5008_1190, 0); // channel propagation disabled
+        assert_eq!(bus.read_u32(0x5008_1030), 0);
+        assert_eq!(bus.pending_irq(0), None);
+        bus.write_u32(0x5008_1190, 2);
+        bus.write_u32(0x5008_1198, 2);
+        assert_eq!(bus.read_u32(0x5008_1030), 0);
+        assert_eq!(bus.pending_irq(0), None);
     }
 
     #[test]
@@ -232,6 +556,49 @@ mod tests {
         bus.write_u32(0x500e_0024, 2);
         assert_eq!(bus.read_u32(0x500e_003c) & 3, 0);
         bus.write_u32(0x500e_0028, 3);
+        assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
+    }
+
+    #[test]
+    fn gpio_bitbang_reaches_both_board_expanders() {
+        fn lines(bus: &mut Bus, scl: bool, sda: bool) {
+            bus.write_u32(if scl { 0x500e_0034 } else { 0x500e_0030 }, 1);
+            bus.write_u32(if sda { 0x500e_0028 } else { 0x500e_0024 }, 1 << 31);
+        }
+        fn start(bus: &mut Bus) {
+            lines(bus, true, true);
+            lines(bus, true, false);
+            lines(bus, false, false);
+        }
+        fn stop(bus: &mut Bus) {
+            lines(bus, false, false);
+            lines(bus, true, false);
+            lines(bus, true, true);
+        }
+        fn byte(bus: &mut Bus, value: u8) -> bool {
+            for bit in (0..8).rev() {
+                let high = value & (1 << bit) != 0;
+                lines(bus, false, high);
+                lines(bus, true, high);
+                lines(bus, false, high);
+            }
+            lines(bus, false, true);
+            lines(bus, true, true);
+            let acknowledged = bus.read_u32(0x500e_003c) & (1 << 31) == 0;
+            lines(bus, false, true);
+            acknowledged
+        }
+        let mut bus = Bus::new();
+        for address in [0x43, 0x44] {
+            start(&mut bus);
+            assert!(byte(&mut bus, address << 1));
+            assert!(byte(&mut bus, 5));
+            assert!(byte(&mut bus, address));
+            stop(&mut bus);
+        }
+        start(&mut bus);
+        assert!(!byte(&mut bus, 0x45 << 1));
+        stop(&mut bus);
         assert_eq!(bus.read_u32(0x500e_003c) & 3, 3);
     }
 
@@ -290,6 +657,35 @@ mod tests {
     }
 
     #[test]
+    fn pending_interrupt_does_not_reenter_before_mret() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4ff0_0100);
+        cpu.mstatus |= 8;
+        cpu.mtvt = 0x4ff0_0200;
+        bus.write_u32(cpu.mtvt + 17 * 4, 0x4ff0_0400);
+        bus.write_u32(0x4ff0_0400, 0x3004_6073); // csrsi mstatus, 8
+        bus.write_u32(0x4ff0_0404, 0x0070_0513); // addi a0, zero, 7
+        bus.write_u32(0x4ff0_0408, 0x3020_0073); // mret
+        bus.write_u32(0x500d_6000 + 79 * 4, 17);
+        bus.write_u8(0x2080_1000 + 17 * 4 + 1, 1);
+        bus.write_u8(0x2080_1000 + 17 * 4 + 2, 1);
+        bus.write_u32(0x500e_5010, 1);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0404);
+        assert_ne!(cpu.mstatus & 8, 0);
+        cpu.instructions_executed = 64;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 7);
+        assert_eq!(cpu.mepc, 0x4ff0_0100);
+        cpu.instructions_executed = 128;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0100);
+        cpu.instructions_executed = 192;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0404);
+    }
+
+    #[test]
     fn unsupported_instruction_and_rom_call_halt_with_address() {
         let mut bus = Bus::new();
         let mut cpu = Cpu::new(0x4ff0_1000);
@@ -299,9 +695,1100 @@ mod tests {
         let mut compressed = Cpu::new(0x4ff0_2000);
         bus.write_u16(compressed.pc, 0x2000); // unsupported C.FLD
         assert!(!compressed.step(&mut bus));
+        let mut illegal = Cpu::new(0x4ff0_3000);
+        bus.write_u16(illegal.pc, 0);
+        assert!(!illegal.step(&mut bus));
+        assert!(illegal.fault.unwrap().contains("0x4ff03000"));
         let mut rom = Cpu::new(0x4fc0_1234);
         assert!(!rom.step(&mut bus));
         assert!(rom.fault.as_deref().unwrap().contains("0x4fc01234"));
+    }
+
+    #[test]
+    fn fcvt_s_wu_rounds_all_modes_and_accumulates_inexact() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        bus.write_u32(pc, 0xd017_f7d3); // fcvt.s.wu f15, x15, dynamic
+        for (value, mode, expected, inexact) in [
+            (0, 0, 0.0f32, false),
+            (16_777_216, 0, 16_777_216.0, false),
+            (16_777_217, 0, 16_777_216.0, true),
+            (16_777_219, 0, 16_777_220.0, true),
+            (16_777_217, 1, 16_777_216.0, true),
+            (16_777_217, 2, 16_777_216.0, true),
+            (16_777_217, 3, 16_777_218.0, true),
+            (16_777_217, 4, 16_777_218.0, true),
+            (u32::MAX, 1, 4_294_967_040.0, true),
+            (u32::MAX, 3, 4_294_967_296.0, true),
+        ] {
+            let mut cpu = Cpu::new(pc);
+            cpu.x[15] = value;
+            cpu.fcsr = mode << 5 | 0x10;
+            assert!(cpu.step(&mut bus));
+            assert_eq!(
+                cpu.f[15].to_bits(),
+                expected.to_bits(),
+                "value={value} mode={mode}"
+            );
+            assert_eq!(cpu.fcsr, mode << 5 | 0x10 | u32::from(inexact));
+        }
+        let mut invalid = Cpu::new(pc);
+        invalid.x[15] = 42;
+        invalid.f[15] = 3.0;
+        invalid.fcsr = 5 << 5;
+        assert!(!invalid.step(&mut bus));
+        assert_eq!(invalid.f[15], 3.0);
+        assert_eq!(invalid.fcsr, 5 << 5);
+        assert!(invalid.fault.unwrap().contains("rounding mode"));
+    }
+
+    #[test]
+    fn floating_point_csrs_share_rounding_and_flag_bits() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        bus.write_u32(pc, 0x0030_9073); // csrrw x0, fcsr, x1
+        bus.write_u32(pc + 4, 0x0010_2173); // csrrs x2, fflags, x0
+        bus.write_u32(pc + 8, 0x0020_21f3); // csrrs x3, frm, x0
+        let mut cpu = Cpu::new(pc);
+        cpu.x[1] = 0xffff_ffff;
+        assert!(cpu.step(&mut bus));
+        assert!(cpu.step(&mut bus));
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.fcsr, 0xff);
+        assert_eq!(cpu.x[2], 0x1f);
+        assert_eq!(cpu.x[3], 7);
+    }
+
+    #[test]
+    fn fcvt_s_wu_nearest_matches_host_conversion_corpus() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        bus.write_u32(pc, 0xd017_f7d3);
+        let mut cpu = Cpu::new(pc);
+        let mut value = 0x1234_5678u32;
+        for _ in 0..10_000 {
+            value = value.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            cpu.pc = pc;
+            cpu.x[15] = value;
+            cpu.fcsr = 0;
+            assert!(cpu.step(&mut bus));
+            let expected = value as f32;
+            assert_eq!(cpu.f[15].to_bits(), expected.to_bits(), "value={value}");
+            assert_eq!(cpu.fcsr, u32::from(expected as u64 != u64::from(value)));
+        }
+    }
+
+    #[test]
+    fn fcvt_wu_s_rounding_clipping_and_sticky_flags() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        // fcvt.wu.s x3, f1, dynamic
+        bus.write_u32(
+            pc,
+            (0x60 << 25) | (1 << 20) | (1 << 15) | (7 << 12) | (3 << 7) | 0x53,
+        );
+        for (source, mode, expected, flags) in [
+            (0x0000_0000, 0, 0, 0),
+            (0x8000_0000, 0, 0, 0),
+            (0x3fc0_0000, 0, 2, 1), // 1.5, ties to even
+            (0x4020_0000, 0, 2, 1), // 2.5, ties to even
+            (0x4020_0000, 1, 2, 1),
+            (0x4020_0000, 2, 2, 1),
+            (0x4020_0000, 3, 3, 1),
+            (0x4020_0000, 4, 3, 1),
+            (0xbf00_0000, 0, 0, 1), // -0.5 rounds to zero
+            (0xbf00_0000, 2, 0, 16),
+            (0xbf00_0000, 4, 0, 16),
+            (0xbf80_0000, 1, 0, 16),
+            (0x4f7f_ffff, 0, 0xffff_ff00, 0),
+            (0x4f80_0000, 0, u32::MAX, 16),
+            (0x7f80_0000, 0, u32::MAX, 16),
+            (0xff80_0000, 0, 0, 16),
+            (0x7fc0_1234, 0, u32::MAX, 16),
+            (0xff80_1234, 0, u32::MAX, 16),
+        ] {
+            let mut cpu = Cpu::new(pc);
+            cpu.f[1] = f32::from_bits(source);
+            cpu.fcsr = (mode << 5) | 8;
+            assert!(cpu.step(&mut bus));
+            assert_eq!(cpu.x[3], expected, "source={source:x} mode={mode}");
+            assert_eq!(cpu.fcsr, (mode << 5) | 8 | flags);
+        }
+        let mut cpu = Cpu::new(pc);
+        cpu.f[1] = 2.5;
+        cpu.x[3] = 17;
+        cpu.fcsr = 5 << 5;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(cpu.x[3], 17);
+        assert_eq!(cpu.fcsr, 5 << 5);
+    }
+
+    #[test]
+    fn fdiv_s_rounding_nan_and_exception_flags() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        // fdiv.s f3, f1, f2, dynamic
+        bus.write_u32(
+            pc,
+            (0x0c << 25) | (2 << 20) | (1 << 15) | (7 << 12) | (3 << 7) | 0x53,
+        );
+        for (left, right, mode, expected, flags) in [
+            (0x3f80_0000, 0x4000_0000, 0, 0x3f00_0000, 0),
+            (0x3f80_0000, 0x4040_0000, 0, 0x3eaa_aaab, 1),
+            (0x3f80_0000, 0x4040_0000, 1, 0x3eaa_aaaa, 1),
+            (0x3f80_0000, 0x4040_0000, 2, 0x3eaa_aaaa, 1),
+            (0x3f80_0000, 0x4040_0000, 3, 0x3eaa_aaab, 1),
+            (0x3f80_0000, 0x4040_0000, 4, 0x3eaa_aaab, 1),
+            (0xbf80_0000, 0x4040_0000, 2, 0xbeaa_aaab, 1),
+            (0xbf80_0000, 0x4040_0000, 3, 0xbeaa_aaaa, 1),
+            (0x8000_0000, 0x4000_0000, 0, 0x8000_0000, 0),
+            (0x3f80_0000, 0x0000_0000, 0, 0x7f80_0000, 8),
+            (0x0000_0000, 0x0000_0000, 0, 0x7fc0_0000, 16),
+            (0x7fc0_1234, 0x3f80_0000, 0, 0x7fc0_0000, 0),
+            (0x7f80_1234, 0x3f80_0000, 0, 0x7fc0_0000, 16),
+            (0x7f7f_ffff, 0x3f00_0000, 0, 0x7f80_0000, 5),
+            (0x0000_0001, 0x4000_0000, 0, 0x0000_0000, 3),
+            (0x0000_0001, 0x4000_0000, 3, 0x0000_0001, 3),
+            (0x0000_0001, 0x4000_0000, 4, 0x0000_0001, 3),
+            (0x0080_0000, 0x4000_0000, 0, 0x0040_0000, 0),
+        ] {
+            let mut cpu = Cpu::new(pc);
+            cpu.f[1] = f32::from_bits(left);
+            cpu.f[2] = f32::from_bits(right);
+            cpu.fcsr = (mode << 5) | 0x08;
+            assert!(cpu.step(&mut bus));
+            assert_eq!(
+                cpu.f[3].to_bits(),
+                expected,
+                "{left:x}/{right:x} mode={mode}"
+            );
+            assert_eq!(cpu.fcsr, (mode << 5) | 0x08 | flags);
+        }
+        let mut invalid = Cpu::new(pc);
+        invalid.f[3] = 7.0;
+        invalid.fcsr = 6 << 5;
+        assert!(!invalid.step(&mut bus));
+        assert_eq!(invalid.f[3], 7.0);
+        assert_eq!(invalid.fcsr, 6 << 5);
+    }
+
+    #[test]
+    fn flw_preserves_bits_and_does_not_publish_faulted_load() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        bus.write_u32(pc, (0xffc << 20) | (1 << 15) | (2 << 12) | (3 << 7) | 0x07);
+        bus.write_u32(pc + 16, 0x7f80_1234);
+        let mut cpu = Cpu::new(pc);
+        cpu.x[1] = pc + 20;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.f[3].to_bits(), 0x7f80_1234);
+        bus.write_u32(0x5008_e380, 3);
+        bus.write_u32(0x5008_e37c, 0);
+        cpu.pc = pc;
+        cpu.x[1] = bus::FB_BASE + 4;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(cpu.f[3].to_bits(), 0x7f80_1234);
+        assert!(cpu.fault.as_deref().unwrap().contains("PSRAM"));
+    }
+
+    #[test]
+    fn fmul_s_handles_rounding_and_special_values() {
+        let mut bus = Bus::new();
+        let pc = 0x4ff0_1000;
+        bus.write_u32(
+            pc,
+            (0x08 << 25) | (2 << 20) | (1 << 15) | (7 << 12) | (3 << 7) | 0x53,
+        );
+        for (left, right, mode, expected, flags) in [
+            (0x3fc0_0000, 0x4000_0000, 0, 0x4040_0000, 0),
+            (0x0000_0000, 0x7f80_0000, 0, 0x7fc0_0000, 16),
+            (0x7f80_1234, 0x3f80_0000, 0, 0x7fc0_0000, 16),
+            (0x7f7f_ffff, 0x4000_0000, 0, 0x7f80_0000, 5),
+            (0x0000_0001, 0x3f00_0000, 0, 0x0000_0000, 3),
+            (0x0000_0001, 0x3f00_0000, 3, 0x0000_0001, 3),
+            (0x0000_0001, 0x3f00_0000, 4, 0x0000_0001, 3),
+        ] {
+            let mut cpu = Cpu::new(pc);
+            cpu.f[1] = f32::from_bits(left);
+            cpu.f[2] = f32::from_bits(right);
+            cpu.fcsr = mode << 5;
+            assert!(cpu.step(&mut bus));
+            assert_eq!(cpu.f[3].to_bits(), expected);
+            assert_eq!(cpu.fcsr, (mode << 5) | flags);
+        }
+    }
+
+    #[test]
+    fn rom_reset_reason_and_memset_are_bounded() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0018);
+        cpu.x[1] = 0x4ff0_0100;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 1);
+        assert_eq!(cpu.pc, 0x4ff0_0100);
+        cpu.pc = 0x4fc0_0268;
+        cpu.x[10] = 0x4ff0_0001;
+        cpu.x[11] = 0x1234;
+        cpu.x[12] = 3;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(&bus.sram[..5], &[0, 0x34, 0x34, 0x34, 0]);
+        assert_eq!(cpu.x[10], 0x4ff0_0001);
+        cpu.pc = 0x4fc0_0268;
+        cpu.x[10] = 0x4fff_ffff;
+        cpu.x[12] = 2;
+        assert!(!cpu.step(&mut bus));
+        assert!(cpu.fault.as_ref().unwrap().contains("outside RAM"));
+    }
+
+    #[test]
+    fn rom_clock_frequency_and_delay_do_not_conflate_time_and_frequency() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0044);
+        cpu.instructions_executed = 1;
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 360;
+        bus.timer_ticks = 123;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.timer_ticks, 123);
+        cpu.pc = 0x4fc0_0040;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 360);
+        cpu.pc = 0x4fc0_003c;
+        cpu.x[10] = 10;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.timer_ticks, 3723);
+        cpu.pc = 0x4fc0_003c;
+        cpu.x[10] = 1_000_001;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.timer_ticks, 3723);
+    }
+
+    #[test]
+    fn rom_console_wait_only_accepts_modeled_serial_port() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0078);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 6;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0100);
+        cpu.pc = 0x4fc0_0078;
+        cpu.x[10] = 0;
+        assert!(!cpu.step(&mut bus));
+        assert!(cpu.fault.as_ref().unwrap().contains("console port"));
+    }
+
+    #[test]
+    fn rom_interrupt_mask_changes_only_selected_lines_on_current_hart() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_05c0);
+        cpu.mhartid = 1;
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = (1 << 2) | (1 << 25);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u8(0x2080_1049), 1);
+        assert_eq!(bus.read_u8(0x2080_10a5), 1);
+        cpu.pc = 0x4fc0_05c4;
+        cpu.x[10] = 1 << 25;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u8(0x2080_1049), 1);
+        assert_eq!(bus.read_u8(0x2080_10a5), 0);
+        bus.active_hart = 0;
+        assert_eq!(bus.read_u8(0x2080_1049), 0);
+    }
+
+    #[test]
+    fn rom_interrupt_route_validates_hart_source_and_line() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_05d0);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 1;
+        cpu.x[11] = 83;
+        cpu.x[12] = 25;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x500d_6800 + 83 * 4), 41);
+        assert_eq!(bus.read_u32(0x500d_6000 + 83 * 4), 0);
+        cpu.pc = 0x4fc0_05d0;
+        cpu.x[12] = 32;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x500d_6800 + 83 * 4), 41);
+    }
+
+    #[test]
+    fn rom_interrupt_priority_updates_only_current_hart_control_byte() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_05b8);
+        cpu.mhartid = 1;
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 25;
+        cpu.x[11] = 4;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u8(0x2080_10a7), 0x80);
+        cpu.pc = 0x4fc0_05b8;
+        cpu.x[11] = 8;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u8(0x2080_10a7), 0x80);
+        bus.active_hart = 0;
+        assert_eq!(bus.read_u8(0x2080_10a7), 0);
+    }
+
+    #[test]
+    fn rtc_calibration_requires_supported_clock_and_tracks_completion() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x500e_6098, 8);
+        bus.write_u32(0x500c_2068, 100 << 16);
+        assert_eq!(bus.read_u32(0x500c_2068) & (1 << 15), 0);
+        bus.write_u32(0x500c_2068, (100 << 16) | (1 << 31));
+        assert_ne!(bus.read_u32(0x500c_2068) & (1 << 15), 0);
+        assert_eq!(
+            bus.read_u32(0x500c_206c) >> 7,
+            (100u64 * 40_000_000 / 136_000) as u32
+        );
+        bus.write_u32(0x500c_2068, 100 << 16);
+        assert_eq!(bus.read_u32(0x500c_2068) & (1 << 15), 0);
+        bus.write_u32(0x500e_6098, 9);
+        bus.write_u32(0x500c_2068, (100 << 16) | (1 << 31));
+        assert!(
+            bus.fault
+                .as_ref()
+                .unwrap()
+                .contains("unsupported RTC calibration")
+        );
+        assert_eq!(bus.read_u32(0x500c_2068) & (1 << 15), 0);
+    }
+
+    #[test]
+    fn clock_divider_update_self_clears_without_losing_other_fields() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x500e_6004, 0x1234_5678);
+        assert_eq!(bus.read_u32(0x500e_6004), 0x1234_5668);
+    }
+
+    #[test]
+    fn analog_pll_banks_are_independent_and_cpll_requires_configuration() {
+        let mut bus = Bus::new();
+        let write = |bus: &mut Bus, block: u32, register: u32, value: u32| {
+            bus.write_u32(
+                0x5012_4000,
+                (1 << 24) | (value << 16) | (register << 8) | block,
+            );
+        };
+        write(&mut bus, 0x63, 2, 0x99);
+        write(&mut bus, 0x67, 2, 0x11);
+        bus.write_u32(0x5012_4000, (2 << 8) | 0x63);
+        assert_eq!(bus.read_u32(0x5012_4000) >> 16, 0x99);
+        assert_eq!(bus.read_u32(0x500e_60bc) & 4, 0);
+        write(&mut bus, 0x67, 3, 0x22);
+        assert_eq!(bus.read_u32(0x500e_60bc) & 4, 0);
+        write(&mut bus, 0x67, 6, 0x73);
+        assert_ne!(bus.read_u32(0x500e_60bc) & 4, 0);
+        bus.write_u32(0x500e_60bc, 8);
+        assert_eq!(bus.read_u32(0x500e_60bc) & 4, 0);
+        bus.write_u32(0x500e_60bc, 0);
+        write(&mut bus, 0x67, 6, 0x73);
+        assert_eq!(bus.read_u32(0x500e_60bc) & 4, 0);
+    }
+
+    #[test]
+    fn rom_l2_cache_profile_requires_supported_mode() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0404);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 32;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.cache_l2_invalidations, 0);
+        cpu.fault = None;
+        cpu.pc = 0x4fc0_03d4;
+        cpu.x[10] = 9;
+        cpu.x[11] = 8;
+        cpu.x[12] = 3;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.cache_l2_mode, Some((9, 8, 3)));
+        cpu.pc = 0x4fc0_0404;
+        cpu.x[10] = 32;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.cache_l2_invalidations, 1);
+        assert_eq!(cpu.x[10], 0);
+        cpu.pc = 0x4fc0_03d4;
+        cpu.x[10] = 10;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.cache_l2_mode, Some((9, 8, 3)));
+    }
+
+    #[test]
+    fn spi1_jedec_and_status_read_complete_but_writes_fail_closed() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x5008_d018, 0x9000_0000);
+        bus.write_u32(0x5008_d020, 0x7000_009f);
+        bus.write_u32(0x5008_d028, 23);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d000), 0);
+        assert_eq!(bus.read_u32(0x5008_d058), 0x0018_40ef);
+        assert!(bus.fault.is_none());
+        bus.write_u32(0x5008_d020, 0x7000_0035);
+        bus.write_u32(0x5008_d028, 7);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d000), 0);
+        assert_eq!(bus.read_u32(0x5008_d058), 0);
+        bus.write_u32(0x5008_d020, 0x7000_0005);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 0);
+        bus.write_u32(0x5008_d020, 0x7000_0006);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert!(bus.fault.as_ref().unwrap().contains("unsupported SPI1"));
+        bus.fault = None;
+        bus.write_u32(0x5008_d000, 1 << 30);
+        assert_eq!(bus.read_u32(0x5008_d000), 0);
+        bus.write_u32(0x5008_d020, 0x7000_0005);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 2);
+        bus.write_u32(0x5008_d000, 1 << 29);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 0);
+    }
+
+    #[test]
+    fn spi1_qe_write_requires_wel_and_reads_back_atomically() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x5008_d018, 0x8800_0000);
+        bus.write_u32(0x5008_d020, 0x7000_0001);
+        bus.write_u32(0x5008_d024, 15);
+        bus.write_u32(0x5008_d058, 0x200);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert!(bus.fault.take().unwrap().contains("unsupported SPI1"));
+        bus.write_u32(0x5008_d000, 1 << 30);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert!(bus.fault.is_none());
+        assert_eq!(bus.read_u32(0x5008_d000), 0);
+        bus.write_u32(0x5008_d018, 0x9000_0000);
+        bus.write_u32(0x5008_d028, 7);
+        bus.write_u32(0x5008_d020, 0x7000_0035);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 2);
+        bus.write_u32(0x5008_d020, 0x7000_0005);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 0);
+        bus.write_u32(0x5008_d000, 1 << 30);
+        bus.write_u32(0x5008_d018, 0x8800_0000);
+        bus.write_u32(0x5008_d020, 0x7000_0001);
+        bus.write_u32(0x5008_d058, 0x201);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert!(bus.fault.take().unwrap().contains("unsupported SPI1"));
+        bus.write_u32(0x5008_d018, 0x9000_0000);
+        bus.write_u32(0x5008_d020, 0x7000_0035);
+        bus.write_u32(0x5008_d000, 1 << 18);
+        assert_eq!(bus.read_u32(0x5008_d058), 2);
+    }
+
+    #[test]
+    fn rom_spi_mode_rejects_unimplemented_controllers() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0110);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 3;
+        cpu.x[11] = 7;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.rom_spi_mode, Some((3, 7)));
+        cpu.pc = 0x4fc0_0110;
+        cpu.x[10] = 2;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.rom_spi_mode, None);
+    }
+
+    #[test]
+    fn rom_memcpy_rejects_overlap_and_mmio_before_writing() {
+        let mut bus = Bus::new();
+        bus.flash[..4].copy_from_slice(&[1, 2, 3, 4]);
+        let mut cpu = Cpu::new(0x4fc0_026c);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 0x4ff0_0000;
+        cpu.x[11] = 0x4000_0000;
+        cpu.x[12] = 4;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(&bus.sram[..4], &[1, 2, 3, 4]);
+        assert_eq!(cpu.x[10], 0x4ff0_0000);
+        cpu.pc = 0x4fc0_026c;
+        cpu.x[11] = 0x4ff0_0001;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(&bus.sram[..4], &[1, 2, 3, 4]);
+        cpu.fault = None;
+        cpu.x[11] = 0x5000_0000;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(&bus.sram[..4], &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn rom_memcmp_compares_unsigned_bytes_and_rejects_mmio() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0274);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 0x4ff0_0000;
+        cpu.x[11] = 0x4ff0_0010;
+        cpu.x[12] = 2;
+        bus.sram[0..2].copy_from_slice(&[0xff, 1]);
+        bus.sram[16..18].copy_from_slice(&[0x7f, 2]);
+        assert!(cpu.step(&mut bus));
+        assert!(cpu.x[10] as i32 > 0);
+        cpu.pc = 0x4fc0_0274;
+        cpu.x[10] = 0x5000_0000;
+        assert!(!cpu.step(&mut bus));
+        assert!(cpu.fault.as_ref().unwrap().contains("memcmp unsupported"));
+    }
+
+    #[test]
+    fn rom_udivdi3_uses_rv32_register_pairs_and_rejects_zero() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0844);
+        cpu.x[1] = 0x4ff0_0100;
+        let dividend = 0xfedc_ba98_7654_3210u64;
+        let divisor = 0x1_0000_0001u64;
+        cpu.x[10] = dividend as u32;
+        cpu.x[11] = (dividend >> 32) as u32;
+        cpu.x[12] = divisor as u32;
+        cpu.x[13] = (divisor >> 32) as u32;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(
+            u64::from(cpu.x[10]) | (u64::from(cpu.x[11]) << 32),
+            dividend / divisor
+        );
+        cpu.pc = 0x4fc0_0844;
+        cpu.x[12] = 0;
+        cpu.x[13] = 0;
+        assert!(!cpu.step(&mut bus));
+        assert!(cpu.fault.as_ref().unwrap().contains("division by zero"));
+    }
+
+    #[test]
+    fn rom_clzsi2_handles_zero_and_high_bits() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0770);
+        cpu.x[1] = 0x4ff0_0100;
+        cpu.x[10] = 0;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 32);
+        cpu.pc = 0x4fc0_0770;
+        cpu.x[10] = 0x0100_0000;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 7);
+    }
+
+    #[test]
+    fn systimer_tick_callbacks_are_copied_and_invalid_pointers_rejected() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0230);
+        let ctx = 0x4ff0_0100;
+        let ops = 0x4ff0_0200;
+        bus.write_u32(ctx, 0x5010_0000);
+        bus.write_u32(ops, 0x4000_0100);
+        bus.write_u32(ops + 4, 0x4ff0_0300);
+        cpu.x[1] = 0x4ff0_0400;
+        cpu.x[10] = ctx;
+        cpu.x[11] = ops;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(ctx), 0x5010_0000);
+        assert_eq!(bus.read_u32(ctx + 4), 0x4000_0100);
+        assert_eq!(bus.read_u32(ctx + 8), 0x4ff0_0300);
+        cpu.pc = 0x4fc0_0230;
+        bus.write_u32(ops + 4, 0x5000_0000);
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(ctx + 4), 0x4000_0100);
+        assert_eq!(bus.read_u32(ctx + 8), 0x4ff0_0300);
+    }
+
+    #[test]
+    fn systimer_rom_counter_returns_rv32_register_pair() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0234);
+        let ctx = 0x4ff0_0100;
+        bus.write_u32(ctx, 0x500e_2000);
+        bus.write_u32(0x500e_2000, 1 << 30);
+        bus.timer_ticks = 360 * (1u64 << 28);
+        cpu.instructions_executed = 1;
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = ctx;
+        cpu.x[11] = 0;
+        assert!(cpu.step(&mut bus));
+        assert_eq!((cpu.x[11], cpu.x[10]), (1, 0));
+        assert_eq!(cpu.pc, 0x4ff0_0200);
+    }
+
+    #[test]
+    fn systimer_alarm_routes_to_vectored_clic_and_rearms() {
+        let mut bus = Bus::new();
+        let base = 0x500e_2000;
+        bus.write_u32(base + 0x20, 160);
+        bus.write_u32(base + 0x50, 1);
+        bus.write_u32(base + 0x64, 1);
+        bus.write_u32(0x500d_6000 + 53 * 4, 36);
+        bus.write_u8(0x2080_1000 + 36 * 4 + 1, 1);
+        bus.write_u8(0x2080_1000 + 36 * 4 + 2, 1);
+        bus.write_u32(base, (1 << 30) | (1 << 24));
+        bus.timer_ticks = 9 * 360;
+        assert_eq!(bus.pending_irq(0), None);
+        bus.timer_ticks = 10 * 360;
+        assert_eq!(bus.pending_irq(0), Some(36));
+        assert_eq!(bus.read_u32(base + 0x70), 1);
+        let mut cpu = Cpu::new(0x4ff0_0100);
+        cpu.mstatus |= 8;
+        cpu.mtvt = 0x4ff0_0200;
+        bus.write_u32(cpu.mtvt + 36 * 4, 0x4ff0_0400);
+        bus.write_u32(0x4ff0_0400, 0x0070_0513); // addi a0, zero, 7
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.mepc, 0x4ff0_0100);
+        assert_eq!(cpu.mcause, 0x8000_0024);
+        assert_eq!(cpu.x[10], 7);
+        bus.write_u32(base + 0x6c, 1);
+        assert_eq!(bus.pending_irq(0), None);
+        bus.write_u32(base + 0x20, 320);
+        bus.write_u32(base + 0x50, 1);
+        bus.timer_ticks = 20 * 360;
+        assert_eq!(bus.pending_irq(0), Some(36));
+        bus.write_u32(base + 0x64, 0);
+        assert_eq!(bus.pending_irq(0), None);
+        assert_eq!(bus.read_u32(base + 0x68), 1);
+    }
+
+    #[test]
+    fn psram_mmu_indexed_readback_is_per_entry() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x5008_e380, 3);
+        bus.write_u32(0x5008_e37c, 0xc07);
+        bus.write_u32(0x5008_e380, 4);
+        bus.write_u32(0x5008_e37c, 0xc00);
+        assert_eq!(bus.read_u32(0x5008_e37c), 0xc00);
+        assert_eq!(bus.translate_psram(0x4804_0010), Some(0x10));
+        bus.write_u32(0x5008_e380, 3);
+        assert_eq!(bus.read_u32(0x5008_e37c), 0xc07);
+        assert_eq!(bus.translate_psram(0x4803_0010), Some(0x70010));
+        bus.write_u32(0x5008_e380, 5);
+        assert_eq!(bus.read_u32(0x5008_e37c), 0);
+    }
+
+    #[test]
+    fn psram_mmu_rejects_invalid_and_out_of_capacity_pages() {
+        let mut bus = Bus::new();
+        bus.psram[0] = 0xa5;
+        bus.write_u32(0x5008_e380, 4);
+        for value in [0, 0x400, 0x800, 0xc00 | 512, 0x1c00] {
+            bus.write_u32(0x5008_e37c, value);
+            assert_eq!(bus.read_u32(0x5008_e37c), value);
+            assert_eq!(bus.translate_psram(0x4804_0000), None);
+            bus.write_u8(0x4804_0000, 0x42);
+            assert!(bus.fault.take().unwrap().contains("unmapped PSRAM write"));
+            assert_eq!(bus.read_u8(0x4804_0000), 0);
+            assert!(bus.fault.take().unwrap().contains("unmapped PSRAM read"));
+            assert_eq!(bus.psram[0], 0xa5);
+        }
+        bus.write_u32(0x5008_e37c, 0xc00 | 511);
+        assert_eq!(bus.translate_psram(0x4804_0000), Some(511 * 65536));
+        bus.write_u8(0x4804_0000, 0x33);
+        assert_eq!(bus.psram[511 * 65536], 0x33);
+    }
+
+    #[test]
+    fn rom_memory_calls_reject_unmapped_page_before_mutating() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x5008_e380, 1);
+        bus.write_u32(0x5008_e37c, 0);
+        let edge = 0x4800_fffe;
+        bus.write_u8(edge, 0xaa);
+        bus.write_u8(edge + 1, 0xbb);
+        bus.write_u32(0x4ff0_0100, 0x1122_3344);
+        for (pc, a0, a1, a2) in [
+            (0x4fc0_0268, edge, 0x55, 4),
+            (0x4fc0_0290, edge, 4, 0),
+            (0x4fc0_026c, edge, 0x4ff0_0100, 4),
+            (0x4fc0_0270, edge, 0x4ff0_0100, 4),
+            (0x4fc0_027c, edge, 0x4ff0_0100, 4),
+            (0x4fc0_026c, 0x4ff0_0100, edge, 4),
+            (0x4fc0_0270, 0x4ff0_0100, edge, 4),
+        ] {
+            let mut cpu = Cpu::new(pc);
+            cpu.x[1] = 0x4ff0_0200;
+            cpu.x[10] = a0;
+            cpu.x[11] = a1;
+            cpu.x[12] = a2;
+            assert!(
+                !cpu.step(&mut bus),
+                "operation {pc:#x} must reject unmapped page"
+            );
+            assert_eq!(bus.read_u8(edge), 0xaa);
+            assert_eq!(bus.read_u8(edge + 1), 0xbb);
+            assert_eq!(bus.read_u32(0x4ff0_0100), 0x1122_3344);
+            assert!(bus.fault.is_none());
+        }
+    }
+
+    #[test]
+    fn rom_printf_does_not_emit_partial_text_for_unmapped_psram_string() {
+        let mut bus = Bus::new();
+        bus.write_u32(0x5008_e380, 1);
+        bus.write_u32(0x5008_e37c, 0);
+        for (i, byte) in b"prefix:%s\0".iter().enumerate() {
+            bus.write_u8(0x4ff0_0100 + i as u32, *byte);
+        }
+        bus.write_u8(0x4800_ffff, b'x');
+        bus.console_output.extend_from_slice(b"existing");
+        let mut cpu = Cpu::new(0x4fc0_0024);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        cpu.x[11] = 0x4800_ffff;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.console_output, b"existing");
+        assert!(bus.fault.is_none());
+    }
+
+    #[test]
+    fn fast_memory_reads_match_byte_reads_at_unaligned_and_region_edges() {
+        let mut bus = Bus::new();
+        for base in [0x4000_0000, 0x4ff0_0000] {
+            for i in 0..8 {
+                bus.write_u8(base + i, (0x80 + i) as u8);
+            }
+            assert_eq!(bus.read_u16(base + 1), 0x8281);
+            assert_eq!(bus.read_u32(base + 1), 0x8483_8281);
+        }
+        bus.write_u8(0x40ff_ffff, 0x5a);
+        assert_eq!(bus.read_u16(0x40ff_ffff), 0x005a);
+        bus.write_u8(0x4fff_ffff, 0xa5);
+        assert_eq!(bus.read_u32(0x4fff_ffff) & 0xff, 0xa5);
+        bus.cache_l2_suspended = true;
+        assert_eq!(bus.read_u32(0x4000_0000), 0);
+        assert!(bus.fault.take().unwrap().contains("L2 suspended"));
+    }
+
+    #[test]
+    fn rom_newlib_mutex_init_copies_values_and_rejects_invalid_pointers() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0264);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        cpu.x[11] = 0x4ff0_0104;
+        bus.write_u32(cpu.x[10], 0x1234_5678);
+        bus.write_u32(cpu.x[11], 0xbb10_c433);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff3_ff8c), 0x1234_5678);
+        assert_eq!(bus.read_u32(0x4ff3_ff88), 0xbb10_c433);
+        assert_eq!(cpu.pc, 0x4ff0_0200);
+        cpu.pc = 0x4fc0_0264;
+        cpu.x[11] = 0x4ff3_ff8c;
+        bus.write_u32(cpu.x[10], 0xdead_beef);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff3_ff88), 0xdead_beef);
+        cpu.pc = 0x4fc0_0264;
+        cpu.x[11] = 0x5000_0000;
+        bus.write_u32(cpu.x[10], 0);
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff3_ff8c), 0xdead_beef);
+        assert_eq!(bus.read_u32(0x4ff3_ff88), 0xdead_beef);
+    }
+
+    #[test]
+    fn rom_strlen_counts_bytes_and_rejects_unmapped_strings() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0288);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        for (i, byte) in [0xc3, 0xa9, 0].into_iter().enumerate() {
+            bus.write_u8(0x4ff0_0100 + i as u32, byte);
+        }
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 2);
+        cpu.pc = 0x4fc0_0288;
+        cpu.x[10] = 0x4fff_ffff;
+        bus.write_u8(cpu.x[10], b'x');
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0x4fff_ffff);
+    }
+
+    #[test]
+    fn rom_strcpy_includes_terminator_and_rejects_overlap_without_writes() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0278);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0110;
+        cpu.x[11] = 0x4ff0_0100;
+        for (i, byte) in b"abc\0".iter().enumerate() {
+            bus.write_u8(cpu.x[11] + i as u32, *byte);
+        }
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0110), 0x0063_6261);
+        assert_eq!(cpu.x[10], 0x4ff0_0110);
+        cpu.pc = 0x4fc0_0278;
+        cpu.x[10] = 0x4ff0_0101;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0100), 0x0063_6261);
+    }
+
+    #[test]
+    fn rom_strncpy_pads_and_does_not_append_when_truncated() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_027c);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0110;
+        cpu.x[11] = 0x4ff0_0100;
+        cpu.x[12] = 4;
+        bus.write_u32(0x4ff0_0100, 0x0000_6261);
+        bus.write_u32(0x4ff0_0110, u32::MAX);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0110), 0x0000_6261);
+        bus.write_u32(0x4ff0_0100, 0x6463_6261);
+        cpu.pc = 0x4fc0_027c;
+        cpu.x[12] = 3;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0110), 0x0063_6261);
+        cpu.pc = 0x4fc0_027c;
+        cpu.x[11] = 0x5000_0000;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0110), 0x0063_6261);
+    }
+
+    #[test]
+    fn rom_bzero_writes_only_the_requested_ram_range() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0290);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0101;
+        cpu.x[11] = 2;
+        bus.write_u32(0x4ff0_0100, u32::MAX);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0100), 0xff00_00ff);
+        cpu.pc = 0x4fc0_0290;
+        cpu.x[10] = 0x4fff_ffff;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_strncmp_stops_at_nul_or_limit_and_compares_unsigned_bytes() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0284);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        cpu.x[11] = 0x4ff0_0110;
+        cpu.x[12] = 2;
+        bus.write_u8(cpu.x[10], 0xff);
+        bus.write_u8(cpu.x[11], 0x01);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 254);
+        cpu.pc = 0x4fc0_0284;
+        cpu.x[10] = 0x5000_0000;
+        cpu.x[12] = 0;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0);
+        cpu.pc = 0x4fc0_0284;
+        cpu.x[10] = 0x5000_0000;
+        cpu.x[12] = 1;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_strcmp_stops_at_nul_and_orders_unsigned_bytes() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0280);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        cpu.x[11] = 0x4ff0_0110;
+        bus.write_u32(cpu.x[10], 0x0000_ff61);
+        bus.write_u32(cpu.x[11], 0x0000_0161);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 254);
+        cpu.pc = 0x4fc0_0280;
+        cpu.x[10] = 0x4fff_ffff;
+        cpu.x[11] = 0x4fff_ffff;
+        bus.write_u8(0x4fff_ffff, 1);
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_flash_guard_set_get_share_guest_visible_storage() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_01f0);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_1234;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff3_fff0), 0x4ff0_1234);
+        bus.write_u32(0x4ff3_fff0, 0x4ff0_5678);
+        cpu.pc = 0x4fc0_01f4;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0x4ff0_5678);
+    }
+
+    #[test]
+    fn rom_memchr_respects_length_and_rejects_unmapped_input() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_02dc);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0100;
+        cpu.x[11] = 0x1ff;
+        cpu.x[12] = 2;
+        bus.write_u8(0x4ff0_0101, 0xff);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0x4ff0_0101);
+        cpu.pc = 0x4fc0_02dc;
+        cpu.x[10] = 0x5000_0000;
+        cpu.x[12] = 0;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0);
+        cpu.pc = 0x4fc0_02dc;
+        cpu.x[10] = 0x5000_0000;
+        cpu.x[12] = 1;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_memmove_handles_overlap_and_rejects_invalid_destination() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0270);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x4ff0_0101;
+        cpu.x[11] = 0x4ff0_0100;
+        cpu.x[12] = 3;
+        bus.write_u32(cpu.x[11], 0x6463_6261);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0100), 0x6362_6161);
+        cpu.pc = 0x4fc0_0270;
+        cpu.x[10] = 0x5000_0000;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x4ff0_0100), 0x6362_6161);
+    }
+
+    #[test]
+    fn rom_umoddi3_uses_register_pairs_and_rejects_zero() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0854);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 5;
+        cpu.x[11] = 2;
+        cpu.x[12] = 3;
+        assert!(cpu.step(&mut bus));
+        assert_eq!((cpu.x[11], cpu.x[10]), (0, 1));
+        cpu.pc = 0x4fc0_0854;
+        cpu.x[12] = 0;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_div_returns_signed_quotient_and_remainder() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_033c);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = (-7i32) as u32;
+        cpu.x[11] = 3;
+        assert!(cpu.step(&mut bus));
+        assert_eq!((cpu.x[10] as i32, cpu.x[11] as i32), (-2, -1));
+        cpu.pc = 0x4fc0_033c;
+        cpu.x[10] = i32::MIN as u32;
+        cpu.x[11] = (-1i32) as u32;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_cache_writeback_only_accepts_l1_data_map() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0414);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 16;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 0);
+        cpu.pc = 0x4fc0_0414;
+        cpu.x[10] = 32;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_gpio_pad_selection_preserves_other_mux_bits() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0590);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 32;
+        let address = 0x500e_1004 + 32 * 4;
+        bus.write_u32(address, 0xabcd_7523);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(address), 0xabcd_1523);
+        cpu.pc = 0x4fc0_0590;
+        cpu.x[10] = 57;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(address), 0xabcd_1523);
+    }
+
+    #[test]
+    fn rom_gpio_matrix_selects_signal_and_enables_output() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0570);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 32;
+        cpu.x[11] = 256;
+        cpu.x[12] = 1;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x500e_0558 + 32 * 4), 0x300);
+        assert_eq!(bus.read_u32(0x500e_002c) & 1, 1);
+        cpu.pc = 0x4fc0_0570;
+        cpu.x[10] = 57;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x500e_002c) & 1, 1);
+    }
+
+    #[test]
+    fn l2_suspend_resume_tracks_autoload_and_blocks_cached_access() {
+        let mut bus = Bus::new();
+        bus.cache_l2_mode = Some((9, 8, 3));
+        bus.cache_l2_autoload = true;
+        bus.write_u8(0x4800_0000, 0x42);
+        let mut cpu = Cpu::new(0x4fc0_0508);
+        cpu.x[1] = 0x4ff0_0200;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 1);
+        assert_ne!(bus.read_u32(0x5008_c03c) & (1 << 31), 0);
+        bus.write_u8(0x4800_0000, 0x99);
+        assert!(
+            bus.fault
+                .take()
+                .unwrap()
+                .contains("write while L2 suspended")
+        );
+        let mut flash_cpu = Cpu::new(0x4000_0000);
+        assert!(!flash_cpu.step(&mut bus));
+        assert!(flash_cpu.fault.unwrap().contains("read while L2 suspended"));
+        cpu.pc = 0x4fc0_050c;
+        cpu.x[10] = 1;
+        assert!(cpu.step(&mut bus));
+        assert!(!bus.cache_l2_suspended);
+        assert!(bus.cache_l2_autoload);
+        assert_eq!(bus.read_u32(0x5008_c03c) & (1 << 31), 0);
+        assert_eq!(bus.read_u8(0x4800_0000), 0x42);
+        cpu.pc = 0x4fc0_050c;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_instructions_require_opt_in_and_executable_segment() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_0b00);
+        bus.rom_data[0xb00..0xb08]
+            .copy_from_slice(&[0x13, 0x05, 0x70, 0x00, 0x67, 0x80, 0x00, 0x00]);
+        bus.rom_executable.push((0x4fc0_0b00, 0x4fc0_0b08));
+        assert!(!cpu.step(&mut bus));
+        let mut cpu = Cpu::new(0x4fc0_0b00);
+        cpu.x[1] = 0x4ff0_0200;
+        bus.rom_execute = true;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.x[10], 7);
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0200);
+        cpu.pc = 0x4fc0_0b08;
+        assert!(!cpu.step(&mut bus));
+    }
+
+    #[test]
+    fn rom_ffssi2_returns_one_based_bit_position() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_07a0);
+        cpu.x[1] = 0x4ff0_0100;
+        for (value, expected) in [(0, 0), (1, 1), (0x8000_0000, 32), (0x18, 4)] {
+            cpu.pc = 0x4fc0_07a0;
+            cpu.x[10] = value;
+            assert!(cpu.step(&mut bus));
+            assert_eq!(cpu.x[10], expected);
+        }
     }
 
     #[test]
@@ -351,22 +1838,22 @@ mod tests {
             let second = scope.spawn(boot);
             (first.join().unwrap(), second.join().unwrap())
         });
-        let b_home = b.bus.scanout.clone().unwrap();
+        let b_home = b.bus.scanout().map(<[u8]>::to_vec).unwrap();
         let paused_steps = a.total_steps;
         let paused_pc = a.cpu.pc;
-        let paused_frame = a.bus.scanout.clone();
+        let paused_frame = a.bus.scanout().map(<[u8]>::to_vec);
         a.paused = true;
         a.step_frame(1_000_000);
         assert_eq!(a.total_steps, paused_steps);
         assert_eq!(a.cpu.pc, paused_pc);
-        assert_eq!(a.bus.scanout, paused_frame);
+        assert_eq!(a.bus.scanout(), paused_frame.as_deref());
         a.paused = false;
         a.send_key(b'n');
         a.step_frame(90_000_000);
         a.send_key(b'A');
         a.step_frame(90_000_000);
         assert!(a.bus.keyboard_fifo.is_empty());
-        assert_eq!(b.bus.scanout.as_ref().unwrap(), &b_home);
+        assert_eq!(b.bus.scanout().unwrap(), &b_home);
         b.send_key(b'n');
         b.step_frame(90_000_000);
         b.send_key(b'B');
@@ -375,7 +1862,7 @@ mod tests {
         // The enabled touch service and editor can repaint at different times.
         // Wait for both sessions to present distinct edits, with a bound.
         for _ in 0..4 {
-            if a.bus.scanout != b.bus.scanout {
+            if a.bus.scanout() != b.bus.scanout() {
                 break;
             }
             a.step_frame(30_000_000);
@@ -386,14 +1873,14 @@ mod tests {
             );
         }
         assert!(
-            a.bus.scanout != b.bus.scanout,
+            a.bus.scanout() != b.bus.scanout(),
             "independent inputs did not produce distinct frames"
         );
-        let b_document = b.bus.scanout.clone();
+        let b_document = b.bus.scanout().map(<[u8]>::to_vec);
         a.reset().unwrap();
         a.step_frame(5_000_000);
-        assert_eq!(b.bus.scanout, b_document);
-        assert!(a.bus.scanout.is_none());
+        assert_eq!(b.bus.scanout(), b_document.as_deref());
+        assert!(a.bus.scanout().is_none());
     }
 
     #[test]
@@ -415,7 +1902,7 @@ mod tests {
                 && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
             {
                 emu.step_frame(30_000_000);
-                let home = emu.bus.scanout.clone().expect("home frame");
+                let home = emu.bus.scanout().map(<[u8]>::to_vec).expect("home frame");
                 // The first home card uses the same visual point in either
                 // orientation, translated back into physical panel coordinates.
                 let portrait = String::from_utf8_lossy(&emu.bus.console_output)
@@ -430,7 +1917,7 @@ mod tests {
                 emu.step_frame(90_000_000);
                 assert_ne!(
                     home,
-                    *emu.bus.scanout.as_ref().unwrap(),
+                    *emu.bus.scanout().unwrap(),
                     "touch did not navigate from home"
                 );
                 return;
@@ -485,18 +1972,22 @@ mod tests {
             }) && output.contains("NIHOS_NATIVE_TOUCH_UI available=00000001")
             {
                 emu.step_frame(30_000_000);
-                let home = emu.bus.scanout.clone().expect("home frame");
+                let home = emu.bus.scanout().map(<[u8]>::to_vec).expect("home frame");
                 emu.bus.touch(Some((200, 220)));
                 emu.bus.touch(None);
                 emu.step_frame(90_000_000);
-                let document = emu.bus.scanout.clone().expect("document frame");
+                let document = emu
+                    .bus
+                    .scanout()
+                    .map(<[u8]>::to_vec)
+                    .expect("document frame");
                 assert!(home != document, "portrait tap did not open document");
                 // q is in the first row of the portrait software keyboard.
                 emu.bus.touch(Some((36, 1000)));
                 emu.bus.touch(None);
                 emu.step_frame(90_000_000);
                 assert!(
-                    document != *emu.bus.scanout.as_ref().unwrap(),
+                    document != *emu.bus.scanout().unwrap(),
                     "soft key did not repaint document"
                 );
                 return;
@@ -531,14 +2022,18 @@ mod tests {
                     started.elapsed().as_millis()
                 );
                 emu.step_frame(30_000_000);
-                let home = emu.bus.scanout.clone().expect("home frame");
+                let home = emu.bus.scanout().map(<[u8]>::to_vec).expect("home frame");
                 emu.send_key(b'n');
                 emu.step_frame(30_000_000);
                 assert!(
                     emu.bus.keyboard_fifo.is_empty(),
                     "guest did not consume navigation input"
                 );
-                let document = emu.bus.scanout.clone().expect("document frame");
+                let document = emu
+                    .bus
+                    .scanout()
+                    .map(<[u8]>::to_vec)
+                    .expect("document frame");
                 assert_ne!(home, document, "navigation did not repaint the display");
                 emu.send_key(b'X');
                 emu.step_frame(30_000_000);
@@ -548,7 +2043,7 @@ mod tests {
                 );
                 assert_ne!(
                     document,
-                    *emu.bus.scanout.as_ref().unwrap(),
+                    *emu.bus.scanout().unwrap(),
                     "editor input did not repaint the display"
                 );
                 return;
@@ -1572,13 +3067,20 @@ mod tests {
                 assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
                 let first = (256..stack_bytes)
                     .find(|i| {
-                        let offset = emu.bus.translate_psram(stack_low + i);
+                        let offset = emu
+                            .bus
+                            .translate_psram(stack_low + i)
+                            .expect("mapped evaluation stack");
                         emu.bus.psram[offset] != 0xa5
                     })
                     .unwrap_or(stack_bytes);
                 let used = stack_bytes - first;
                 assert!(
-                    (0..256).all(|i| emu.bus.psram[emu.bus.translate_psram(stack_low + i)] == 0xa5),
+                    (0..256).all(|i| emu.bus.psram[emu
+                        .bus
+                        .translate_psram(stack_low + i)
+                        .expect("mapped evaluation stack guard")]
+                        == 0xa5),
                     "stack guard changed"
                 );
                 assert!(used > 0, "invalid stack watermark");
