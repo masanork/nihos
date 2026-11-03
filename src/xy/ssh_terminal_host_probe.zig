@@ -134,10 +134,11 @@ const HostEntropy = struct {
 };
 const HostSeedSource = struct {
     fill_fn: Fill,
-    pub fn qualified(_: *@This()) bool {
-        return true; // Host-only: the callback supplies OS cryptographic random bytes.
+    pub fn lease(_: *@This()) ?u64 {
+        return 1; // Host-only: the callback supplies OS cryptographic random bytes.
     }
-    pub fn fillSeed(self: *@This(), out: *[seeded_entropy.seed_bytes]u8) !void {
+    pub fn fillSeed(self: *@This(), generation: u64, out: *[seeded_entropy.seed_bytes]u8) !void {
+        if (generation != 1) return error.EntropyUnavailable;
         if (!self.fill_fn(out, out.len)) return error.EntropyUnavailable;
     }
 };

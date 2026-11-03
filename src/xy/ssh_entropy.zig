@@ -10,7 +10,9 @@ pub const max_generated_bytes = 16 * 1024 * 1024;
 
 /// Uses Zig's ChaCha-based CSPRNG. The source must independently guarantee a
 /// fresh, uniform, secret 256-bit seed and provide bounded, nonblocking calls.
-/// A successful seed permits later output even if the source is disabled.
+/// The source's nonzero lease generation must never be reused. It must bind
+/// fillSeed to that generation and revoke it whenever ownership or readiness
+/// changes. A successful seed permits later output if the source is disabled.
 /// Do not copy a seeded instance or alias its internal state with an output.
 pub const Entropy = struct {
     generator: Generator = std.mem.zeroes(Generator),
@@ -19,13 +21,14 @@ pub const Entropy = struct {
 
     pub fn seedFrom(self: *Entropy, source: anytype) !void {
         self.clear();
-        if (!source.qualified()) return error.EntropyUnavailable;
+        const lease = source.lease() orelse return error.EntropyUnavailable;
+        if (lease == 0) return error.EntropyUnavailable;
         var seed: [seed_bytes]u8 = @splat(0);
         defer std.crypto.secureZero(u8, &seed);
-        try source.fillSeed(&seed);
+        try source.fillSeed(lease, &seed);
         // Check again: a source that lost its exclusive entitlement while
         // reading is not permitted to authorize this seed.
-        if (!source.qualified()) return error.EntropyUnavailable;
+        if (source.lease() != lease) return error.EntropyUnavailable;
         self.generator = Generator.init(seed);
         self.seeded = true;
     }
@@ -53,23 +56,27 @@ const TestSource = struct {
     ready: bool = true,
     fail: bool = false,
     revoke_after_fill: bool = false,
+    replace_after_fill: bool = false,
     value: u8 = 1,
-    fn qualified(self: *@This()) bool {
-        return self.ready;
+    generation: u64 = 1,
+    fn lease(self: *@This()) ?u64 {
+        return if (self.ready) self.generation else null;
     }
-    fn fillSeed(self: *@This(), out: *[seed_bytes]u8) !void {
+    fn fillSeed(self: *@This(), generation: u64, out: *[seed_bytes]u8) !void {
+        if (self.lease() != generation) return error.EntropyUnavailable;
         @memset(out, self.value);
         if (self.revoke_after_fill) self.ready = false;
+        if (self.replace_after_fill) self.generation += 1;
         if (self.fail) return error.SourceFailure;
     }
 };
 
 test "seeded output matches a ChaCha8 reference block" {
     const Source = struct {
-        fn qualified(_: *@This()) bool {
-            return true;
+        fn lease(_: *@This()) ?u64 {
+            return 1;
         }
-        fn fillSeed(_: *@This(), out: *[seed_bytes]u8) !void {
+        fn fillSeed(_: *@This(), _: u64, out: *[seed_bytes]u8) !void {
             for (out, 0..) |*byte, i| byte.* = @intCast(i);
         }
     };
@@ -99,6 +106,10 @@ test "a seed is admitted only while its source stays qualified" {
     try std.testing.expect(!entropy.available());
     source.ready = true;
     source.revoke_after_fill = false;
+    source.replace_after_fill = true;
+    try std.testing.expectError(error.EntropyUnavailable, entropy.seedFrom(&source));
+    try std.testing.expect(!entropy.available());
+    source.replace_after_fill = false;
     try entropy.seedFrom(&source);
     try std.testing.expect(entropy.available());
     source.ready = false; // The seeded generator no longer needs the source.
