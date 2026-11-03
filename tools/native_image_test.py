@@ -111,6 +111,7 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('network_service.tcpReceive'))
         self.assertTrue(MODULE.xy_function('network_service.udpPoll'))
         self.assertTrue(MODULE.xy_function('network_service.udpReceive'))
+        self.assertTrue(MODULE.xy_function('network_service.experimentalUdpSmokePoll'))
         self.assertTrue(MODULE.xy_function('hosted_udp_socket.Socket.get'))
         self.assertTrue(MODULE.xy_function('hosted_udp_sender.Sender.retire__func_80'))
         self.assertFalse(MODULE.xy_function('hosted_udp_socket.Socket.unapproved'))

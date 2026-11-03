@@ -22,6 +22,7 @@ pub const udp_lease = @import("hosted_udp_lease.zig");
 pub const udp_shared = @import("hosted_udp_shared.zig");
 pub const udp_socket = @import("hosted_udp_socket.zig");
 pub const udp_ipv4 = @import("udp_ipv4.zig");
+pub const udp_smoke = @import("hosted_udp_smoke.zig");
 pub const long_udp_probe = @import("long_udp_probe.zig");
 pub const c6_ota_info_exchange = @import("hosted_c6_ota_info_exchange.zig");
 pub const diagnostics = @import("hosted_diagnostics.zig");
