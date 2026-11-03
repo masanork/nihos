@@ -55,4 +55,49 @@ class CoverageReportTests(unittest.TestCase):
         self.assertEqual(report['totals'], {'all_original_expression_steps': 1, 'sampled': 18, 'not_tested': 337})
         self.assertEqual(report['by_chapter']['2'], {'sampled': 7, 'not_tested': 90})
 
+    def test_symbolic_derivative_evidence_adds_only_its_exercise(self):
+        evidence = coverage.ROOT / 'docs/measurements/evidence/2026-11-03-sicp-symbolic-deriv/current-sicp_symbolic_deriv_2_57.json'
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp) / 'evidence'
+            shutil.copytree(coverage.DEFAULT, folder)
+            shutil.copy(evidence, folder / evidence.name)
+            report = coverage.report(folder)
+            self.assertEqual(report['totals'], {'all_original_expression_steps': 1, 'sampled': 12, 'not_tested': 343})
+            row = next(row for row in report['exercises'] if row['id'] == '2.57')
+            self.assertEqual(row['observations'], {'matched': 3})
+
+    def test_set_tree_evidence_adds_only_two_exercises(self):
+        evidence = coverage.ROOT / 'docs/measurements/evidence/2026-11-03-sicp-symbolic-deriv/current-sicp_set_trees_2_63_2_64.json'
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp) / 'evidence'
+            shutil.copytree(coverage.DEFAULT, folder)
+            shutil.copy(evidence, folder / evidence.name)
+            report = coverage.report(folder)
+            self.assertEqual(report['totals'], {'all_original_expression_steps': 1, 'sampled': 13, 'not_tested': 342})
+            rows = {row['id']: row for row in report['exercises']}
+            self.assertEqual(rows['2.63']['observations'], {'matched': 6})
+            self.assertEqual(rows['2.64']['observations'], {'matched': 4})
+
+    def test_huffman_evidence_adds_only_one_exercise(self):
+        evidence = coverage.ROOT / 'docs/measurements/evidence/2026-11-03-sicp-symbolic-deriv/current-sicp_huffman_2_67.json'
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp) / 'evidence'
+            shutil.copytree(coverage.DEFAULT, folder)
+            shutil.copy(evidence, folder / evidence.name)
+            report = coverage.report(folder)
+            self.assertEqual(report['totals'], {'all_original_expression_steps': 1, 'sampled': 12, 'not_tested': 343})
+            row = next(row for row in report['exercises'] if row['id'] == '2.67')
+            self.assertEqual(row['observations'], {'matched': 3})
+
+    def test_huffman_encoding_evidence_adds_only_its_exercise(self):
+        evidence = coverage.ROOT / 'docs/measurements/evidence/2026-11-03-sicp-symbolic-deriv/current-sicp_huffman_2_68.json'
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp) / 'evidence'
+            shutil.copytree(coverage.DEFAULT, folder)
+            shutil.copy(evidence, folder / evidence.name)
+            report = coverage.report(folder)
+            self.assertEqual(report['totals'], {'all_original_expression_steps': 1, 'sampled': 12, 'not_tested': 343})
+            row = next(row for row in report['exercises'] if row['id'] == '2.68')
+            self.assertEqual(row['observations'], {'matched': 3})
+
 if __name__ == '__main__': unittest.main()

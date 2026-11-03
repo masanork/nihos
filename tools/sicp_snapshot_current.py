@@ -21,7 +21,9 @@ def run(zig, chibi, output, workers):
     scripts = sorted(path.name[8:-5] for path in BASELINE.glob('current-*.json'))
     if len(scripts) != 21:
         raise ValueError('expected 21 recorded SICP groups')
-    scripts.append('sicp_recursive_bindings_4_8_4_20')
+    scripts.extend(('sicp_recursive_bindings_4_8_4_20',
+                    'sicp_symbolic_deriv_2_57', 'sicp_set_trees_2_63_2_64',
+                    'sicp_huffman_2_67', 'sicp_huffman_2_68'))
     def group(name):
         result = subprocess.run([sys.executable, str(ROOT / 'tools' / (name + '.py')), '--zig', str(zig.resolve()), '--chibi', str(chibi.resolve())], cwd=ROOT, text=True, capture_output=True)
         (output / (name + '.log')).write_text(result.stderr)
