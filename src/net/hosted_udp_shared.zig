@@ -6,9 +6,12 @@ const split = @import("hosted_network_split.zig");
 const sock = @import("hosted_udp_socket.zig");
 const lease = @import("hosted_udp_lease.zig");
 const sender = @import("hosted_udp_sender.zig");
+const wire = @import("udp_ipv4.zig");
 
 pub const Receive = enum { unrelated, accepted, dropped, invalid };
 pub const Send = enum { idle, pending, sent };
+/// Normal P4 Hosted transport sends at most 512 bytes including all headers.
+pub const short_payload_limit: usize = 512 - 12 - wire.frame_header;
 
 /// A single owner serializes all producers, shared decoder, callbacks and I/O.
 /// This object does not retain a decoder, arbitrate in-flight DMA or resolve
@@ -17,7 +20,20 @@ pub const Shared = struct {
     socket: sock.Socket = .{},
     retired: bool = false,
 
+    /// Initialize reserved owner storage in place without a large stack copy.
+    pub fn init(self: *Shared) void {
+        @memset(std.mem.asBytes(self), 0);
+    }
+
     pub fn bind(self: *Shared, state: *split.State, mac: [6]u8, port: u16, routed: lease.PortRange) !sock.Handle {
+        if (self.retired) return error.Retired;
+        return self.socket.bindLimited(state, mac, port, routed, short_payload_limit);
+    }
+
+    /// Explicit diagnostic opt-in. Caller must provide a qualified long-DMA
+    /// backend and verify the running C6 peer's long-buffer contract; this
+    /// method does not discover or validate either capability.
+    pub fn bindLongDiagnostic(self: *Shared, state: *split.State, mac: [6]u8, port: u16, routed: lease.PortRange) !sock.Handle {
         if (self.retired) return error.Retired;
         return self.socket.bind(state, mac, port, routed);
     }

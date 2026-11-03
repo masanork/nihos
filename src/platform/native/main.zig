@@ -273,6 +273,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devic
     }
     if (!options.network) return;
     network.poll();
+    if (@hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke) network.experimentalUdpSmokePoll();
     serviceTime();
     const now = ui.timer().counter() orelse fail("network report clock");
     const state = network.snapshot();
@@ -293,6 +294,10 @@ noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devic
     network_report_at = now + 5_000_000;
     logger.record("NIHOS_NATIVE_NETWORK", null, .{ "phase", "station", "error_code", "ip", "linklocal", "echo_requests", "rx", "tx", "polls", "max_poll_us", "renewals", "reconnects", "acquisitions", "failures", "disconnect_reason", "failed_station" }, &state);
     logger.record("NIHOS_NATIVE_CONNECTIVITY", null, .{ "configured", "capabilities", "bluetooth_status" }, &state);
+    if (@hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke) {
+        const udp = network.experimentalUdpSmokeSnapshot();
+        logger.record("NIHOS_NATIVE_UDP_SMOKE", null, .{ "phase", "queued", "matched", "rejected", "error_code", "close_error_code", "sent", "pending", "blocked", "undrained", "decoder_busy", "ap_match", "udp_error", "rx_dropped", "rx_invalid" }, &udp);
+    }
     if (@hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test) {
         const fault = network.timeFaultSnapshot();
         logger.record("NIHOS_NATIVE_C6_TIME_FAULT", null, .{ "stage", "dropped", "expired" }, &fault);
@@ -1113,18 +1118,20 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
     if (options.network) {
         print("Wi-Fi starting (exclusive SDIO, lease maintenance enabled)\n");
         if (!network_config.enabled) print("Wi-Fi unconfigured: waiting for settings\n");
-        const network_backing = if (@hasDecl(options, "experimental_tcp") and options.experimental_tcp) blk: {
+        const network_backing = if ((@hasDecl(options, "experimental_tcp") and options.experimental_tcp) or (@hasDecl(options, "experimental_udp") and options.experimental_udp)) blk: {
             const region = @import("sqld_layout.zig");
             comptime {
-                if (!native_sqld) @compileError("experimental TCP requires sqld reservation");
+                if (!native_sqld) @compileError("experimental network owner requires sqld reservation");
                 if (network.storage_bytes > region.network_experiment_bytes) @compileError("experimental network state exceeds its reservation");
             }
             if (!region.admitted(external_bytes, external_heap_start, external_heap_bytes)) fail("experimental network PSRAM reservation");
-            comptime {
-                if (@sizeOf(network.ExperimentalSshSession) > region.ssh_owner_bytes) @compileError("experimental SSH state exceeds its reservation");
-                if (region.ssh_experiment % @alignOf(network.ExperimentalSshSession) != 0) @compileError("experimental SSH state is misaligned");
+            if (@hasDecl(options, "experimental_tcp") and options.experimental_tcp) {
+                comptime {
+                    if (@sizeOf(network.ExperimentalSshSession) > region.ssh_owner_bytes) @compileError("experimental SSH state exceeds its reservation");
+                    if (region.ssh_experiment % @alignOf(network.ExperimentalSshSession) != 0) @compileError("experimental SSH state is misaligned");
+                }
+                network.bindExperimentalSshStorage(@ptrFromInt(region.ssh_experiment)) catch fail("experimental SSH storage binding");
             }
-            network.bindExperimentalSshStorage(@ptrFromInt(region.ssh_experiment)) catch fail("experimental SSH storage binding");
             break :blk @as(*align(64) [network.storage_bytes]u8, @ptrFromInt(region.network_experiment));
         } else ui.serviceBacking(network.storage_bytes);
         network.begin(ui.timer(), if (!network_config.enabled) .disabled else if (network_config.saved) .saved else .{ .network = .{ .ssid = &network_config.ssid, .password = &network_config.password } }, network_backing);
@@ -1656,6 +1663,7 @@ noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (o
 
 extern fn nih_wamr_alignment_negative() callconv(.c) u32;
 const native_sqld = @hasDecl(options, "sqld") and options.sqld;
+const native_udp_smoke = @hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke;
 const sqld = @import("sqld_abi.zig");
 comptime {
     if ((@hasDecl(options, "xy_workspace") and options.xy_workspace) or options.canvas_interactive) _ = @import("xy_eval_runtime.zig");
@@ -1719,10 +1727,11 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         if (!@import("rust_session_fixture.zig").start()) fail("Rust session start");
         print("NIHOS_RUST_SESSION_READY\n");
     }
-    if (native_sqld) {
+    if (native_sqld and !native_udp_smoke) {
         if (!tasks.startSqld()) fail("sqld task start");
         ui.bindStorage(&sqld.provider);
     }
+    if (native_udp_smoke) print("NIHOS_NATIVE_UDP_SMOKE_STORAGE_DISABLED\n");
     var idle_checked = false;
     while (true) {
         if (options.wasm_interactive and !options.wasm_interactive_repeat) {
@@ -1776,7 +1785,7 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
             ssh_foreground.poll(ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
         }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
-        if (native_sqld) serviceSqld();
+        if (native_sqld and !native_udp_smoke) serviceSqld();
         if (!ui.service(&logger)) fail("normal console idle");
         if (options.wasm_interactive_repeat) {
             const fixture = @import("wasm_session_fixture.zig");

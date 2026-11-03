@@ -91,6 +91,28 @@ for diagnostic in false true; do
 done
 echo "Native network owner codegen (normal and diagnostic): ok"
 
+# Compile the separate C6-owned-address, short-only UDP experiment. This is
+# codegen only: no device, peer routing policy or DMA behavior is exercised.
+printf 'pub const ipv6 = false;\npub const c6_time_offload = true;\npub const udp_smoke_bssid = [_]u8{0,0,0,0,0,0};\npub const udp_smoke_ip = [_]u8{192,0,2,2};\npub const udp_smoke_mac = [_]u8{2,0,0,0,0,2};\npub const udp_smoke_port: u16 = 44444;\n' > "$out_dir/network-config.zig"
+printf 'pub const network_test = false;\npub const experimental_tcp = false;\npub const experimental_udp = true;\npub const experimental_udp_smoke = true;\n' > "$out_dir/network-options.zig"
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/network-udp-short.o" --dep network_service --dep timer_group \
+    "-Mroot=$repo_root/tools/probes/network-service.zig" \
+    --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
+    "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
+    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+    "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
+    "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
+    "-Mc6_sdio=$repo_root/src/net/c6_sdio.zig" \
+    "-Mat_controller=$repo_root/src/net/at_controller.zig" \
+    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+    "-Mnative_options=$out_dir/network-options.zig" \
+    "-Mnetwork_config=$out_dir/network-config.zig"
+echo "Experimental C6-owned short UDP owner RV32 codegen: ok"
+printf 'pub const ipv6 = true;\n' > "$out_dir/network-config.zig"
+printf 'pub const network_test = true;\npub const experimental_tcp = true;\n' > "$out_dir/network-options.zig"
+
 # Force TCP owner operations with the exact Hosted station module instance
 # used by the native network service. This is codegen, not a linked image.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \

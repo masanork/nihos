@@ -175,3 +175,39 @@ It is not wired to `network_service.zig`, and these are host-model results.
 An RV32 ReleaseSafe size-only object reports 4,648 bytes for `Shared`, which
 excludes the already-owned decoder and transport. This is not a linked-image
 measurement or an allocation in the normal boot profile.
+
+## Opt-in native short-transfer integration
+
+`NIHOS_NATIVE_EXPERIMENTAL_UDP=1` selects the CPU0 shared UDP adapter in the
+normal network service. It requires network enabled, C6 time offload enabled,
+the sqld PSRAM reservation, and the TCP experiment disabled. The adapter uses
+that reserved backing, handles UDP receive only after the C6 time exchange has
+processed the frame, and gives station/time/BLE work priority. Its CPU0-only
+experimental bind/send/read/close entry points are not exposed to applications.
+The caller supplies a resolved next-hop MAC and a port inside the pinned C6
+candidate's host UDP range. The runtime checks the reported C6 protocol and
+version, but does not read back its routing configuration or authenticate peers.
+
+The normal SDIO provider accepts only a 512-byte Hosted frame. Therefore the
+shared socket's default transmit limit is **458 UDP payload bytes** (512 minus
+12 Hosted, 14 Ethernet, 20 IPv4 and 8 UDP bytes). A larger send fails before
+submission; a separate short-stream wrapper also rejects any long-DMA call.
+Long DMA remains a distinct, explicitly selected diagnostic profile; callers
+must not infer that the normal runtime supports it. In particular, this short
+path cannot send a QUIC Initial requiring at least 1,200 bytes of UDP payload.
+The opt-in profile and its codegen/link audit do not establish physical socket
+operation, ARP in normal boot, general P2P, QUIC or iroh interoperability.
+
+For a finite, opt-in native smoke test, set `NIHOS_NATIVE_UDP_SMOKE=1` along
+with `NIHOS_NATIVE_EXPERIMENTAL_UDP=1` and provide a mode-0600
+`NIHOS_NATIVE_UDP_SMOKE_PEER` JSON file containing only `ip`, `mac` and `port`.
+The CPU0 foreground binds local port 49152 and queues one deterministic
+458-byte datagram after the C6-owned address becomes ready. It waits at most
+120 seconds from network initialization, requires the configured source IP,
+MAC, port and full payload to match on the echoed datagram, and emits
+`NIHOS_NATIVE_UDP_SMOKE` with phase, queued, matched, rejected and error
+counts. A matching echo proves only this diagnostic exchange; IP/MAC are not
+peer authentication. The option does not enable long DMA or QUIC. The
+independent peer and capture are required for device evidence.
+The smoke profile does not start or bind the writable sqld service; shared SD
+controller setup and read-only filesystem initialization remain enabled.
