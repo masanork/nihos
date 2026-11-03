@@ -171,6 +171,13 @@ echo "Native SSH workspace lifecycle RV32 codegen: ok"
     "-Mssh_entropy=$repo_root/src/xy/ssh_entropy.zig"
 echo "SSH seeded CSPRNG RV32 codegen: ok (not target execution)"
 
+# This fixed-byte backend is a compile probe only; it does not qualify entropy.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-seed-collector.o" --dep ssh_seed_collector \
+    "-Mroot=$repo_root/tools/probes/ssh-seed-collector.zig" \
+    "-Mssh_seed_collector=$repo_root/src/xy/ssh_seed_collector.zig"
+echo "SSH seed collector RV32 codegen: ok (not target execution)"
+
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
     "-Mroot=$repo_root/tools/probes/rtc.zig" \
