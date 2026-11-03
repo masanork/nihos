@@ -164,6 +164,13 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
     "-Mssh_lifecycle=$repo_root/src/xy/ssh_lifecycle.zig"
 echo "Native SSH workspace lifecycle RV32 codegen: ok"
 
+# Fixed compile-only ownership stubs do not authorize hardware execution.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/p4-rng-adc.o" --dep rng_adc \
+    "-Mroot=$repo_root/tools/probes/p4-rng-adc.zig" \
+    "-Mrng_adc=$repo_root/src/soc/esp32p4/rng_adc.zig"
+echo "P4 RNG ADC RV32 codegen: ok (not target execution)"
+
 # Fixed bytes exercise code generation only and must never be used as entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
     -femit-bin="$out_dir/ssh-entropy.o" --dep ssh_entropy \
