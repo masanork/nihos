@@ -106,10 +106,12 @@ test "blocked deadline preserves shared stream and partial write retires it" {
     try owner.socket.sendTo(h, peer, "hello", 1, 1, 10);
     var stream: Stream = .{};
     const decoder: hosted.Decoder = .{};
+    stream.mode = .zero;
+    try t.expectEqual(shared.Send.pending, try owner.poll(h, &stream, &decoder, 2, true, false, false));
     try t.expectError(error.Deadline, owner.poll(h, &stream, &decoder, 10, false, true, true));
     try t.expect(!stream.retired and !owner.retired);
     try t.expect(state.address != null);
-    try t.expectEqual(@as(usize, 0), stream.writes);
+    try t.expectEqual(@as(usize, 1), stream.writes);
     _ = try owner.bind(&state, local, 49152, range);
     state = ready();
     owner = .{};
