@@ -297,6 +297,58 @@ mod tests {
     #[cfg(feature = "experimental-meos")]
     #[test]
     #[ignore = "requires the pinned MeOS app and ROM"]
+    fn experimental_meos_osk_touch_reaches_shell() {
+        let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
+        let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
+        let mut emu = Emulator::new_meos(app, rom).unwrap();
+        for _ in 0..800 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(4).any(|w| w == b"\r\n> ")
+                && emu
+                    .bus
+                    .console_output
+                    .windows(18)
+                    .any(|w| w == b"using the built-in")
+            {
+                break;
+            }
+        }
+        assert!(
+            emu.bus
+                .console_output
+                .windows(18)
+                .any(|w| w == b"using the built-in")
+        );
+        // Drain asynchronous startup messages before checking the input echo.
+        emu.step_frame(50_000_000);
+        assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+        let before = emu.bus.console_output.len();
+        // MeOS map 1 transforms physical (575, 719) to the centre of the
+        // landscape on-screen keyboard's h key (560, 575).
+        emu.bus.touch(Some((575, 719)));
+        emu.bus.touch(None);
+        for _ in 0..400 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if !emu.bus.console_output[before..].is_empty() {
+                assert_eq!(&emu.bus.console_output[before..], b"h");
+                println!(
+                    "on-screen h echo: {:?}",
+                    String::from_utf8_lossy(&emu.bus.console_output[before..])
+                );
+                return;
+            }
+        }
+        panic!(
+            "guest did not echo on-screen h: {:?}",
+            String::from_utf8_lossy(&emu.bus.console_output[before..])
+        );
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
+    #[ignore = "requires the pinned MeOS app and ROM"]
     fn experimental_meos_profile_boot_and_reset() {
         let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
         let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
