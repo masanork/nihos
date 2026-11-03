@@ -337,6 +337,16 @@ mod tests {
             );
         }
         emu.paused = true;
+        emu.send_key(b'!');
+        let steps = emu.total_steps;
+        let pc = emu.cpu.pc;
+        let app_path = std::mem::replace(&mut emu.elf_path, PathBuf::from("/dev/null"));
+        assert!(emu.reset().is_err());
+        assert!(emu.paused && emu.is_meos_fixture());
+        assert_eq!(emu.total_steps, steps);
+        assert_eq!(emu.cpu.pc, pc);
+        assert!(emu.bus.keyboard_fifo.ends_with(b"!"));
+        emu.elf_path = app_path;
         emu.reset().unwrap();
         assert!(emu.is_meos_fixture());
         assert!(emu.paused);

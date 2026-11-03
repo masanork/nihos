@@ -48,13 +48,16 @@ The interrupt model currently defers all other hardware interrupts until the
 active handler executes `mret`; CLIC priority and nesting are not modeled.
 
 An opt-in development build can launch the pinned MeOS fixture in the GPUI
-window. It requires the exact image and ROM hashes used by the probes:
+window. From the repository root, run:
 
 ```sh
-NIHOS_EXPERIMENTAL_MEOS_APP=/path/to/build-tab5/m5os.bin \
-NIHOS_EXPERIMENTAL_MEOS_ROM=/path/to/esp32p4_rev0_rom.elf \
-cargo run --manifest-path apps/xy-gpui/Cargo.toml --features experimental-meos
+tools/run-meos-gpui.sh
 ```
+
+The command finds the repository's MeOS reference or a sibling
+`MeOS-shi3z-latest` checkout and the standard ESP-IDF ROM. Run
+`tools/run-meos-gpui.sh --help` to supply different paths. The image and ROM
+must match the exact hashes used by the probes.
 
 The window identifies the session as experimental and volatile. Reset creates
 fresh fixture flash; no guest data is retained. This uses the synthetic ST7121,

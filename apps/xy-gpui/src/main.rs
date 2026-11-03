@@ -73,7 +73,7 @@ impl Workspace {
         let emu_mode = true;
         if emu_mode {
             #[cfg(feature = "experimental-meos")]
-            let title = if emulator.as_ref().is_some_and(|emu| emu.is_meos_fixture()) {
+            let title = if std::env::var_os("NIHOS_EXPERIMENTAL_MEOS_APP").is_some() {
                 "Tab5 Emulator · Experimental MeOS (volatile)"
             } else {
                 "Tab5 Emulator"
