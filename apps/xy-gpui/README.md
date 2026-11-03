@@ -87,6 +87,24 @@ completion interrupt. Linked descriptors, other formats and peripherals are not
 implemented. DMA/DSI timing, FIFO depth and PHY lock are functional approximations,
 not hardware timing or qualification.
 
+On Linux, install Rust 1.98.1 and the X11, Wayland, Vulkan and font development
+packages. For Ubuntu, install them with:
+
+```sh
+sudo apt install build-essential clang cmake pkg-config libfontconfig1-dev \
+  libfreetype6-dev libx11-dev libx11-xcb-dev libxcb1-dev libxcb-render0-dev \
+  libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev \
+  libwayland-dev libvulkan-dev libssl-dev libasound2-dev libudev-dev
+sh tools/build-xy-emulator-fixture.sh
+sh tools/build-xy-gpui.sh
+./build/xy-gpui/xy-gpui
+```
+
+The window requires an X11 or Wayland session and a working Vulkan driver.
+The build places the firmware and optional dictionary in `build/xy-gpui/Resources`
+beside the executable, so it can be started from another working directory.
+`NIHOS_EMULATOR_ELF` still overrides the packaged firmware.
+
 The optional `two_sessions_boot_edit_and_reset_independently` integration test
 boots two guests concurrently, edits different documents, and verifies that a
 reset of one leaves the other's frame unchanged; it also checks that a paused
@@ -111,8 +129,8 @@ For the same candidate and 152 million CPU0 instructions on this host, a debug
 interpreter took 16.4 seconds to `XY_READY`; compiling just this crate with
 `opt-level=2` took 4.2 seconds. These are individual headless measurements, not
 an emulated-time or device-speed comparison. The dev profile now uses that
-crate-level optimization. CPU execution and frame conversion still run on the
-UI thread; responsive behavior under sustained load has not been qualified.
+crate-level optimization. CPU execution and frame conversion run on a dedicated worker thread; the UI
+receives the latest frame and sends input and control commands asynchronously.
 
 Unsupported major opcodes, compressed opcodes and unmapped ROM calls stop the
 emulator with an address. This is not a complete ISA validation: some instruction
