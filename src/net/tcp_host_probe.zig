@@ -91,8 +91,14 @@ export fn tcp_link_begin(port: u16) bool {
     host_station.connected = true;
     host_station.mac_address = guest_mac;
     host_station.dhcp_client = .{ .mac = guest_mac, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 30_000_000, .rebind_at = 50_000_000, .expires_at = 60_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 60 } };
-    const handle = owner.open(&host_station, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, 50001, 0x12345678, 0, 15000) catch return false;
-    socket_adapter = .{ .owner = &owner, .client = &host_station, .handle = handle, .epoch = owner.epoch, .now_us = 0, .write_timeout_ms = 12000 };
+    return tcp_link_reopen(port, 50001);
+}
+/// Test-only: keep the station, owner and lease while opening a new tuple.
+export fn tcp_link_reopen(port: u16, local_port: u16) bool {
+    const now = host_now_ms;
+    const handle = owner.open(&host_station, .{ .address = .{ 10, 0, 2, 2 }, .port = port }, local_port, 0x12345678, now *| 1000, now +| 15000) catch return false;
+    socket_adapter = .{ .owner = &owner, .client = &host_station, .handle = handle, .epoch = owner.epoch, .now_us = now *| 1000, .write_timeout_ms = 12000 };
+    link_time_wait = null;
     return true;
 }
 export fn tcp_link_next(now: u64, out: [*]u8, cap: usize) usize {
