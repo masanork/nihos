@@ -26,8 +26,8 @@ pub const depth_limit = 24;
 pub const step_limit = 8192;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword, rational, inexact };
-const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00".*;
+const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, quasiquote, unquote, unquote_splicing, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00quasiquote\x00unquote\x00unquote-splicing\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 pub const eval_stack_size = 128;
 const int_bias: i32 = 16384;
@@ -995,7 +995,7 @@ pub const Runtime = struct {
         }
     }
     fn delimiter(b: u8) linksection(code_section) bool {
-        return b == '(' or b == ')' or b == '\'' or b == '"' or b == ';' or b == ' ' or b == '\t' or b == '\n' or b == '\r';
+        return b == '(' or b == ')' or b == '\'' or b == '`' or b == ',' or b == '"' or b == ';' or b == ' ' or b == '\t' or b == '\n' or b == '\r';
     }
     fn read(self: *Runtime, source: []const u8, pos: *usize, depth: usize) linksection(code_section) Error!Ref {
         try self.tick(depth);
@@ -1030,9 +1030,13 @@ pub const Runtime = struct {
             }
         }
         if (first == ')') return error.Syntax;
-        if (first == '\'') {
+        if (first == '\'' or first == '`' or first == ',') {
+            const spelling: []const u8 = if (first == '\'') "quote" else if (first == '`') "quasiquote" else if (pos.* < source.len and source[pos.*] == '@') splice: {
+                pos.* += 1;
+                break :splice "unquote-splicing";
+            } else "unquote";
             const quoted = try self.read(source, pos, depth + 1);
-            return self.pair(try self.text(.symbol, vocabulary[0..5]), try self.pair(quoted, 0));
+            return self.pair(try self.text(.symbol, spelling), try self.pair(quoted, 0));
         }
         if (first == '"') {
             var bytes: [text_bytes]u8 = @splat(0);
@@ -1224,6 +1228,76 @@ pub const Runtime = struct {
             reclaim_at.* = if (self.free_cells > ceiling) ceiling else self.free_cells / 2;
         }
     }
+    // Recognize syntax by interned spelling; user data is never evaluated here.
+    fn quasiquoteKind(self: *const Runtime, value: Ref) linksection(code_section) ?Op {
+        if (self.tagOf(value) != .pair) return null;
+        const head = self.heap[value].a;
+        if (self.tagOf(head) != .symbol) return null;
+        const op = opcode(self.string(head)) orelse return null;
+        return switch (op) {
+            .quasiquote, .unquote, .unquote_splicing => op,
+            else => null,
+        };
+    }
+    fn quasiquote(self: *Runtime, template: Ref, env: Ref, nesting: usize, depth: usize, host: anytype) linksection(code_section) Error!Ref {
+        try self.tick(depth);
+        const frame = try self.pushAstRoots(template, env, 0);
+        defer self.ast_root_frame_count = frame;
+        if (self.quasiquoteKind(template)) |kind| {
+            var fields: [1]Ref = @splat(0);
+            const arguments_ = try self.arguments(self.heap[template].b, &fields);
+            if (arguments_.len != 1) return error.Syntax;
+            if (kind == .unquote and nesting == 1) return self.eval(arguments_[0], env, depth + 1, host);
+            if (kind == .unquote_splicing and nesting == 1) return error.Syntax;
+            const next = if (kind == .quasiquote) nesting + 1 else nesting - 1;
+            const inner = try self.quasiquote(arguments_[0], env, next, depth + 1, host);
+            const tail = try self.pair(inner, 0);
+            return self.pair(self.heap[template].a, tail);
+        }
+        if (self.tagOf(template) != .pair) return template;
+        var cursor = template;
+        var head: Ref = 0;
+        var tail: Ref = 0;
+        while (self.tagOf(cursor) == .pair) {
+            try self.tick(depth);
+            // A dotted cdr may itself be an unquote form. It is structurally
+            // identical to its equivalent list representation.
+            if (cursor != template and self.quasiquoteKind(cursor) != null) break;
+            const item = self.heap[cursor].a;
+            if (nesting == 1 and self.quasiquoteKind(item) == .unquote_splicing) {
+                var fields: [1]Ref = @splat(0);
+                const arguments_ = try self.arguments(self.heap[item].b, &fields);
+                if (arguments_.len != 1) return error.Syntax;
+                var splice = try self.eval(arguments_[0], env, depth + 1, host);
+                self.ast_root_frames[frame].values[0] = splice;
+                self.ast_root_frames[frame].value_count = 1;
+                var count: usize = 0;
+                while (splice != 0) {
+                    if (self.tagOf(splice) != .pair) return error.Type;
+                    if (count >= cells) return error.Depth;
+                    count += 1;
+                    try self.tick(depth);
+                    const node = try self.pair(self.heap[splice].a, 0);
+                    if (head == 0) head = node else self.heap[tail].b = node;
+                    tail = node;
+                    self.ast_root_frames[frame].auxiliary = head;
+                    splice = self.heap[splice].b;
+                }
+                self.ast_root_frames[frame].value_count = 0;
+            } else {
+                const value = try self.quasiquote(item, env, nesting, depth + 1, host);
+                const node = try self.pair(value, 0);
+                if (head == 0) head = node else self.heap[tail].b = node;
+                tail = node;
+                self.ast_root_frames[frame].auxiliary = head;
+            }
+            cursor = self.heap[cursor].b;
+        }
+        const rest = if (cursor == 0) @as(Ref, 0) else try self.quasiquote(cursor, env, nesting, depth + 1, host);
+        if (head == 0) return rest;
+        self.heap[tail].b = rest;
+        return head;
+    }
     fn sequence(self: *Runtime, list: Ref, env: Ref, depth: usize, host: anytype) linksection(code_section) Error!Ref {
         var p = list;
         var reclaim_at: u16 = 96;
@@ -1271,6 +1345,11 @@ pub const Runtime = struct {
                     if (args.len != 1) return error.Arity;
                     return args[0];
                 },
+                .quasiquote => {
+                    if (args.len != 1) return error.Arity;
+                    return self.quasiquote(args[0], cur_env, 1, depth + 1, host);
+                },
+                .unquote, .unquote_splicing => return error.Syntax,
                 .if_ => {
                     if (args.len != 3) return error.Arity;
                     const condition = try self.evalRooted(args[0], cur_env, depth + 1, host, cur_r, cur_env, 0);
@@ -1869,7 +1948,7 @@ pub const Runtime = struct {
 
         const special = if (self.tagOf(head) == .symbol) opcode(self.string(head)) else null;
         if (special) |op| switch (op) {
-            .lambda, .let, .let_star, .letrec, .letrec_star, .and_, .or_ => return error.CannotCompile,
+            .lambda, .let, .let_star, .letrec, .letrec_star, .quasiquote, .unquote, .unquote_splicing, .and_, .or_ => return error.CannotCompile,
             .quote => {
                 if (args.len != 1) return error.Arity;
                 try self.emitBcOp(.const_val);
@@ -3747,6 +3826,7 @@ test "pending control forms and initialized bindings survive controlled collecti
         .{ .source = "(let ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
         .{ .source = "(let* ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
         .{ .source = "(letrec ((x '(alpha)) (f (begin (system/log) (lambda () x)))) (f))", .expected = "(alpha)" },
+        .{ .source = "`(a ,(begin (system/log) (list 'x)) ,@(begin (system/log) (list 'y 'z)) ,(begin (system/log) 'w))", .expected = "(a (x) y z w)" },
         .{ .source = "(letrec* ((x '(alpha)) (y (begin (system/log) x))) y)", .expected = "(alpha)" },
         .{ .source = "(let loop ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
         .{ .source = "((lambda () (system/log) '(survives)))", .expected = "(survives)" },
@@ -4521,6 +4601,25 @@ test "evaluation respects unbound set and redefined numeric procedures" {
     try std.testing.expectError(error.Unbound, vm.evaluate("(set! missing 1)", &host, &out));
     _ = try vm.evaluate("(define + (lambda (a b) 9))", &host, &out);
     try std.testing.expectEqualStrings("9", try vm.evaluate("(+ 1 2)", &host, &out));
+}
+
+test "list quasiquote observes nesting splicing dotted tails and errors" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [256]u8 = undefined;
+    try expectValue(&vm, &host, "(let ((x 2)) `(1 ,x 3))", "(1 2 3)");
+    try expectValue(&vm, &host, "`(a ,(+ 1 2) ,@(list 4 5) . ,(+ 2 5))", "(a 3 4 5 . 7)");
+    try expectValue(&vm, &host, "(let ((x 2)) `(a `(b ,x ,,x) ,x))", "(a (quasiquote (b (unquote x) (unquote 2))) 2)");
+    try expectValue(&vm, &host, "`(a ,@(list) b)", "(a b)");
+    try expectValue(&vm, &host, "`(a unquote (+ 1 2))", "(a . 3)");
+    try expectValue(&vm, &host, "(let ((x '(9 8))) `(1 ,@x 3))", "(1 9 8 3)");
+    try expectValue(&vm, &host, "`(quasiquote (a (unquote (+ 1 2))))", "(quasiquote (a (unquote (+ 1 2))))");
+    try expectValue(&vm, &host, "`(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)", "(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)");
+    try std.testing.expectError(error.Type, vm.evaluate("`(a ,@3)", &host, &out));
+    try std.testing.expectError(error.Syntax, vm.evaluate(",x", &host, &out));
+    try std.testing.expectError(error.Syntax, vm.evaluate("`,@(list 1 2)", &host, &out));
+    try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
 test "recursive bindings and named let preserve scope and recover" {
