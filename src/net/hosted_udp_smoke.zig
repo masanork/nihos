@@ -43,9 +43,7 @@ pub const Probe = struct {
         }
         var data: [payload_len]u8 = undefined;
         const received = (io.read(self.handle.?, &data) catch |err| return self.fail(io, err)) orelse return;
-        var expected: [payload_len]u8 = undefined;
-        payload(&expected);
-        if (!std.meta.eql(received.source, self.peer) or received.bytes != payload_len or !std.mem.eql(u8, &data, &expected)) {
+        if (!std.meta.eql(received.source, self.peer) or received.bytes != payload_len or !matches(&data)) {
             self.report.rejected +|= 1;
             return;
         }
@@ -72,4 +70,10 @@ pub const Probe = struct {
 pub fn payload(out: *[payload_len]u8) void {
     for (out, 0..) |*byte, index| byte.* = @truncate(index);
     @memcpy(out[0..8], "NIHOSUP1");
+}
+
+fn matches(data: *const [payload_len]u8) bool {
+    if (!std.mem.eql(u8, data[0..8], "NIHOSUP1")) return false;
+    for (data[8..], 8..) |byte, index| if (byte != @as(u8, @truncate(index))) return false;
+    return true;
 }
