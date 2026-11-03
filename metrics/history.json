@@ -6228,22 +6228,22 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-03",
-    "measuredAt": "2026-11-03T00:05:20.566401+00:00",
+    "measuredAt": "2026-11-03T06:03:05.851159+00:00",
     "project": "nihos",
-    "commit": "7754a3dd602aff53833831955188c0f2f1293d7c",
+    "commit": "99c7c8f74b05199311b02e10d177ae8370289ee1",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "cb6e17e91a5fbd2422bd23632c68a86b0a354fd340c0256b33f44582a44a9e1c",
+    "sourceTreeSha256": "8b9ede15ef5d95e7a056f0f2368fcc701b2518b607e3f1d7a1071cbd209b585e",
     "code": {
-      "implementation": 83046,
-      "tests": 43481,
-      "tooling": 29792,
+      "implementation": 83100,
+      "tests": 43506,
+      "tooling": 29930,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 75331,
+        "implementation": 75385,
         "tests": 32760,
         "tooling": 1628,
         "probes": 5642,
@@ -6276,8 +6276,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 10562,
-        "tooling": 21717,
+        "tests": 10587,
+        "tooling": 21853,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -6293,7 +6293,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4559,
+        "tooling": 4561,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -6341,7 +6341,7 @@
         "generated": 0
       },
       "src": {
-        "implementation": 81109,
+        "implementation": 81163,
         "tests": 32886,
         "tooling": 0,
         "probes": 0,
@@ -6358,8 +6358,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 10595,
-        "tooling": 29486,
+        "tests": 10620,
+        "tooling": 29624,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6646,7 +6646,7 @@
         "src/net/hosted_split_udp_owner_test.zig": "42fc63018d820c28a83ce3b8133725dab8f71cf9ce9ef40ebaa8f9a6d815ab06",
         "src/net/hosted_split_udp_probe.zig": "72d72a0a044bb7184005fa8c57c6b39dd249194dcd4aa4280e67775a5f039c55",
         "src/net/hosted_split_udp_probe_test.zig": "af41aa33c06c95f43d903c56cc503f5f3ce6b059c181b32070f0d95b9429d534",
-        "src/net/hosted_station.zig": "8879a8851073d0c724db3278c3cba2b81077ed31f6f9223669a94485450cdae1",
+        "src/net/hosted_station.zig": "b168c160db27ab37109d371b6ffbacce1a7a11f3552cc223734ef28aeba4d6df",
         "src/net/hosted_tcp_owner.zig": "77ea60fb93e70d8603bd736b74690514613af7d8f2e9d337dc05e064d9dcae1e",
         "src/net/hosted_tcp_rx.zig": "8ad3a661939f146d1a78ffef89a1f79966b8412236463512d4dc80ee1f8905cf",
         "src/net/hosted_tcp_service.zig": "0cfb6d44b72800529e44906df3408b6dce2130c3205835877bbae9842c8b3a32",
@@ -6691,7 +6691,7 @@
         "src/net/ssh_transport.zig": "729335fe56c79b13f371eaf1228aac511e8aad803279d13ae0d3e86dc5df76b0",
         "src/net/tailscale.zig": "be2a2d1579d3d1232daea98e095489409c58a5b3b92d9109b64532e01f6cc7b8",
         "src/net/tcp_connect.zig": "1c82eac40c91dd82282a75d1332b74bcc4b457bdd25b24559bb1bc3ff14b1a02",
-        "src/net/tcp_host_probe.zig": "e960614bf47f1534847b1b239b6109001c32b9a859b0336d6f3c2f7a1fb3f0b0",
+        "src/net/tcp_host_probe.zig": "7707419a901806d45d05d1043aadb5a05fd428def824b7135a49c1af575ef0d4",
         "src/net/tcp_link.zig": "24339cb1fb718f45d725a7836de9c0e5966c5c6da677ab90230691fc427e0c83",
         "src/net/tcp_stream.zig": "3b6826615dc1fa346ef29d3e8965692ab4ddd65ce5c19d657520eb48affdfa70",
         "src/net/tcp_time_wait.zig": "8a1ce9077091e934359112ddf31f25c7c92f54a2d5010d4e71882e83337aa4f8",
@@ -6711,7 +6711,7 @@
         "src/platform/native/board_devices.zig": "961e23857c07036dd3e8358fb737b5909b76210d89b2ee6a712ba04280b766ee",
         "src/platform/native/broker_abi.zig": "221d693de6b33cb5c29a2d9385ebc7abb2e9e959d1c6297e7b928e34b4a470aa",
         "src/platform/native/broker_runtime.zig": "b9bc5cfa822dad4eee85ad1a07b1ca33342aa8dd1bf1e4df47d18cac737a9d74",
-        "src/platform/native/c6_probe.zig": "064f233ac7f6903a553b409228749a4c720772b3f53fed963096b3435a2a868d",
+        "src/platform/native/c6_probe.zig": "880e06f690530ec52a5b53f7032ee55aa687fb8ee96fa215212b9d939e9cdf76",
         "src/platform/native/camera_jpeg.zig": "570e4c29e5f176be2b00f6dbc00346883b7c8715692799a21ad435e2d36699ef",
         "src/platform/native/canvas_demo_app.zig": "802f210b533bdaf238e7b3d4b6d45ecf25cac13dd6d0a30faab9a91f826d8f8b",
         "src/platform/native/canvas_pattern.zig": "955af251b733d0229673b3f29894b65d8a7cdebdbdfc115f68fbab27d91125f7",
