@@ -6228,15 +6228,15 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-03",
-    "measuredAt": "2026-11-03T10:58:28.610413+00:00",
+    "measuredAt": "2026-11-03T13:12:44.382954+00:00",
     "project": "nihos",
-    "commit": "94bfd96d5c7042061fba6c0128a5c4ca231f0dfd",
+    "commit": "3f60e046107ef99f2f25d84234295a5e9866be8f",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "cae1d97b1269532873b04f045e93d64448fccd4b998bc5fdf6d1677dfe5603a7",
+    "sourceTreeSha256": "9f75a848052aea59ab9297de9ec3605fd58dcec944f38ae28a94823c0a8aaa82",
     "code": {
       "implementation": 83857,
-      "tests": 44348,
-      "tooling": 30413,
+      "tests": 44355,
+      "tooling": 30415,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
@@ -6276,8 +6276,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 10688,
-        "tooling": 22105,
+        "tests": 10695,
+        "tooling": 22107,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -6358,8 +6358,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 10721,
-        "tooling": 30105,
+        "tests": 10728,
+        "tooling": 30107,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6892,7 +6892,7 @@
         "src/xy/render_session.zig": "fe34a48eee71aa796e40da253fbd89cc946176bfd0c6a0af4c17b4c69f734e38",
         "src/xy/scheme_bridge.zig": "4874c4e3696b17f33e01b739d4ff68eef8eb489f6f72a3950e79e6be61dfaece",
         "src/xy/scheme_decimal.zig": "8682778ff3768736c0fc9f949af3b13214adb5d90942b139a701cfcf6f50024e",
-        "src/xy/scheme_runtime.zig": "92e3f65b0697badfe5dec910c2cc4d447251c4679526bedad6643c54eec1ef53",
+        "src/xy/scheme_runtime.zig": "59bbc6c862277d6c63d4207c620ebbd6471095c280daf9dfe7b1114ceb080c1e",
         "src/xy/scratch.zig": "3699d287f8e58b26fed7c548e95a2090c8afcf11a1abc93004ed17f4218e2dc4",
         "src/xy/soft_keyboard.zig": "19b2c16b30a3a9f7b40a6067e4e0f87afc97b23c6ba42d90ff0e58193794047c",
         "src/xy/ssh_entropy.zig": "4e5d59cecb8357931d0d950aaff85e90b1e65c234e1b12710a814a846b445954",
