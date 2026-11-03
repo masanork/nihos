@@ -248,7 +248,11 @@ UDP_XY_FUNCTIONS = {
     'hosted_udp_lease.Lease.check',
     'hosted_udp_socket.Socket.get', 'hosted_udp_socket.Socket.check',
     'hosted_udp_socket.Socket.close', 'hosted_udp_socket.Socket.retire',
-    'hosted_udp_sender.Sender.retire', 'udp_ipv4.checksum', 'udp_ipv4.pseudo',
+    'hosted_udp_sender.Sender.retire', 'udp_ipv4.checksum', 'udp_ipv4.pseudo', 'udp_ipv4.sumWords',
+    'network_service.experimentalUdpNow', 'network_service.experimentalUdpBind',
+    'network_service.experimentalUdpSend', 'network_service.experimentalUdpRead',
+    'network_service.experimentalUdpClose', 'network_service.experimentalUdpSmokePoll',
+    'hosted_udp_smoke.Probe.fail', 'hosted_udp_smoke.payload',
 }
 XY_METHODS = {'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
