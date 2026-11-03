@@ -1186,7 +1186,7 @@ fi
     "$repo_root/src/platform/native/start.S" "$@" \
     --dep frame_mailbox --dep async_start --dep wasm_ui_controller --dep hosted_station --dep dhcp_fixture \
     -target riscv32-freestanding-none -mcpu="$cpu" -O "$root_opt" \
-    --dep app_session --dep app_presenter --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring --dep suspend -Mroot="$repo_root/src/platform/native/main.zig" \
+    --dep app_session --dep app_presenter --dep native_options --dep timer_group --dep native_tasks --dep psram --dep psram_supply --dep psram_mpll --dep psram_tuning --dep psram_mapping --dep record_log --dep sdmmc --dep block_reader --dep boot_i2c --dep tab5_rtc --dep tab5_bmi270 --dep tab5_camera --dep tab5_csi_preflight --dep tab5_csi_inflight_adapter --dep tab5_csi_stability --dep sc202cs_exposure --dep camera_workspace --dep camera_preview --dep half_duplex --dep pointer_input --dep device_control --dep native_memory --dep tab5_es8388 --dep tab5_es7210 --dep microphone_model --dep audio_tone --dep audio_probe_model --dep ccid --dep jpki --dep card --dep usb_host --dep usb_descriptors --dep tab5_display --dep boot_graphics --dep tab5_panels --dep display_dcs --dep scanout_state --dep text_console --dep display_service --dep cpu_boot --dep network_service --dep network_config --dep ssh_workspace --dep reset_capture --dep storage_io --dep storage_rpc --dep spsc_ring --dep suspend -Mroot="$repo_root/src/platform/native/main.zig" \
     -Mdhcp_fixture="$repo_root/src/net/fixtures/wasm_fixture.zig" \
     -Mframe_mailbox="$repo_root/src/app/frame_mailbox.zig" \
     -Masync_start="$repo_root/src/app/async_start.zig" \
@@ -1301,6 +1301,11 @@ fi
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mview_config="$repo_root/src/xy/view_config.zig" \
     -Msurface="$repo_root/src/graphics/surface.zig" \
+    --dep network_service --dep text_console --dep ssh_terminal_session --dep ssh_lifecycle -Mssh_workspace="$repo_root/src/platform/native/ssh_workspace.zig" \
+    --dep vt100 --dep terminal_adapter -Mssh_terminal_session="$repo_root/src/xy/ssh_terminal_session.zig" \
+    --dep terminal_adapter -Mvt100="$repo_root/src/net/vt100.zig" \
+    -Mterminal_adapter="$repo_root/src/net/terminal_adapter.zig" \
+    -Mssh_lifecycle="$repo_root/src/xy/ssh_lifecycle.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \
     -Mfont_stack_lifetime="$repo_root/src/graphics/font_stack_lifetime.zig" \
     -target riscv32-freestanding-none -mcpu="$cpu" -O safe \

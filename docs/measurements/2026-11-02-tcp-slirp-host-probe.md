@@ -123,7 +123,14 @@ SSH exchange secret and cookie, and each packet-producing tick; failure cancels
 the session and clears its profile. The host fixture supplies `os.urandom` and
 exercises this same driver through OpenSSH. The RV32 probe uses deliberately
 fixed test bytes for code generation only. No qualified native entropy provider
-or device application calls this driver yet. The TCP service permits at most
+or device application enables this driver yet. The experimental native loop
+has a foreground binding, but its unavailable entropy provider gates the
+binding at compile time: no SSH session or credential input runs on device.
+Enabling that gate also requires independently qualifying the entropy source,
+moving SSH cryptographic code out of the constrained SRAM foreground safely,
+and validating the resulting image. The host fixture drives the common
+foreground owner from the xy home screen and exercises navigation cleanup.
+The TCP service permits at most
 32 sequential attempts per lease generation, each with a distinct local port;
 it retains used ports until the lease changes. The driver does not reset the
 station or claim automatic reconnect support.

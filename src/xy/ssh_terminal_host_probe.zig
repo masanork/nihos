@@ -126,7 +126,7 @@ const HostEntropy = struct {
     }
 };
 const HostJourney = lifecycle.Journey(console.scratch.Model, Controller);
-const HostApp = lifecycle.App(HostJourney, HostEntropy);
+const HostForeground = lifecycle.Foreground(console.scratch.Model, Controller, HostEntropy);
 // SAFETY: probe_lifecycle_begin initializes these stable objects before use.
 var host_network: HostNetwork = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable object before use.
@@ -136,11 +136,13 @@ var journey: HostJourney = undefined;
 // SAFETY: probe_lifecycle_begin initializes these stable objects before use.
 var host_entropy: HostEntropy = undefined;
 // SAFETY: probe_lifecycle_begin initializes the foreground app before use.
-var app: HostApp = undefined;
+var foreground: HostForeground = undefined;
 export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
     model.initInPlace();
-    model.nav.screen = .ssh;
+    model.nav.home();
+    model.handle(.{ .text = 't' });
+    if (model.nav.screen != .ssh) return false;
     backend = .{ .poll_fn = poll, .read_fn = read, .write_fn = write };
     host_network = .{ .start = start, .ready_fn = ready, .release_fn = release, .cancel_fn = cancel, .close_fn = close, .complete_fn = complete };
     controller = Controller.init(&host_network, &ui, &model);
@@ -154,31 +156,30 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     model.handle(.escape);
     if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
     for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;
-    journey.initInPlace(&model, &controller);
     host_entropy = .{ .fill_fn = fill };
-    app = HostApp.init(&journey, &host_entropy, 20_000_000, 20_000_000) catch return false;
-    app.start() catch return false;
+    foreground.initInPlace(&model, &controller, &host_entropy, 20_000_000, 20_000_000) catch return false;
+    if ((foreground.poll(true, now) catch return false) != .editing) return false;
     for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
         for (value) |byte| {
             model.feedSerial(byte, now);
             if (model.status != .none) {
-                app.cancel();
+                _ = foreground.stop();
                 return false;
             }
         }
         model.handle(.enter);
     }
-    if (journey.setup.status != .ready or model.private_input != null) {
-        app.cancel();
+    if (foreground.journey.setup.status != .ready or model.private_input != null) {
+        _ = foreground.stop();
         return false;
     }
-    if ((app.tick(now) catch return false) != .connecting) return false;
+    if ((foreground.poll(true, now) catch return false) != .connecting) return false;
     initialized = true;
     return true;
 }
 export fn probe_lifecycle_poll(now: u64) isize {
     if (!initialized) return -1;
-    return switch (app.tick(now) catch |err| {
+    return switch (foreground.poll(model.nav.screen == .ssh, now) catch |err| {
         return if (err == error.HostKeyMismatch) -2 else if (err == error.EntropyUnavailable) -3 else -1;
     }) {
         .editing, .connecting, .closing => 0,
@@ -188,10 +189,16 @@ export fn probe_lifecycle_poll(now: u64) isize {
     };
 }
 export fn probe_profile_cleared() bool {
-    for (@import("std").mem.asBytes(&journey.profile)) |byte| if (byte != 0) return false;
+    for (@import("std").mem.asBytes(&foreground.journey.profile)) |byte| if (byte != 0) return false;
     return true;
 }
 export fn probe_seed_cleared() bool {
-    for (journey.profile.seed) |byte| if (byte != 0) return false;
+    for (foreground.journey.profile.seed) |byte| if (byte != 0) return false;
     return true;
+}
+export fn probe_lifecycle_leave(now: u64) bool {
+    if (!initialized) return false;
+    model.nav.home();
+    if ((foreground.poll(false, now) catch return false) != .closed) return false;
+    return model.terminal == null and model.private_input == null and probe_profile_cleared();
 }

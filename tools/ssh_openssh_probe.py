@@ -155,6 +155,9 @@ def run():
         pin = hashlib.sha256(base64.b64decode(key.with_suffix(".pub").read_text().split()[1])).digest()
         lifecycle_bad_pin = os.environ.get("NIHOS_SSH_LIFECYCLE_BADPIN") == "1"
         lifecycle_bad_entropy = os.environ.get("NIHOS_SSH_LIFECYCLE_BADENTROPY") == "1"
+        lifecycle_leave = os.environ.get("NIHOS_SSH_LIFECYCLE_LEAVE") == "1"
+        if lifecycle_leave and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin or lifecycle_bad_entropy):
+            raise ValueError("lifecycle leave requires the normal lifecycle over libslirp")
         if lifecycle_bad_entropy and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin):
             raise ValueError("lifecycle entropy failure requires lifecycle over libslirp")
         if lifecycle_bad_pin:
@@ -395,10 +398,8 @@ def run():
                     vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
                     subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
                         "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
-                        "--dep", "vt100", "--dep", "terminal_buffer", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
+                        "--dep", "vt100", "--dep", "terminal_adapter", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
                         "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
-                        "--dep", "viewport_layout", "--dep", "terminal_adapter", "--dep", "vt100", "-Mterminal_buffer=src/xy/terminal_buffer.zig",
-                        "--dep", "view_config", "-Mviewport_layout=src/graphics/viewport_layout.zig",
                         "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig",
                         "--dep", "view_config", "--dep", "canvas", "-Mtext_console=src/console.zig",
                         "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig",
@@ -457,6 +458,8 @@ def run():
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
                         vt.probe_profile_cleared.restype = c.c_bool
                         vt.probe_seed_cleared.restype = c.c_bool
+                        vt.probe_lifecycle_leave.argtypes = [c.c_uint64]
+                        vt.probe_lifecycle_leave.restype = c.c_bool
                         fingerprint = b"SHA256:" + base64.b64encode(pin).rstrip(b"=")
                         seed_hex = seed.raw.hex().encode("ascii")
                         assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, lifecycle_entropy, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
@@ -488,6 +491,12 @@ def run():
                             if lifecycle_mode: assert vt.probe_seed_cleared(), "signing seed retained after authentication"
                             break
                         if time.monotonic() > deadline: raise TimeoutError("VT startup timeout")
+                    if lifecycle_leave:
+                        if not vt.probe_lifecycle_leave(time.monotonic_ns() // 1000):
+                            raise RuntimeError("leaving SSH did not detach and clear the session")
+                        sock.closed_by_controller = True
+                        print("Leaving SSH detached the terminal and cleared the profile: OK")
+                        return
                     for byte in b"printf ni%s_ssh_ok hos\n":
                         if not vt.probe_vt_key(byte): raise RuntimeError("VT key queue full")
                     deadline = time.monotonic() + 20
