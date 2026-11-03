@@ -170,6 +170,13 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('xy.scheme_runtime.ContinuationState.unapproved'))
         with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
             MODULE.audit_xy_functions(candidate + [(continuation, 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        for name in ('safeArithmetic', 'safeArithmeticSequence'):
+            function = 'xy.scheme_runtime.Runtime.' + name
+            extra = functions + [(function, start + 32, start + 48)]
+            self.assertEqual(len(MODULE.audit_xy_functions(extra, (start, start + 48))), 3)
+            with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
+                MODULE.audit_xy_functions(extra + [(function, 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        self.assertFalse(MODULE.xy_function('xy.scheme_runtime.Runtime.safeArithmeticUnexpected'))
         soft_float = functions + [('__divdf3', start + 32, start + 48)]
         self.assertEqual(len(MODULE.audit_xy_functions(soft_float, (start, start + 48))), 3)
         with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):

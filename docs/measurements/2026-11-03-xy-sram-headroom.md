@@ -1,0 +1,11 @@
+# xy Scheme compiler admission: SRAM placement
+
+The Scheme compiler's arithmetic admission checks run in the xy foreground evaluator. Place `Runtime.safeArithmetic` and `safeArithmeticSequence` in the existing audited xy Flash text section. Their semantics are unchanged. The image auditor admits exactly these names and rejects an additional SRAM copy; tests cover both placement and rejection.
+
+On main `e34194a241acebd915439ea4b51ce14247ec0aaa` with the same SDK and build options, the no-sqld trace device link failed the unchanged 49,152-byte SRAM heap assertion. A diagnostic-only link with that assertion temporarily relaxed put the boundary at 49,088 B; its artifact is not a qualifying image. With this change the regular link and image audit pass at 49,600 B, an improvement of 512 B relative to that diagnostic link and 448 B above the floor. The exact final ELF contains `safeArithmetic` and `safeArithmeticSequence` in `.flash.xytext`, without SRAM copies. [Trace audit](evidence/2026-11-03-xy-sram-headroom/trace-no-sqld-audit.json).
+
+The same options with sqld yield 52,928 B, and the normal no-trace/no-sqld configuration yields 49,600 B. [sqld audit](evidence/2026-11-03-xy-sram-headroom/trace-sqld-audit.json), [normal audit](evidence/2026-11-03-xy-sram-headroom/normal-no-sqld-audit.json). Options: display 2, PSRAM 200 MHz, network, devices, camera ID, console/live, xy workspace and normal storage; camera diagnostics disabled. Both trace profiles use `NIHOS_NATIVE_XY_TRACE=1`. The trace audit uses the normal device CPU clock; no Flash write or real Tab5 run was performed.
+
+A separate CPU-initialization-disabled RV32 emulator ELF completed continuation resume, cancellation, deferred input replay, and subsequent arithmetic evaluation. [Emulator trace](evidence/2026-11-03-xy-sram-headroom/rv32-emulator.log), [ELF SHA-256](evidence/2026-11-03-xy-sram-headroom/rv32-emulator-sha256.txt). This is not a physical device or performance result.
+
+An older candidate had a recorded 49,600 B trace heap, but rebuilding that same commit in the present environment yielded 49,216 B. The reason for that historical difference was not established; it should not be attributed solely to the intervening main changes.
