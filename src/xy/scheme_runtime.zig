@@ -26,11 +26,16 @@ pub const depth_limit = 24;
 pub const step_limit = 8192;
 pub const EditorOp = enum { insert, move, undo, forget, log, memory, tasks };
 const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, native, keyword, rational, inexact };
-const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, and_, or_, cond, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc };
-const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00and\x00or\x00cond\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00".*;
+const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc };
+const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
 pub const eval_stack_size = 128;
 const int_bias: i32 = 16384;
+// An invalid immediate opcode is an internal marker for recursive bindings.
+const uninitialized_binding: Ref = 0x40ff;
+comptime {
+    if (@typeInfo(Op).@"enum".field_names.len >= 256) @compileError("recursive binding marker overlaps an opcode");
+}
 
 inline fn isImmediateInt(r: Ref) bool {
     return (r & 0x8000) != 0;
@@ -1247,7 +1252,11 @@ pub const Runtime = struct {
             const c = &self.heap[cur_r];
             if (c.tag == .symbol) {
                 const found = self.lookup(cur_env, cur_r);
-                if (found != 0) return self.heap[found].b;
+                if (found != 0) {
+                    const value = self.heap[found].b;
+                    if (value == uninitialized_binding) return error.Unbound;
+                    return value;
+                }
                 const op = opcode(self.string(cur_r)) orelse return error.Unbound;
                 if (@backingInt(op) < @backingInt(Op.add)) return error.Unbound;
                 return makeImmediateOp(op);
@@ -1344,11 +1353,90 @@ pub const Runtime = struct {
                     if (args.len != 2) return error.Arity;
                     if (self.tagOf(args[0]) != .symbol) return error.Type;
                     const found = self.lookup(cur_env, args[0]);
-                    if (found == 0) return error.Unbound;
+                    if (found == 0 or self.heap[found].b == uninitialized_binding) return error.Unbound;
                     self.heap[found].b = try self.evalRooted(args[1], cur_env, depth + 1, host, cur_r, cur_env, found);
                     return 0;
                 },
-                .let, .let_star => {
+                .letrec, .letrec_star => {
+                    if (args.len < 2) return error.Arity;
+                    var bindings_storage: [16]Ref = @splat(0);
+                    const entries = try self.arguments(args[0], &bindings_storage);
+                    var names: [16]Ref = @splat(0);
+                    var initializers: [16]Ref = @splat(0);
+                    for (entries, 0..) |entry, i| {
+                        var fields: [2]Ref = @splat(0);
+                        const binding = try self.arguments(entry, &fields);
+                        if (binding.len != 2 or self.tagOf(binding[0]) != .symbol) return error.Syntax;
+                        for (names[0..i]) |name| if (name == binding[0]) return error.Syntax;
+                        names[i] = binding[0];
+                        initializers[i] = binding[1];
+                    }
+                    const local = try self.pair(0, cur_env);
+                    const roots = try self.pushAstRoots(cur_r, cur_env, local);
+                    defer self.ast_root_frame_count = roots;
+                    for (names[0..entries.len]) |name| try self.define(local, name, uninitialized_binding);
+                    for (initializers[0..entries.len], 0..) |initializer, i| {
+                        if (self.steps < self.step_budget) self.maybeCollectBoundary(depth, cur_r, local, &binding_reclaim_at, 96);
+                        const value = try self.eval(initializer, local, depth + 1, host);
+                        self.ast_root_frames[roots].values[i] = value;
+                        self.ast_root_frames[roots].value_count = @intCast(i + 1);
+                        if (op == .letrec_star) self.heap[self.lookup(local, names[i])].b = value;
+                    }
+                    if (op == .letrec) for (names[0..entries.len], 0..) |name, i| {
+                        self.heap[self.lookup(local, name)].b = self.ast_root_frames[roots].values[i];
+                    };
+                    var body = self.heap[c.b].b;
+                    var let_reclaim_at: u16 = 96;
+                    while (self.heap[body].b != 0) : (body = self.heap[body].b) {
+                        try self.tick(depth);
+                        self.maybeCollectBoundary(depth, body, local, &let_reclaim_at, 96);
+                        _ = try self.evalRooted(self.heap[body].a, local, depth + 1, host, body, local, 0);
+                    }
+                    cur_env = local;
+                    owned_frame = local;
+                    cur_r = self.heap[body].a;
+                    continue;
+                },
+                .let, .let_star => named_let: {
+                    if (op == .let and args.len >= 3 and self.tagOf(args[0]) == .symbol) {
+                        const loop_name = args[0];
+                        var entries_storage: [16]Ref = @splat(0);
+                        const entries = try self.arguments(args[1], &entries_storage);
+                        var names: [16]Ref = @splat(0);
+                        var initializers: [16]Ref = @splat(0);
+                        for (entries, 0..) |entry, i| {
+                            var fields: [2]Ref = @splat(0);
+                            const binding = try self.arguments(entry, &fields);
+                            if (binding.len != 2 or self.tagOf(binding[0]) != .symbol) return error.Syntax;
+                            for (names[0..i]) |name| if (name == binding[0]) return error.Syntax;
+                            names[i] = binding[0];
+                            initializers[i] = binding[1];
+                        }
+                        const roots = try self.pushAstRoots(cur_r, cur_env, 0);
+                        defer self.ast_root_frame_count = roots;
+                        for (initializers[0..entries.len], 0..) |initializer, i| {
+                            if (self.steps < self.step_budget) self.maybeCollectBoundary(depth, cur_r, cur_env, &binding_reclaim_at, 96);
+                            const value = try self.eval(initializer, cur_env, depth + 1, host);
+                            self.ast_root_frames[roots].values[i] = value;
+                            self.ast_root_frames[roots].value_count = @intCast(i + 1);
+                            argument_storage[i] = value;
+                        }
+                        const local = try self.pair(0, cur_env);
+                        self.ast_root_frames[roots].auxiliary = local;
+                        var params: Ref = 0;
+                        var i = entries.len;
+                        while (i > 0) {
+                            i -= 1;
+                            params = try self.pair(names[i], params);
+                        }
+                        const body = self.heap[self.heap[c.b].b].b;
+                        const proc = try self.closure(params, body, local);
+                        try self.define(local, loop_name, proc);
+                        tail_recipient = proc;
+                        args = argument_storage[0..entries.len];
+                        break :named_let;
+                    }
+
                     if (args.len < 2) return error.Arity;
                     var local = try self.pair(0, cur_env);
                     var bindings: [16]Ref = @splat(0);
@@ -1781,7 +1869,7 @@ pub const Runtime = struct {
 
         const special = if (self.tagOf(head) == .symbol) opcode(self.string(head)) else null;
         if (special) |op| switch (op) {
-            .lambda, .let, .let_star, .and_, .or_ => return error.CannotCompile,
+            .lambda, .let, .let_star, .letrec, .letrec_star, .and_, .or_ => return error.CannotCompile,
             .quote => {
                 if (args.len != 1) return error.Arity;
                 try self.emitBcOp(.const_val);
@@ -3658,6 +3746,9 @@ test "pending control forms and initialized bindings survive controlled collecti
         .{ .source = "(cond ((list 7) => (begin (system/log) (lambda (v) (car v)))))", .expected = "7" },
         .{ .source = "(let ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
         .{ .source = "(let* ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
+        .{ .source = "(letrec ((x '(alpha)) (f (begin (system/log) (lambda () x)))) (f))", .expected = "(alpha)" },
+        .{ .source = "(letrec* ((x '(alpha)) (y (begin (system/log) x))) y)", .expected = "(alpha)" },
+        .{ .source = "(let loop ((x '(alpha)) (y (system/log))) (list x y))", .expected = "((alpha) #t)" },
         .{ .source = "((lambda () (system/log) '(survives)))", .expected = "(survives)" },
         .{ .source = "(system/log) '(later)", .expected = "(later)" },
         .{ .source = "(define held (begin (system/log) '(saved)))", .expected = "()" },
@@ -4430,6 +4521,24 @@ test "evaluation respects unbound set and redefined numeric procedures" {
     try std.testing.expectError(error.Unbound, vm.evaluate("(set! missing 1)", &host, &out));
     _ = try vm.evaluate("(define + (lambda (a b) 9))", &host, &out);
     try std.testing.expectEqualStrings("9", try vm.evaluate("(+ 1 2)", &host, &out));
+}
+
+test "recursive bindings and named let preserve scope and recover" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [256]u8 = undefined;
+    try expectValue(&vm, &host, "(letrec ((even (lambda (n) (if (= n 0) #t (odd (- n 1))))) (odd (lambda (n) (if (= n 0) #f (even (- n 1)))))) (even 100))", "#t");
+    try expectValue(&vm, &host, "(letrec* ((x 1) (y (+ x 2))) y)", "3");
+    try std.testing.expectError(error.Unbound, vm.evaluate("(letrec ((x 1) (y x)) y)", &host, &out));
+    try std.testing.expectError(error.Unbound, vm.evaluate("(letrec ((x x)) x)", &host, &out));
+    try std.testing.expectError(error.Unbound, vm.evaluate("(letrec ((x (begin (set! x 1) 2))) x)", &host, &out));
+    try std.testing.expectError(error.Syntax, vm.evaluate("(letrec ((x 1) (x 2)) x)", &host, &out));
+    try std.testing.expectError(error.Syntax, vm.evaluate("(let loop ((x 1) (x 2)) x)", &host, &out));
+    try expectValue(&vm, &host, "(let ((loop 7)) (let loop ((x loop)) x))", "7");
+    try expectValue(&vm, &host, "(let loop ((n 100) (a 0)) (if (= n 0) a (loop (- n 1) (+ a 1))))", "100");
+    try expectValue(&vm, &host, "(let loop () 42)", "42");
+    try expectValue(&vm, &host, "(+ 20 22)", "42");
 }
 
 test "ordered integer comparisons support multiple operands" {
