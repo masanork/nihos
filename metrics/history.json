@@ -6228,24 +6228,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-03",
-    "measuredAt": "2026-11-03T15:46:19.757845+00:00",
+    "measuredAt": "2026-11-03T22:25:51.037730+00:00",
     "project": "nihos",
-    "commit": "f2bc8f53a1d3d0190add11da48c2ea2cd7245bd4",
+    "commit": "d89a16481d3c5181d7275505c30c4ea391a8d37c",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "c419b19a3c54733f112f031d10e2fd88ec2114ed0b9b987d368ff8971f877b33",
+    "sourceTreeSha256": "be77a8663ce5cd934ab8b6237ac5b16ef9f1232fcc3c8c859e0f84a3f66bab5a",
     "code": {
-      "implementation": 84410,
-      "tests": 44842,
-      "tooling": 30648,
+      "implementation": 84551,
+      "tests": 44928,
+      "tooling": 30678,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 76695,
-        "tests": 33883,
-        "tooling": 1686,
+        "implementation": 76836,
+        "tests": 33969,
+        "tooling": 1709,
         "probes": 5642,
         "vendored": 0,
         "generated": 0
@@ -6293,7 +6293,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4783,
+        "tooling": 4790,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -6311,7 +6311,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 312,
+        "tooling": 314,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6341,8 +6341,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 82473,
-        "tests": 34009,
+        "implementation": 82614,
+        "tests": 34095,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -6359,7 +6359,7 @@
       "tools": {
         "implementation": 0,
         "tests": 10833,
-        "tooling": 30336,
+        "tooling": 30364,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6820,6 +6820,7 @@
         "src/soc/esp32p4/psram_test.zig": "e2adb99bb598739e449099bc98b9e9292d9f42cc5c3462493f1f6befe36da98c",
         "src/soc/esp32p4/psram_tuning.zig": "c8f2ea359756abf78028f55004db69b1df110805552fb48448fe0efea4bf2313",
         "src/soc/esp32p4/reset_capture.zig": "7e3ee65d8e204ec05ee5df71d5e2f2d2825b9887920df40d7e700a596a3db3df",
+        "src/soc/esp32p4/sar_regi2c.zig": "7a22b47c55a782b5b8d3ff2229a48a552409de5fe9c95eee72c3d3184edd9d5c",
         "src/soc/esp32p4/sdio.zig": "9e4324561f5ebcc0cbd6ccae9edbbc308ad559a938a8e7ac201e256a44ddb97a",
         "src/soc/esp32p4/sdio_test.zig": "28cbc9b032e9c9b806a6ecc3bc872528f5f9fa53cc162bd26e4dc39d0f847be5",
         "src/soc/esp32p4/sdmmc.zig": "5de2322a1ad0d97d846020af80508a162cfd603846298897489bf7d5015399e1",
@@ -7917,6 +7918,7 @@
         "src/services/storage_littlefs.c",
         "src/soc/esp32p4/psram_mapping_test.zig",
         "src/soc/esp32p4/psram_test.zig",
+        "src/soc/esp32p4/sar_regi2c.zig",
         "src/soc/esp32p4/sdio_test.zig",
         "src/storage/batch_test.zig",
         "src/storage/checkpoint_model_test.zig",
