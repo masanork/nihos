@@ -3,11 +3,29 @@
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
-if [ "$(uname -s)" != Darwin ]; then
-    echo "The GPUI workspace packaging script currently supports macOS." >&2
-    exit 1
-fi
+case "$(uname -s)" in
+    Darwin|Linux) ;;
+    *) echo "The GPUI workspace supports macOS and Linux." >&2; exit 1 ;;
+esac
 cargo build --locked --manifest-path apps/xy-gpui/Cargo.toml
+if [ "$(uname -s)" = Linux ]; then
+    out="$repo_root/build/xy-gpui"
+    mkdir -p "$out/Resources/licenses"
+    cp apps/xy-gpui/target/debug/nihos-xy-gpui "$out/.xy-gpui.new"
+    mv "$out/.xy-gpui.new" "$out/xy-gpui"
+    rm -f "$out/Resources/nihos-native.elf" "$out/Resources/jisyo_s_nfst.bin"
+    if [ -f build/xy-emulator-firmware/nihos-native.elf ]; then
+        cp build/xy-emulator-firmware/nihos-native.elf "$out/Resources/nihos-native.elf"
+        if [ -f src/xy/fixtures/jisyo_s_nfst.bin ]; then
+            cp src/xy/fixtures/jisyo_s_nfst.bin "$out/Resources/jisyo_s_nfst.bin"
+        fi
+    fi
+    cp LICENSE "$out/Resources/licenses/nihos-MIT.txt"
+    cp src/xy/fonts/CC0.txt "$out/Resources/licenses/Bunsen-CC0.txt"
+    cp src/graphics/ascii/SourceCodePro-LICENSE.md "$out/Resources/licenses/SourceCodePro-OFL.txt"
+    printf '%s\n' "$out/xy-gpui"
+    exit 0
+fi
 out="$repo_root/build/xy-gpui/xy-gpui.app/Contents"
 mkdir -p "$out/MacOS"
 mkdir -p "$out/Resources/licenses"
