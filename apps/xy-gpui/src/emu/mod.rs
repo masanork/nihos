@@ -3,9 +3,9 @@
 pub mod bus;
 pub mod cpu;
 pub mod elf;
-#[cfg(test)]
+#[cfg(any(test, feature = "experimental-meos"))]
 mod esp_image;
-#[cfg(test)]
+#[cfg(any(test, feature = "experimental-meos"))]
 mod rom_flash;
 mod rom_printf;
 mod rom_psram;
@@ -13,7 +13,7 @@ mod rom_qsort;
 mod rom_systimer;
 mod rom_wdt;
 mod tab5_i2c;
-#[cfg(test)]
+#[cfg(any(test, feature = "experimental-meos"))]
 mod usb_dwc;
 
 use bus::{Bus, FB_HEIGHT, FB_WIDTH};
@@ -37,6 +37,8 @@ pub struct Emulator {
     pub paused: bool,
     pub total_steps: u64,
     pub mips: f32,
+    #[cfg(feature = "experimental-meos")]
+    meos_rom: Option<PathBuf>,
     #[cfg(test)]
     gc_probe: Option<GcInstructionProbe>,
 }
@@ -53,6 +55,8 @@ impl Emulator {
             paused: false,
             total_steps: 0,
             mips: 0.0,
+            #[cfg(feature = "experimental-meos")]
+            meos_rom: None,
             gc_probe: None,
         }
     }
@@ -81,9 +85,68 @@ impl Emulator {
             paused: false,
             total_steps: 0,
             mips: 0.0,
+            #[cfg(feature = "experimental-meos")]
+            meos_rom: None,
             #[cfg(test)]
             gc_probe: None,
         })
+    }
+
+    /// A pinned, synthetic direct-app fixture, not an ESP bootloader or persistent device.
+    #[cfg(feature = "experimental-meos")]
+    pub fn new_meos(app: impl AsRef<Path>, rom: impl AsRef<Path>) -> std::io::Result<Self> {
+        use sha2::{Digest, Sha256};
+        use std::io::{Error, ErrorKind};
+        fn check(path: &Path, expected: &str) -> std::io::Result<()> {
+            let digest = format!("{:x}", Sha256::digest(std::fs::read(path)?));
+            if digest != expected {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unsupported experimental MeOS fixture: {}", path.display()),
+                ));
+            }
+            Ok(())
+        }
+        let app = app.as_ref().to_path_buf();
+        let rom = rom.as_ref().to_path_buf();
+        check(
+            &app,
+            "2802acccea64410dee3e0caea5fd683d499a84b5818d76682580730ee7a1f09a",
+        )?;
+        check(
+            &rom,
+            "948f2c7d108d04a9c3a982f9c1c498fb17f2c4a68abc51f87782592034d7ce44",
+        )?;
+        let mut bus = Bus::new();
+        bus.use_st7121_fixture();
+        let mut flash = rom_flash::Flash::erased();
+        flash.blank_dictionary = true;
+        bus.rom_flash = Some(flash);
+        bus.usb_dwc = Some(usb_dwc::Usb::new());
+        let entry = esp_image::load(&mut bus, &app)?;
+        esp_image::load_rom_data(&mut bus, &rom, 0x4fc1_d780)?;
+        bus.rom_execute = true;
+        bus.write_u32(0x5011_003c, 0x0028_0028);
+        let clock = bus.read_u32(0x500e_6030);
+        bus.write_u32(0x500e_6030, (clock & !0xfff) | 0x5d);
+        Ok(Self {
+            bus,
+            cpu: Cpu::new(entry),
+            cpu1: None,
+            elf_path: app,
+            dict_path: None,
+            paused: false,
+            total_steps: 0,
+            mips: 0.0,
+            meos_rom: Some(rom),
+            #[cfg(test)]
+            gc_probe: None,
+        })
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    pub fn is_meos_fixture(&self) -> bool {
+        self.meos_rom.is_some()
     }
 
     pub fn fault(&self) -> Option<&str> {
@@ -95,6 +158,13 @@ impl Emulator {
 
     /// Reset CPU and reload memory from ELF and dictionary.
     pub fn reset(&mut self) -> std::io::Result<()> {
+        #[cfg(feature = "experimental-meos")]
+        if let Some(rom) = &self.meos_rom {
+            let mut fresh = Self::new_meos(&self.elf_path, rom)?;
+            fresh.paused = self.paused;
+            *self = fresh;
+            return Ok(());
+        }
         let mut bus = Bus::new();
         let entry_pc = ElfLoader::load_elf(&mut bus, &self.elf_path)?;
         if let Some(dict) = &self.dict_path {
@@ -213,6 +283,129 @@ impl Emulator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
+    fn experimental_meos_profile_rejects_unknown_image() {
+        let error = match Emulator::new_meos("/dev/null", "/dev/null") {
+            Ok(_) => panic!("unexpectedly accepted an unknown image"),
+            Err(error) => error,
+        };
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
+    #[ignore = "requires the pinned MeOS app and ROM"]
+    fn experimental_meos_osk_touch_reaches_shell() {
+        let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
+        let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
+        let mut emu = Emulator::new_meos(app, rom).unwrap();
+        for _ in 0..800 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(4).any(|w| w == b"\r\n> ")
+                && emu
+                    .bus
+                    .console_output
+                    .windows(18)
+                    .any(|w| w == b"using the built-in")
+            {
+                break;
+            }
+        }
+        assert!(
+            emu.bus
+                .console_output
+                .windows(18)
+                .any(|w| w == b"using the built-in")
+        );
+        // Drain asynchronous startup messages before checking the input echo.
+        emu.step_frame(50_000_000);
+        assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+        let before = emu.bus.console_output.len();
+        // MeOS map 1 transforms physical (575, 719) to the centre of the
+        // landscape on-screen keyboard's h key (560, 575).
+        emu.bus.touch(Some((575, 719)));
+        emu.bus.touch(None);
+        for _ in 0..400 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if !emu.bus.console_output[before..].is_empty() {
+                assert_eq!(&emu.bus.console_output[before..], b"h");
+                println!(
+                    "on-screen h echo: {:?}",
+                    String::from_utf8_lossy(&emu.bus.console_output[before..])
+                );
+                return;
+            }
+        }
+        panic!(
+            "guest did not echo on-screen h: {:?}",
+            String::from_utf8_lossy(&emu.bus.console_output[before..])
+        );
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
+    #[ignore = "requires the pinned MeOS app and ROM"]
+    fn experimental_meos_profile_boot_and_reset() {
+        let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
+        let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
+        let mut emu = Emulator::new_meos(app, rom).unwrap();
+        for _ in 0..600 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(4).any(|w| w == b"\r\n> ") {
+                break;
+            }
+        }
+        assert!(
+            emu.bus.console_output.windows(4).any(|w| w == b"\r\n> "),
+            "MeOS prompt not reached"
+        );
+        assert!(emu.bus.scanout_frames > 1);
+        for byte in b"run /apps/snake.wasm\n" {
+            emu.send_key(*byte);
+        }
+        for _ in 0..600 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(7).any(|w| w == b"started") {
+                break;
+            }
+        }
+        assert!(emu.bus.console_output.windows(7).any(|w| w == b"started"));
+        super::super::send_emulator_arrow(&mut emu, "down");
+        assert!(emu.bus.keyboard_fifo.ends_with(b"\x1b[B"));
+        for _ in 0..1000 {
+            emu.step_frame(500_000);
+            assert!(
+                emu.fault().is_none(),
+                "guest fault: {:?}, pc={:#x}, args={:x?}",
+                emu.fault(),
+                emu.cpu.pc,
+                &emu.cpu.x[10..14]
+            );
+        }
+        emu.paused = true;
+        emu.send_key(b'!');
+        let steps = emu.total_steps;
+        let pc = emu.cpu.pc;
+        let app_path = std::mem::replace(&mut emu.elf_path, PathBuf::from("/dev/null"));
+        assert!(emu.reset().is_err());
+        assert!(emu.paused && emu.is_meos_fixture());
+        assert_eq!(emu.total_steps, steps);
+        assert_eq!(emu.cpu.pc, pc);
+        assert!(emu.bus.keyboard_fifo.ends_with(b"!"));
+        emu.elf_path = app_path;
+        emu.reset().unwrap();
+        assert!(emu.is_meos_fixture());
+        assert!(emu.paused);
+        assert_eq!(emu.total_steps, 0);
+        assert!(emu.bus.keyboard_fifo.is_empty());
+        assert_eq!(emu.bus.scanout_frames, 0);
+    }
 
     #[test]
     fn framebuffer_uses_display_base_and_mmu_mapping() {
@@ -1708,6 +1901,23 @@ mod tests {
         cpu.x[10] = 57;
         assert!(cpu.step(&mut bus));
         assert_eq!(bus.read_u32(address), 0xabcd_1523);
+    }
+
+    #[test]
+    fn rom_gpio_matrix_selects_input_and_rejects_invalid_arguments() {
+        let mut bus = Bus::new();
+        let mut cpu = Cpu::new(0x4fc0_056c);
+        cpu.x[1] = 0x4ff0_0200;
+        cpu.x[10] = 0x3e;
+        cpu.x[11] = 42;
+        cpu.x[12] = 1;
+        assert!(cpu.step(&mut bus));
+        assert_eq!(cpu.pc, 0x4ff0_0200);
+        assert_eq!(bus.read_u32(0x500e_0158 + 42 * 4), 0xfe);
+        cpu.pc = 0x4fc0_056c;
+        cpu.x[10] = 57;
+        assert!(!cpu.step(&mut bus));
+        assert_eq!(bus.read_u32(0x500e_0158 + 42 * 4), 0xfe);
     }
 
     #[test]

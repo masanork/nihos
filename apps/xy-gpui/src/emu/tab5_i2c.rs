@@ -72,7 +72,7 @@ impl Default for Tab5I2c {
     }
 }
 impl Tab5I2c {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "experimental-meos"))]
     pub(super) fn set_touch_firmware_version(&mut self, version: u8) {
         self.touch_firmware_version = version;
     }

@@ -6228,23 +6228,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-03",
-    "measuredAt": "2026-11-03T14:28:54.980604+00:00",
+    "measuredAt": "2026-11-03T15:46:19.757845+00:00",
     "project": "nihos",
-    "commit": "dbab125b84b2409fa7685278ff8ab0777a818b66",
+    "commit": "f2bc8f53a1d3d0190add11da48c2ea2cd7245bd4",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "71f047c276ddb74c8f1674da0242a5a81e7a138899bbb1ebe8ade547c09cfc3c",
+    "sourceTreeSha256": "c419b19a3c54733f112f031d10e2fd88ec2114ed0b9b987d368ff8971f877b33",
     "code": {
-      "implementation": 84387,
-      "tests": 44829,
-      "tooling": 30580,
+      "implementation": 84410,
+      "tests": 44842,
+      "tooling": 30648,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 76672,
-        "tests": 33874,
+        "implementation": 76695,
+        "tests": 33883,
         "tooling": 1686,
         "probes": 5642,
         "vendored": 0,
@@ -6276,8 +6276,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 10796,
-        "tooling": 22181,
+        "tests": 10800,
+        "tooling": 22188,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -6293,7 +6293,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4722,
+        "tooling": 4783,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -6341,8 +6341,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 82450,
-        "tests": 34000,
+        "implementation": 82473,
+        "tests": 34009,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -6358,8 +6358,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 10829,
-        "tooling": 30268,
+        "tests": 10833,
+        "tooling": 30336,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -6668,8 +6668,8 @@
         "src/net/hosted_udp_sender_test.zig": "777ae0dd76614cc51ecc6bb74ab5abe490311013ce3955e203108f7bceafd648",
         "src/net/hosted_udp_shared.zig": "6846843f730af8d3c0fed6c3a312a4877f6a6037b7ce2cec13a51acfc84e5a77",
         "src/net/hosted_udp_shared_test.zig": "32e8869208c4647a23d4a7d4e1eb120f8e1cb7c9b62e3d5c600d4c8826fc9339",
-        "src/net/hosted_udp_smoke.zig": "afefc1347e0d2af34601b68a9e7aae0e6b9dad6dd1ce3d93dec5f3b6d5b32db6",
-        "src/net/hosted_udp_smoke_test.zig": "0ab2429121dc6d0b50ff92c34a11206555e643d3fbe7c51ae7977d83ea6e1f59",
+        "src/net/hosted_udp_smoke.zig": "9fe0dbf90b948e5d99ed7750ba523bdb11444b94efb038e483ba8fe624628e49",
+        "src/net/hosted_udp_smoke_test.zig": "54e9caa9a4787af23649d7e3e496eca644e718ada65dd3736e98eba807c8023e",
         "src/net/hosted_udp_socket.zig": "471242db9d0810d25c46ea9cae10747d3377526666e60d83811bb7eda0630fdf",
         "src/net/hosted_udp_socket_test.zig": "d2a1d13dc7d8113b7d574c738a555cc35eb38bc14ad312295a099ebd7fb18687",
         "src/net/hosted_udp_time_integration_test.zig": "9b5fc9ded401e78261283ecf9959eb87467d77901965256ad9f467d1cf9e66d4",
@@ -6758,10 +6758,10 @@
         "src/platform/native/hosted_long_cache_test.zig": "9beeaa39caec919a8ff30dc981fd0a94b967b3dc81c0367418f773608624307c",
         "src/platform/native/keypad_display.zig": "085f097f397fbe1eece8b85ff24bd74450f5c059fae861de1e4ca9bc3e053017",
         "src/platform/native/keypad_probe.zig": "c565fe8d6a96166de4d372f537f2e053e1b50a2ac8b4b90d762221889a309f7e",
-        "src/platform/native/main.zig": "a57a75f1c5272d2012b61ca124841fa3ed4cb2256061b1ad6dc4c14924c269ef",
+        "src/platform/native/main.zig": "04691a4b00db86212434ee57d35ecdb5de1ad5fe8362c53ad44b717ab578104b",
         "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
         "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
-        "src/platform/native/network_service.zig": "4aa50da54a12719bbaff2b8de04e6072c70a93b91adced367c78799f516b9b3f",
+        "src/platform/native/network_service.zig": "e08d23bb09d165537211504f3f5e16712ff0fc2158d30b6819f5829a23c6196f",
         "src/platform/native/normal_fs.zig": "c2348a86b0f39d70f13eec92653dda9bddab94bbfda0a27abcd4ff99db0623eb",
         "src/platform/native/normal_fs_abi.zig": "debb0c25261589277d0bdf551ba822f4bd4ba5286cbb132f2d7e33a0d212003a",
         "src/platform/native/normal_fs_test_hooks.zig": "1878f547baeb912849944b2c938bfb9b912d83c6a6b2872eee9882d274230c31",
