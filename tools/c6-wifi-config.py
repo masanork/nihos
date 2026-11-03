@@ -21,6 +21,7 @@ def main():
         raise ValueError('C6 time offload requires Hosted and IPv6 disabled')
     long_dma = os.environ.get('NIHOS_C6_LONG_DMA', '0')
     udp_burst = os.environ.get('NIHOS_C6_UDP_BURST', '0')
+    udp_split_arp = os.environ.get('NIHOS_C6_UDP_SPLIT_ARP', '0')
     udp_burst_count = int(os.environ.get('NIHOS_C6_UDP_BURST_COUNT', '16'))
     udp_tail_short = os.environ.get('NIHOS_C6_UDP_TAIL_SHORT', '0')
     udp_pause_after_16 = os.environ.get('NIHOS_C6_UDP_PAUSE_AFTER_16', '0')
@@ -63,6 +64,8 @@ def main():
         udp_ip = int(address)
     if udp_burst == '1' and not udp_enabled:
         raise ValueError('UDP burst requires explicit peer')
+    if udp_split_arp not in ('0', '1') or (udp_split_arp == '1' and (not udp_enabled or ipv6 != '0')):
+        raise ValueError('Split ARP requires an explicit peer and IPv6 disabled')
     if ipv6 not in ('0', '1') or (ipv6 == '1' and protocol != 'hosted'):
         raise ValueError('IPv6 requires Hosted mode')
     if protocol not in ('at', 'hosted'):
@@ -94,6 +97,7 @@ def main():
             f'pub const long_dma = {str(long_dma == "1").lower()};\n'
             f'pub const udp_enabled = {str(udp_enabled).lower()};\n'
             f'pub const udp_burst = {str(udp_burst == "1").lower()};\n'
+            f'pub const udp_split_arp = {str(udp_split_arp == "1").lower()};\n'
             f'pub const udp_burst_count: u32 = {udp_burst_count};\n'
             f'pub const udp_tail_short = {str(udp_tail_short == "1").lower()};\n'
             f'pub const udp_pause_after_16 = {str(udp_pause_after_16 == "1").lower()};\n'
