@@ -1,0 +1,9 @@
+{
+  "scope": "temporary emulator test crate; no product change",
+  "fixture_sha256": "79b2aeb47307909394690ea23d2984d6aa61ab4c9b5714f8867e415d4d488590",
+  "module_sha256": "1dae23fcf225b23bbe57179864811ebb5efa44a66fef1428f58f7f7bb06a3343",
+  "scheme_bytes": 1408,
+  "scheme_sha256": "20a28ee650d22a0747bb97cdc7fd846d473407adcda40853be564d2abb23c54f",
+  "elf_sha256": "a0b0ba56e1b417daf24075d99d9505e0a9d8f810a34e2fdd36cda15ae008f685",
+  "candidate": "integration preview 949f3386 with main 94bfd96d emulator; CPU initialization disabled"
+}

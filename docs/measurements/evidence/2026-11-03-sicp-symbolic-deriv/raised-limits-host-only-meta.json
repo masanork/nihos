@@ -1,0 +1,10 @@
+{
+  "scope": "diagnostic host-only, not production or device qualification",
+  "base_commit": "acfe4ad2b7722a1856b67d964576b72887a41bcd",
+  "runtime_sha256": "ba7f6af8518e73c287fc7e452a3ee01c3174dad6a1b411c6cf60ce6be4462b26",
+  "depth_limit": 64,
+  "step_limit": 131072,
+  "heap_cells": 4096,
+  "default_depth_limit": 24,
+  "default_step_limit": 8192
+}

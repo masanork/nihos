@@ -1,0 +1,44 @@
+{
+  "xml_sha256": "02ac17ebbfeabefff177775c2b608fe008a62cb0cfcc34d4e526c83f453c9621",
+  "official_code_sha256": "9ac51401a7e57c497f5d68998942bde4751f612b094b52d7dda17f4ba23a18fd",
+  "reference_revision": "a27d06c749cdea7ca051e69e7629e3af78c01ac4",
+  "cases": [
+    {
+      "exercise": "2.57",
+      "setup": "(define (caddr x) (car (cdr (cdr x))))\n\n(define (deriv exp var)\n  (cond ((number? exp) 0)\n        ((variable? exp)\n         (if (same-variable? exp var) 1 0))\n        ((sum? exp)\n         (make-sum (deriv (addend exp) var)\n                   (deriv (augend exp) var)))\n        ((product? exp)\n         (make-sum\n           (make-product (multiplier exp)\n                         (deriv (multiplicand exp) var))\n           (make-product (deriv (multiplier exp) var)\n                         (multiplicand exp))))\n        (else\n         (error \"unknown expression type -- DERIV\" exp))))\n\n;; representing algebraic expressions\n\n(define (variable? x) (symbol? x))\n\n(define (same-variable? v1 v2)\n  (and (variable? v1) (variable? v2) (eq? v1 v2)))\n\n(define (make-sum a1 a2) (list '+ a1 a2))\n\n(define (make-product m1 m2) (list '* m1 m2))\n\n(define (sum? x)\n  (and (pair? x) (eq? (car x) '+)))\n\n(define (addend s) (cadr s))\n\n(define (augend s) (caddr s))\n\n(define (product? x)\n  (and (pair? x) (eq? (car x) '*)))\n\n(define (multiplier p) (cadr p))\n\n(define (multiplicand p) (caddr p))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n;; With simplification\n\n(define (make-sum a1 a2)\n  (cond ((=number? a1 0) a2)\n        ((=number? a2 0) a1)\n        ((and (number? a1) (number? a2)) (+ a1 a2))\n        (else (list '+ a1 a2))))\n\n(define (=number? exp num)\n  (and (number? exp) (= exp num)))\n\n(define (make-product m1 m2)\n  (cond ((or (=number? m1 0) (=number? m2 0)) 0)\n        ((=number? m1 1) m2)\n        ((=number? m2 1) m1)\n        ((and (number? m1) (number? m2)) (* m1 m2))\n        (else (list '* m1 m2))))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n\n(define (augend s)\n  (if (null? (cdr (cddr s))) (caddr s) (cons '+ (cddr s))))\n(define (multiplicand p)\n  (if (null? (cdr (cddr p))) (caddr p) (cons '* (cddr p))))",
+      "expression": "(deriv '(* x y (+ x 3)) 'x)",
+      "expected": "(+ (* x y) (* y (+ x 3)))",
+      "source": "MIT exercise expression",
+      "sequential_setup": true,
+      "observed": "(+ (* x y) (* y (+ x 3)))",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.57",
+      "setup": "(define (caddr x) (car (cdr (cdr x))))\n\n(define (deriv exp var)\n  (cond ((number? exp) 0)\n        ((variable? exp)\n         (if (same-variable? exp var) 1 0))\n        ((sum? exp)\n         (make-sum (deriv (addend exp) var)\n                   (deriv (augend exp) var)))\n        ((product? exp)\n         (make-sum\n           (make-product (multiplier exp)\n                         (deriv (multiplicand exp) var))\n           (make-product (deriv (multiplier exp) var)\n                         (multiplicand exp))))\n        (else\n         (error \"unknown expression type -- DERIV\" exp))))\n\n;; representing algebraic expressions\n\n(define (variable? x) (symbol? x))\n\n(define (same-variable? v1 v2)\n  (and (variable? v1) (variable? v2) (eq? v1 v2)))\n\n(define (make-sum a1 a2) (list '+ a1 a2))\n\n(define (make-product m1 m2) (list '* m1 m2))\n\n(define (sum? x)\n  (and (pair? x) (eq? (car x) '+)))\n\n(define (addend s) (cadr s))\n\n(define (augend s) (caddr s))\n\n(define (product? x)\n  (and (pair? x) (eq? (car x) '*)))\n\n(define (multiplier p) (cadr p))\n\n(define (multiplicand p) (caddr p))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n;; With simplification\n\n(define (make-sum a1 a2)\n  (cond ((=number? a1 0) a2)\n        ((=number? a2 0) a1)\n        ((and (number? a1) (number? a2)) (+ a1 a2))\n        (else (list '+ a1 a2))))\n\n(define (=number? exp num)\n  (and (number? exp) (= exp num)))\n\n(define (make-product m1 m2)\n  (cond ((or (=number? m1 0) (=number? m2 0)) 0)\n        ((=number? m1 1) m2)\n        ((=number? m2 1) m1)\n        ((and (number? m1) (number? m2)) (* m1 m2))\n        (else (list '* m1 m2))))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n\n(define (augend s)\n  (if (null? (cdr (cddr s))) (caddr s) (cons '+ (cddr s))))\n(define (multiplicand p)\n  (if (null? (cdr (cddr p))) (caddr p) (cons '* (cddr p))))",
+      "expression": "(deriv '(+ x x x) 'x)",
+      "expected": "3",
+      "source": "additional finite example",
+      "sequential_setup": true,
+      "observed": "3",
+      "stage": "expression",
+      "status": "matched"
+    },
+    {
+      "exercise": "2.57",
+      "setup": "(define (caddr x) (car (cdr (cdr x))))\n\n(define (deriv exp var)\n  (cond ((number? exp) 0)\n        ((variable? exp)\n         (if (same-variable? exp var) 1 0))\n        ((sum? exp)\n         (make-sum (deriv (addend exp) var)\n                   (deriv (augend exp) var)))\n        ((product? exp)\n         (make-sum\n           (make-product (multiplier exp)\n                         (deriv (multiplicand exp) var))\n           (make-product (deriv (multiplier exp) var)\n                         (multiplicand exp))))\n        (else\n         (error \"unknown expression type -- DERIV\" exp))))\n\n;; representing algebraic expressions\n\n(define (variable? x) (symbol? x))\n\n(define (same-variable? v1 v2)\n  (and (variable? v1) (variable? v2) (eq? v1 v2)))\n\n(define (make-sum a1 a2) (list '+ a1 a2))\n\n(define (make-product m1 m2) (list '* m1 m2))\n\n(define (sum? x)\n  (and (pair? x) (eq? (car x) '+)))\n\n(define (addend s) (cadr s))\n\n(define (augend s) (caddr s))\n\n(define (product? x)\n  (and (pair? x) (eq? (car x) '*)))\n\n(define (multiplier p) (cadr p))\n\n(define (multiplicand p) (caddr p))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n;; With simplification\n\n(define (make-sum a1 a2)\n  (cond ((=number? a1 0) a2)\n        ((=number? a2 0) a1)\n        ((and (number? a1) (number? a2)) (+ a1 a2))\n        (else (list '+ a1 a2))))\n\n(define (=number? exp num)\n  (and (number? exp) (= exp num)))\n\n(define (make-product m1 m2)\n  (cond ((or (=number? m1 0) (=number? m2 0)) 0)\n        ((=number? m1 1) m2)\n        ((=number? m2 1) m1)\n        ((and (number? m1) (number? m2)) (* m1 m2))\n        (else (list '* m1 m2))))\n\n\n;: (deriv '(+ x 3) 'x)\n;: (deriv '(* x y) 'x)\n;: (deriv '(* (* x y) (+ x 3)) 'x)\n\n\n\n(define (augend s)\n  (if (null? (cdr (cddr s))) (caddr s) (cons '+ (cddr s))))\n(define (multiplicand p)\n  (if (null? (cdr (cddr p))) (caddr p) (cons '* (cddr p))))",
+      "expression": "(deriv '(* x y (+ x 3)) 'y)",
+      "expected": "(* x (+ x 3))",
+      "source": "additional finite example",
+      "sequential_setup": true,
+      "observed": "(* x (+ x 3))",
+      "stage": "expression",
+      "status": "matched"
+    }
+  ],
+  "totals": {
+    "matched": 3
+  },
+  "note": "MIT original derivative and 2.57 expression; our n-ary selectors; finite examples, not a full exercise grade."
+}

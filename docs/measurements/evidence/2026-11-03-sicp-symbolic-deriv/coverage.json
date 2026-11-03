@@ -1,0 +1,2896 @@
+{
+  "scope": "Host runtime tests, not exercise-solution completion or R7RS conformance",
+  "index_sha256": "c87ecb8f09bc719595a826417c6be16363a519472392656e1f078e7973e7b92c",
+  "evidence_sha256": {
+    "current-sicp_abstraction_2_2_2_14.json": "8ec2403279faa7524d94bb9a3469943983a10f337f994d63872af564be0a8d74",
+    "current-sicp_circuits_3_28_3_31.json": "d0241f5a2291c40d2f172551cd931da891b289e228841d526aa0292b85251837",
+    "current-sicp_exercises_1_2_1_5.json": "98b21cd03be12dc3be8b5a9cef4d0e12a479769a73537745c4bda4ff660746b9",
+    "current-sicp_fast_processes_1_16_1_28.json": "6445d52915426c4cedfcdd3430146568c54619ab2a1f38b777a5b47f0ca7821c",
+    "current-sicp_higher_order_1_29_1_46.json": "5074744fd7e1f8ac5e1599d9081a72c174d02c15be34bd0cdb1baeab8c3dfb3e",
+    "current-sicp_huffman_2_67.json": "8b743f1cb873630ee0ea601b9ec5d29991fa528a49a6339780117ecd697606f8",
+    "current-sicp_huffman_2_68.json": "5e52502dc7b4435c1b6c4277d5c52b40436e414f531aa7350835572d19df566b",
+    "current-sicp_huffman_2_69_2_70.json": "2bcf93040991e8e959708a34d3aa11b9f0055ba1e07c91ac501ed927125cf179",
+    "current-sicp_lists_2_17_2_21.json": "c70dd9daba68840ba64fc6dd0c81afc83b11bbc38bc5d5bd0d5f48e489646122",
+    "current-sicp_metacircular_4_1_4_7.json": "0111becd89fb5e56e278cbd875f4ef1f4d0461dddf84d57d282e8e12f420cac8",
+    "current-sicp_mutation_3_12_3_20.json": "4ed6749e990724130cbb198951b27600e1c9d1cea30cef5c16cfc6c21bdee65f",
+    "current-sicp_official_sessions.json": "d03f1dfe712d91a534b821d6483e54b4f69fe878afad90e15b91f122b12fba66",
+    "current-sicp_queues_3_21_3_23.json": "181949f22570bc8fd85677b1e80b0d2964ff6bd6c918c0cdcfed3bae1d5685ec",
+    "current-sicp_rational_2_1.json": "1cf83055251ac4de88d867a6cd9451fc38570991031909c38c9ae94866e21b77",
+    "current-sicp_recursion_1_9_1_10.json": "555bb786a6c6b723ca5ab11307e364380dfa489275bef010e6831ce73fdfa9e9",
+    "current-sicp_recursive_bindings_4_8_4_20.json": "55cca1a0ee541306a7a19b90fc25664362da7e3e57c506cf57a5ccd3a7047eb8",
+    "current-sicp_register_5_1_5_2.json": "93354159cc5ae8104676ad9498c8f82876cedc9d85eca299211d29b6edbf0fa5",
+    "current-sicp_remaining_1_13_1_36.json": "09e8eea5aa5c1cea96cffcb7a6be5ec164224d8ad4028b842cca384e88463d09",
+    "current-sicp_roots_1_6_1_8.json": "32f1c3a22122e59e0175ab7884e3a1cf097ffad82a000b79ce9c131655b730ce",
+    "current-sicp_sequences_2_33_2_42.json": "2691afc0fdd0b325972119998b4b636807d94ae33efe82a9eb11bfb67386ec79",
+    "current-sicp_set_trees_2_63_2_64.json": "260a8826c6f7dcdb4c37b2bcf2e19b355b2bbdba05556b7d056b13ea12950127",
+    "current-sicp_state_3_1_3_7.json": "7159182dd2fedc934818b85e073da0be6239bea70e11347d6bf64649ee91fd11",
+    "current-sicp_symbolic_deriv_2_57.json": "b130d9db2e43ca2f0dd3f2e748bddc7eb240ef1d8df96bacec756b6946fd5190",
+    "current-sicp_symbols_2_53_2_55.json": "122092675b0cb347c2d01ad37d970b38a03545177e5ce2c8dd1b3d22b14d748a",
+    "current-sicp_tables_3_24_3_27.json": "9066ef451662b2451e984d20f7ba1429e179c68b4169ae4d8718e70b809abf51",
+    "current-sicp_tree_1_11_1_12.json": "194ffea5ea5635b3d5c0dedaf488e562417a9be7431d7aa4e82715dd517d1681",
+    "current-sicp_trees_2_19_2_32.json": "85e41707d728b26510cba7a2c4cdc22e0f577c4785198683dfc78398272c3888"
+  },
+  "totals": {
+    "all_original_expression_steps": 1,
+    "sampled": 130,
+    "not_tested": 225
+  },
+  "by_chapter": {
+    "1": {
+      "all_original_expression_steps": 1,
+      "sampled": 45
+    },
+    "2": {
+      "sampled": 49,
+      "not_tested": 48
+    },
+    "3": {
+      "sampled": 27,
+      "not_tested": 55
+    },
+    "4": {
+      "sampled": 7,
+      "not_tested": 72
+    },
+    "5": {
+      "sampled": 2,
+      "not_tested": 50
+    }
+  },
+  "exercises": [
+    {
+      "id": "1.1",
+      "section": "1.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.1",
+      "coverage": "all_original_expression_steps",
+      "evidence": "current-sicp_official_sessions.json"
+    },
+    {
+      "id": "1.2",
+      "section": "1.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.2",
+      "coverage": "sampled",
+      "evidence": "current-sicp_exercises_1_2_1_5.json"
+    },
+    {
+      "id": "1.3",
+      "section": "1.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.3",
+      "coverage": "sampled",
+      "evidence": "current-sicp_exercises_1_2_1_5.json"
+    },
+    {
+      "id": "1.4",
+      "section": "1.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.4",
+      "coverage": "sampled",
+      "evidence": "current-sicp_exercises_1_2_1_5.json"
+    },
+    {
+      "id": "1.5",
+      "section": "1.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.5",
+      "coverage": "sampled",
+      "evidence": "current-sicp_exercises_1_2_1_5.json"
+    },
+    {
+      "id": "1.6",
+      "section": "1.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.6",
+      "coverage": "sampled",
+      "evidence": "current-sicp_roots_1_6_1_8.json"
+    },
+    {
+      "id": "1.7",
+      "section": "1.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.7",
+      "coverage": "sampled",
+      "evidence": "current-sicp_roots_1_6_1_8.json"
+    },
+    {
+      "id": "1.8",
+      "section": "1.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-10.html#%_thm_1.8",
+      "coverage": "sampled",
+      "evidence": "current-sicp_roots_1_6_1_8.json"
+    },
+    {
+      "id": "1.9",
+      "section": "1.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.9",
+      "coverage": "sampled",
+      "evidence": "current-sicp_recursion_1_9_1_10.json"
+    },
+    {
+      "id": "1.10",
+      "section": "1.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.10",
+      "coverage": "sampled",
+      "evidence": "current-sicp_recursion_1_9_1_10.json"
+    },
+    {
+      "id": "1.11",
+      "section": "1.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.11",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tree_1_11_1_12.json"
+    },
+    {
+      "id": "1.12",
+      "section": "1.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.12",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tree_1_11_1_12.json"
+    },
+    {
+      "id": "1.13",
+      "section": "1.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.13",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.14",
+      "section": "1.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.14",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.15",
+      "section": "1.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.15",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.16",
+      "section": "1.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.16",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "1.17",
+      "section": "1.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.17",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "1.18",
+      "section": "1.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.18",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "1.19",
+      "section": "1.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.19",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 7
+      }
+    },
+    {
+      "id": "1.20",
+      "section": "1.2.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.20",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.21",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.21",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "1.22",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.22",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.23",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.23",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "1.24",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.24",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.25",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.25",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 1,
+        "error": 1
+      }
+    },
+    {
+      "id": "1.26",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.26",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.27",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.27",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 27,
+        "error": 9
+      }
+    },
+    {
+      "id": "1.28",
+      "section": "1.2.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-11.html#%_thm_1.28",
+      "coverage": "sampled",
+      "evidence": "current-sicp_fast_processes_1_16_1_28.json",
+      "observations": {
+        "matched": 7
+      }
+    },
+    {
+      "id": "1.29",
+      "section": "1.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.29",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "1.30",
+      "section": "1.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.30",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.31",
+      "section": "1.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.31",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.32",
+      "section": "1.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.32",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.33",
+      "section": "1.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.33",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.34",
+      "section": "1.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.34",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.35",
+      "section": "1.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.35",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "1.36",
+      "section": "1.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.36",
+      "coverage": "sampled",
+      "evidence": "current-sicp_remaining_1_13_1_36.json",
+      "observations": {
+        "error": 1
+      }
+    },
+    {
+      "id": "1.37",
+      "section": "1.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.37",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 8
+      }
+    },
+    {
+      "id": "1.38",
+      "section": "1.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.38",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.39",
+      "section": "1.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.39",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "1.40",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.40",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "1.41",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.41",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "1.42",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.42",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "1.43",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.43",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.44",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.44",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.45",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.45",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "1.46",
+      "section": "1.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-12.html#%_thm_1.46",
+      "coverage": "sampled",
+      "evidence": "current-sicp_higher_order_1_29_1_46.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.1",
+      "section": "2.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.1",
+      "coverage": "sampled",
+      "evidence": "current-sicp_rational_2_1.json"
+    },
+    {
+      "id": "2.2",
+      "section": "2.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.2",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.3",
+      "section": "2.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.3",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "2.4",
+      "section": "2.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.4",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.5",
+      "section": "2.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.5",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "2.6",
+      "section": "2.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.6",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "2.7",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.7",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.8",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.8",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.9",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.9",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.10",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.10",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.11",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.11",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 9
+      }
+    },
+    {
+      "id": "2.12",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.12",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 6
+      }
+    },
+    {
+      "id": "2.13",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.13",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.14",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.14",
+      "coverage": "sampled",
+      "evidence": "current-sicp_abstraction_2_2_2_14.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.15",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.15",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.16",
+      "section": "2.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-14.html#%_thm_2.16",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.17",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.17",
+      "coverage": "sampled",
+      "evidence": "current-sicp_lists_2_17_2_21.json"
+    },
+    {
+      "id": "2.18",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.18",
+      "coverage": "sampled",
+      "evidence": "current-sicp_lists_2_17_2_21.json"
+    },
+    {
+      "id": "2.19",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.19",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 3,
+        "error": 2
+      }
+    },
+    {
+      "id": "2.20",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.20",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.21",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.21",
+      "coverage": "sampled",
+      "evidence": "current-sicp_lists_2_17_2_21.json"
+    },
+    {
+      "id": "2.22",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.22",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.23",
+      "section": "2.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.23",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.24",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.24",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "2.25",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.25",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.26",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.26",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.27",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.27",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.28",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.28",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.29",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.29",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 6
+      }
+    },
+    {
+      "id": "2.30",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.30",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "2.31",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.31",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.32",
+      "section": "2.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.32",
+      "coverage": "sampled",
+      "evidence": "current-sicp_trees_2_19_2_32.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.33",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.33",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.34",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.34",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.35",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.35",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.36",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.36",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "2.37",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.37",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.38",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.38",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "2.39",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.39",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.40",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.40",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "2.41",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.41",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "2.42",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.42",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 3,
+        "error": 1
+      }
+    },
+    {
+      "id": "2.43",
+      "section": "2.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.43",
+      "coverage": "sampled",
+      "evidence": "current-sicp_sequences_2_33_2_42.json",
+      "observations": {
+        "matched": 6
+      }
+    },
+    {
+      "id": "2.44",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.44",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.45",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.45",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.46",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.46",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.47",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.47",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.48",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.48",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.49",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.49",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.50",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.50",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.51",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.51",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.52",
+      "section": "2.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-15.html#%_thm_2.52",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.53",
+      "section": "2.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.53",
+      "coverage": "sampled",
+      "evidence": "current-sicp_symbols_2_53_2_55.json"
+    },
+    {
+      "id": "2.54",
+      "section": "2.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.54",
+      "coverage": "sampled",
+      "evidence": "current-sicp_symbols_2_53_2_55.json"
+    },
+    {
+      "id": "2.55",
+      "section": "2.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.55",
+      "coverage": "sampled",
+      "evidence": "current-sicp_symbols_2_53_2_55.json"
+    },
+    {
+      "id": "2.56",
+      "section": "2.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.56",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.57",
+      "section": "2.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.57",
+      "coverage": "sampled",
+      "evidence": "current-sicp_symbolic_deriv_2_57.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.58",
+      "section": "2.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.58",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.59",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.59",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.60",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.60",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.61",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.61",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.62",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.62",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.63",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.63",
+      "coverage": "sampled",
+      "evidence": "current-sicp_set_trees_2_63_2_64.json",
+      "observations": {
+        "matched": 6
+      }
+    },
+    {
+      "id": "2.64",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.64",
+      "coverage": "sampled",
+      "evidence": "current-sicp_set_trees_2_63_2_64.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "2.65",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.65",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.66",
+      "section": "2.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.66",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.67",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.67",
+      "coverage": "sampled",
+      "evidence": "current-sicp_huffman_2_67.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.68",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.68",
+      "coverage": "sampled",
+      "evidence": "current-sicp_huffman_2_68.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "2.69",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.69",
+      "coverage": "sampled",
+      "evidence": "current-sicp_huffman_2_69_2_70.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "2.70",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.70",
+      "coverage": "sampled",
+      "evidence": "current-sicp_huffman_2_69_2_70.json",
+      "observations": {
+        "matched": 3,
+        "error": 2
+      }
+    },
+    {
+      "id": "2.71",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.71",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.72",
+      "section": "2.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-16.html#%_thm_2.72",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.73",
+      "section": "2.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-17.html#%_thm_2.73",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.74",
+      "section": "2.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-17.html#%_thm_2.74",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.75",
+      "section": "2.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-17.html#%_thm_2.75",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.76",
+      "section": "2.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-17.html#%_thm_2.76",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.77",
+      "section": "2.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.77",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.78",
+      "section": "2.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.78",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.79",
+      "section": "2.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.79",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.80",
+      "section": "2.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.80",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.81",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.81",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.82",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.82",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.83",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.83",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.84",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.84",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.85",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.85",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.86",
+      "section": "2.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.86",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.87",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.87",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.88",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.88",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.89",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.89",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.90",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.90",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.91",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.91",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.92",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.92",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.93",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.93",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.94",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.94",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.95",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.95",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.96",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.96",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "2.97",
+      "section": "2.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-18.html#%_thm_2.97",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.1",
+      "section": "3.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.1",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.2",
+      "section": "3.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.2",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.3",
+      "section": "3.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.3",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.4",
+      "section": "3.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.4",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.5",
+      "section": "3.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.5",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.6",
+      "section": "3.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.6",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.7",
+      "section": "3.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.7",
+      "coverage": "sampled",
+      "evidence": "current-sicp_state_3_1_3_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.8",
+      "section": "3.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-20.html#%_thm_3.8",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.9",
+      "section": "3.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-21.html#%_thm_3.9",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.10",
+      "section": "3.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-21.html#%_thm_3.10",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.11",
+      "section": "3.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-21.html#%_thm_3.11",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.12",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.12",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.13",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.13",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.14",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.14",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.15",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.15",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "3.16",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.16",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "3.17",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.17",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "3.18",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.18",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "3.19",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.19",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "3.20",
+      "section": "3.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.20",
+      "coverage": "sampled",
+      "evidence": "current-sicp_mutation_3_12_3_20.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.21",
+      "section": "3.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.21",
+      "coverage": "sampled",
+      "evidence": "current-sicp_queues_3_21_3_23.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "3.22",
+      "section": "3.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.22",
+      "coverage": "sampled",
+      "evidence": "current-sicp_queues_3_21_3_23.json",
+      "observations": {
+        "matched": 3
+      }
+    },
+    {
+      "id": "3.23",
+      "section": "3.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.23",
+      "coverage": "sampled",
+      "evidence": "current-sicp_queues_3_21_3_23.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "3.24",
+      "section": "3.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.24",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tables_3_24_3_27.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.25",
+      "section": "3.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.25",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tables_3_24_3_27.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.26",
+      "section": "3.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.26",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tables_3_24_3_27.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.27",
+      "section": "3.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.27",
+      "coverage": "sampled",
+      "evidence": "current-sicp_tables_3_24_3_27.json",
+      "observations": {
+        "matched": 2,
+        "error": 1
+      }
+    },
+    {
+      "id": "3.28",
+      "section": "3.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.28",
+      "coverage": "sampled",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "3.29",
+      "section": "3.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.29",
+      "coverage": "sampled",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "3.30",
+      "section": "3.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.30",
+      "coverage": "sampled",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "observations": {
+        "error": 4
+      }
+    },
+    {
+      "id": "3.31",
+      "section": "3.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.31",
+      "coverage": "sampled",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.32",
+      "section": "3.3.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.32",
+      "coverage": "sampled",
+      "evidence": "current-sicp_circuits_3_28_3_31.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "3.33",
+      "section": "3.3.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.33",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.34",
+      "section": "3.3.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.34",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.35",
+      "section": "3.3.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.35",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.36",
+      "section": "3.3.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.36",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.37",
+      "section": "3.3.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-22.html#%_thm_3.37",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.38",
+      "section": "3.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.38",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.39",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.39",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.40",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.40",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.41",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.41",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.42",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.42",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.43",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.43",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.44",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.44",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.45",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.45",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.46",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.46",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.47",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.47",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.48",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.48",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.49",
+      "section": "3.4.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-23.html#%_thm_3.49",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.50",
+      "section": "3.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.50",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.51",
+      "section": "3.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.51",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.52",
+      "section": "3.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.52",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.53",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.53",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.54",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.54",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.55",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.55",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.56",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.56",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.57",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.57",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.58",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.58",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.59",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.59",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.60",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.60",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.61",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.61",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.62",
+      "section": "3.5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.62",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.63",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.63",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.64",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.64",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.65",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.65",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.66",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.66",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.67",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.67",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.68",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.68",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.69",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.69",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.70",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.70",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.71",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.71",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.72",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.72",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.73",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.73",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.74",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.74",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.75",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.75",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.76",
+      "section": "3.5.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.76",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.77",
+      "section": "3.5.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.77",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.78",
+      "section": "3.5.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.78",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.79",
+      "section": "3.5.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.79",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.80",
+      "section": "3.5.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.80",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.81",
+      "section": "3.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.81",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "3.82",
+      "section": "3.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-24.html#%_thm_3.82",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.1",
+      "section": "4.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.1",
+      "coverage": "sampled",
+      "evidence": "current-sicp_metacircular_4_1_4_7.json",
+      "observations": {
+        "matched": 4
+      }
+    },
+    {
+      "id": "4.2",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.2",
+      "coverage": "sampled",
+      "evidence": "current-sicp_metacircular_4_1_4_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "4.3",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.3",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.4",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.4",
+      "coverage": "sampled",
+      "evidence": "current-sicp_metacircular_4_1_4_7.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "4.5",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.5",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.6",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.6",
+      "coverage": "sampled",
+      "evidence": "current-sicp_metacircular_4_1_4_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "4.7",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.7",
+      "coverage": "sampled",
+      "evidence": "current-sicp_metacircular_4_1_4_7.json",
+      "observations": {
+        "matched": 2
+      }
+    },
+    {
+      "id": "4.8",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.8",
+      "coverage": "sampled",
+      "evidence": "current-sicp_recursive_bindings_4_8_4_20.json",
+      "observations": {
+        "matched": 7
+      }
+    },
+    {
+      "id": "4.9",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.9",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.10",
+      "section": "4.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.10",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.11",
+      "section": "4.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.11",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.12",
+      "section": "4.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.12",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.13",
+      "section": "4.1.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.13",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.14",
+      "section": "4.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.14",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.15",
+      "section": "4.1.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.15",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.16",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.16",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.17",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.17",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.18",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.18",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.19",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.19",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.20",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.20",
+      "coverage": "sampled",
+      "evidence": "current-sicp_recursive_bindings_4_8_4_20.json",
+      "observations": {
+        "matched": 1
+      }
+    },
+    {
+      "id": "4.21",
+      "section": "4.1.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.21",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.22",
+      "section": "4.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.22",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.23",
+      "section": "4.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.23",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.24",
+      "section": "4.1.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-26.html#%_thm_4.24",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.25",
+      "section": "4.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.25",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.26",
+      "section": "4.2.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.26",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.27",
+      "section": "4.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.27",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.28",
+      "section": "4.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.28",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.29",
+      "section": "4.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.29",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.30",
+      "section": "4.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.30",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.31",
+      "section": "4.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.31",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.32",
+      "section": "4.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.32",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.33",
+      "section": "4.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.33",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.34",
+      "section": "4.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-27.html#%_thm_4.34",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.35",
+      "section": "4.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.35",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.36",
+      "section": "4.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.36",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.37",
+      "section": "4.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.37",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.38",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.38",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.39",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.39",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.40",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.40",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.41",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.41",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.42",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.42",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.43",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.43",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.44",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.44",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.45",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.45",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.46",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.46",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.47",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.47",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.48",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.48",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.49",
+      "section": "4.3.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.49",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.50",
+      "section": "4.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.50",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.51",
+      "section": "4.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.51",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.52",
+      "section": "4.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.52",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.53",
+      "section": "4.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.53",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.54",
+      "section": "4.3.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-28.html#%_thm_4.54",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.55",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.55",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.56",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.56",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.57",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.57",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.58",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.58",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.59",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.59",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.60",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.60",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.61",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.61",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.62",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.62",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.63",
+      "section": "4.4.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.63",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.64",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.64",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.65",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.65",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.66",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.66",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.67",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.67",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.68",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.68",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.69",
+      "section": "4.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.69",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.70",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.70",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.71",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.71",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.72",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.72",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.73",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.73",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.74",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.74",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.75",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.75",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.76",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.76",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.77",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.77",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.78",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.78",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "4.79",
+      "section": "4.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-29.html#%_thm_4.79",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.1",
+      "section": "5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.1",
+      "coverage": "sampled",
+      "evidence": "current-sicp_register_5_1_5_2.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "5.2",
+      "section": "5.1.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.2",
+      "coverage": "sampled",
+      "evidence": "current-sicp_register_5_1_5_2.json",
+      "observations": {
+        "matched": 5
+      }
+    },
+    {
+      "id": "5.3",
+      "section": "5.1.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.3",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.4",
+      "section": "5.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.4",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.5",
+      "section": "5.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.5",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.6",
+      "section": "5.1.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-31.html#%_thm_5.6",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.7",
+      "section": "5.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.7",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.8",
+      "section": "5.2.2",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.8",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.9",
+      "section": "5.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.9",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.10",
+      "section": "5.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.10",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.11",
+      "section": "5.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.11",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.12",
+      "section": "5.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.12",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.13",
+      "section": "5.2.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.13",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.14",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.14",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.15",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.15",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.16",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.16",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.17",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.17",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.18",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.18",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.19",
+      "section": "5.2.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-32.html#%_thm_5.19",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.20",
+      "section": "5.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-33.html#%_thm_5.20",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.21",
+      "section": "5.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-33.html#%_thm_5.21",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.22",
+      "section": "5.3.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-33.html#%_thm_5.22",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.23",
+      "section": "5.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.23",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.24",
+      "section": "5.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.24",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.25",
+      "section": "5.4.3",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.25",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.26",
+      "section": "5.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.26",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.27",
+      "section": "5.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.27",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.28",
+      "section": "5.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.28",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.29",
+      "section": "5.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.29",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.30",
+      "section": "5.4.4",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-34.html#%_thm_5.30",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.31",
+      "section": "5.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.31",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.32",
+      "section": "5.5.1",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.32",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.33",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.33",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.34",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.34",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.35",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.35",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.36",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.36",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.37",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.37",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.38",
+      "section": "5.5.5",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.38",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.39",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.39",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.40",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.40",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.41",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.41",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.42",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.42",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.43",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.43",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.44",
+      "section": "5.5.6",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.44",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.45",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.45",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.46",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.46",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.47",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.47",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.48",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.48",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.49",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.49",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.50",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.50",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.51",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.51",
+      "coverage": "not_tested",
+      "evidence": null
+    },
+    {
+      "id": "5.52",
+      "section": "5.5.7",
+      "url": "https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book-Z-H-35.html#%_thm_5.52",
+      "coverage": "not_tested",
+      "evidence": null
+    }
+  ]
+}
