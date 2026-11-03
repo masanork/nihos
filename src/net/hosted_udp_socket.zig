@@ -20,16 +20,25 @@ pub const Socket = struct {
     current: ?Handle = null,
     next_id: u64 = 0,
     sender: ?tx.Sender = null,
+    send_limit: usize = 0,
     received: bool = false,
     source: wire.Endpoint = .{ .mac = @splat(0), .ip = @splat(0), .port = 0 },
     rx: [frame.max_payload]u8 = @splat(0),
     rx_len: usize = 0,
 
     pub fn bind(self: *Socket, state: *split.State, mac: [6]u8, port: u16, routed: lease_mod.PortRange) Error!Handle {
+        return self.bindLimited(state, mac, port, routed, frame.max_payload);
+    }
+
+    /// Set the transport's payload limit at bind time. The caller must choose
+    /// a limit justified by its actual SDIO/DMA provider and peer profile.
+    pub fn bindLimited(self: *Socket, state: *split.State, mac: [6]u8, port: u16, routed: lease_mod.PortRange, max_payload: usize) Error!Handle {
         if (self.current != null) return error.Busy;
         if (self.next_id == std.math.maxInt(u64)) return error.IdExhausted;
+        if (max_payload > frame.max_payload) return error.InvalidBinding;
         const bound = try lease_mod.Lease.open(state, mac, port, routed);
         self.sender = try tx.Sender.init(state, bound);
+        self.send_limit = max_payload;
         self.next_id += 1;
         const handle = Handle{ .generation = bound.generation, .id = self.next_id };
         self.current = handle;
@@ -40,6 +49,7 @@ pub const Socket = struct {
     /// copied; one queued packet provides bounded backpressure.
     pub fn sendTo(self: *Socket, handle: Handle, peer: wire.Endpoint, bytes: []const u8, sequence: u16, now: u64, deadline: u64) Error!void {
         const sender = try self.get(handle);
+        if (bytes.len > self.send_limit) return error.TooLarge;
         try sender.enqueue(peer, bytes, sequence, now, deadline);
     }
 
@@ -130,5 +140,6 @@ pub const Socket = struct {
         self.current = null;
         self.received = false;
         self.rx_len = 0;
+        self.send_limit = 0;
     }
 };

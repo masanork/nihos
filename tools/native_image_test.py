@@ -115,6 +115,16 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('network_service.stop'))
         self.assertTrue(MODULE.xy_function('network_service.tcpPoll'))
         self.assertTrue(MODULE.xy_function('network_service.tcpReceive'))
+        self.assertTrue(MODULE.xy_function('network_service.udpPoll'))
+        self.assertTrue(MODULE.xy_function('network_service.udpReceive'))
+        self.assertTrue(MODULE.xy_function('network_service.experimentalUdpSmokePoll'))
+        self.assertTrue(MODULE.xy_function('network_service.experimentalUdpSend'))
+        self.assertTrue(MODULE.xy_function('hosted_udp_smoke.Probe.fail__func_13'))
+        self.assertFalse(MODULE.xy_function('hosted_udp_smoke.Probe.unapproved'))
+        self.assertTrue(MODULE.xy_function('hosted_udp_socket.Socket.get'))
+        self.assertTrue(MODULE.xy_function('hosted_udp_sender.Sender.retire__func_80'))
+        self.assertFalse(MODULE.xy_function('hosted_udp_socket.Socket.unapproved'))
+        self.assertFalse(MODULE.xy_function('network_service.udpUnapproved'))
         self.assertTrue(MODULE.xy_function('network_service.timePoll'))
         self.assertTrue(MODULE.xy_function('tcp_link.Link.poll'))
         self.assertTrue(MODULE.xy_function('hosted_tcp_owner.Owner.cancel'))
@@ -170,6 +180,13 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertFalse(MODULE.xy_function('xy.scheme_runtime.ContinuationState.unapproved'))
         with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
             MODULE.audit_xy_functions(candidate + [(continuation, 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        for name in ('safeArithmetic', 'safeArithmeticSequence'):
+            function = 'xy.scheme_runtime.Runtime.' + name
+            extra = functions + [(function, start + 32, start + 48)]
+            self.assertEqual(len(MODULE.audit_xy_functions(extra, (start, start + 48))), 3)
+            with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
+                MODULE.audit_xy_functions(extra + [(function, 0x4ff01000, 0x4ff01020)], (start, start + 48))
+        self.assertFalse(MODULE.xy_function('xy.scheme_runtime.Runtime.safeArithmeticUnexpected'))
         soft_float = functions + [('__divdf3', start + 32, start + 48)]
         self.assertEqual(len(MODULE.audit_xy_functions(soft_float, (start, start + 48))), 3)
         with self.assertRaisesRegex(ValueError, 'copy outside xy Flash'):
@@ -211,6 +228,16 @@ class NativeInstructionTests(unittest.TestCase):
         MODULE.audit_xy_functions(functions, (start, start + 48))
         with self.assertRaises(ValueError):
             MODULE.audit_xy_functions(functions + [('irq.unapproved', start, start + 16)], (start, start + 48))
+
+    def test_udp_foreground_helper_rejects_a_resident_copy(self):
+        start = 0x40060000
+        functions = [('xy.scheme_runtime.Runtime.evaluate__func_1', start, start + 16),
+                     ('xy.scheme_runtime.Runtime.collect', start + 16, start + 32),
+                     ('hosted_udp_socket.Socket.get', start + 32, start + 48)]
+        MODULE.audit_xy_functions(functions, (start, start + 48))
+        with self.assertRaisesRegex(ValueError, 'udp foreground function has a copy outside xy Flash'):
+            MODULE.audit_xy_functions(functions + [('hosted_udp_socket.Socket.get', 0x4ff01000, 0x4ff01020)],
+                                      (start, start + 48))
         MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x40080000, 32, allow_xy=True)
         with self.assertRaises(ValueError):
             MODULE.audit_flash_section('.flash.xyrodata', 1, 2, 0x403ffff0, 32, allow_xy=True)

@@ -7,6 +7,25 @@ const timers = @import("timer_group");
 const options = @import("native_options");
 const abi = @import("sqld_wire.zig");
 const layout = @import("sqld_layout.zig");
+const RngGate = @import("p4_rng_gate.zig").Gate;
+var rng_gate: RngGate = .{};
+
+// Future hardware entropy acquisition must retain this token until all ADC
+// and RNG cleanup is complete. This API does not qualify the noise source.
+pub export fn nih_p4_rng_try_entropy() callconv(.c) u32 {
+    return rng_gate.tryEntropy();
+}
+pub export fn nih_p4_rng_entropy_owned(token: u32) callconv(.c) bool {
+    return rng_gate.ownsEntropy(token);
+}
+pub export fn nih_p4_rng_release_entropy(token: u32) callconv(.c) bool {
+    return rng_gate.releaseEntropy(token);
+}
+
+fn acquireSqliteRng() void {
+    while (!rng_gate.trySqlite()) _ = calls.sleep(1);
+}
+
 extern fn nih_normal_sqld_grant(u32, u32) callconv(.c) i32;
 extern fn nih_normal_sqld_io(u32, u32, *[512]u8) callconv(.c) i32;
 extern fn nih_sqld_wake(u32) callconv(.c) void;
@@ -182,7 +201,9 @@ pub export fn nih_sqld_native_task(_: u32) i32 {
     const s = state();
     if (identity(null) != s.owner) return -13;
     while (!@atomicLoad(bool, &s.granted, .acquire)) _ = calls.waitEvents(1);
+    acquireSqliteRng();
     const rc = begin();
+    if (!rng_gate.releaseSqlite()) @trap();
     s.report.error_code = rc;
     s.report.phase = if (rc == 0) 2 else 3;
     s.started = rc == 0;
@@ -192,7 +213,9 @@ pub export fn nih_sqld_native_task(_: u32) i32 {
     }
     while (true) {
         if (s.started) {
+            acquireSqliteRng();
             const step_result = nih_sqld_step(service());
+            if (!rng_gate.releaseSqlite()) @trap();
             if (step_result < 0) {
                 s.report.error_code = step_result;
                 s.report.phase = 4;
