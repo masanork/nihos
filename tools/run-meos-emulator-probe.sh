@@ -4,7 +4,7 @@ set -eu
 
 usage() {
     cat <<'HELP'
-Usage: tools/run-meos-emulator-probe.sh shell|wasm|display-init|display-shell|display-snake|display-snake-input|display-snake-control MEOS_BUILD_DIR ROM_ELF
+Usage: tools/run-meos-emulator-probe.sh shell|wasm|display-init|display-shell|display-snake|display-snake-input|display-snake-arrow|display-snake-editor-down|display-snake-control MEOS_BUILD_DIR ROM_ELF
 
 Runs a test-only MeOS direct-app fixture using the identified 956a0f3 build.
 The shell scenario checks a serial echo; wasm checks three display API calls.
@@ -12,6 +12,8 @@ display-init checks the first black ST7121 fixture frame and missing refreshes.
 display-shell checks repeated scanout and a serial shell response for that fixture.
 display-snake checks wasm Snake drawing in that fixture's scanout.
 display-snake-input sends a key and checks Snake turns in the scanout.
+display-snake-arrow checks the same turn using a terminal down-arrow sequence.
+display-snake-editor-down checks that the GPUI editor down byte does not turn.
 display-snake-control checks straight movement at the same later checkpoint.
 This does not provide an interactive MeOS app, a display, or persistent flash.
 HELP
@@ -22,7 +24,7 @@ if [ "$#" -ne 3 ]; then usage >&2; exit 2; fi
 scenario=$1
 build_dir=$2
 rom_path=$3
-case "$scenario" in shell|wasm|display-init|display-shell|display-snake|display-snake-input|display-snake-control) ;; *) usage >&2; exit 2;; esac
+case "$scenario" in shell|wasm|display-init|display-shell|display-snake|display-snake-input|display-snake-arrow|display-snake-editor-down|display-snake-control) ;; *) usage >&2; exit 2;; esac
 
 check_hash() {
     file=$1
@@ -88,11 +90,20 @@ else
     export NIHOS_EMU_BREAK_PC=0x4003c950 NIHOS_EMU_BREAK_HITS=16 NIHOS_EMU_EXPECT_PC=0x4003c950
     export NIHOS_EMU_CHECKPOINT_HITS=12 NIHOS_EMU_EXPECT_CHECKPOINT_PIXELS='360,405,0x2d47;430,405,0x8ff1;157,200,0xce59'
     export NIHOS_EMU_EXPECT_SCANOUT_FRAMES_MIN=2 NIHOS_EMU_EXPECT_SCANOUT_PIXELS='360,405,0x0;430,405,0x2d47;157,200,0xce59'
-    if [ "$scenario" = display-snake-control ]; then
+    if [ "$scenario" = display-snake-control ] || [ "$scenario" = display-snake-editor-down ]; then
+        if [ "$scenario" = display-snake-editor-down ]; then
+            NIHOS_EMU_CHECKPOINT_INPUT=$(printf '\016')
+            export NIHOS_EMU_CHECKPOINT_INPUT
+        fi
         export NIHOS_EMU_BREAK_HITS=20
         export NIHOS_EMU_EXPECT_SCANOUT_PIXELS='454,405,0x2d47;454,429,0x0;478,405,0x8ff1'
-    elif [ "$scenario" = display-snake-input ]; then
-        export NIHOS_EMU_BREAK_HITS=20 NIHOS_EMU_CHECKPOINT_INPUT=s
+    elif [ "$scenario" = display-snake-input ] || [ "$scenario" = display-snake-arrow ]; then
+        if [ "$scenario" = display-snake-arrow ]; then
+            NIHOS_EMU_CHECKPOINT_INPUT=$(printf '\033[B')
+        else
+            NIHOS_EMU_CHECKPOINT_INPUT=s
+        fi
+        export NIHOS_EMU_BREAK_HITS=20 NIHOS_EMU_CHECKPOINT_INPUT
         export NIHOS_EMU_EXPECT_SCANOUT_PIXELS='454,405,0x2d47;454,429,0x8ff1;478,405,0x0'
     fi
     export NIHOS_EMU_EXPECT_LOG='started /apps/snake.wasm as app' NIHOS_EMU_EXPECT_FLASH_PROGRAMS_MIN=1
