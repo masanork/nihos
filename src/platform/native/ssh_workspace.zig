@@ -5,7 +5,6 @@ const network = @import("network_service");
 const console = @import("text_console");
 const bridge = @import("ssh_terminal_session");
 const lifecycle = @import("ssh_lifecycle");
-const layout = @import("sqld_layout.zig");
 
 pub const Material = lifecycle.Material;
 pub const Profile = lifecycle.Profile;
@@ -14,10 +13,6 @@ pub const ExchangeEntropy = lifecycle.ExchangeEntropy;
 pub const Model = console.scratch.Model;
 pub const ProfileInput = lifecycle.ProfileInput(Model);
 pub const Ui = bridge.Session(network.ExperimentalSshSession, 80, 24, 8);
-comptime {
-    if (@sizeOf(Ui) > layout.ssh_ui_experiment_bytes) @compileError("SSH UI exceeds PSRAM reservation");
-    if (layout.ssh_ui_experiment % @alignOf(Ui) != 0) @compileError("SSH UI reservation misaligned");
-}
 pub const NativeNetwork = struct {
     pub const Handle = network.ExperimentalTcpHandle;
     pub const Owner = network.ExperimentalSshSession;
@@ -55,15 +50,17 @@ pub const Journey = lifecycle.Journey(Model, Controller);
 pub fn App(comptime Entropy: type) type {
     return lifecycle.App(Journey, Entropy);
 }
+pub fn Foreground(comptime Entropy: type) type {
+    return lifecycle.Foreground(Model, Controller, Entropy);
+}
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,
     /// Called only after the network boot path admitted and bound PSRAM.
     /// Never move this workspace while the controller is active.
-    pub fn initInPlace(self: *Workspace, model: *console.scratch.Model) !void {
+    pub fn initInPlace(self: *Workspace, model: *console.scratch.Model, ui: *Ui) !void {
         if (!network.experimentalSshStorageBound()) return error.StorageUnavailable;
         self.network = .{};
-        const ui: *Ui = @ptrFromInt(layout.ssh_ui_experiment);
         self.controller = Controller.init(&self.network, ui, model);
     }
     pub fn now() !u64 {
