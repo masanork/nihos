@@ -136,6 +136,8 @@ const UdpSmokeIo = struct {
         return experimentalUdpBind(port);
     }
     pub fn send(_: *@This(), handle: ExperimentalUdpHandle, peer: hosted.udp_ipv4.Endpoint, data: []const u8, deadline: u64) !void {
+        const address = state_storage.offload.addresses.address orelse return error.NetworkUnavailable;
+        if (!hosted.udp_smoke.directPeer(address.ip, address.mask, peer.ip)) return error.PeerNotDirect;
         return experimentalUdpSend(handle, peer, data, deadline);
     }
     pub fn read(_: *@This(), handle: ExperimentalUdpHandle, out: []u8) !?ExperimentalUdpReceived {
@@ -154,7 +156,11 @@ pub noinline fn experimentalUdpSmokePoll() linksection(".flash.xytext") void {
 }
 pub fn experimentalUdpSmokeSnapshot() hosted.udp_smoke.Report {
     if (comptime !udp_smoke_enabled) return .{};
-    return udp_smoke_state.snapshot();
+    var value = udp_smoke_state.snapshot();
+    value.udp_error = udp_error_code;
+    value.rx_dropped = udp_dropped;
+    value.rx_invalid = udp_invalid;
+    return value;
 }
 pub const ExperimentalTcpHandle = hosted.tcp_owner.Handle;
 pub const ExperimentalSshAdapter = hosted.ssh_tcp.Adapter;
@@ -612,6 +618,17 @@ noinline fn udpPoll(now: u64, drained: bool, station_pending: bool, other_pendin
         if (err == error.Deadline) return false;
         return err;
     };
+    if (udp_smoke_enabled and length != 0) {
+        const diag = &udp_smoke_state.report;
+        if (result == .sent) {
+            diag.sent +|= 1;
+        } else if (result == .pending) {
+            diag.pending +|= 1;
+            if (station_pending or other_pending) diag.blocked +|= 1;
+            if (!drained) diag.undrained +|= 1;
+            if (decoder.used != 0) diag.decoder_busy +|= 1;
+        }
+    }
     if (result == .sent) report.tx +|= @intCast(length);
     return result == .sent;
 }

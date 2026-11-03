@@ -5,7 +5,33 @@ const socket = @import("hosted_udp_socket.zig");
 
 pub const payload_len = 458;
 pub const Phase = enum(u32) { idle, waiting_link, waiting_echo, passed, failed };
-pub const Report = extern struct { phase: u32 = 0, queued: u32 = 0, matched: u32 = 0, rejected: u32 = 0, error_code: u32 = 0, close_error_code: u32 = 0 };
+pub const Report = extern struct {
+    phase: u32 = 0,
+    queued: u32 = 0,
+    matched: u32 = 0,
+    rejected: u32 = 0,
+    error_code: u32 = 0,
+    close_error_code: u32 = 0,
+    sent: u32 = 0,
+    pending: u32 = 0,
+    blocked: u32 = 0,
+    undrained: u32 = 0,
+    decoder_busy: u32 = 0,
+    udp_error: u32 = 0,
+    rx_dropped: u32 = 0,
+    rx_invalid: u32 = 0,
+};
+
+/// This diagnostic supplies the peer Ethernet address directly; it has no
+/// gateway or ARP resolution. Reject a peer outside the adopted IPv4 subnet.
+pub fn directPeer(local: u32, mask: u32, peer: [4]u8) bool {
+    if (mask == 0 or mask == 0xffffffff) return false;
+    const inverse = ~mask;
+    if (inverse & (inverse +% 1) != 0) return false;
+    const target = std.mem.readInt(u32, &peer, .big);
+    return (local & mask) == (target & mask) and target != local and
+        target != (local & mask) and target != ((local & mask) | inverse);
+}
 
 /// The callback methods are serialized with the network owner. The timeout is
 /// absolute in microseconds; the input peer is not an authentication claim.

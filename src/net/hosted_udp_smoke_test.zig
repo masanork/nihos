@@ -9,6 +9,7 @@ const Io = struct {
     ready: bool = false,
     queued: usize = 0,
     closed: usize = 0,
+    reject_peer: bool = false,
     response: enum { none, valid, wrong_peer, wrong_payload } = .none,
     pub fn bind(self: *@This(), port: u16) !socket.Handle {
         if (!self.ready) return error.NetworkUnavailable;
@@ -16,6 +17,7 @@ const Io = struct {
         return handle;
     }
     pub fn send(self: *@This(), h: socket.Handle, destination: udp.Endpoint, data: []const u8, _: u64) !void {
+        if (self.reject_peer) return error.PeerNotDirect;
         if (!std.meta.eql(h, handle) or !std.meta.eql(destination, peer) or data.len != smoke.payload_len) return error.InvalidArgument;
         var expected: [smoke.payload_len]u8 = undefined;
         smoke.payload(&expected);
@@ -73,4 +75,26 @@ test "deadline closes pending socket and never retries" {
     try t.expectEqual(@as(usize, 1), io.closed);
     p.step(&io, 11);
     try t.expectEqual(@as(usize, 1), io.queued);
+}
+
+test "direct peer requires a valid matching subnet and usable address" {
+    try t.expect(smoke.directPeer(0xc0000201, 0xffffff00, .{ 192, 0, 2, 2 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xffffff00, .{ 192, 0, 3, 2 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xffffff00, .{ 192, 0, 2, 1 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xffffff00, .{ 192, 0, 2, 0 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xffffff00, .{ 192, 0, 2, 255 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xff00ff00, .{ 192, 0, 2, 2 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0, .{ 192, 0, 2, 2 }));
+    try t.expect(!smoke.directPeer(0xc0000201, 0xffffffff, .{ 192, 0, 2, 2 }));
+}
+
+test "a non-direct peer fails and closes without queuing" {
+    var p: smoke.Probe = .{};
+    var io: Io = .{ .ready = true, .reject_peer = true };
+    try p.start(peer, 1, 10);
+    p.step(&io, 2);
+    try t.expectEqual(smoke.Phase.failed, p.phase);
+    try t.expectEqual(@as(u32, @intFromError(error.PeerNotDirect)), p.snapshot().error_code);
+    try t.expectEqual(@as(usize, 0), io.queued);
+    try t.expectEqual(@as(usize, 1), io.closed);
 }
