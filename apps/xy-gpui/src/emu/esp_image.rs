@@ -10,7 +10,7 @@ fn invalid(message: &'static str) -> Error {
 
 /// Copy only ROM PT_LOAD file bytes. The ROM ELF omits the final layout pointer,
 /// so callers must supply the layout symbol from that exact ROM build.
-fn load_rom_data(bus: &mut Bus, path: impl AsRef<Path>, layout: u32) -> Result<()> {
+pub(super) fn load_rom_data(bus: &mut Bus, path: impl AsRef<Path>, layout: u32) -> Result<()> {
     let data = std::fs::read(path)?;
     if data.len() < 52
         || &data[..6] != b"\x7fELF\x01\x01"
@@ -175,7 +175,7 @@ pub fn load(bus: &mut Bus, path: impl AsRef<Path>) -> Result<u32> {
         if (virtual_offset & 0xffff) != (begin & 0xffff) {
             return Err(invalid("flash segment/page offset mismatch"));
         }
-        let page_count = ((virtual_offset & 0xffff) + end - begin + 0xffff) / 0x10000;
+        let page_count = ((virtual_offset & 0xffff) + end - begin).div_ceil(0x10000);
         let first_virtual = virtual_offset & !0xffff;
         let first_file = begin & !0xffff;
         for page in 0..page_count {

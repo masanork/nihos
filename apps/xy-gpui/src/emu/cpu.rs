@@ -986,7 +986,7 @@ impl Cpu {
                 }
                 self.pc = self.reg(1);
             }
-            #[cfg(test)]
+            #[cfg(any(test, feature = "experimental-meos"))]
             0x4fc0_014c | 0x4fc0_0154 | 0x4fc0_0158 | 0x4fc0_015c if bus.rom_flash.is_some() => {
                 match super::rom_flash::call(bus, self.pc, self.reg(10), self.reg(11), self.reg(12))
                 {
@@ -996,6 +996,16 @@ impl Cpu {
                     }
                     Err(error) => self.fault = Some(format!("ROM flash fixture: {error}")),
                 }
+            }
+            // gpio_matrix_in: connect one pin (or constant 0/1) to an input signal.
+            0x4fc0_056c => {
+                let (pin, signal, invert) = (self.reg(10), self.reg(11), self.reg(12));
+                if !(pin <= 56 || pin == 0x3e || pin == 0x3f) || signal > 255 || invert > 1 {
+                    self.fault = Some("unsupported GPIO matrix input arguments".into());
+                    return;
+                }
+                bus.write_u32(0x500e_0158 + signal * 4, 0x80 | (invert << 6) | pin);
+                self.pc = self.reg(1);
             }
             0x4fc0_0570 => {
                 let (pin, signal, out_inv, enable_inv) =

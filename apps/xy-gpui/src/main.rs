@@ -57,7 +57,15 @@ impl Workspace {
         let emu_powered = emulator.is_some() && emu_error.is_none();
         let emu_mode = true;
         if emu_mode {
-            window.set_window_title(&format!("Tab5 Emulator · Session {}", std::process::id()));
+            #[cfg(feature = "experimental-meos")]
+            let title = if std::env::var_os("NIHOS_EXPERIMENTAL_MEOS_APP").is_some() {
+                "Tab5 Emulator · Experimental MeOS (volatile)"
+            } else {
+                "Tab5 Emulator"
+            };
+            #[cfg(not(feature = "experimental-meos"))]
+            let title = "Tab5 Emulator";
+            window.set_window_title(&format!("{title} · Session {}", std::process::id()));
         } else {
             window.set_window_title("xy - GPUI");
         }
@@ -307,10 +315,7 @@ impl Workspace {
                     "backspace" => emu.send_key(8),
                     "escape" => emu.send_key(0x1b),
                     "tab" => emu.send_key(b'\t'),
-                    "left" => emu.send_key(0x02),
-                    "right" => emu.send_key(0x06),
-                    "up" => emu.send_key(0x10),
-                    "down" => emu.send_key(0x0e),
+                    "left" | "right" | "up" | "down" => emu.send_arrow(&stroke.key),
                     _ => {
                         if let Some(c) = stroke.key_char.as_deref().and_then(|s| s.chars().next()) {
                             let ascii = match c {
@@ -667,6 +672,20 @@ fn select_firmware(
 }
 
 fn load_emulator() -> Result<emu::Emulator, String> {
+    if let Some(app) = std::env::var_os("NIHOS_EXPERIMENTAL_MEOS_APP") {
+        #[cfg(feature = "experimental-meos")]
+        {
+            let rom = std::env::var_os("NIHOS_EXPERIMENTAL_MEOS_ROM")
+                .ok_or("Experimental MeOS requires NIHOS_EXPERIMENTAL_MEOS_ROM")?;
+            return emu::Emulator::new_meos(app, rom)
+                .map_err(|error| format!("Cannot load experimental MeOS: {error}"));
+        }
+        #[cfg(not(feature = "experimental-meos"))]
+        {
+            let _ = app;
+            return Err("Experimental MeOS requires the experimental-meos build feature".into());
+        }
+    }
     // An explicit path remains authoritative even if it is missing or invalid.
     let bundle = std::env::current_exe().ok().and_then(|path| {
         let directory = path.parent()?;
@@ -700,6 +719,31 @@ fn load_emulator() -> Result<emu::Emulator, String> {
             .find(|p| p.is_file())
         });
     emu::Emulator::new(path, dictionary).map_err(|error| format!("Cannot load firmware: {error}"))
+}
+
+fn send_emulator_arrow(emu: &mut emu::Emulator, key: &str) {
+    #[cfg(feature = "experimental-meos")]
+    if emu.is_meos_fixture() {
+        let suffix = match key {
+            "up" => b'A',
+            "down" => b'B',
+            "right" => b'C',
+            "left" => b'D',
+            _ => return,
+        };
+        for byte in [0x1b, b'[', suffix] {
+            emu.send_key(byte);
+        }
+        return;
+    }
+    let byte = match key {
+        "left" => 0x02,
+        "right" => 0x06,
+        "up" => 0x10,
+        "down" => 0x0e,
+        _ => return,
+    };
+    emu.send_key(byte);
 }
 
 #[cfg(test)]
@@ -1160,6 +1204,15 @@ fn main() {
 #[cfg(test)]
 mod emulator_display_tests {
     use super::*;
+
+    #[::core::prelude::v1::test]
+    fn nihos_arrow_keys_keep_editor_controls() {
+        let mut emu = emu::Emulator::empty_for_display_test();
+        for key in ["left", "right", "up", "down"] {
+            send_emulator_arrow(&mut emu, key);
+        }
+        assert_eq!(emu.bus.keyboard_fifo, [0x02, 0x06, 0x10, 0x0e]);
+    }
 
     #[::core::prelude::v1::test]
     fn cached_frame_follows_dma_rotation_and_machine_replacement() {

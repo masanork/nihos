@@ -26,6 +26,7 @@ fn publish(emu: &Emulator, shared: &Mutex<Snapshot>) {
 
 enum Command {
     Key(u8),
+    Arrow(String),
     Touch(Option<(u16, u16)>),
     Pause(bool),
     PowerOff,
@@ -76,6 +77,9 @@ impl Worker {
                 };
                 match command {
                     Some(Command::Key(key)) if powered && !emu.paused => emu.send_key(key),
+                    Some(Command::Arrow(key)) if powered && !emu.paused => {
+                        crate::send_emulator_arrow(&mut emu, &key);
+                    }
                     Some(Command::Touch(point)) => emu.bus.touch(point),
                     Some(Command::Pause(paused)) => {
                         emu.paused = paused;
@@ -162,6 +166,10 @@ impl Worker {
             paused: false,
         }
     }
+    pub fn send_arrow(&self, key: &str) {
+        let _ = self.tx.send(Command::Arrow(key.to_owned()));
+    }
+
     pub fn send_key(&self, key: u8) {
         let _ = self.tx.send(Command::Key(key));
     }

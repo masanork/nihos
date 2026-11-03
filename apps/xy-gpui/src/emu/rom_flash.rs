@@ -1,4 +1,4 @@
-//! Test-only, volatile physical NOR window for MeOS's wasmapps partition.
+//! Experimental, volatile physical NOR window for MeOS's wasmapps partition.
 //! This is independent of the direct loader's virtual flash page view.
 use super::bus::Bus;
 

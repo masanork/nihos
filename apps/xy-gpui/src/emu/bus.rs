@@ -34,9 +34,9 @@ pub struct Bus {
     pub tcm: Vec<u8>,
     pub rtc_ram: Vec<u8>,
     pub rom_data: Vec<u8>,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "experimental-meos"))]
     pub(super) rom_flash: Option<super::rom_flash::Flash>,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "experimental-meos"))]
     pub(super) usb_dwc: Option<super::usb_dwc::Usb>,
     pub rom_execute: bool,
     pub rom_executable: Vec<(u32, u32)>,
@@ -94,7 +94,7 @@ impl Default for Bus {
 }
 
 impl Bus {
-    #[cfg(test)]
+    #[cfg(any(test, feature = "experimental-meos"))]
     pub(super) fn use_st7121_fixture(&mut self) {
         self.i2c.set_touch_firmware_version(1);
     }
@@ -118,9 +118,9 @@ impl Bus {
             tcm: vec![0; 0x2000],
             rtc_ram: vec![0; 0x8000],
             rom_data: vec![0; 0x2_0000],
-            #[cfg(test)]
+            #[cfg(any(test, feature = "experimental-meos"))]
             rom_flash: None,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "experimental-meos"))]
             usb_dwc: None,
             rom_execute: false,
             rom_executable: Vec::new(),
@@ -614,7 +614,7 @@ impl Bus {
     }
 
     pub fn read_mmio_u32(&mut self, addr: u32) -> u32 {
-        #[cfg(test)]
+        #[cfg(any(test, feature = "experimental-meos"))]
         if (0x5000_0000..0x5000_1000).contains(&addr)
             && let Some(usb) = &mut self.usb_dwc
         {
@@ -709,7 +709,7 @@ impl Bus {
     }
 
     pub fn write_mmio_u32(&mut self, addr: u32, val: u32) {
-        #[cfg(test)]
+        #[cfg(any(test, feature = "experimental-meos"))]
         if (0x5000_0000..0x5000_1000).contains(&addr)
             && let Some(usb) = &mut self.usb_dwc
         {
