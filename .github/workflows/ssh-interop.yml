@@ -30,6 +30,10 @@ jobs:
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             sh tools/run-tcp-slirp-probe.sh
+      - name: TCP reconnect on the same station lease
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            python3 tools/tcp_reconnect_probe.py
       - name: OpenSSH interactive PTY over experimental TCP
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \

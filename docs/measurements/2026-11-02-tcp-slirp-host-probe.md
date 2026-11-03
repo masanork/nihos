@@ -128,6 +128,12 @@ or device application calls this driver yet. The TCP service permits at most
 it retains used ports until the lease changes. The driver does not reset the
 station or claim automatic reconnect support.
 
+The separate `tools/tcp_reconnect_probe.py` fixture keeps one synthetic station
+lease and libslirp instance while opening two TCP sessions. It exchanges data
+and completes FIN for both, rejects the first local port on reuse, and accepts
+a different local port. This is a host TCP test, not an SSH reconnect or a
+device result.
+
 An optional `NIHOS_SSH_AUTOIDENT=1 NIHOS_SSH_AUTOKEX=1` host run exchanges
 identification with `ssh_identification.zig` and advances first key exchange
 using `ssh_kex_driver.zig`; the fixture supplies fresh random bytes. An
