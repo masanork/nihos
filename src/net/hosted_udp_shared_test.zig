@@ -99,7 +99,7 @@ test "shared priority and credits gate a 1200-byte SDIO frame" {
     try t.expect(std.mem.allEqual(u8, host.data[1254..], 0));
 }
 
-test "blocked deadline and partial write retire without replay" {
+test "blocked deadline preserves shared stream and partial write retires it" {
     var state = ready();
     var owner: shared.Shared = .{};
     const h = try owner.bind(&state, local, 49152, range);
@@ -107,9 +107,10 @@ test "blocked deadline and partial write retire without replay" {
     var stream: Stream = .{};
     const decoder: hosted.Decoder = .{};
     try t.expectError(error.Deadline, owner.poll(h, &stream, &decoder, 10, false, true, true));
-    try t.expect(stream.retired and owner.retired);
-    try t.expect(state.address == null);
+    try t.expect(!stream.retired and !owner.retired);
+    try t.expect(state.address != null);
     try t.expectEqual(@as(usize, 0), stream.writes);
+    _ = try owner.bind(&state, local, 49152, range);
     state = ready();
     owner = .{};
     const next = try owner.bind(&state, local, 49152, range);
@@ -119,6 +120,17 @@ test "blocked deadline and partial write retire without replay" {
     try t.expect(stream.retired and owner.retired);
     try t.expectError(error.Retired, owner.poll(next, &stream, &decoder, 3, true, false, false));
     try t.expectEqual(@as(usize, 1), stream.writes);
+}
+
+test "poisoned shared decoder retires even without a pending send" {
+    var state = ready();
+    var owner: shared.Shared = .{};
+    const h = try owner.bind(&state, local, 49152, range);
+    var stream: Stream = .{};
+    var decoder: hosted.Decoder = .{};
+    decoder.poisoned = true;
+    try t.expectError(error.Malformed, owner.poll(h, &stream, &decoder, 1, false, true, true));
+    try t.expect(stream.retired and owner.retired and state.address == null);
 }
 
 test "stale receive retires adapter for external transport recovery" {

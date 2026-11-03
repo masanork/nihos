@@ -165,8 +165,9 @@ receives only frames already processed by that owner, accounts a full UDP slot
 as a drop without overwriting it, and takes an explicit station/other-producer
 priority and RX-drained state before submitting UDP. A zero-credit UDP attempt
 starts no transfer, so another producer may run. Timeouts still expire while
-another producer has priority; ambiguous writes retire the stream and revoke
-only the still-current address snapshot. A stale lease during RX retires the
+another producer has priority and cancel only the unsent UDP socket. Ambiguous
+writes retire the stream and revoke only the still-current address snapshot.
+A stale lease during RX retires the
 adapter, and the caller must invalidate/recover the shared transport. The
 caller must enforce exclusive stream ownership, ensure priority flags reflect
 all staged/in-flight transfers, invalidate state on reset, and quiesce DMA.

@@ -48,7 +48,8 @@ pub const Shared = struct {
     /// The caller supplies a true drained flag only after an empty read and
     /// after all prior decoded control events were applied. Station or other
     /// producers take priority when indicated; a queued UDP frame is still
-    /// checked for its deadline but no write is attempted. A zero-credit
+    /// checked for its deadline but no write is attempted. Expiration cancels
+    /// an unsent socket without retiring the shared stream. A zero-credit
     /// attempt starts no transfer and allows other producers to run. A partial
     /// or failed write retires the stream; recovery and DMA quiescence remain
     /// the caller's duty. A stale old handle cannot retire a newer stream.
@@ -62,8 +63,26 @@ pub const Shared = struct {
             }
             return err;
         };
-        const pending = if (self.socket.sender) |*value| value.phase == .queued else return error.StaleHandle;
+        const active_sender = if (self.socket.sender) |*value| value else return error.StaleHandle;
+        if (decoder.poisoned) {
+            const bound = active_sender.binding;
+            const state = active_sender.state;
+            if (bound.check(state)) |_| {
+                _ = state.invalidate();
+            } else |_| {}
+            self.socket.invalidate();
+            self.retired = true;
+            stream.invalidate();
+            return error.Malformed;
+        }
+        const pending = active_sender.phase == .queued;
         if (!pending) return .idle;
+        if (now < active_sender.last_now or now >= active_sender.deadline) {
+            // A queued sender has only seen zero writes or no poll at all.
+            // Closing it is safe without disrupting other shared producers.
+            try self.socket.close(handle);
+            return error.Deadline;
+        }
         const allowed = drained and !station_pending and !other_pending;
         const bound = self.socket.sender.?.binding;
         const state = self.socket.sender.?.state;
