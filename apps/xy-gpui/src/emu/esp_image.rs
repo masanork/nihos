@@ -411,6 +411,11 @@ mod tests {
             .ok()
             .map(|s| s.parse::<u32>().expect("integer checkpoint hit count"));
         let checkpoint_pixels = std::env::var("NIHOS_EMU_EXPECT_CHECKPOINT_PIXELS").ok();
+        let checkpoint_input = std::env::var("NIHOS_EMU_CHECKPOINT_INPUT").ok();
+        assert!(
+            checkpoint_input.is_none() || checkpoint.is_some(),
+            "checkpoint input requires a checkpoint"
+        );
         assert_eq!(
             checkpoint.is_some(),
             checkpoint_pixels.is_some(),
@@ -450,6 +455,9 @@ mod tests {
                     assert_scanout_pixels(&bus, checkpoint_pixels.as_deref().unwrap());
                     checkpoint_checked = true;
                     println!("scanout checkpoint passed at breakpoint hit {hits}");
+                    if let Some(input) = &checkpoint_input {
+                        bus.keyboard_fifo.extend_from_slice(input.as_bytes());
+                    }
                 }
             }
             if Some(cpu.pc) == break_pc && hits == break_hits {
