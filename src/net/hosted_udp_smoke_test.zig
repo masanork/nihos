@@ -98,3 +98,14 @@ test "a non-direct peer fails and closes without queuing" {
     try t.expectEqual(@as(usize, 0), io.queued);
     try t.expectEqual(@as(usize, 1), io.closed);
 }
+
+test "AP event matching validates nested BSSID and keeps malformed data unknown" {
+    const expected = [6]u8{ 2, 3, 4, 5, 6, 7 };
+    const matched = [_]u8{ 0x12, 8, 0x1a, 6, 2, 3, 4, 5, 6, 7 };
+    const mismatch = [_]u8{ 0x12, 8, 0x1a, 6, 2, 3, 4, 5, 6, 8 };
+    const short = [_]u8{ 0x12, 4, 0x1a, 2, 2, 3 };
+    try t.expectEqual(@as(u32, 1), smoke.compareApEvent(&matched, expected));
+    try t.expectEqual(@as(u32, 2), smoke.compareApEvent(&mismatch, expected));
+    try t.expectEqual(@as(u32, 0), smoke.compareApEvent(&short, expected));
+    try t.expectEqual(@as(u32, 0), smoke.compareApEvent(&matched, @splat(0)));
+}

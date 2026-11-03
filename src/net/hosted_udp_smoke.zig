@@ -17,10 +17,22 @@ pub const Report = extern struct {
     blocked: u32 = 0,
     undrained: u32 = 0,
     decoder_busy: u32 = 0,
+    ap_match: u32 = 0,
     udp_error: u32 = 0,
     rx_dropped: u32 = 0,
     rx_invalid: u32 = 0,
 };
+
+/// 0 = unspecified or not observed, 1 = exact match, 2 = mismatch.
+/// Malformed events leave the result unknown, not a match.
+pub fn compareApEvent(body: []const u8, expected: [6]u8) u32 {
+    if (std.mem.allEqual(u8, &expected, 0)) return 0;
+    const hosted = @import("hosted.zig");
+    const event = (hosted.data(body, 2) catch return 0) orelse return 0;
+    const actual = (hosted.data(event, 3) catch return 0) orelse return 0;
+    if (actual.len != 6) return 0;
+    return if (std.mem.eql(u8, actual, &expected)) 1 else 2;
+}
 
 /// This diagnostic supplies the peer Ethernet address directly; it has no
 /// gateway or ARP resolution. Reject a peer outside the adopted IPv4 subnet.

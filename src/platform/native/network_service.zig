@@ -136,6 +136,10 @@ const UdpSmokeIo = struct {
         return experimentalUdpBind(port);
     }
     pub fn send(_: *@This(), handle: ExperimentalUdpHandle, peer: hosted.udp_ipv4.Endpoint, data: []const u8, deadline: u64) !void {
+        if (!@import("std").mem.allEqual(u8, &network_config.udp_smoke_bssid, 0)) {
+            if (udp_smoke_state.report.ap_match == 0) return error.PeerAccessPointUnknown;
+            if (udp_smoke_state.report.ap_match != 1) return error.PeerAccessPointMismatch;
+        }
         const address = state_storage.offload.addresses.address orelse return error.NetworkUnavailable;
         if (!hosted.udp_smoke.directPeer(address.ip, address.mask, peer.ip)) return error.PeerNotDirect;
         return experimentalUdpSend(handle, peer, data, deadline);
@@ -479,6 +483,13 @@ noinline fn step(now: u64) linksection(".flash.text.time") !void {
     report.rx +|= @intCast(count);
     for (rx[0..count]) |byte| if (try decoder.push(byte)) |frame| {
         if (frame.interface == 4) state_storage.ble.receiveHosted(frame.packet_type, frame.payload, now);
+        if (udp_smoke_enabled and frame.interface == 3) {
+            const event = hosted.wire.rpc(frame.payload) catch null;
+            if (event) |rpc| if (rpc.kind == 3) {
+                if (rpc.id == 775) udp_smoke_state.report.ap_match = hosted.udp_smoke.compareApEvent(rpc.body, network_config.udp_smoke_bssid);
+                if (rpc.id == 776) udp_smoke_state.report.ap_match = 0;
+            };
+        }
         const received = clock.counter() orelse return error.Clock;
         if (c6_offload and offload_active) {
             try recoverC6TimeTimeout(received);

@@ -37,3 +37,11 @@ then repeat only on a verified reachable link. Add send-stage diagnostics to
 distinguish pending, accepted by Hosted, and independent peer receipt before
 attributing a failure to the network or transport. Even a successful short
 packet would not establish support for the 1200-byte QUIC Initial.
+
+A subsequent diagnostic update accepts an optional expected BSSID in the
+private peer configuration. When set, it compares that BSSID with the C6's
+station-connected event and fails closed if the event is absent, malformed,
+or different. Only a numeric match state is logged; no SSID, BSSID, or
+password is logged by this comparison. Exact BSSID equality is an optional
+experiment precondition, not a general test of reachability across a mesh or
+multiple access points. This update has not yet been qualified on hardware.
