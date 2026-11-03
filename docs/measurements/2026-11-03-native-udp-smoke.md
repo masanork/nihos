@@ -45,3 +45,29 @@ or different. Only a numeric match state is logged; no SSID, BSSID, or
 password is logged by this comparison. Exact BSSID equality is an optional
 experiment precondition, not a general test of reachability across a mesh or
 multiple access points. This update has not yet been qualified on hardware.
+
+## Subnet guard physical attempt
+
+On 2026-11-03 candidate `201d00d2957f96d2062e596dfda9cdcb4313b1e2`
+(native application SHA-256
+`27f909112df154d3b3a6be930ba4f05e496861159f74374d3ff0fb0e44063b60`)
+was run on the Tab5 with the C6's saved Wi-Fi configuration. The Mac's
+configured peer IP and MAC matched its active interface immediately before
+the write. No AP identity was inferred from macOS's redacted values, and the
+optional BSSID comparison was not configured.
+
+The C6 network became ready. The P4 reported `phase=4`, `queued=0`,
+`sent=0`, `error_code=120`, `close_error_code=0`, and the Mac listener
+received no matching datagrams. The candidate ELF's DWARF enumeration maps
+error code 120 to `error.PeerNotDirect`: the configured Mac IPv4 address did
+not belong to the subnet reported by the C6. The guard therefore stopped the
+test before queueing. This result establishes a subnet mismatch at that
+moment, not which access points the two devices used or where the earlier
+packet was lost. The writable SQLite service disabled marker was observed.
+
+Before installation, the entire 16 MiB P4 flash was backed up and verified.
+After the attempt, the original overwritten ranges were restored and the
+entire flash verified against that backup (SHA-256
+`06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`).
+A subsequent passive serial capture observed the restored native firmware.
+No C6 firmware was written. Raw network observations remain private.
