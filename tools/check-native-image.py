@@ -244,7 +244,7 @@ TCP_XY_FUNCTIONS = {
     'tcp_wire.Sum.finish', 'tcp_wire.Sum.add', 'arp_resolver.Resolver.check',
     'arp_resolver.Resolver.result', 'arp_resolver.Resolver.poll',
 }
-XY_METHODS = {'quasiquote', 'quasiquoteKind', 'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
+XY_METHODS = {'quasiquote', 'quasiquoteKind', 'stringScalarCount', 'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
               'normalizeFraction', 'fraction', 'fractionNumber', 'emitInteger', 'parseInexact', 'formatInexact', 'inexactNumber', 'asInexact', 'radixInteger', 'exactDecimal', 'prefixedNumber', 'compareExactInexact', 'compareNumbers', 'roundInexact', 'numericOdd', 'boundedInteger', 'integerResult', 'integerGcd', 'expandApply', 'isApplyProcedure', 'equivalent', 'equalValues',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
