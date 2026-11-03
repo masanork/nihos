@@ -254,7 +254,7 @@ UDP_XY_FUNCTIONS = {
     'network_service.experimentalUdpClose', 'network_service.experimentalUdpSmokePoll',
     'hosted_udp_smoke.Probe.fail', 'hosted_udp_smoke.payload',
 }
-XY_METHODS = {'quasiquote', 'quasiquoteKind', 'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
+XY_METHODS = {'quasiquote', 'quasiquoteKind', 'stringScalarCount', 'initInPlace', 'tick', 'alloc', 'pair', 'number', 'text', 'string', 'opcode',
               'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
               'normalizeFraction', 'fraction', 'fractionNumber', 'emitInteger', 'parseInexact', 'formatInexact', 'inexactNumber', 'asInexact', 'radixInteger', 'exactDecimal', 'prefixedNumber', 'compareExactInexact', 'compareNumbers', 'roundInexact', 'numericOdd', 'boundedInteger', 'integerResult', 'integerGcd', 'expandApply', 'isApplyProcedure', 'equivalent', 'equalValues',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
