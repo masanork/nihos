@@ -1,0 +1,15 @@
+POC observed NIHOS_NATIVE_XY_READY
+POC observed mode=00000001
+POC observed NIHOS_NATIVE_XY_REPLY data=373031
+POC observed mode=00000001
+POC observed NIHOS_NATIVE_XY_CONT_STATE state=00000001
+POC observed NIHOS_NATIVE_XY_REPLY data=3630
+POC observed NIHOS_NATIVE_XY_CONT_STATE state=00000002
+POC observed mode=00000001
+POC observed NIHOS_NATIVE_XY_CONT_STATE state=00000001
+POC observed NIHOS_NATIVE_XY_CONT_STATE state=00000003
+POC observed  bytes=00000001 cursor=00000001 
+POC observed mode=00000001
+POC observed NIHOS_NATIVE_XY_REPLY data=3432
+POC resumed=count60 cancelled=count80 replay=x recovery=42
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 36.10s
