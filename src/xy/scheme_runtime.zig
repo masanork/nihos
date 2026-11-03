@@ -3484,14 +3484,14 @@ pub const Runtime = struct {
         try self.emitBcOp(.halt);
         return entry;
     }
-    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) bool {
+    fn safeArithmeticSequence(self: *const Runtime, forms: Ref) linksection(code_section) bool {
         var cursor = forms;
         while (cursor != 0) : (cursor = self.heap[cursor].b) {
             if (!self.safeArithmetic(self.heap[cursor].a, 0)) return false;
         }
         return true;
     }
-    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) bool {
+    fn safeArithmetic(self: *const Runtime, expr: Ref, depth: usize) linksection(code_section) bool {
         if (depth >= depth_limit) return false;
         if (isImmediateInt(expr) or expr == self.yes or expr == self.no) return true;
         if (self.tagOf(expr) == .integer) return true;

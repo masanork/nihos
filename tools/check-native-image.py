@@ -258,7 +258,7 @@ XY_METHODS = {'quasiquote', 'quasiquoteKind', 'stringScalarCount', 'initInPlace'
               'collect', 'collectTail', 'collectSlice', 'maybeCollectBoundary', 'mark', 'space', 'delimiter', 'read', 'arguments', 'lookup', 'define', 'formals', 'bindFormals',
               'normalizeFraction', 'fraction', 'fractionNumber', 'emitInteger', 'parseInexact', 'formatInexact', 'inexactNumber', 'asInexact', 'radixInteger', 'exactDecimal', 'prefixedNumber', 'compareExactInexact', 'compareNumbers', 'roundInexact', 'numericOdd', 'boundedInteger', 'integerResult', 'integerGcd', 'expandApply', 'isApplyProcedure', 'equivalent', 'equalValues',
               'closure', 'sequence', 'eval', 'integer', 'apply', 'start', 'evaluate', 'runVm', 'compile', 'compileSequence', 'compileAndRun',
-              'numericCall', 'safeNumericExpr', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
+              'numericCall', 'safeNumericExpr', 'safeArithmetic', 'safeArithmeticSequence', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
 XY_HOST_METHODS = {'appendCommand', 'detachPrivateInput', 'saveDocument', 'insert', 'imeRoute', 'evaluationStackUnavailable', 'imeKey', 'schemeCall', 'imeProvider', 'statusText', 'touchMove', 'evaluate', 'terminalChanged', 'feedHid', 'touchMoveNow', 'attachPrivateInput', 'loadDocument', 'touchOrientation', 'showCardView', 'touchCancel', 'emptyImeQuery', 'cameraCapture', 'resetScheme', 'applyKeyboardPresence', 'touch', 'cameraRead', 'touchDownNow', 'evaluateOnStack', 'evaluateOnStackSync', 'expireSerial', 'cardRead', 'initInPlace', 'attachTerminal', 'softKeyboardVisible', 'schemeError', 'detachTerminal', 'touchNow', 'feedSerial', 'cardDismiss', 'deferTouch', 'setPhysicalKeyboard', 'privateInputSnapshot', 'openSystem', 'terminalSnapshot', 'documentText', 'cardInfo', 'cameraInfo', 'touchDown', 'storageCall', 'handle', 'replayInput'}
@@ -368,16 +368,23 @@ def xy_function(name):
     return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
-def audit_xy_functions(functions, span):
+def audit_udp_xy_functions(functions, span):
     start, end = span
-    require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
     for name in UDP_XY_FUNCTIONS:
         copies = {(address, stop) for candidate, address, stop in functions
                   if re.sub(r'__func_[0-9]+$', '', candidate) == name}
         if any(start <= address < end for address, _ in copies):
             require(len(copies) == 1 and all(start <= address < stop <= end for address, stop in copies),
                     'udp foreground function has a copy outside xy Flash: ' + name)
-    for name in XY_CONTINUATION_FUNCTIONS | XY_NUMERIC_HELPERS:
+
+
+def audit_xy_functions(functions, span):
+    audit_udp_xy_functions(functions, span)
+    start, end = span
+    require(start == 0x40060000 and start < end <= 0x400c0000, 'invalid xy code extent')
+    admission = {prefix + method for prefix in ('scheme_runtime.Runtime.', 'xy.scheme_runtime.Runtime.')
+                 for method in ('safeArithmetic', 'safeArithmeticSequence')}
+    for name in XY_CONTINUATION_FUNCTIONS | XY_NUMERIC_HELPERS | admission:
         copies = {(address, stop) for candidate, address, stop in functions if candidate == name}
         # Other profiles deliberately place numeric helpers in the separate
         # sqld/photo spans; enforce uniqueness here only when XY owns one.
