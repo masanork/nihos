@@ -2,10 +2,11 @@
 const ssh_entropy = @import("ssh_entropy");
 const CompileOnlySource = struct {
     seed: *const [ssh_entropy.seed_bytes]u8,
-    pub fn qualified(_: *@This()) bool {
-        return true;
+    pub fn lease(_: *@This()) ?u64 {
+        return 1;
     }
-    pub fn fillSeed(self: *@This(), out: *[ssh_entropy.seed_bytes]u8) !void {
+    pub fn fillSeed(self: *@This(), generation: u64, out: *[ssh_entropy.seed_bytes]u8) !void {
+        if (generation != 1) return error.EntropyUnavailable;
         out.* = self.seed.*;
     }
 };
