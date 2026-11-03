@@ -8,6 +8,10 @@ license = "MIT"
 [dependencies]
 gpui = { version = "=0.2.2", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png"] }
+rustc_apfloat = "=0.2.3"
+
+[dev-dependencies]
+sha2 = "=0.10.9"
 
 [profile.dev]
 debug = 0

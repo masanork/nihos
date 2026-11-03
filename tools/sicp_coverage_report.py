@@ -34,6 +34,7 @@ def report(folder):
     if (folder / symbol_proof).exists():
         evidence.update({key: symbol_proof for key in ('2.53', '2.54', '2.55')})
     batches = {
+        'current-sicp_recursive_bindings_4_8_4_20.json': {'4.8', '4.20'},
         'current-sicp_abstraction_2_2_2_14.json': {'2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '2.11', '2.12', '2.14'},
         'current-sicp_fast_processes_1_16_1_28.json': {'1.16', '1.17', '1.18', '1.19', '1.21', '1.23', '1.27', '1.28'},
         'current-sicp_state_3_1_3_7.json': {'3.1', '3.2', '3.3', '3.4', '3.6', '3.7'},

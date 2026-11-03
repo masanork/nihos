@@ -84,6 +84,12 @@ class NativeInstructionTests(unittest.TestCase):
                      'xy.document.Document(8192,256,2048,1,64).undo'):
             with self.subTest(name=name): self.assertFalse(MODULE.xy_function(name))
 
+    def test_quasiquote_flash_allowlist_is_limited_to_runtime_methods(self):
+        for name in ('xy.scheme_runtime.Runtime.quasiquote__func_37', 'xy.scheme_runtime.Runtime.quasiquoteKind'):
+            self.assertTrue(MODULE.xy_function(name))
+        for name in ('xy.scheme_runtime.Runtime.quasiquoteUnexpected', 'other.Runtime.quasiquote__func_37'):
+            self.assertFalse(MODULE.xy_function(name))
+
     def test_native_render_capacity_is_exactly_the_embedded_budget(self):
         for name in ('native_render_entry.nih_xy_render_terminal', 'nih_xy_render_terminal', 'nih_xy_render_terminal_call'):
             with self.subTest(name=name): self.assertTrue(MODULE.xy_function(name))

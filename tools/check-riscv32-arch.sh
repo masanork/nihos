@@ -164,6 +164,13 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
     "-Mssh_lifecycle=$repo_root/src/xy/ssh_lifecycle.zig"
 echo "Native SSH workspace lifecycle RV32 codegen: ok"
 
+# Fixed bytes exercise code generation only and must never be used as entropy.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-entropy.o" --dep ssh_entropy \
+    "-Mroot=$repo_root/tools/probes/ssh-entropy.zig" \
+    "-Mssh_entropy=$repo_root/src/xy/ssh_entropy.zig"
+echo "SSH seeded CSPRNG RV32 codegen: ok (not target execution)"
+
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
     "-Mroot=$repo_root/tools/probes/rtc.zig" \

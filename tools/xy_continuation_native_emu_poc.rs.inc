@@ -290,3 +290,72 @@
         assert_eq!(emu.cpu.x[10], 0, "service did not reject hart 1");
         eprintln!("HART_GUARD UI service rejected hart 1");
     }
+
+    #[test]
+    #[ignore = "requires traced native xy ELF with recursive bindings"]
+    fn recursive_bindings_native_smoke() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        fn wait(emu: &mut Emulator, start: usize, marker: &str) {
+            for _ in 0..1500 {
+                emu.step_frame(1_000_000);
+                assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
+                let output = String::from_utf8_lossy(&emu.bus.console_output[start..]);
+                assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+                if output.contains(marker) { return; }
+            }
+            panic!("missing {marker}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+        }
+        wait(&mut emu, 0, "NIHOS_NATIVE_XY_READY");
+        emu.step_frame(30_000_000);
+        emu.send_key(b'n');
+        emu.step_frame(30_000_000);
+        for (source, answer) in [
+            ("(let loop ((n 50) (a 0)) (if (= n 0) a (loop (- n 1) (+ a 1))))", "3530"),
+            ("(letrec ((f (lambda (n) (if (= n 0) 0 (f (- n 1)))))) (f 50))", "30"),
+            ("(letrec* ((x 7) (y (+ x 2))) y)", "39"),
+            ("(letrec ((fact (lambda (n) (if (= n 1) 1 (* n (fact (- n 1))))))) (fact 10))", "33363238383030"),
+            ("(+ 20 22)", "3432"),
+        ] {
+            let start = emu.bus.console_output.len();
+            emu.send_key(0x1b);
+            wait(&mut emu, start, "mode=00000001");
+            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            wait(&mut emu, start, &format!("NIHOS_NATIVE_XY_REPLY data={answer}"));
+            eprintln!("RECURSIVE_NATIVE {source} => {answer}");
+        }
+    }
+
+    #[test]
+    #[ignore = "requires traced native xy ELF with list quasiquote"]
+    fn quasiquote_native_smoke() {
+        let path = std::env::var("NIHOS_EMU_TEST_ELF").expect("set NIHOS_EMU_TEST_ELF");
+        let mut emu = Emulator::new(path, None::<&str>).unwrap();
+        fn wait(emu: &mut Emulator, start: usize, marker: &str) {
+            for _ in 0..1500 {
+                emu.step_frame(1_000_000);
+                assert!(!emu.paused, "guest fault: {:?}", emu.cpu.fault);
+                let output = String::from_utf8_lossy(&emu.bus.console_output[start..]);
+                assert!(!output.contains("NIHOS_NATIVE_FAIL"), "{output}");
+                if output.contains(marker) { return; }
+            }
+            panic!("missing {marker}: {}", String::from_utf8_lossy(&emu.bus.console_output[start..]));
+        }
+        wait(&mut emu, 0, "NIHOS_NATIVE_XY_READY");
+        emu.step_frame(30_000_000);
+        emu.send_key(b'n');
+        emu.step_frame(30_000_000);
+        for (source, answer) in [
+            ("(let ((x 2)) `(1 ,x 3))", "28312032203329"),
+            ("`(a ,(+ 1 2) ,@(list 4 5) . ,(+ 2 5))", "2861203320342035202e203729"),
+            ("(let ((x 2)) `(a `(b ,x ,,x) ,x))", "28612028717561736971756f74652028622028756e71756f74652078292028756e71756f74652032292929203229"),
+            ("(+ 20 22)", "3432"),
+        ] {
+            let start = emu.bus.console_output.len();
+            emu.send_key(0x1b);
+            wait(&mut emu, start, "mode=00000001");
+            for byte in source.bytes().chain(std::iter::once(b'\r')) { emu.send_key(byte); }
+            wait(&mut emu, start, &format!("NIHOS_NATIVE_XY_REPLY data={answer}"));
+            eprintln!("QUASIQUOTE_NATIVE {source} => {answer}");
+        }
+    }

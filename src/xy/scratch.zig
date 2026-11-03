@@ -423,7 +423,7 @@ pub const Model = struct {
                     }
                     if (std.mem.eql(u8, text, "home")) self.nav.home() else if (std.mem.eql(u8, text, "ime")) {
                         self.ime.mode = if (self.ime.mode == .direct) .hiragana else .direct;
-                    } else if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'');
+                    } else if (std.mem.eql(u8, text, "help")) self.mode = .help else if (std.mem.eql(u8, text, "reset-scheme")) self.resetScheme() else if (std.mem.eql(u8, text, "eval-buffer")) self.evaluate(self.doc.slice(), false) else if (text.len != 0) self.evaluate(text, text[0] != '(' and text[0] != '\'' and text[0] != '`' and text[0] != ',');
                 },
                 else => {},
             }
@@ -1201,6 +1201,17 @@ fn enterCommand(model: *Model, source: []const u8) void {
     model.handle(.escape);
     for (source) |byte| model.feedSerial(byte, 0);
     model.handle(.enter);
+}
+test "minibuffer routes quasiquote and unquote syntax to Scheme" {
+    var model: Model = undefined; // SAFETY: initialized before use.
+    model.initInPlace();
+    enterCommand(&model, "`(a ,(+ 1 2))");
+    try std.testing.expectEqual(Status.scheme_result, model.status);
+    try std.testing.expectEqualStrings("(a 3)", model.reply[0..model.reply_length]);
+    enterCommand(&model, ",x");
+    try std.testing.expectEqual(Status.scheme_error, model.status);
+    enterCommand(&model, "(+ 20 22)");
+    try std.testing.expectEqualStrings("42", model.reply[0..model.reply_length]);
 }
 test "minibuffer registers programmable commands with grouped undo and UTF8 names" {
     // SAFETY: initialized before use.

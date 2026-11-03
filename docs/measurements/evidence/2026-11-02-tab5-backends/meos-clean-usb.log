@@ -1,0 +1,91 @@
+ESP-ROM:esp32p4-20230811
+Build:Aug 11 2023
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x183c
+load:0x4ff2abd0,len:0xff4
+load:0x4ff2cbd0,len:0x344c
+entry 0x4ff2abda
+W (5) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (5) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+I (6) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (6) boot: compile time Nov  2 2026 12:59:55
+W (6) boot: Unicore bootloader
+I (6) boot: chip revision: v1.3
+I (6) boot: efuse block revision: v0.0
+I (6) qio_mode: Enabling default flash chip QIO
+I (6) boot.esp32p4: SPI Speed      : 80MHz
+I (6) boot.esp32p4: SPI Mode       : QIO
+I (6) boot.esp32p4: SPI Flash Size : 16MB
+I (6) boot: Enabling RNG early entropy source...
+I (6) boot: Partition Table:
+I (6) boot: ## Label            Usage          Type ST Offset   Length
+I (6) boot:  0              nvs        WiFi data 01 02 00009000 00006000
+I (6) boot:  1         phy_init          RF data 01 01 0000f000 00001000
+I (6) boot:  2          factory      factory app 00 00 00010000 003e0000
+I (6) boot:  3          imedict     Unknown data 01 40 00400000 00600000
+I (6) boot:  4         wasmapps     Unknown data 01 41 00a00000 00200000
+I (6) boot: End of partition table
+I (6) esp_image: segment 0: paddr=00010020 vaddr=40080020 size=92538h (599352) map
+I (46) esp_image: segment 1: paddr=000a2560 vaddr=30100000 size=00068h (   104) load
+I (46) esp_image: segment 2: paddr=000a25d0 vaddr=4ff00000 size=0da48h ( 55880) load
+I (51) esp_image: segment 3: paddr=000b0020 vaddr=40000020 size=72d1ch (470300) map
+I (81) esp_image: segment 4: paddr=00122d44 vaddr=4ff0da48 size=016fch (  5884) load
+I (82) esp_image: segment 5: paddr=00124448 vaddr=4ff0f180 size=0321ch ( 12828) load
+I (83) esp_image: segment 6: paddr=0012766c vaddr=50108080 size=0001ch (    28) load
+I (86) boot: Loaded app from partition at offset 0x10000
+I (86) boot: Disabling RNG early entropy source...
+W (88) pmu_pvt: blk_version is less than 2, pvt auto dbias init not supported in efuse.
+I (89) hex_psram: vendor id    : 0x0d (AP)
+I (89) hex_psram: Latency      : 0x01 (Fixed)
+I (89) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (89) hex_psram: dev id       : 0x01 (generation 2)
+I (89) hex_psram: density      : 0x07 (256 Mbit)
+I (89) hex_psram: good-die     : 0x06 (Pass)
+I (89) hex_psram: SRF          : 0x00 (Slow Refresh)
+I (89) hex_psram: BurstType    : 0x00 ( Wrap)
+I (89) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (89) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (89) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)
+I (89) hex_psram: DriveStrength: 0x00 (1/1)
+I (89) MSPI DQS: tuning success, best phase id is 0
+I (184) MSPI DQS: tuning success, best delayline id is 15
+I (184) esp_psram: Found 32MB PSRAM device
+I (184) esp_psram: Speed: 200MHz
+I (184) hex_psram: psram CS IO is dedicated
+I (184) cpu_start: Unicore app
+I (184) cpu_start: Single core mode
+I (173) cpu_start: Pro cpu start user code
+I (173) cpu_start: cpu freq: 360000000 Hz
+I (173) app_init: Application information:
+I (173) app_init: Project name:     m5os
+I (173) app_init: App version:      5d82fc1
+I (173) app_init: Compile time:     Nov  2 2026 12:59:44
+I (173) app_init: ELF file SHA256:  f31a70a16...
+I (173) app_init: ESP-IDF:          v5.4.4
+I (173) efuse_init: Min chip rev:     v0.1
+I (173) efuse_init: Max chip rev:     v1.99 
+I (173) efuse_init: Chip rev:         v1.3
+I (173) heap_init: Initializing. RAM available for dynamic allocation:
+I (173) heap_init: At 4FF13220 len 00027DA0 (159 KiB): RETENT_RAM
+I (173) heap_init: At 4FF3AFC0 len 00004BE4 (18 KiB): RAM
+I (173) heap_init: At 4FF9C160 len 00003EA0 (15 KiB): RAM
+I (173) heap_init: At 5010809C len 00007F64 (31 KiB): RTCRAM
+I (173) heap_init: At 30100068 len 00001F98 (7 KiB): TCM
+I (173) spi_flash: detected chip: generic
+I (173) spi_flash: flash io: qio
+I (173) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (173) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+
+MeOS 0.1 booting...
+Board: M5Stack Tab5
+CPU: ESP32-P4 (RISC-V)
+Scheduler: MeOS (preemptive, 10 ms tick)
+FreeRTOS: disabled
+Heap: internal 192 KB, PSRAM 28672 KB
+tab5: expander 1 (0x43) does not answer
+LCD: FAILED
+rootfs: M5FS on RAM disk (volatile) mounted at /
+wasm: 2 app(s) installed
+keyboard: no Tab5 Keyboard accessory (I2C 0x6d), looking for a USB keyboard
+touch: no GT911 at 0x14 (id 00 00 00 00)
