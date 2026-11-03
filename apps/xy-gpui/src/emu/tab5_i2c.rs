@@ -44,14 +44,16 @@ pub struct Tab5I2c {
     reg: u8,
     expect_reg: bool,
     touch_reg_high: bool,
+    touch_firmware_version: u8,
     touch_current: Option<(u16, u16)>,
     touch_queue: VecDeque<Option<(u16, u16)>>,
-    expander: [u8; 256],
+    expanders: [[u8; 256]; 2],
 }
 impl Default for Tab5I2c {
     fn default() -> Self {
-        let mut expander = [0; 256];
-        expander[1] = 0xa1;
+        let mut expanders = [[0; 256]; 2];
+        expanders[0][1] = 0xa1;
+        expanders[1][1] = 0xa1;
         Self {
             scl: true,
             sda: true,
@@ -62,13 +64,18 @@ impl Default for Tab5I2c {
             reg: 0,
             expect_reg: true,
             touch_reg_high: false,
+            touch_firmware_version: 3,
             touch_current: None,
             touch_queue: VecDeque::new(),
-            expander,
+            expanders,
         }
     }
 }
 impl Tab5I2c {
+    #[cfg(test)]
+    pub(super) fn set_touch_firmware_version(&mut self, version: u8) {
+        self.touch_firmware_version = version;
+    }
     pub fn data_high(&self) -> bool {
         self.sda && !self.slave_low
     }
@@ -88,9 +95,9 @@ impl Tab5I2c {
     }
     fn read_data(&mut self) -> u8 {
         let value = match self.device {
-            0x43 => self.expander[self.reg as usize],
+            0x43..=0x44 => self.expanders[(self.device - 0x43) as usize][self.reg as usize],
             0x55 => match self.reg {
-                0x00 => 3,
+                0x00 => self.touch_firmware_version,
                 0x05 => 0x02,
                 0x06 => 0xd0,
                 0x07 => 0x05,
@@ -119,7 +126,7 @@ impl Tab5I2c {
         if self.address_phase {
             self.address_phase = false;
             self.device = byte >> 1;
-            let accepted = self.device == 0x43 || self.device == 0x55;
+            let accepted = matches!(self.device, 0x43 | 0x44 | 0x55);
             if byte & 1 == 0 {
                 self.expect_reg = true;
                 self.touch_reg_high = self.device == 0x55;
@@ -142,8 +149,8 @@ impl Tab5I2c {
                 self.reg = byte;
                 self.expect_reg = false;
             }
-        } else if self.device == 0x43 {
-            self.expander[self.reg as usize] = byte;
+        } else if matches!(self.device, 0x43 | 0x44) {
+            self.expanders[(self.device - 0x43) as usize][self.reg as usize] = byte;
             self.reg = self.reg.wrapping_add(1);
         }
         (true, Next::Receive)
@@ -339,6 +346,14 @@ mod tests {
         assert_eq!(touch_read(&mut bus, 0x14), 0);
     }
     #[test]
+    fn optional_st7121_identity_is_local_to_fixture() {
+        let mut alternate = Tab5I2c::default();
+        let mut normal = Tab5I2c::default();
+        alternate.set_touch_firmware_version(1);
+        assert_eq!(touch_read(&mut alternate, 0), 1);
+        assert_eq!(touch_read(&mut normal, 0), 3);
+    }
+    #[test]
     fn expander_round_trip_and_repeated_start() {
         let mut bus = Tab5I2c::default();
         start(&mut bus);
@@ -355,6 +370,30 @@ mod tests {
         stop(&mut bus);
         start(&mut bus);
         assert!(!write(&mut bus, 0x80));
+        stop(&mut bus);
+    }
+
+    #[test]
+    fn board_expanders_have_independent_registers() {
+        let mut bus = Tab5I2c::default();
+        for (address, value) in [(0x43, 0x35), (0x44, 0x09)] {
+            start(&mut bus);
+            assert!(write(&mut bus, address << 1));
+            assert!(write(&mut bus, 5));
+            assert!(write(&mut bus, value));
+            stop(&mut bus);
+        }
+        for (address, expected) in [(0x43, 0x35), (0x44, 0x09)] {
+            start(&mut bus);
+            assert!(write(&mut bus, address << 1));
+            assert!(write(&mut bus, 5));
+            start(&mut bus);
+            assert!(write(&mut bus, (address << 1) | 1));
+            assert_eq!(read_last(&mut bus), expected);
+            stop(&mut bus);
+        }
+        start(&mut bus);
+        assert!(!write(&mut bus, 0x45 << 1));
         stop(&mut bus);
     }
 }

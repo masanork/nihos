@@ -1,0 +1,25 @@
+ESP-ROM:esp32p4-20230811
+Build:Aug 11 2023
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1214
+load:0x4ff2abd0,len:0xbd8
+load:0x4ff2cbd0,len:0x30d4
+entry 0x4ff2abd0
+W (4) pmu_param: hp_cali_dbias not burnt in efuse, use default.
+W (4) pmu_param: lp_cali_dbias not burnt in efuse, use default.
+
+NIHOS_NATIVE_BOOT backend=zig-sram rtos=none
+NIHOS_NATIVE_MODE floating=0
+NIHOS_NATIVE_COMPILER enabled=0
+NIHOS_NATIVE_PROFILE normal=1 qualification=0
+NIHOS_NATIVE_CRT_PASS bss=zero data=valid ecall=returned
+NIHOS_NATIVE_BOOT_CODE start=40000120 end=40000f9c probe=40000188 mapping=00000000 completed=00000001
+NIHOS_NATIVE_PSRAM status=00000003 configuration=00000000 identity=00000000 bytes=00000000 transactions=00000000 mapped=00000000 allocatable=00000000
+NIHOS_NATIVE_PSRAM_LINK core=0000005d bus=00000000 command=00000000 sctrl=00000000 cmd=00000000 ddr=00000000 dll_cache=00000000 dll_command=00000000 dqs0=00000000 dqs1=00000000
+NIHOS_NATIVE_PSRAM_TUNING status=00000000 stage=00000000 phase_mask=00000000 phase=00000000 delay_mask=00000000 delay=00000000 repetitions=00000064 reads=00000000 writes=00000000 error_code=00000000
+NIHOS_NATIVE_PSRAM_MPLL status=00000002 mhz=00000000 reused=00000000 divider=00000000 error_code=00000003
+NIHOS_NATIVE_PSRAM_SUPPLY programmed=00000001 calibrated=00000000 dref=00000006 mul=00000005 control=00000180 analog=66800000 settled=00000001
+NIHOS_NATIVE_PSRAM_IO status=00000000 mr0=00000000 mr4=00000000 mr8=00000000 addresses=00000000 passes=00000000 reads=00000000 writes=00000000 transactions=00000000
+NIHOS_NATIVE_PSRAM_MAP status=00000000 failure=00000000 line_bytes=00000000 last_address=00000000 last_actual=00000000 last_expected=00000000 bytes=00000000 entries=00000000 cpu_checks=00000000 command_checks=00000000 transactions=00000000 syncs=00000000
+NIHOS_NATIVE_FAIL PSRAM qualification

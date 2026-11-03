@@ -24,6 +24,7 @@ struct Workspace {
     status_key: (u32, u32, bool),
     emulator: Option<emu::Emulator>,
     emu_image: Option<Arc<RenderImage>>,
+    emu_render_revision: FrameRevision,
     emu_mode: bool,
     emu_portrait: bool,
     emu_touch_down: bool,
@@ -42,65 +43,33 @@ impl Workspace {
         let editor = frame(core.bgra(true, width, height), width, height);
         let graph = frame(core.bgra(false, width, height), width, height);
 
-        // Prefer an explicit image, then the self-contained app bundle, then
-        // the dedicated development fixture. Never silently boot a diagnostic ELF.
-        let bundle = std::env::current_exe()
-            .ok()
-            .and_then(|path| path.parent()?.parent().map(|p| p.join("Resources")));
-        let explicit = std::env::var_os("NIHOS_EMULATOR_ELF").map(std::path::PathBuf::from);
-        let found_elf = explicit
-            .or_else(|| {
-                bundle
-                    .as_ref()
-                    .map(|p| p.join("nihos-native.elf"))
-                    .filter(|p| p.is_file())
-            })
-            .or_else(|| {
-                [
-                    "build/xy-emulator-firmware/nihos-native.elf",
-                    "../../build/xy-emulator-firmware/nihos-native.elf",
-                ]
-                .iter()
-                .map(std::path::PathBuf::from)
-                .find(|p| p.is_file())
-            });
-        let found_dict = bundle
-            .as_ref()
-            .map(|p| p.join("jisyo_s_nfst.bin"))
-            .filter(|p| p.is_file())
-            .or_else(|| {
-                [
-                    "src/xy/fixtures/jisyo_s_nfst.bin",
-                    "../../src/xy/fixtures/jisyo_s_nfst.bin",
-                ]
-                .iter()
-                .map(std::path::PathBuf::from)
-                .find(|p| p.is_file())
-            });
         let mut emulator = None;
         let mut emu_image = None;
         let mut emu_error = None;
-        match found_elf {
-            Some(path) => match emu::Emulator::new(&path, found_dict.as_ref()) {
-                Ok(mut emu) => {
-                    emu.step_frame(1_000_000);
-                    if let Some(fault) = emu.fault() {
-                        emu_error = Some(format!("Emulator stopped: {fault}"));
-                    }
-                    let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
-                    emu.render_to_bgra(&mut bgra);
-                    emu_image = Some(frame(
-                        bgra,
-                        emu::bus::FB_WIDTH as u32,
-                        emu::bus::FB_HEIGHT as u32,
-                    ));
-                    emulator = Some(emu);
+        match load_emulator() {
+            Ok(mut emu) => {
+                emu.step_frame(1_000_000);
+                if let Some(fault) = emu.fault() {
+                    emu_error = Some(format!("Emulator stopped: {fault}"));
                 }
-                Err(error) => emu_error = Some(format!("Cannot load firmware: {error}")),
-            },
-            None => emu_error = Some("Firmware not bundled; build the xy fixture first".into()),
+                let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+                emu.render_to_bgra(&mut bgra);
+                emu_image = Some(frame(
+                    bgra,
+                    emu::bus::FB_WIDTH as u32,
+                    emu::bus::FB_HEIGHT as u32,
+                ));
+                emulator = Some(emu);
+            }
+            Err(error) => emu_error = Some(error),
         }
 
+        let emu_render_revision = FrameRevision(
+            emulator
+                .as_ref()
+                .map(|emu| (emu.bus.scanout_revision(), false)),
+        );
+        let emu_powered = emulator.is_some() && emu_error.is_none();
         let emu_mode = true;
         if emu_mode {
             window.set_window_title(&format!("Tab5 Emulator · Session {}", std::process::id()));
@@ -151,16 +120,29 @@ impl Workspace {
             frames: 1,
             emulator,
             emu_image,
+            emu_render_revision,
             emu_mode,
             emu_portrait: false,
             emu_touch_down: false,
-            emu_powered: true,
+            emu_powered,
             emu_error,
             emu_session_label,
         }
     }
     fn now(&self) -> u64 {
         self.started.elapsed().as_micros().min(u64::MAX as u128) as u64
+    }
+    fn retry_firmware(&mut self, window: &mut Window) {
+        match load_emulator() {
+            Ok(emu) => {
+                self.emulator = Some(emu);
+                self.emu_render_revision.invalidate();
+                self.emu_powered = true;
+                self.emu_error = None;
+                self.render_emulator_image(window);
+            }
+            Err(error) => self.emu_error = Some(error),
+        }
     }
     fn refresh_graph(&mut self, window: &mut Window) {
         let next = frame(
@@ -202,6 +184,7 @@ impl Workspace {
             if let Some(fault) = emu.fault() {
                 self.emu_error = Some(format!("Emulator stopped: {fault}"));
                 self.emu_powered = false;
+                self.render_emulator_image(window);
                 return;
             }
             let output = String::from_utf8_lossy(&emu.bus.console_output);
@@ -211,16 +194,16 @@ impl Workspace {
             {
                 self.emu_error = Some(format!("Guest stopped: {line}"));
                 self.emu_powered = false;
+                self.render_emulator_image(window);
                 return;
             }
         }
         self.render_emulator_image(window);
     }
     fn render_emulator_image(&mut self, window: &mut Window) {
-        if let Some(emu) = &self.emulator {
-            let mut bgra = vec![0u8; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
-            emu.render_to_bgra(&mut bgra);
-            let (bgra, w, h) = orient_frame(bgra, self.emu_portrait);
+        if let Some((bgra, w, h)) = self.emulator.as_ref().and_then(|emu| {
+            render_changed_frame(emu, self.emu_portrait, &mut self.emu_render_revision)
+        }) {
             let next = frame(bgra, w, h);
             if let Some(old) = self.emu_image.replace(next) {
                 retire(old, window);
@@ -235,8 +218,12 @@ impl Workspace {
         if !start && !self.emu_touch_down {
             return;
         }
-        if let Some(point) = touch_coordinates(position, window.viewport_size(), self.emu_portrait)
-        {
+        if let Some(point) = touch_coordinates(
+            position,
+            window.viewport_size(),
+            self.emu_portrait,
+            self.emu_error.is_some(),
+        ) {
             self.emu_touch_down = true;
             if let Some(emu) = &mut self.emulator {
                 emu.bus.touch(Some(point));
@@ -620,21 +607,142 @@ fn shown(image: &Arc<RenderImage>, w: f32, h: f32) -> gpui::Img {
     img(image.clone()).w(px(w)).h(px(h))
 }
 // Invert the fit and framebuffer rotations to obtain physical panel coordinates.
-fn touch_coordinates(
-    position: Point<Pixels>,
+fn screen_geometry(
     viewport: Size<Pixels>,
     portrait: bool,
-) -> Option<(u16, u16)> {
+    has_error: bool,
+) -> (f32, f32, f32, f32) {
     let (vw, vh): (f32, f32) = (viewport.width.into(), viewport.height.into());
     let (w, h) = if portrait {
         (720., 1280.)
     } else {
         (1280., 720.)
     };
-    let fit = ((vw - 32.).max(1.) / w).min((vh - 80.).max(1.) / h);
+    let error_height = if has_error { 48. } else { 0. };
+    let fit = ((vw - 32.).max(1.) / w).min((vh - 80. - error_height).max(1.) / h);
+    let (screen_w, screen_h) = (w * fit, h * fit);
+    (
+        screen_w,
+        screen_h,
+        (vw - screen_w) / 2.,
+        48. + (vh - 48. - screen_h - error_height) / 2.,
+    )
+}
+
+fn bounded_error_text(text: &str) -> String {
+    if text.len() <= 128 {
+        return text.to_owned();
+    }
+    let mut end = 125;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}...", &text[..end])
+}
+
+struct FrameRevision(Option<(u64, bool)>);
+
+impl FrameRevision {
+    fn needs_update(&self, revision: (u64, bool)) -> bool {
+        self.0 != Some(revision)
+    }
+    fn record(&mut self, revision: (u64, bool)) {
+        self.0 = Some(revision);
+    }
+    fn invalidate(&mut self) {
+        self.0 = None;
+    }
+}
+
+fn render_changed_frame(
+    emu: &emu::Emulator,
+    portrait: bool,
+    revision: &mut FrameRevision,
+) -> Option<(Vec<u8>, u32, u32)> {
+    let current = (emu.bus.scanout_revision(), portrait);
+    if !revision.needs_update(current) {
+        return None;
+    }
+    let mut bgra = vec![0; emu::bus::FB_WIDTH * emu::bus::FB_HEIGHT * 4];
+    emu.render_to_bgra(&mut bgra);
+    let result = orient_frame(bgra, portrait);
+    revision.record(current);
+    Some(result)
+}
+
+fn select_firmware(
+    explicit: Option<std::path::PathBuf>,
+    bundle: Option<&std::path::Path>,
+    candidates: &[std::path::PathBuf],
+) -> Option<std::path::PathBuf> {
+    explicit
+        .or_else(|| {
+            bundle
+                .map(|p| p.join("nihos-native.elf"))
+                .filter(|p| p.is_file())
+        })
+        .or_else(|| candidates.iter().find(|p| p.is_file()).cloned())
+}
+
+fn load_emulator() -> Result<emu::Emulator, String> {
+    // An explicit path remains authoritative even if it is missing or invalid.
+    let bundle = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent()?.parent().map(|p| p.join("Resources")));
+    let candidates = [
+        "build/xy-emulator-firmware/nihos-native.elf".into(),
+        "../../build/xy-emulator-firmware/nihos-native.elf".into(),
+    ];
+    let path = select_firmware(
+        std::env::var_os("NIHOS_EMULATOR_ELF").map(std::path::PathBuf::from),
+        bundle.as_deref(),
+        &candidates,
+    )
+    .ok_or_else(|| "Firmware not bundled; build the xy fixture first".to_owned())?;
+    let dictionary = bundle
+        .as_ref()
+        .map(|p| p.join("jisyo_s_nfst.bin"))
+        .filter(|p| p.is_file())
+        .or_else(|| {
+            [
+                "src/xy/fixtures/jisyo_s_nfst.bin",
+                "../../src/xy/fixtures/jisyo_s_nfst.bin",
+            ]
+            .iter()
+            .map(std::path::PathBuf::from)
+            .find(|p| p.is_file())
+        });
+    emu::Emulator::new(path, dictionary).map_err(|error| format!("Cannot load firmware: {error}"))
+}
+
+fn reset_emulator(emu: &mut emu::Emulator, stopped: bool) -> std::io::Result<()> {
+    emu.reset()?;
+    if stopped {
+        emu.paused = false;
+    }
+    Ok(())
+}
+
+fn error_label_width(available_w: f32, scale: f32) -> f32 {
+    (available_w - 32.).clamp(32. / scale, (1280. / scale).min(720.))
+}
+
+fn touch_coordinates(
+    position: Point<Pixels>,
+    viewport: Size<Pixels>,
+    portrait: bool,
+    has_error: bool,
+) -> Option<(u16, u16)> {
+    let (w, h) = if portrait {
+        (720., 1280.)
+    } else {
+        (1280., 720.)
+    };
+    let (screen_w, _, left, top) = screen_geometry(viewport, portrait, has_error);
+    let fit = screen_w / w;
     let (px, py): (f32, f32) = (position.x.into(), position.y.into());
-    let x = (px - (vw - w * fit) / 2.) / fit;
-    let y = (py - (48. + (vh - 48. - h * fit) / 2.)) / fit;
+    let x = (px - left) / fit;
+    let y = (py - top) / fit;
     if x < 0. || y < 0. || x >= w || y >= h {
         return None;
     }
@@ -667,15 +775,20 @@ impl Render for Workspace {
         if self.emu_mode {
             let viewport = window.viewport_size();
             let available_w: f32 = viewport.width.into();
-            let available_h: f32 = viewport.height.into();
-            let (native_w, native_h) = if self.emu_portrait {
-                (720., 1280.)
-            } else {
-                (1280., 720.)
-            };
-            let fit = ((available_w - 32.).max(1.) / native_w)
-                .min((available_h - 80.).max(1.) / native_h);
-            let (screen_w, screen_h) = (native_w * fit, native_h * fit);
+            let (screen_w, screen_h, _, _) =
+                screen_geometry(viewport, self.emu_portrait, self.emu_error.is_some());
+            // The shared label renderer caps its backing image at 1280 px.
+            let error_width = error_label_width(available_w, self.scale);
+            let error_image = self.emu_error.as_ref().map(|error| {
+                label(
+                    &mut self.core,
+                    &bounded_error_text(error),
+                    [error_width, 48., 16.],
+                    self.scale,
+                    [0xffa8a8, 0x101216],
+                    true,
+                )
+            });
             let control = |id: &'static str, image: &Arc<RenderImage>| {
                 div()
                     .id(id)
@@ -764,6 +877,7 @@ impl Render for Workspace {
                                         match emu.reset() {
                                             Ok(()) => {
                                                 emu.paused = false;
+                                                this.emu_render_revision.invalidate();
                                                 this.emu_powered = true;
                                                 this.emu_error = None;
                                             }
@@ -773,6 +887,8 @@ impl Render for Workspace {
                                             }
                                         }
                                         this.refresh_emulator(window);
+                                    } else {
+                                        this.retry_firmware(window);
                                     }
                                     cx.notify();
                                 },
@@ -782,16 +898,22 @@ impl Render for Workspace {
                             control("emu-reset", &self.labels.emu_reset).on_click(cx.listener(
                                 |this, _, window, cx| {
                                     this.touch_end();
-                                    if this.emu_powered {
+                                    if this.emu_powered || this.emu_error.is_some() {
                                         if let Some(emu) = &mut this.emulator {
-                                            match emu.reset() {
-                                                Ok(()) => this.emu_error = None,
+                                            match reset_emulator(emu, !this.emu_powered) {
+                                                Ok(()) => {
+                                                    this.emu_render_revision.invalidate();
+                                                    this.emu_powered = true;
+                                                    this.emu_error = None;
+                                                }
                                                 Err(err) => {
                                                     this.emu_powered = false;
                                                     this.emu_error =
                                                         Some(format!("Reset failed: {err}"));
                                                 }
                                             }
+                                        } else {
+                                            this.retry_firmware(window);
                                         }
                                         this.render_emulator_image(window);
                                     }
@@ -804,30 +926,25 @@ impl Render for Workspace {
                     div()
                         .flex_1()
                         .flex()
+                        .flex_col()
                         .items_center()
                         .justify_center()
                         .p_4()
-                        .child(if let Some(error) = &self.emu_error {
-                            let image = label(
-                                &mut self.core,
-                                error,
-                                [720., 48., 16.],
-                                self.scale,
-                                [0xffa8a8, 0x101216],
-                                true,
-                            );
-                            div().child(shown(&image, 720., 48.))
-                        } else if self.emulator.is_none() {
-                            let image = label(
-                                &mut self.core,
-                                "Firmware ELF not found or could not be loaded",
-                                [720., 48., 16.],
-                                self.scale,
-                                [0xaeb5c2, 0x101216],
-                                true,
-                            );
-                            div().child(shown(&image, 720., 48.))
-                        } else if !self.emu_powered {
+                        .child(if self.emulator.is_none() {
+                            if self.emu_error.is_some() {
+                                div()
+                            } else {
+                                let image = label(
+                                    &mut self.core,
+                                    "Firmware ELF not found or could not be loaded",
+                                    [720., 48., 16.],
+                                    self.scale,
+                                    [0xaeb5c2, 0x101216],
+                                    true,
+                                );
+                                div().child(shown(&image, 720., 48.))
+                            }
+                        } else if !self.emu_powered && self.emu_error.is_none() {
                             div().w(px(screen_w)).h(px(screen_h)).bg(rgb(0x000000))
                         } else if let Some(image) = &self.emu_image {
                             div().child(
@@ -861,7 +978,12 @@ impl Render for Workspace {
                             )
                         } else {
                             div()
-                        }),
+                        })
+                        .children(
+                            error_image
+                                .as_ref()
+                                .map(|image| shown(image, error_width, 48.)),
+                        ),
                 );
         }
 
@@ -1065,27 +1187,179 @@ mod emulator_display_tests {
     use super::*;
 
     #[::core::prelude::v1::test]
-    fn touch_maps_display_rotation_to_physical_panel() {
-        let viewport = size(px(1312.), px(800.));
+    fn cached_frame_follows_dma_rotation_and_machine_replacement() {
+        fn machine() -> emu::Emulator {
+            emu::Emulator::empty_for_display_test()
+        }
+        fn publish(emu: &mut emu::Emulator, color: u32) {
+            let bus = &mut emu.bus;
+            let desc = 0x4ff1_0000;
+            bus.write_u32(emu::bus::FB_BASE, color);
+            bus.write_u32(emu::bus::FB_BASE + 4, color);
+            bus.write_u32(desc, emu::bus::FB_BASE);
+            bus.write_u32(desc + 8, 0x5010_5000);
+            bus.write_u32(desc + 16, (emu::bus::FB_SIZE / 8 - 1) as u32);
+            bus.write_u32(desc + 32, 0x310);
+            bus.write_u32(desc + 36, 0xc000_0000);
+            bus.write_u32(0x5008_1128, desc);
+            bus.write_u32(0x5008_1018, 0x101);
+        }
+        let mut emu = machine();
+        let mut revision = FrameRevision(None);
+        publish(&mut emu, 0xf800_f800);
+        let (red, _, _) = render_changed_frame(&emu, false, &mut revision).unwrap();
+        assert_eq!(&red[..4], &[0, 0, 255, 255]);
+        assert!(render_changed_frame(&emu, false, &mut revision).is_none());
+        publish(&mut emu, 0xf800_f800);
+        assert_eq!(emu.bus.scanout_frames, 2);
+        assert!(render_changed_frame(&emu, false, &mut revision).is_none());
+        publish(&mut emu, 0x001f_001f);
+        let (blue, _, _) = render_changed_frame(&emu, false, &mut revision).unwrap();
+        assert_eq!(&blue[..4], &[255, 0, 0, 255]);
+        let (rotated, width, height) = render_changed_frame(&emu, true, &mut revision).unwrap();
+        assert_eq!((width, height), (720, 1280));
+        assert_eq!(&rotated[..4], &[255, 0, 0, 255]);
+
+        let mut replacement = machine();
+        publish(&mut replacement, 0x001f_001f);
+        publish(&mut replacement, 0xf800_f800);
+        publish(&mut replacement, 0xf800_f800);
+        assert_eq!(replacement.bus.scanout_frames, emu.bus.scanout_frames);
         assert_eq!(
-            touch_coordinates(point(px(16.), px(64.)), viewport, false),
+            replacement.bus.scanout_revision(),
+            emu.bus.scanout_revision()
+        );
+        revision.invalidate();
+        let (red_again, _, _) = render_changed_frame(&replacement, true, &mut revision).unwrap();
+        assert_eq!(&red_again[..4], &[0, 0, 255, 255]);
+    }
+
+    #[::core::prelude::v1::test]
+    fn frame_revision_tracks_scanout_rotation_and_new_machine() {
+        let mut revision = FrameRevision(None);
+        assert!(revision.needs_update((0, false)));
+        revision.record((0, false));
+        assert!(!revision.needs_update((0, false)));
+        assert!(revision.needs_update((1, false)));
+        revision.record((1, false));
+        assert!(revision.needs_update((1, true)));
+        revision.record((1, true));
+        revision.invalidate();
+        assert!(revision.needs_update((1, true)));
+    }
+
+    #[::core::prelude::v1::test]
+    fn firmware_selection_retries_without_bypassing_explicit_path() {
+        let dir = std::env::temp_dir().join(format!("nihos-selection-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let fallback = dir.join("fixture.elf");
+        let explicit = dir.join("explicit.elf");
+        let bundled = dir.join("nihos-native.elf");
+        std::fs::write(&fallback, []).unwrap();
+        assert_eq!(
+            select_firmware(Some(explicit.clone()), Some(&dir), &[fallback.clone()]),
+            Some(explicit)
+        );
+        assert_eq!(
+            select_firmware(None, Some(&dir), &[fallback.clone()]),
+            Some(fallback)
+        );
+        std::fs::write(&bundled, []).unwrap();
+        assert_eq!(select_firmware(None, Some(&dir), &[]), Some(bundled));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[::core::prelude::v1::test]
+    fn reset_recovers_stopped_guest_but_preserves_user_pause() {
+        let mut image = vec![0u8; 88];
+        image[..6].copy_from_slice(b"\x7fELF\x01\x01");
+        image[16..18].copy_from_slice(&2u16.to_le_bytes());
+        image[18..20].copy_from_slice(&243u16.to_le_bytes());
+        image[24..28].copy_from_slice(&emu::bus::SRAM_BASE.to_le_bytes());
+        image[28..32].copy_from_slice(&52u32.to_le_bytes());
+        image[42..44].copy_from_slice(&32u16.to_le_bytes());
+        image[44..46].copy_from_slice(&1u16.to_le_bytes());
+        image[52..56].copy_from_slice(&1u32.to_le_bytes());
+        image[56..60].copy_from_slice(&84u32.to_le_bytes());
+        image[60..64].copy_from_slice(&emu::bus::SRAM_BASE.to_le_bytes());
+        image[68..72].copy_from_slice(&4u32.to_le_bytes());
+        image[72..76].copy_from_slice(&4u32.to_le_bytes());
+        image[84..88].copy_from_slice(&0xffff_ffffu32.to_le_bytes());
+        let path = std::env::temp_dir().join(format!("nihos-reset-{}.elf", std::process::id()));
+        std::fs::write(&path, image).unwrap();
+        let mut emu = emu::Emulator::new(&path, None::<&std::path::Path>).unwrap();
+        emu.step_frame(1);
+        assert!(emu.fault().is_some() && emu.paused);
+        reset_emulator(&mut emu, true).unwrap();
+        assert!(emu.fault().is_none() && !emu.paused);
+        emu.paused = true;
+        reset_emulator(&mut emu, false).unwrap();
+        assert!(emu.paused);
+        std::fs::remove_file(&path).unwrap();
+        assert!(reset_emulator(&mut emu, true).is_err());
+        assert!(emu.paused);
+    }
+
+    #[::core::prelude::v1::test]
+    fn long_diagnostic_fits_retina_label_renderer() {
+        let text = format!("{}🙂more", "x".repeat(124));
+        let bounded = bounded_error_text(&text);
+        assert!(bounded.len() <= 128);
+        assert!(bounded.ends_with("..."));
+        assert_eq!(bounded_error_text("short"), "short");
+        let mut core = Core::new();
+        let _image = label(
+            &mut core,
+            &bounded,
+            [error_label_width(1500., 2.), 48., 16.],
+            2.,
+            [0xffa8a8, 0x101216],
+            true,
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn touch_mapping_accounts_for_visible_error_message() {
+        let viewport = size(px(1312.), px(800.));
+        let (width, height, left, top) = screen_geometry(viewport, false, true);
+        assert!(width < 1280.);
+        assert_eq!(
+            touch_coordinates(point(px(left + 0.1), px(top + 0.1)), viewport, false, true),
             Some((0, 1279))
         );
         assert_eq!(
-            touch_coordinates(point(px(1295.), px(783.)), viewport, false),
+            touch_coordinates(
+                point(px(left + 2.), px(top + height + 1.)),
+                viewport,
+                false,
+                true
+            ),
+            None
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn touch_maps_display_rotation_to_physical_panel() {
+        let viewport = size(px(1312.), px(800.));
+        assert_eq!(
+            touch_coordinates(point(px(16.), px(64.)), viewport, false, false),
+            Some((0, 1279))
+        );
+        assert_eq!(
+            touch_coordinates(point(px(1295.), px(783.)), viewport, false, false),
             Some((719, 0))
         );
         assert_eq!(
-            touch_coordinates(point(px(15.), px(64.)), viewport, false),
+            touch_coordinates(point(px(15.), px(64.)), viewport, false, false),
             None
         );
         let viewport = size(px(752.), px(1360.));
         assert_eq!(
-            touch_coordinates(point(px(16.), px(64.)), viewport, true),
+            touch_coordinates(point(px(16.), px(64.)), viewport, true, false),
             Some((0, 0))
         );
         assert_eq!(
-            touch_coordinates(point(px(735.), px(1343.)), viewport, true),
+            touch_coordinates(point(px(735.), px(1343.)), viewport, true, false),
             Some((719, 1279))
         );
     }
