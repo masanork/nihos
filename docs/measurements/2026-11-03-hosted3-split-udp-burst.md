@@ -14,11 +14,12 @@ P4 observed 16 matching echoes, with mask `0xffff`; its final wait was 8,000
 ms. The [redacted evidence](evidence/2026-11-03-hosted3-split-udp-burst.json)
 records counts, exact fixture identity, capture hashes and restoration status.
 
-The Mac Wi-Fi interface was active, and its address, MAC, SSID and BSSID
-identities were checked privately before installation and again after the run.
-The 16 paired round trips establish local connectivity for this run. The C6's
-SSID and BSSID were not captured, so the observations do not establish that
-both devices used the identical physical AP. This sample does not establish a
+The Mac Wi-Fi interface was active, and its IP and MAC were checked privately
+before installation and again after the run. The original SSID/BSSID check
+compared redacted placeholders returned by macOS; it did not establish either
+identifier. The 16 paired round trips establish local connectivity for this
+run. The C6's SSID and BSSID were not captured, so the observations do not
+establish that both devices used the identical physical AP. This sample does not establish a
 general loss rate, long-duration reliability, normal-service socket operation,
 QUIC/TLS, iroh or madowi interoperability.
 

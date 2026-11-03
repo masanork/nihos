@@ -46,6 +46,39 @@ jobs:
           name: xy-desktop-emulator-guest
           path: build/xy-emulator-firmware/nihos-native.elf
           if-no-files-found: error
+  gpui-linux:
+    name: Linux GPUI emulator
+    needs: firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+      NIHOS_EMU_TEST_ELF: ${{ github.workspace }}/build/xy-emulator-firmware/nihos-native.elf
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - name: Install Linux development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake pkg-config libfontconfig1-dev libfreetype6-dev libx11-dev libx11-xcb-dev libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libssl-dev libasound2-dev libudev-dev
+      - name: Install Rust
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: xy-desktop-emulator-guest
+          path: build/xy-emulator-firmware
+      - name: Build Linux application
+        run: sh tools/build-xy-gpui.sh
+      - name: Emulator unit and guest integration tests
+        run: |
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_splash -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_xy_ready -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml worker_boots_guest_and_handles_pause -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml two_sessions_boot_edit_and_reset_independently -- --ignored
+      - name: Shared renderer snapshots
+        run: build/xy-gpui/xy-gpui --snapshot-dir build/xy-gpui/snapshots
   gpui:
     name: Shared animation and GPUI host
     needs: firmware
@@ -76,6 +109,7 @@ jobs:
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_splash -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml firmware_reaches_xy_ready -- --ignored
+          cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml worker_boots_guest_and_handles_pause -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml touch_tap_reaches_xy_home -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml absent_keyboard_selects_portrait -- --ignored
           cargo test --locked --manifest-path apps/xy-gpui/Cargo.toml portrait_touch_opens_document_and_types -- --ignored

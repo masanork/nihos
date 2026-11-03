@@ -13,7 +13,7 @@ def main():
     if not source.is_file() or stat.S_IMODE(source.stat().st_mode) & 0o077:
         raise ValueError('private peer required')
     data = json.loads(source.read_text())
-    if not isinstance(data, dict) or not ({'ip', 'mac', 'port'} <= set(data) <= {'ip', 'mac', 'port', 'bssid'}):
+    if not isinstance(data, dict) or not ({'ip', 'mac', 'port'} <= set(data) <= {'ip', 'mac', 'port', 'bssid', 'ssid'}):
         raise ValueError('invalid peer')
     if not isinstance(data['ip'], str) or not isinstance(data['mac'], str) or type(data['port']) is not int:
         raise ValueError('invalid peer')
@@ -35,7 +35,14 @@ def main():
         bssid = bytes(int(part, 16) for part in parts)
         if bssid[0] & 1 or bssid == bytes(6):
             raise ValueError('invalid BSSID')
-    text = ('pub const udp_smoke_bssid = [_]u8{' + ','.join(str(x) for x in bssid) + '};\n'
+    ssid = data.get('ssid', '')
+    if not isinstance(ssid, str):
+        raise ValueError('invalid SSID')
+    ssid_bytes = ssid.encode('utf-8')
+    if len(ssid_bytes) > 32 or any(ch < 32 or ch == 127 for ch in ssid_bytes):
+        raise ValueError('invalid SSID')
+    text = ('pub const udp_smoke_ssid = [_]u8{' + ','.join(str(x) for x in ssid_bytes) + '};\n'
+            + 'pub const udp_smoke_bssid = [_]u8{' + ','.join(str(x) for x in bssid) + '};\n'
             + 'pub const udp_smoke_ip = [_]u8{' + ','.join(str(x) for x in ip.packed) + '};\n'
             + 'pub const udp_smoke_mac = [_]u8{' + ','.join(str(x) for x in mac) + '};\n'
             + f"pub const udp_smoke_port: u16 = {data['port']};\n")
