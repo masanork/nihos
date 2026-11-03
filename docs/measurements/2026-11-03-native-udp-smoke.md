@@ -86,3 +86,33 @@ pre-write backup (SHA-256
 `06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`).
 Passive serial capture observed the restored native firmware. No C6 firmware
 was written.
+
+## Successful short UDP echo after Mac network change
+
+After the Mac changed Wi-Fi networks, a candidate with optional SSID comparison
+was built from commit `bbdcc48d82cc1c6cbb27b3b6fc0721d4dc6815a9`. The
+private test application SHA-256 was
+`db5835c2feeff3c39ecae746268fa076605565c1de1014888038c35c2f202fcb`.
+The candidate's address and expected SSID were checked against the private
+configuration; immediately before writing, the Mac's active IP and MAC were
+rechecked and its connected SSID was confirmed in System Settings. The C6
+connection event reported `ssid_match=1`. BSSID comparison was not configured.
+No network identifiers or credentials are included in this record.
+
+The Tab5 reported `phase=3`, `queued=1`, `sent=1`, `matched=1`, `rejected=0`,
+`error_code=0`, `close_error_code=0`, `udp_error=0`, `rx_dropped=0`, and
+`rx_invalid=0`. Its counters recorded five pending polls, three with another
+producer given priority, and four undrained polls; these counts overlap. The
+Mac independently received exactly one matching 458-byte payload and echoed
+exactly one matching payload. Its source address matched the device's reported
+address. The P4 validated the expected source endpoint and all payload bytes.
+This is a single direct-LAN echo for this exact candidate and peer; it does not
+qualify loss recovery, larger datagrams, QUIC, TLS, iroh, or madowi.
+
+Writable SQLite startup was disabled in the test profile. Before the test the
+complete 16 MiB P4 flash was backed up and verified; after the test the
+original overwritten ranges were restored and the entire flash verified
+against the backup (SHA-256
+`06140086d05c94f5e8586c89f516d56d31b6340429526796448582a2e1bec435`).
+A passive serial capture observed the restored native firmware. The C6
+firmware was not written; raw device and peer captures remain private.
