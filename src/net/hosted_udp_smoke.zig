@@ -18,6 +18,7 @@ pub const Report = extern struct {
     undrained: u32 = 0,
     decoder_busy: u32 = 0,
     ap_match: u32 = 0,
+    ssid_match: u32 = 0,
     udp_error: u32 = 0,
     rx_dropped: u32 = 0,
     rx_invalid: u32 = 0,
@@ -32,6 +33,18 @@ pub fn compareApEvent(body: []const u8, expected: [6]u8) u32 {
     const actual = (hosted.data(event, 3) catch return 0) orelse return 0;
     if (actual.len != 6) return 0;
     return if (std.mem.eql(u8, actual, &expected)) 1 else 2;
+}
+
+/// Compare the length-bounded SSID from a station-connected event. Only the
+/// result is retained: 0 = unspecified/invalid, 1 = equal, 2 = different.
+pub fn compareSsidEvent(body: []const u8, expected: []const u8) u32 {
+    if (expected.len == 0) return 0;
+    const hosted = @import("hosted.zig");
+    const event = (hosted.data(body, 2) catch return 0) orelse return 0;
+    const actual = (hosted.data(event, 1) catch return 0) orelse return 0;
+    const length = hosted.integer(event, 2) catch return 0;
+    if (length == 0 or length > 32 or length > actual.len) return 0;
+    return if (std.mem.eql(u8, actual[0..length], expected)) 1 else 2;
 }
 
 /// This diagnostic supplies the peer Ethernet address directly; it has no

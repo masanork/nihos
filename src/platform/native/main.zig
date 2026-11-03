@@ -296,7 +296,7 @@ noinline fn serviceNetwork() linksection(if (options.camera_id or (options.devic
     logger.record("NIHOS_NATIVE_CONNECTIVITY", null, .{ "configured", "capabilities", "bluetooth_status" }, &state);
     if (@hasDecl(options, "experimental_udp_smoke") and options.experimental_udp_smoke) {
         const udp = network.experimentalUdpSmokeSnapshot();
-        logger.record("NIHOS_NATIVE_UDP_SMOKE", null, .{ "phase", "queued", "matched", "rejected", "error_code", "close_error_code", "sent", "pending", "blocked", "undrained", "decoder_busy", "ap_match", "udp_error", "rx_dropped", "rx_invalid" }, &udp);
+        logger.record("NIHOS_NATIVE_UDP_SMOKE", null, .{ "phase", "queued", "matched", "rejected", "error_code", "close_error_code", "sent", "pending", "blocked", "undrained", "decoder_busy", "ap_match", "ssid_match", "udp_error", "rx_dropped", "rx_invalid" }, &udp);
     }
     if (@hasDecl(network_config, "c6_time_fault_test") and network_config.c6_time_fault_test) {
         const fault = network.timeFaultSnapshot();

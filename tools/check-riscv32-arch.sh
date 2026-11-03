@@ -93,7 +93,7 @@ echo "Native network owner codegen (normal and diagnostic): ok"
 
 # Compile the separate C6-owned-address, short-only UDP experiment. This is
 # codegen only: no device, peer routing policy or DMA behavior is exercised.
-printf 'pub const ipv6 = false;\npub const c6_time_offload = true;\npub const udp_smoke_bssid = [_]u8{0,0,0,0,0,0};\npub const udp_smoke_ip = [_]u8{192,0,2,2};\npub const udp_smoke_mac = [_]u8{2,0,0,0,0,2};\npub const udp_smoke_port: u16 = 44444;\n' > "$out_dir/network-config.zig"
+printf 'pub const ipv6 = false;\npub const c6_time_offload = true;\npub const udp_smoke_ssid = [_]u8{};\npub const udp_smoke_bssid = [_]u8{0,0,0,0,0,0};\npub const udp_smoke_ip = [_]u8{192,0,2,2};\npub const udp_smoke_mac = [_]u8{2,0,0,0,0,2};\npub const udp_smoke_port: u16 = 44444;\n' > "$out_dir/network-config.zig"
 printf 'pub const network_test = false;\npub const experimental_tcp = false;\npub const experimental_udp = true;\npub const experimental_udp_smoke = true;\n' > "$out_dir/network-options.zig"
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/network-udp-short.o" --dep network_service --dep timer_group \
