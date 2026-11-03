@@ -3,6 +3,7 @@
 //! ADC, or qualify entropy. No code here is connected to native SSH yet.
 const std = @import("std");
 pub const control: usize = 0x50124000;
+pub const control1: usize = 0x50124004;
 pub const conf1: usize = 0x5012401c;
 pub const conf2: usize = 0x50124020;
 const busy: u32 = 1 << 25;
@@ -34,7 +35,7 @@ pub const Transaction = struct {
         if (self.state != .idle) return error.Busy;
         if (timeout == 0 or now > std.math.maxInt(u64) - timeout) return error.InvalidDeadline;
         if (!io.owned() or !io.clockReady()) return error.Unavailable;
-        if (io.read(control) & busy != 0) return error.Busy;
+        if (io.read(control) & busy != 0 or io.read(control1) & busy != 0) return error.Busy;
         self.saved1 = io.read(conf1) & field;
         self.saved2 = io.read(conf2) & field;
         setField(io, conf1, 0);
@@ -52,7 +53,7 @@ pub const Transaction = struct {
         io.write(address, (io.read(address) & ~field) | (bits & field));
     }
 
-    /// At most one BUSY check per poll. The caller must continue polling after
+    /// At most one BUSY check per master per poll. The caller must continue polling after
     /// failure, without releasing ownership, until `failed` is returned.
     /// Loss of ownership or clock permanently quarantines this transaction.
     pub fn poll(self: *Transaction, io: anytype, now: u64) Result {
@@ -61,6 +62,14 @@ pub const Transaction = struct {
         if (now < self.previous or now >= self.deadline) self.failed = true;
         self.previous = now;
         if (self.ownership_lost or !io.owned() or !io.clockReady()) {
+            self.ownership_lost = true;
+            self.failed = true;
+            self.state = .recovering;
+            return .pending;
+        }
+        // The selectors are shared by both masters. An unexpected operation
+        // on master 1 violates exclusivity; do not restore stale selectors.
+        if (io.read(control1) & busy != 0) {
             self.ownership_lost = true;
             self.failed = true;
             self.state = .recovering;
@@ -94,6 +103,7 @@ pub const Transaction = struct {
 
 const Fake = struct {
     ctrl: u32 = 0,
+    ctrl1: u32 = 0,
     a: u32 = 0x1200_3456,
     b: u32 = 0x3400_789a,
     held: bool = true,
@@ -108,6 +118,7 @@ const Fake = struct {
     fn read(self: *@This(), address: usize) u32 {
         return switch (address) {
             control => self.ctrl,
+            control1 => self.ctrl1,
             conf1 => self.a,
             conf2 => self.b,
             else => unreachable,
@@ -196,4 +207,21 @@ test "clock loss and clock rollback never admit a result" {
     io.ctrl = 0;
     try std.testing.expectEqual(Transaction.Result.pending, tx.poll(&io, 22));
     try std.testing.expectEqual(writes, io.writes);
+}
+
+test "the other master cannot be busy before or during a transaction" {
+    var io: Fake = .{ .ctrl1 = busy };
+    var tx: Transaction = .{};
+    try std.testing.expectError(error.Busy, tx.start(&io, 0, null, 0, 10));
+    try std.testing.expectEqual(@as(u32, 0), io.writes);
+    io.ctrl1 = 0;
+    try tx.start(&io, 0, null, 1, 10);
+    io.ctrl = 0;
+    io.ctrl1 = busy;
+    const writes = io.writes;
+    try std.testing.expectEqual(Transaction.Result.pending, tx.poll(&io, 2));
+    io.ctrl1 = 0;
+    try std.testing.expectEqual(Transaction.Result.pending, tx.poll(&io, 3));
+    try std.testing.expectEqual(writes, io.writes);
+    try std.testing.expect(!tx.reset());
 }
