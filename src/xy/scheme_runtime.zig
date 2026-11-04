@@ -56,6 +56,7 @@ inline fn continuationPrimitiveAllowed(op: Op) bool {
         .eqv_proc,
         .memq_proc,
         .memv_proc,
+        .append_proc,
         .cadr_proc,
         .caar_proc,
         .cdar_proc,
@@ -5514,7 +5515,7 @@ const ContinuationState = struct {
     // while control is yielded to the caller.
     const capacity = 95;
     const Frame = struct {
-        kind: enum { branch, call, sequence, cond_test, let_init, member_scan },
+        kind: enum { branch, call, sequence, cond_test, let_init, member_scan, append_copy },
         expression: Ref,
         environment: Ref,
         cursor: Ref = 0,
@@ -5543,6 +5544,7 @@ const ContinuationState = struct {
     // Synchronize at the only locations where this prototype may collect.
     // For ordinary calls the expression roots the argument cursor. Search
     // frames instead keep both their target and remaining list in values.
+    // Append frames root the copied head and tail in expression/procedure.
     fn collect(self: *@This(), vm: *Runtime) linksection(code_section) void {
         std.debug.assert(vm.ast_root_frame_count == 0);
         for (self.frames[0..self.count], 0..) |frame, i| {
@@ -5693,6 +5695,32 @@ const ContinuationState = struct {
                 return true;
             }
             const frame = &self.frames[self.count - 1];
+            if (frame.kind == .append_copy) {
+                if (frame.count == 1) {
+                    if (frame.procedure == 0) self.value = frame.values[0] else {
+                        vm.heap[frame.procedure].b = frame.values[0];
+                        self.value = frame.expression;
+                    }
+                    self.environment = frame.environment;
+                    self.count -= 1;
+                    continue;
+                }
+                const cursor = frame.values[0];
+                if (cursor == 0) {
+                    std.mem.copyForwards(Ref, frame.values[0 .. frame.count - 1], frame.values[1..frame.count]);
+                    frame.count -= 1;
+                    frame.cursor = 0;
+                    continue;
+                }
+                if (vm.tagOf(cursor) != .pair) return error.Type;
+                if (frame.cursor >= cells) return error.Depth;
+                const next = try vm.pair(vm.heap[cursor].a, 0);
+                if (frame.procedure == 0) frame.expression = next else vm.heap[frame.procedure].b = next;
+                frame.procedure = next;
+                frame.values[0] = vm.heap[cursor].b;
+                frame.cursor += 1;
+                continue;
+            }
             if (frame.kind == .member_scan) {
                 const cursor = frame.values[1];
                 if (cursor == 0) {
@@ -5802,6 +5830,19 @@ const ContinuationState = struct {
             if (!isImmediateOp(procedure)) return error.Type;
             const op = toImmediateOp(procedure);
             if (!continuationPrimitiveAllowed(op)) return error.CannotCompile;
+            if (op == .append_proc) {
+                if (frame.count == 0) {
+                    self.value = 0;
+                    self.environment = frame.environment;
+                    self.count -= 1;
+                } else {
+                    frame.kind = .append_copy;
+                    frame.expression = 0;
+                    frame.procedure = 0;
+                    frame.cursor = 0;
+                }
+                continue;
+            }
             if (op == .memq_proc or op == .memv_proc) {
                 if (frame.count != 2) return error.Arity;
                 frame.kind = .member_scan;
@@ -6338,8 +6379,75 @@ test "continuation admits bounded pair selectors and equivalence safely" {
     try std.testing.expectEqualStrings("#t", try vm.evaluate("(eq? 1 2)", &host, &out));
     try std.testing.expectEqualStrings("1", try vm.evaluate("side", &host, &out));
     var unbounded = SlicedContinuation{};
-    try std.testing.expect(!try unbounded.begin(&vm, "(append '(1) '(2))"));
+    try std.testing.expect(!try unbounded.begin(&vm, "(reverse '(1 2))"));
     try std.testing.expect(!try unbounded.begin(&vm, "(member 'a '(a))"));
+}
+
+test "sliced append preserves partial copies across collection" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [256]u8 = undefined;
+    _ = try vm.evaluate("(define xs '(a b)) (define tail '(c d))", &host, &out);
+    const examples = [_]struct { source: []const u8, expected: []const u8 }{
+        .{ .source = "(append)", .expected = "()" },
+        .{ .source = "(append '() '() 7)", .expected = "7" },
+        .{ .source = "(append '(a b) '() '(c) 'd)", .expected = "(a b c . d)" },
+        .{ .source = "(eq? (append xs) xs)", .expected = "#t" },
+        .{ .source = "(eq? (append xs '()) xs)", .expected = "#f" },
+        .{ .source = "(eq? (cdr (append '(a) tail)) tail)", .expected = "#t" },
+        .{ .source = "(append (cons 'x '()) (cons 'y '()))", .expected = "(x y)" },
+    };
+    for (examples) |example| {
+        try std.testing.expectEqualStrings(example.expected, try vm.evaluate(example.source, &host, &out));
+        var lease = SlicedContinuation{};
+        try std.testing.expect(try lease.begin(&vm, example.source));
+        while (true) {
+            if (try lease.poll(&host, 1, 17, &out)) |actual| {
+                try std.testing.expectEqualStrings(example.expected, actual);
+                break;
+            }
+            vm.collect();
+        }
+        try std.testing.expectEqual(@as(u8, 0), vm.ast_root_frame_count);
+    }
+    const long_copy = "(car (append '(" ++ repeat("a ", 80) ++ ") '(z)))";
+    var long = SlicedContinuation{};
+    try std.testing.expect(try long.begin(&vm, long_copy));
+    var yields: usize = 0;
+    while (true) {
+        if (try long.poll(&host, 1, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("a", actual);
+            break;
+        }
+        if (long.lease.state.count > 0 and long.lease.state.frames[long.lease.state.count - 1].kind == .append_copy) yields += 1;
+        vm.collect();
+    }
+    try std.testing.expect(yields >= 80);
+    var pressured = SlicedContinuation{};
+    try std.testing.expect(try pressured.begin(&vm, long_copy));
+    try std.testing.expect((try pressured.poll(&host, 1, 17, &out)) == null);
+    while (vm.free_cells > 480) _ = try vm.pair(0, 0);
+    while (true) {
+        if (try pressured.poll(&host, 16, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("a", actual);
+            break;
+        }
+    }
+    try std.testing.expect(pressured.collections > 0 and pressured.slices > 1);
+    var bad = SlicedContinuation{};
+    try std.testing.expect(try bad.begin(&vm, "(append '(a . b) '(c))"));
+    while (true) {
+        const result = bad.poll(&host, 1, 17, &out) catch |err| {
+            try std.testing.expectEqual(error.Type, err);
+            break;
+        };
+        if (result != null) return error.TestUnexpectedResult;
+        vm.collect();
+    }
+    try std.testing.expectEqualStrings("42", try vm.evaluate("(+ 20 22)", &host, &out));
+    var shadow = SlicedContinuation{};
+    try std.testing.expect(!try shadow.begin(&vm, "(let ((append (lambda (a b) 42))) (append 1 2))"));
 }
 
 test "sliced memq and memv preserve search state across collection" {
