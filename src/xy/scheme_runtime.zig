@@ -29,7 +29,8 @@ const Tag = enum { free, nil, integer, boolean, symbol, string, pair, closure, n
 const Op = enum(u8) { quote, if_, begin, define, lambda, set, let, let_star, letrec, letrec_star, and_, or_, cond, quasiquote, unquote, unquote_splicing, add, sub, mul, equal, less, greater, less_equal, greater_equal, cons, car, cdr, list, nullq, pairq, not, register, insert, move, undo, forget, log, memory, tasks, view_set, view_get, view_rollback, camera_capture, camera_info, camera_read, sql_query, sql_exec, sql_begin, sql_commit, sql_rollback, fs_open, fs_read, fs_write, fs_resize, fs_remove, fs_sync, fs_rollback, fs_snapshot, fs_restore, fs_release, fs_collect, fs_generation, fs_list, fs_close, fs_stat, fs_begin, sql_lookup, sql_check, fs_space, fs_verify, buffer_save, buffer_load, buffer_text, app_frame, app_pause, app_resume, app_stop, app_speed, app_ticks, plot_set, plot_get, plot_sine, card_read, card_info, card_dismiss, view_card, divide, apply_proc, length_proc, reverse_proc, append_proc, listq, numberq, complexq, realq, rationalq, integerq, exactq, inexactq, inexact_proc, exact_proc, abs_proc, floor_proc, ceiling_proc, truncate_proc, round_proc, zeroq, positiveq, negativeq, oddq, evenq, exact_integerq, finiteq, infiniteq, nanq, quotient_proc, remainder_proc, modulo_proc, floor_quotient_proc, floor_remainder_proc, truncate_quotient_proc, truncate_remainder_proc, gcd_proc, lcm_proc, numerator_proc, denominator_proc, square_proc, min_proc, max_proc, expt_proc, map_proc, eq_proc, eqv_proc, equal_proc, memq_proc, memv_proc, member_proc, cadr_proc, set_car_proc, set_cdr_proc, symbolq, stringq, booleanq, procedureq, for_each_proc, list_ref_proc, list_tail_proc, assoc_proc, assq_proc, assv_proc, caar_proc, cdar_proc, cddr_proc, caddr_proc, caadr_proc, cdadr_proc, cdddr_proc, cadddr_proc, string_length_proc, string_append_proc, string_equal_proc };
 const vocabulary linksection(data_section) = "quote\x00if\x00begin\x00define\x00lambda\x00set!\x00let\x00let*\x00letrec\x00letrec*\x00and\x00or\x00cond\x00quasiquote\x00unquote\x00unquote-splicing\x00+\x00-\x00*\x00=\x00<\x00>\x00<=\x00>=\x00cons\x00car\x00cdr\x00list\x00null?\x00pair?\x00not\x00command/register!\x00buffer/insert!\x00buffer/move-graphemes!\x00buffer/undo!\x00buffer/forget-undo!\x00system/log\x00system/memory\x00system/tasks\x00view/set!\x00view/get\x00sys/config-rollback!\x00camera/capture!\x00camera/info\x00camera/read\x00sql/query\x00sql/exec!\x00sql/begin!\x00sql/commit!\x00sql/rollback!\x00fs/open\x00fs/read\x00fs/write!\x00fs/truncate!\x00fs/remove!\x00fs/sync!\x00fs/rollback!\x00fs/snapshot\x00fs/restore!\x00fs/release!\x00fs/collect!\x00fs/generation\x00fs/list\x00fs/close!\x00fs/stat\x00fs/begin!\x00q\x00sql/check\x00fs/space\x00fs/verify\x00buffer/save!\x00buffer/load!\x00buffer/text\x00app/on-frame!\x00app/pause!\x00app/resume!\x00app/stop!\x00app/speed!\x00app/ticks\x00plot/set!\x00plot/get\x00plot/sine\x00card/read!\x00card/info\x00card/dismiss!\x00view/card!\x00/\x00apply\x00length\x00reverse\x00append\x00list?\x00number?\x00complex?\x00real?\x00rational?\x00integer?\x00exact?\x00inexact?\x00inexact\x00exact\x00abs\x00floor\x00ceiling\x00truncate\x00round\x00zero?\x00positive?\x00negative?\x00odd?\x00even?\x00exact-integer?\x00finite?\x00infinite?\x00nan?\x00quotient\x00remainder\x00modulo\x00floor-quotient\x00floor-remainder\x00truncate-quotient\x00truncate-remainder\x00gcd\x00lcm\x00numerator\x00denominator\x00square\x00min\x00max\x00expt\x00map\x00eq?\x00eqv?\x00equal?\x00memq\x00memv\x00member\x00cadr\x00set-car!\x00set-cdr!\x00symbol?\x00string?\x00boolean?\x00procedure?\x00for-each\x00list-ref\x00list-tail\x00assoc\x00assq\x00assv\x00caar\x00cdar\x00cddr\x00caddr\x00caadr\x00cdadr\x00cdddr\x00cadddr\x00string-length\x00string-append\x00string=?\x00".*;
 const plot_names linksection(data_section) = "amplitude\x00phase\x00color1\x00color2\x00".*;
-// Each admitted native operation has bounded work and performs no callbacks.
+// Admitted operations have bounded work per evaluator step and no callbacks.
+// List searches use a resumable frame rather than the atomic native path.
 // Keep admission and execution in sync so fallback happens before side effects.
 inline fn continuationPrimitiveAllowed(op: Op) bool {
     return switch (op) {
@@ -53,6 +54,8 @@ inline fn continuationPrimitiveAllowed(op: Op) bool {
         .not,
         .eq_proc,
         .eqv_proc,
+        .memq_proc,
+        .memv_proc,
         .cadr_proc,
         .caar_proc,
         .cdar_proc,
@@ -5511,7 +5514,7 @@ const ContinuationState = struct {
     // while control is yielded to the caller.
     const capacity = 95;
     const Frame = struct {
-        kind: enum { branch, call, sequence, cond_test, let_init },
+        kind: enum { branch, call, sequence, cond_test, let_init, member_scan },
         expression: Ref,
         environment: Ref,
         cursor: Ref = 0,
@@ -5538,7 +5541,8 @@ const ContinuationState = struct {
         self.peak_frames = @max(self.peak_frames, self.count);
     }
     // Synchronize at the only locations where this prototype may collect.
-    // The expression roots the cursor (a tail of its original argument list).
+    // For ordinary calls the expression roots the argument cursor. Search
+    // frames instead keep both their target and remaining list in values.
     fn collect(self: *@This(), vm: *Runtime) linksection(code_section) void {
         std.debug.assert(vm.ast_root_frame_count == 0);
         for (self.frames[0..self.count], 0..) |frame, i| {
@@ -5689,6 +5693,26 @@ const ContinuationState = struct {
                 return true;
             }
             const frame = &self.frames[self.count - 1];
+            if (frame.kind == .member_scan) {
+                const cursor = frame.values[1];
+                if (cursor == 0) {
+                    self.value = vm.no;
+                    self.environment = frame.environment;
+                    self.count -= 1;
+                    continue;
+                }
+                if (vm.tagOf(cursor) != .pair) return error.Type;
+                if (frame.cursor >= cells) return error.Depth;
+                if (try vm.equivalent(frame.values[0], vm.heap[cursor].a)) {
+                    self.value = cursor;
+                    self.environment = frame.environment;
+                    self.count -= 1;
+                    continue;
+                }
+                frame.values[1] = vm.heap[cursor].b;
+                frame.cursor += 1;
+                continue;
+            }
             if (frame.kind == .branch) {
                 var a: [16]Ref = @splat(0);
                 const args = try vm.arguments(vm.heap[frame.expression].b, &a);
@@ -5776,7 +5800,14 @@ const ContinuationState = struct {
                 continue;
             }
             if (!isImmediateOp(procedure)) return error.Type;
-            if (!continuationPrimitiveAllowed(toImmediateOp(procedure))) return error.CannotCompile;
+            const op = toImmediateOp(procedure);
+            if (!continuationPrimitiveAllowed(op)) return error.CannotCompile;
+            if (op == .memq_proc or op == .memv_proc) {
+                if (frame.count != 2) return error.Arity;
+                frame.kind = .member_scan;
+                frame.cursor = 0;
+                continue;
+            }
             self.value = try vm.apply(procedure, frame.values[0..frame.count], 0, host);
             self.environment = frame.environment;
             self.count -= 1;
@@ -6308,7 +6339,87 @@ test "continuation admits bounded pair selectors and equivalence safely" {
     try std.testing.expectEqualStrings("1", try vm.evaluate("side", &host, &out));
     var unbounded = SlicedContinuation{};
     try std.testing.expect(!try unbounded.begin(&vm, "(append '(1) '(2))"));
-    try std.testing.expect(!try unbounded.begin(&vm, "(memq 'a '(a))"));
+    try std.testing.expect(!try unbounded.begin(&vm, "(member 'a '(a))"));
+}
+
+test "sliced memq and memv preserve search state across collection" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [256]u8 = undefined;
+    const examples = [_]struct { source: []const u8, expected: []const u8 }{
+        .{ .source = "(memq 'b '(a b c))", .expected = "(b c)" },
+        .{ .source = "(memv 2 '(1 2 3))", .expected = "(2 3)" },
+        .{ .source = "(memq 'missing '(a b c))", .expected = "#f" },
+        .{ .source = "(memq 'a '())", .expected = "#f" },
+        .{ .source = "(memq 'a '(a . b))", .expected = "(a . b)" },
+    };
+    for (examples) |example| {
+        try std.testing.expectEqualStrings(example.expected, try vm.evaluate(example.source, &host, &out));
+        var lease = SlicedContinuation{};
+        try std.testing.expect(try lease.begin(&vm, example.source));
+        var scans: usize = 0;
+        while (true) {
+            if (try lease.poll(&host, 1, 17, &out)) |actual| {
+                try std.testing.expectEqualStrings(example.expected, actual);
+                break;
+            }
+            if (lease.lease.state.count > 0 and lease.lease.state.frames[lease.lease.state.count - 1].kind == .member_scan) scans += 1;
+            vm.collect();
+        }
+        try std.testing.expect(scans > 0);
+        try std.testing.expectEqual(@as(u8, 0), vm.ast_root_frame_count);
+    }
+    const long_search = "(memq 'target '(" ++ repeat("other ", 80) ++ "target))";
+    var long_lease = SlicedContinuation{};
+    try std.testing.expect(try long_lease.begin(&vm, long_search));
+    var search_yields: usize = 0;
+    while (true) {
+        if (try long_lease.poll(&host, 1, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("(target)", actual);
+            break;
+        }
+        if (long_lease.lease.state.count > 0 and long_lease.lease.state.frames[long_lease.lease.state.count - 1].kind == .member_scan) search_yields += 1;
+        vm.collect();
+    }
+    try std.testing.expect(search_yields >= 80);
+
+    // Both the target and the searched list are transient allocations. They
+    // must survive even when a collection occurs after every evaluator step.
+    var transient = SlicedContinuation{};
+    try std.testing.expect(try transient.begin(&vm, "(memq (cons 1 2) (cons 0 (cons 1 '())))"));
+    while (true) {
+        if (try transient.poll(&host, 1, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("#f", actual);
+            break;
+        }
+        vm.collect();
+    }
+    var bad = SlicedContinuation{};
+    try std.testing.expect(try bad.begin(&vm, "(memv 'x '(a . b))"));
+    while (true) {
+        const result = bad.poll(&host, 1, 17, &out) catch |err| {
+            try std.testing.expectEqual(error.Type, err);
+            break;
+        };
+        if (result != null) return error.TestUnexpectedResult;
+        vm.collect();
+    }
+    try std.testing.expectEqualStrings("42", try vm.evaluate("(+ 20 22)", &host, &out));
+    _ = try vm.evaluate("(define cycle (cons 'a '())) (set-cdr! cycle cycle)", &host, &out);
+    var cyclic = SlicedContinuation{};
+    try std.testing.expect(try cyclic.begin(&vm, "(memq 'z cycle)"));
+    while (true) {
+        const result = cyclic.poll(&host, 64, 17, &out) catch |err| {
+            try std.testing.expectEqual(error.Depth, err);
+            break;
+        };
+        if (result != null) return error.TestUnexpectedResult;
+    }
+    try std.testing.expect(!vm.running);
+    var shadow = SlicedContinuation{};
+    try std.testing.expect(!try shadow.begin(&vm, "(let ((memq (lambda (a b) 42))) (memq 1 2))"));
+    try std.testing.expectEqualStrings("42", try vm.evaluate("(let ((memq (lambda (a b) 42))) (memq 1 2))", &host, &out));
 }
 
 // Retain the VM and published roots until sliced collection completes,

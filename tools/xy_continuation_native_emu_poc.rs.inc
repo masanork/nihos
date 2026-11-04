@@ -432,5 +432,11 @@
         wait(&mut emu, run, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
         let last = command(&mut emu, "(cadddr '(a b c d))");
         wait(&mut emu, last, "NIHOS_NATIVE_XY_REPLY data=64");
+        let search = format!("(memq 'target '({}target))", "o ".repeat(90));
+        let membership = command(&mut emu, &search);
+        wait(&mut emu, membership, "NIHOS_NATIVE_XY_CONT_STATE state=00000001");
+        wait(&mut emu, membership, "NIHOS_NATIVE_XY_REPLY data=2874617267657429");
+        wait(&mut emu, membership, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
+        eprintln!("MEMQ_NATIVE resumed search=90 result=(target)");
         eprintln!("SELECTORS_NATIVE suspended recursion=31 cadddr=d");
     }
