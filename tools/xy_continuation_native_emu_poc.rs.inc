@@ -438,5 +438,11 @@
         wait(&mut emu, membership, "NIHOS_NATIVE_XY_REPLY data=2874617267657429");
         wait(&mut emu, membership, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
         eprintln!("MEMQ_NATIVE resumed search=90 result=(target)");
+        let copy = format!("(car (append '({}) '(z)))", "x ".repeat(90));
+        let appended = command(&mut emu, &copy);
+        wait(&mut emu, appended, "NIHOS_NATIVE_XY_CONT_STATE state=00000001");
+        wait(&mut emu, appended, "NIHOS_NATIVE_XY_REPLY data=78");
+        wait(&mut emu, appended, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
+        eprintln!("APPEND_NATIVE resumed copy=90 result=x");
         eprintln!("SELECTORS_NATIVE suspended recursion=31 cadddr=d");
     }

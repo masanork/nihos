@@ -1,0 +1,4 @@
+MEMQ_NATIVE resumed search=90 result=(target)
+APPEND_NATIVE resumed copy=90 result=x
+SELECTORS_NATIVE suspended recursion=31 cadddr=d
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 138 filtered out; finished in 123.46s
