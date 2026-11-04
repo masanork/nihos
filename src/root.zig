@@ -225,6 +225,7 @@ test {
     _ = @import("net/hosted_tx_staging_test.zig");
     _ = @import("net/hosted_long_sender_test.zig");
     _ = @import("net/hosted_long_dma_test.zig");
+    _ = @import("net/hosted_long_storage_test.zig");
     _ = @import("net/hosted_long_integration_test.zig");
     _ = @import("net/hosted_dma_bus_test.zig");
     _ = @import("net/long_udp_probe_test.zig");
