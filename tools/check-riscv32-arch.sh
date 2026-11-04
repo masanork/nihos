@@ -39,21 +39,25 @@ printf 'pub const normal_storage = false;\n' > "$out_dir/network-options.zig"
     "-Mhosted_long_dma_guard=$repo_root/src/net/hosted_long_dma_guard.zig" \
     "-Mhosted_long_cache=$repo_root/src/platform/native/hosted_long_cache.zig"
 
-# Link the integrated fixture and audit ROM ABI and SRAM placement.
-"$zig" build-obj -target "$target" -mcpu="$cpu" \
-    -femit-bin="$out_dir/hosted-long-bus.o" --dep c6_probe --dep hosted_dma_bus --dep hosted_long_cache --dep sdio --dep hosted_long_sender \
-    "-Mroot=$repo_root/tools/probes/hosted-long-bus.zig" \
-    --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
-    "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
-    "-Mhosted_dma_bus=$repo_root/src/net/hosted_dma_bus.zig" \
-    "-Mhosted_long_cache=$repo_root/src/platform/native/hosted_long_cache.zig" \
-    "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
-    "-Mhosted_long_sender=$repo_root/src/net/hosted_long_sender.zig" \
-    --dep hosted_long_sender "-Mc6_sdio=$repo_root/tools/probes/hosted-long-pipe.zig" \
-    "-Mat_controller=$repo_root/src/net/at_controller.zig" \
-    "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
-    "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
-    "-Mnative_options=$out_dir/network-options.zig"
+# Generate long-DMA provider code with exclusive and shared SDMMC options.
+for shared in false true; do
+    printf 'pub const normal_storage = %s;\n' "$shared" > "$out_dir/network-options.zig"
+    "$zig" build-obj -target "$target" -mcpu="$cpu" \
+        -femit-bin="$out_dir/hosted-long-bus-$shared.o" --dep c6_probe --dep hosted_dma_bus --dep hosted_long_cache --dep sdio --dep hosted_long_sender \
+        "-Mroot=$repo_root/tools/probes/hosted-long-bus.zig" \
+        --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
+        "-Mc6_probe=$repo_root/src/platform/native/c6_probe.zig" \
+        "-Mhosted_dma_bus=$repo_root/src/net/hosted_dma_bus.zig" \
+        "-Mhosted_long_cache=$repo_root/src/platform/native/hosted_long_cache.zig" \
+        "-Msdio=$repo_root/src/soc/esp32p4/sdio.zig" \
+        "-Mhosted_long_sender=$repo_root/src/net/hosted_long_sender.zig" \
+        --dep hosted_long_sender "-Mc6_sdio=$repo_root/tools/probes/hosted-long-pipe.zig" \
+        "-Mat_controller=$repo_root/src/net/at_controller.zig" \
+        "-Mtimer_group=$repo_root/src/soc/esp32p4/timer_group.zig" \
+        "-Mhosted_station=$repo_root/src/net/hosted_station.zig" \
+        "-Mnative_options=$out_dir/network-options.zig"
+done
+printf 'pub const normal_storage = false;\n' > "$out_dir/network-options.zig"
 
 # Link the standalone fixture (stub MMIO/credits) and audit its SRAM layout.
 sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
