@@ -309,22 +309,28 @@ impl Workspace {
                 return;
             }
             if let Some(emu) = &mut self.emulator {
-                match stroke.key.as_str() {
-                    "space" => emu.send_key(b' '),
-                    "enter" => emu.send_key(b'\r'),
-                    "backspace" => emu.send_key(8),
-                    "escape" => emu.send_key(0x1b),
-                    "tab" => emu.send_key(b'\t'),
-                    "left" | "right" | "up" | "down" => emu.send_arrow(&stroke.key),
-                    _ => {
-                        if let Some(c) = stroke.key_char.as_deref().and_then(|s| s.chars().next()) {
-                            let ascii = match c {
-                                '\r' | '\n' => b'\r',
-                                _ if c.is_ascii() => c as u8,
-                                _ => 0,
-                            };
-                            if ascii != 0 {
-                                emu.send_key(ascii);
+                if let Some(control) = emulator_control_key(stroke) {
+                    emu.send_key(control);
+                } else {
+                    match stroke.key.as_str() {
+                        "space" => emu.send_key(b' '),
+                        "enter" => emu.send_key(b'\r'),
+                        "backspace" => emu.send_key(8),
+                        "escape" => emu.send_key(0x1b),
+                        "tab" => emu.send_key(b'\t'),
+                        "left" | "right" | "up" | "down" => emu.send_arrow(&stroke.key),
+                        _ => {
+                            if let Some(c) =
+                                stroke.key_char.as_deref().and_then(|s| s.chars().next())
+                            {
+                                let ascii = match c {
+                                    '\r' | '\n' => b'\r',
+                                    _ if c.is_ascii() => c as u8,
+                                    _ => 0,
+                                };
+                                if ascii != 0 {
+                                    emu.send_key(ascii);
+                                }
                             }
                         }
                     }
@@ -387,6 +393,22 @@ impl Workspace {
         if let Some(key) = graph_key(&event.keystroke.key) {
             self.core.key(key, false, self.now());
         }
+    }
+}
+
+fn emulator_control_key(stroke: &Keystroke) -> Option<u8> {
+    if !stroke.modifiers.control
+        || stroke.modifiers.platform
+        || stroke.modifiers.alt
+        || stroke.modifiers.function
+    {
+        return None;
+    }
+    let key = stroke.key.as_bytes();
+    match key {
+        [byte @ b'a'..=b'z'] => Some(byte - b'a' + 1),
+        [byte @ b'A'..=b'Z'] => Some(byte - b'A' + 1),
+        _ => None,
     }
 }
 struct Labels {
@@ -1204,6 +1226,19 @@ fn main() {
 #[cfg(test)]
 mod emulator_display_tests {
     use super::*;
+
+    #[::core::prelude::v1::test]
+    fn control_letters_encode_terminal_control_bytes() {
+        for (key, expected) in [("ctrl-s", 0x13), ("ctrl-q", 0x11), ("ctrl-c", 3)] {
+            assert_eq!(
+                emulator_control_key(&Keystroke::parse(key).unwrap()),
+                Some(expected)
+            );
+        }
+        for key in ["s", "cmd-s", "ctrl-alt-s", "ctrl-left"] {
+            assert_eq!(emulator_control_key(&Keystroke::parse(key).unwrap()), None);
+        }
+    }
 
     #[::core::prelude::v1::test]
     fn nihos_arrow_keys_keep_editor_controls() {

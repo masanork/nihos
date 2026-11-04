@@ -4,6 +4,9 @@ The GPUI app opens a screen-focused emulator window with Portrait/Landscape,
 Pause/Resume, Power and Reset controls, plus New session (Cmd-N). The screen scales to the window.
 Pause stops guest execution while retaining RAM and the last frame; key input is
 ignored while paused. Reset clears the guest while preserving the paused state.
+Control-letter keys are sent to the guest as terminal control characters; for
+example, MeOS uses Ctrl-S to save and Ctrl-Q to leave its editor. macOS Command
+shortcuts such as Cmd-Q and Cmd-N remain application shortcuts.
 Each new session is a separate process with its own CPU, RAM, input, display,
 and power/reset state; the title shows its process ID. It inherits the current
 working directory and loads the same firmware. Closing one session leaves the
