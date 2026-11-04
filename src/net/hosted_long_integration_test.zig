@@ -285,3 +285,63 @@ test "controller failures quarantine actual buffer and prevent credit consumptio
         try std.testing.expectEqual(@as(?u32, null), io.buffer.prepare(tx.buffer[0..1536], &io.backend));
     }
 }
+
+const SharedIo = struct {
+    pub const shared_host = true;
+    const Lease = struct { serial: u32 = 1, generation: u32 = 1, slot: u32 = 1 };
+    lease: Lease = .{},
+    inner: *Io,
+    releases: usize = 0,
+
+    pub fn ownsSlot(self: *const @This(), slot: u32) bool {
+        return slot == 1 and self.lease.slot == slot and self.lease.serial != 0;
+    }
+    pub fn read(self: *@This(), address: usize) u32 {
+        return self.inner.read(address);
+    }
+    pub fn write(self: *@This(), address: usize, value: u32) void {
+        self.inner.write(address, value);
+    }
+    pub fn delay(self: *@This(), us: u32) void {
+        self.inner.delay(us);
+    }
+    pub fn fourBitPins(self: *@This()) void {
+        self.inner.fourBitPins();
+    }
+    pub fn prepareDma(self: *@This(), writing: bool, bytes: []const u8, len: usize) ?u32 {
+        return self.inner.prepareDma(writing, bytes, len);
+    }
+    pub fn finishDma(self: *@This(), writing: bool, out: []u8) bool {
+        return self.inner.finishDma(writing, out);
+    }
+    pub fn releaseDma(self: *@This()) bool {
+        self.releases += 1;
+        return true;
+    }
+};
+
+test "shared controller completes or quarantines long DMA before detach" {
+    for ([_]bool{ false, true }) |timed_out| {
+        var io: Io = .{ .backend = .{ .failure = if (timed_out) .timeout else .none }, .complete_adapter = true };
+        var short: SharedIo = .{ .inner = &io };
+        var bus: bus_adapter.Bus(*SharedIo, Backend) = .{ .short = &short, .buffer = &io.buffer, .cache = .{ .failure = if (timed_out) .timeout else .none } };
+        var controller: sd.Controller(@TypeOf(&bus)) = .{ .io = &bus, .prepared = true, .selected = true, .four_bit = true, .poll_limit = 2 };
+        const bytes: [1536]u8 = @splat(0x5a);
+        if (timed_out) {
+            try std.testing.expectError(error.Timeout, controller.writeBlocks(0x1000, &bytes));
+            try std.testing.expect(controller.faulted and controller.cleanup_failed);
+            try std.testing.expectEqual(bus_adapter.Active.retired, bus.active);
+            try std.testing.expectEqual(dma.State.retired, io.buffer.state);
+            try std.testing.expectEqual(@as(usize, 0), short.releases);
+            try std.testing.expectEqual(@as(usize, 0), bus.cache.invalidations);
+            try std.testing.expectError(error.Retired, controller.writeBlocks(0x1000, &bytes));
+        } else {
+            try controller.writeBlocks(0x1000, &bytes);
+            try std.testing.expectEqual(bus_adapter.Active.none, bus.active);
+            try std.testing.expectEqual(dma.State.idle, io.buffer.state);
+            try std.testing.expectEqual(@as(usize, 1), short.releases);
+            try std.testing.expectEqual(@as(usize, 1), bus.cache.invalidations);
+        }
+        try std.testing.expectEqual(@as(usize, 1), io.transfers);
+    }
+}
