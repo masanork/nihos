@@ -314,5 +314,19 @@ mod tests {
             );
             std::thread::sleep(Duration::from_millis(10));
         }
+        let document = worker.snapshot().0.expect("document frame missing");
+        worker.paste(b"PASTE_42".to_vec());
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            worker.request_frame();
+            if worker.snapshot().0.as_deref() != Some(document.as_ref()) {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "guest frame did not respond to paste"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 }
