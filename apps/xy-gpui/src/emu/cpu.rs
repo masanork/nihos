@@ -1,6 +1,8 @@
 //! RV32IMAFC CPU emulator for nihos firmware execution.
 
-use super::bus::Bus;
+use super::bus::{
+    Bus, FLASH_BASE, FLASH_SIZE, SRAM_BASE, SRAM_SIZE, SRAM_UNCACHED_BASE, SRAM_UNCACHED_SIZE,
+};
 use rustc_apfloat::{Float, Round, Status, ieee::Single};
 
 pub struct Cpu {
@@ -160,7 +162,23 @@ impl Cpu {
         }
 
         // Fetch instruction (support 16-bit compressed or 32-bit standard)
-        let raw16 = bus.read_u16(self.pc);
+        // These ranges are side-effect-free, and four bytes are backed. Read
+        // them once even for a compressed instruction. Boundary and MMIO
+        // fetches retain the narrow-first path and its fault behavior.
+        let direct = ((FLASH_BASE..=FLASH_BASE + FLASH_SIZE as u32 - 4).contains(&self.pc)
+            && !bus.cache_l2_suspended)
+            || (SRAM_BASE..=SRAM_BASE + SRAM_SIZE as u32 - 4).contains(&self.pc)
+            || (SRAM_UNCACHED_BASE..=SRAM_UNCACHED_BASE + SRAM_UNCACHED_SIZE as u32 - 4)
+                .contains(&self.pc);
+        let raw32 = if direct {
+            Some(bus.read_u32(self.pc))
+        } else {
+            None
+        };
+        let raw16 = match raw32 {
+            Some(word) => word as u16,
+            None => bus.read_u16(self.pc),
+        };
         if let Some(error) = bus.fault.take() {
             self.fault = Some(error);
             self.instructions_executed += 1;
@@ -176,7 +194,7 @@ impl Cpu {
             return self.fault.is_none();
         }
 
-        let inst = bus.read_u32(self.pc);
+        let inst = raw32.unwrap_or_else(|| bus.read_u32(self.pc));
         self.execute_32(inst, bus);
         self.instructions_executed += 1;
         if self.fault.is_none() {
