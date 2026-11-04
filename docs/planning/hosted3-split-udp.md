@@ -120,3 +120,25 @@ runtime ARP service. Use `--require-arp` with
 marker along with the normal paired packet evidence. It does not authenticate
 the peer. The [prior physical measurement](../measurements/2026-11-03-hosted-split-arp-udp.md)
 belongs to the exact candidate recorded there, not this later fixture revision.
+
+## Shared host prerequisite for a long native datagram
+
+The normal network owner currently admits at most 458 UDP payload bytes and
+intentionally denies long DMA. The 1,200-byte physical burst used an exclusive
+fixture; it does not qualify the shared SDMMC provider used by the normal
+network service.
+
+The experimental long-DMA bus now snapshots the slot-1 lease for each prepared
+transfer. When ownership or the lease identity changes during preparation or
+completion, the bus rejects completion and quarantines its persistent DMA
+buffer. The owner must retain that storage, stop the controller and establish
+hardware quiescence independently; retirement alone proves neither. The
+existing non-shared fixture keeps its original path. Host tests and both
+shared/exclusive RV32 code generation cover this prerequisite; neither proves
+a native shared-host DMA transfer on hardware.
+
+Before enabling a 1,200-byte native socket, the provider still needs a
+long-lived DMA-accessible aligned buffer, cache-engine serialization, the
+running C6's long-buffer contract, shared host lease and reset integration,
+and a bounded physical run with independently verified payload and recovery.
+The short socket limit must remain in effect until those conditions are met.
