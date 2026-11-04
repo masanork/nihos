@@ -287,6 +287,56 @@ mod tests {
     #[cfg(feature = "experimental-meos")]
     #[test]
     #[ignore = "requires the pinned MeOS app and ROM"]
+    fn experimental_meos_editor_control_save_and_quit() {
+        use gpui::Keystroke;
+        let app = std::env::var_os("NIHOS_EMU_ESP_APP").expect("set NIHOS_EMU_ESP_APP");
+        let rom = std::env::var_os("NIHOS_EMU_ROM_ELF").expect("set NIHOS_EMU_ROM_ELF");
+        let mut emu = Emulator::new_meos(app, rom).unwrap();
+        for _ in 0..800 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output.windows(4).any(|w| w == b"\r\n> ") {
+                break;
+            }
+        }
+        assert!(emu.bus.console_output.windows(4).any(|w| w == b"\r\n> "));
+        for byte in b"edit /note.txt\n" {
+            emu.send_key(*byte);
+        }
+        emu.step_frame(120_000_000);
+        assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+        for byte in b"EMU_NOTE_39" {
+            emu.send_key(*byte);
+        }
+        emu.step_frame(80_000_000);
+        for key in ["ctrl-s", "ctrl-q"] {
+            emu.send_key(crate::emulator_control_key(&Keystroke::parse(key).unwrap()).unwrap());
+            emu.step_frame(80_000_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+        }
+        let before = emu.bus.console_output.len();
+        for byte in b"cat /note.txt\n" {
+            emu.send_key(*byte);
+        }
+        for _ in 0..500 {
+            emu.step_frame(500_000);
+            assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
+            if emu.bus.console_output[before..]
+                .windows(11)
+                .any(|w| w == b"EMU_NOTE_39")
+            {
+                return;
+            }
+        }
+        panic!(
+            "saved content not returned by cat: {:?}",
+            String::from_utf8_lossy(&emu.bus.console_output[before..])
+        );
+    }
+
+    #[cfg(feature = "experimental-meos")]
+    #[test]
+    #[ignore = "requires the pinned MeOS app and ROM"]
     fn experimental_meos_shooter_arrow_moves_ship() {
         fn ship_x(emu: &Emulator) -> Option<usize> {
             let frame = emu.bus.scanout()?;
