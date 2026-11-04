@@ -34,3 +34,10 @@ export fn nih_hosted_long_bus_compile_init(exclusive: bool) bool {
 export fn nih_hosted_long_bus_compile_send(bytes: [*]const u8, length: usize) usize {
     return tx.send(bytes[0..length]) catch 0;
 }
+
+// Compile the shared-host ownership and detach contract as well as the
+// existing exclusive fixture. This probe never executes on a target.
+export fn nih_hosted_long_bus_compile_shared() bool {
+    host.controller.prepareShared() catch return false;
+    return true;
+}

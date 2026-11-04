@@ -131,7 +131,8 @@ network service.
 The experimental long-DMA bus now snapshots the slot-1 lease for each prepared
 transfer. When ownership or the lease identity changes during preparation or
 completion, the bus rejects completion and quarantines its persistent DMA
-buffer. The owner must retain that storage, stop the controller and establish
+buffer. Shared-controller DMA detachment can release the short provider only
+with a live lease and no active or quarantined long transfer. The owner must retain that storage, stop the controller and establish
 hardware quiescence independently; retirement alone proves neither. The
 existing non-shared fixture keeps its original path. Host tests and both
 shared/exclusive RV32 code generation cover this prerequisite; neither proves

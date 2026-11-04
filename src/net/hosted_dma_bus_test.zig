@@ -78,8 +78,11 @@ const SharedShort = struct {
     owned: bool = true,
     prepared: usize = 0,
     finished: usize = 0,
+    released: usize = 0,
+    fail_release: bool = false,
+    replace_lease_on_release: bool = false,
 
-    pub fn ownsSlot(self: *@This(), slot: u32) bool {
+    pub fn ownsSlot(self: *const @This(), slot: u32) bool {
         return self.owned and slot == 1 and self.lease.slot == slot;
     }
     pub fn prepareDma(self: *@This(), _: bool, _: []const u8, length: usize) ?u32 {
@@ -90,6 +93,11 @@ const SharedShort = struct {
     pub fn finishDma(self: *@This(), _: bool, _: []u8) bool {
         self.finished += 1;
         return true;
+    }
+    pub fn releaseDma(self: *@This()) bool {
+        self.released += 1;
+        if (self.replace_lease_on_release) self.lease.serial += 1;
+        return !self.fail_release;
     }
 };
 const SharedCache = struct {
@@ -232,4 +240,34 @@ test "shared owner can complete and then use a new lease after idle" {
     try std.testing.expect(bus.prepareDma(true, bytes[0..4], 4) != null);
     try std.testing.expect(bus.finishDma(true, &.{}));
     try std.testing.expectEqual(@as(usize, 1), bus.short.finished);
+}
+
+test "shared controller detaches only under a live idle lease" {
+    var buffer: adapter.Buffer = .{};
+    var bus: adapter.Bus(SharedShort, SharedCache) = undefined;
+    bus = .{ .short = .{}, .buffer = &buffer, .cache = .{ .short = &bus.short } };
+    try std.testing.expect(adapter.Bus(SharedShort, SharedCache).shared_host);
+    try std.testing.expect(bus.ownsSlot(1));
+    try std.testing.expect(!bus.ownsSlot(0));
+    try std.testing.expect(bus.releaseDma());
+    const bytes: [1024]u8 = @splat(4);
+    try std.testing.expect(bus.prepareDma(true, &bytes, bytes.len) != null);
+    try std.testing.expect(!bus.releaseDma());
+    try std.testing.expectEqual(adapter.Active.retired, bus.active);
+    try std.testing.expectEqual(@import("hosted_long_dma.zig").State.retired, buffer.state);
+    try std.testing.expectEqual(@as(usize, 1), bus.short.released);
+    bus.retire();
+    try std.testing.expect(!bus.releaseDma());
+    try std.testing.expectEqual(@as(usize, 1), bus.short.released);
+}
+
+test "uncertain descriptor detach quarantines the buffer" {
+    for ([_]bool{ false, true }) |lose_lease| {
+        var buffer: adapter.Buffer = .{};
+        var bus: adapter.Bus(SharedShort, SharedCache) = undefined;
+        bus = .{ .short = .{ .fail_release = !lose_lease, .replace_lease_on_release = lose_lease }, .buffer = &buffer, .cache = .{ .short = &bus.short } };
+        try std.testing.expect(!bus.releaseDma());
+        try std.testing.expectEqual(adapter.Active.retired, bus.active);
+        try std.testing.expectEqual(@import("hosted_long_dma.zig").State.retired, buffer.state);
+    }
 }

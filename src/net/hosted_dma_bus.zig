@@ -19,14 +19,20 @@ pub fn Bus(comptime Short: type, comptime Cache: type) type {
     const shared = @hasDecl(ShortDecl, "shared_host") and ShortDecl.shared_host;
     const Lease = if (shared) std.meta.fieldInfo(ShortDecl, .lease).type else void;
     return struct {
+        pub const shared_host = shared;
         short: Short,
         buffer: *Buffer,
         cache: Cache,
         active: Active = .none,
         active_lease: ?Lease = null,
 
-        fn owns(self: *@This()) bool {
-            if (comptime shared) return self.short.ownsSlot(1);
+        pub fn ownsSlot(self: *const @This(), slot: u32) bool {
+            if (comptime shared) return self.short.ownsSlot(slot);
+            return false;
+        }
+
+        fn owns(self: *const @This()) bool {
+            if (comptime shared) return self.ownsSlot(1);
             return true;
         }
 
@@ -54,6 +60,29 @@ pub fn Bus(comptime Short: type, comptime Cache: type) type {
         }
         pub fn fourBitPins(self: *@This()) void {
             self.short.fourBitPins();
+        }
+
+        /// Called only after the controller has stopped and detached its DMA
+        /// descriptor. It clears the short provider, never active/retired long
+        /// storage. A lost lease or ambiguous reset must quarantine the bus.
+        pub fn releaseDma(self: *@This()) bool {
+            if (self.active != .none) {
+                if (self.active != .retired) self.retire();
+                return false;
+            }
+            if (self.buffer.state == .retired or !self.owns()) return false;
+            const initial_lease: Lease = if (shared) self.short.lease else {};
+            if (!self.short.releaseDma()) {
+                self.retire();
+                return false;
+            }
+            if (comptime shared) {
+                if (!self.owns() or !std.meta.eql(initial_lease, self.short.lease)) {
+                    self.retire();
+                    return false;
+                }
+            }
+            return true;
         }
 
         pub fn prepareDma(self: *@This(), writing: bool, source: []const u8, length: usize) ?u32 {
