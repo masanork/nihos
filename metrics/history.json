@@ -7980,24 +7980,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-04",
-    "measuredAt": "2026-11-04T01:13:29.320791+00:00",
+    "measuredAt": "2026-11-04T11:45:58.553157+00:00",
     "project": "nihos",
-    "commit": "fca21ccb58427d9a18f5a56ed2a7dfd2b21fa6d0",
+    "commit": "c72cfb3225e756a204bd5d59fa2b3a5a4fc3de8c",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "0175b2abee4c4a0ec99dbec3ba06418444bbc32e99c47aa63cb2166f740e4031",
+    "sourceTreeSha256": "adb919afb17f9d9c4390aa6b9b5a70fd05f16854ed01edfc9e087461ae350562",
     "code": {
-      "implementation": 84758,
-      "tests": 45099,
-      "tooling": 30831,
+      "implementation": 85219,
+      "tests": 45358,
+      "tooling": 30875,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 77043,
-        "tests": 34140,
-        "tooling": 1734,
+        "implementation": 77504,
+        "tests": 34399,
+        "tooling": 1759,
         "probes": 5642,
         "vendored": 0,
         "generated": 0
@@ -8045,7 +8045,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4797,
+        "tooling": 4804,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -8053,7 +8053,7 @@
       "Include/data": {
         "implementation": 44,
         "tests": 0,
-        "tooling": 1491,
+        "tooling": 1503,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -8063,7 +8063,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 316,
+        "tooling": 318,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -8093,8 +8093,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 82821,
-        "tests": 34266,
+        "implementation": 83282,
+        "tests": 34525,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -8111,7 +8111,7 @@
       "tools": {
         "implementation": 0,
         "tests": 10833,
-        "tooling": 30515,
+        "tooling": 30557,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -8573,6 +8573,8 @@
         "src/soc/esp32p4/psram_tuning.zig": "c8f2ea359756abf78028f55004db69b1df110805552fb48448fe0efea4bf2313",
         "src/soc/esp32p4/reset_capture.zig": "7e3ee65d8e204ec05ee5df71d5e2f2d2825b9887920df40d7e700a596a3db3df",
         "src/soc/esp32p4/rng_adc.zig": "2d751bb4de27eed66910f933ddc05efe014d56ee17f350502f0f0d23e9e336a2",
+        "src/soc/esp32p4/rng_analog.zig": "42ee7a1e38f64178be3410e7377002cb4379daad6df25e206170cf7da9ba7b49",
+        "src/soc/esp32p4/rng_noise.zig": "8da11d4c855221b8f2a64121a6feb50c95b7f98302bc7194cc2c3d9a3e6a9cf3",
         "src/soc/esp32p4/sar_regi2c.zig": "7a22b47c55a782b5b8d3ff2229a48a552409de5fe9c95eee72c3d3184edd9d5c",
         "src/soc/esp32p4/sdio.zig": "9e4324561f5ebcc0cbd6ccae9edbbc308ad559a938a8e7ac201e256a44ddb97a",
         "src/soc/esp32p4/sdio_test.zig": "28cbc9b032e9c9b806a6ecc3bc872528f5f9fa53cc162bd26e4dc39d0f847be5",
@@ -8650,7 +8652,7 @@
         "src/xy/render_session.zig": "fe34a48eee71aa796e40da253fbd89cc946176bfd0c6a0af4c17b4c69f734e38",
         "src/xy/scheme_bridge.zig": "4874c4e3696b17f33e01b739d4ff68eef8eb489f6f72a3950e79e6be61dfaece",
         "src/xy/scheme_decimal.zig": "8682778ff3768736c0fc9f949af3b13214adb5d90942b139a701cfcf6f50024e",
-        "src/xy/scheme_runtime.zig": "85cba978593fab59b61626329fb0cf8b69a63de87eafbd0719b8499302d66f3e",
+        "src/xy/scheme_runtime.zig": "82bc840807867c4db86c7d5d4ed9ec71e92f888cf241e246d5fb3defa9fdd561",
         "src/xy/scratch.zig": "3699d287f8e58b26fed7c548e95a2090c8afcf11a1abc93004ed17f4218e2dc4",
         "src/xy/soft_keyboard.zig": "19b2c16b30a3a9f7b40a6067e4e0f87afc97b23c6ba42d90ff0e58193794047c",
         "src/xy/ssh_entropy.zig": "4e5d59cecb8357931d0d950aaff85e90b1e65c234e1b12710a814a846b445954",
@@ -8664,9 +8666,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 16767,
-        "count": 17819,
-        "percent": 94.09618946068802
+        "covered": 16823,
+        "count": 17874,
+        "percent": 94.11995076647645
       },
       "files": {
         "src/app/animation.zig": {
@@ -9326,8 +9328,8 @@
           "count": 60
         },
         "src/xy/scheme_runtime.zig": {
-          "covered": 2845,
-          "count": 3044
+          "covered": 2901,
+          "count": 3099
         },
         "src/xy/scratch.zig": {
           "covered": 609,
@@ -9672,6 +9674,8 @@
         "src/soc/esp32p4/psram_mapping_test.zig",
         "src/soc/esp32p4/psram_test.zig",
         "src/soc/esp32p4/rng_adc.zig",
+        "src/soc/esp32p4/rng_analog.zig",
+        "src/soc/esp32p4/rng_noise.zig",
         "src/soc/esp32p4/sar_regi2c.zig",
         "src/soc/esp32p4/sdio_test.zig",
         "src/storage/batch_test.zig",
