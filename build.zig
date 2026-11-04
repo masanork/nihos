@@ -187,12 +187,16 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_kex_driver_module })).step);
     const ssh_lifecycle_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_lifecycle.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_lifecycle_module })).step);
+    const sar_regi2c_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/sar_regi2c.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = sar_regi2c_module })).step);
     const p4_rng_gate_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/p4_rng_gate.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_rng_gate_module })).step);
     const ssh_entropy_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_entropy.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_entropy_module })).step);
     const ssh_seed_collector_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_seed_collector.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_seed_collector_module })).step);
+    const p4_rng_adc_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/rng_adc.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_rng_adc_module })).step);
     const ssh_reservation_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_reservation.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_reservation_module })).step);
     const ssh_hosted_session_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_hosted_session.zig"), .target = target, .optimize = optimize });

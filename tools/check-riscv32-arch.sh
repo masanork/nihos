@@ -164,6 +164,13 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
     "-Mssh_lifecycle=$repo_root/src/xy/ssh_lifecycle.zig"
 echo "Native SSH workspace lifecycle RV32 codegen: ok"
 
+# Fixed compile-only ownership stubs do not authorize hardware execution.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/p4-rng-adc.o" --dep rng_adc \
+    "-Mroot=$repo_root/tools/probes/p4-rng-adc.zig" \
+    "-Mrng_adc=$repo_root/src/soc/esp32p4/rng_adc.zig"
+echo "P4 RNG ADC RV32 codegen: ok (not target execution)"
+
 # Fixed bytes exercise code generation only and must never be used as entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
     -femit-bin="$out_dir/ssh-entropy.o" --dep ssh_entropy \
@@ -177,6 +184,13 @@ echo "SSH seeded CSPRNG RV32 codegen: ok (not target execution)"
     "-Mroot=$repo_root/tools/probes/ssh-seed-collector.zig" \
     "-Mssh_seed_collector=$repo_root/src/xy/ssh_seed_collector.zig"
 echo "SSH seed collector RV32 codegen: ok (not target execution)"
+
+# Register addresses are compiled only; this does not exercise physical I2C.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/p4-sar-regi2c.o" --dep sar_regi2c \
+    "-Mroot=$repo_root/tools/probes/p4-sar-regi2c.zig" \
+    "-Msar_regi2c=$repo_root/src/soc/esp32p4/sar_regi2c.zig"
+echo "P4 SAR analog I2C RV32 codegen: ok (not target execution)"
 
 "$zig" build-obj -target "$target" -mcpu="$cpu" \
     -femit-bin="$out_dir/rtc.o" --dep tab5_rtc \
