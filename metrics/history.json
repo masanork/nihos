@@ -7980,24 +7980,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-04",
-    "measuredAt": "2026-11-04T11:45:58.553157+00:00",
+    "measuredAt": "2026-11-04T13:17:57.360778+00:00",
     "project": "nihos",
-    "commit": "c72cfb3225e756a204bd5d59fa2b3a5a4fc3de8c",
+    "commit": "1f20e7900d5942e774f4031f56413993ce91b90e",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "adb919afb17f9d9c4390aa6b9b5a70fd05f16854ed01edfc9e087461ae350562",
+    "sourceTreeSha256": "1be421e93946d66533d72beb10370114243affae4907ac47613439e139a710ac",
     "code": {
-      "implementation": 85219,
-      "tests": 45358,
-      "tooling": 30875,
+      "implementation": 85305,
+      "tests": 45619,
+      "tooling": 30886,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 77504,
-        "tests": 34399,
-        "tooling": 1759,
+        "implementation": 77590,
+        "tests": 34660,
+        "tooling": 1766,
         "probes": 5642,
         "vendored": 0,
         "generated": 0
@@ -8045,7 +8045,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4804,
+        "tooling": 4808,
         "probes": 1328,
         "vendored": 0,
         "generated": 0
@@ -8093,8 +8093,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 83282,
-        "tests": 34525,
+        "implementation": 83368,
+        "tests": 34786,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -8111,7 +8111,7 @@
       "tools": {
         "implementation": 0,
         "tests": 10833,
-        "tooling": 30557,
+        "tooling": 30568,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -8369,12 +8369,12 @@
         "src/net/hosted_c6_time_test.zig": "b1e611d8ead1c1119f2ce1a928c1ba72740bbc5ffd2ad143ce84e8052d57f8fd",
         "src/net/hosted_diagnostics.zig": "490d82b6f73ef81f2b8dfe73c25076e3c5a1c302f2396e355f7c1dd3165bfc22",
         "src/net/hosted_diagnostics_test.zig": "0fc0d84cc5ab5ac53d18e16623123b49f86775a278384b78802e89e459ef7454",
-        "src/net/hosted_dma_bus.zig": "4117809f73662ce2de29c639bf6336d31466055e4c7534908edfdd3b7c4ad4d1",
-        "src/net/hosted_dma_bus_test.zig": "5203937ea9b1210c3426fe114b87602f27cf1455843b2307bb9ea561ccd70cd4",
+        "src/net/hosted_dma_bus.zig": "52631dce6da6f97a71a418e31cf16ffc583b6e48b8782c72cdcb4867b068f426",
+        "src/net/hosted_dma_bus_test.zig": "00981a06172d0a301586fe250a4bfc7c80371eda135eb8c9c88c183dfd2e0f9c",
         "src/net/hosted_long_dma.zig": "423c4a0ca08ad74e9de4c66ece30c08a5acf8f96311ee22771065ab8bfd314ac",
         "src/net/hosted_long_dma_guard.zig": "819a435e1f268b2bb52e7b73597d28ad598e6f63aa9e901fd6cb3f7586179e76",
         "src/net/hosted_long_dma_test.zig": "f9530519519651031b663bcb9e1c96503d1aeea7a7df10fe4ea03fee8586f7ce",
-        "src/net/hosted_long_integration_test.zig": "9d8423853a5ed6cd3f46506f7cd5c3634c126cb94bfead901b4e71a652196dc1",
+        "src/net/hosted_long_integration_test.zig": "38824c616edc3ef3825a54e7d17f64633438b099ec1f08a0fe081573fb9e6bf4",
         "src/net/hosted_long_sender.zig": "3ab8c95d123d3aff444a9357267fb0985f907115089ce0dd33dc1a6e9e388963",
         "src/net/hosted_long_sender_test.zig": "d8d82a6b919442ea6e33a0a91c17b6a7764265f55ed85d631044f52a769827dc",
         "src/net/hosted_network_split.zig": "e4f9d5ef25a99be70c2fd3b97303b1ada8cc35187182843ebb0a2384748c4d75",
@@ -8666,9 +8666,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 16823,
-        "count": 17874,
-        "percent": 94.11995076647645
+        "covered": 16865,
+        "count": 17918,
+        "percent": 94.12322803884362
       },
       "files": {
         "src/app/animation.zig": {
@@ -9072,8 +9072,8 @@
           "count": 13
         },
         "src/net/hosted_dma_bus.zig": {
-          "covered": 27,
-          "count": 28
+          "covered": 69,
+          "count": 72
         },
         "src/net/hosted_long_dma.zig": {
           "covered": 28,
