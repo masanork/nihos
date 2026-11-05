@@ -104,7 +104,8 @@ pub const ProfileForm = struct {
     /// Failed validation preserves input for correction. A successful commit
     /// clears all form bytes; the caller owns and later clears the profile.
     pub fn submit(self: *ProfileForm, profile: *Profile) error{InvalidProfile}!void {
-        try profile.set(self.slice(.address), self.slice(.port), self.slice(.username), self.slice(.fingerprint), self.slice(.seed));
+        const port = self.slice(.port);
+        try profile.set(self.slice(.address), if (port.len == 0) "22" else port, self.slice(.username), self.slice(.fingerprint), self.slice(.seed));
         self.clear();
     }
     pub fn clear(self: *ProfileForm) void {
@@ -923,7 +924,7 @@ test "profile form masks and clears key input on submit and cancel" {
     var profile: Profile = .{};
     const values = [_][]const u8{
         "10.0.2.2",
-        "22",
+        "2222",
         "alice",
         "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         "0101010101010101010101010101010101010101010101010101010101010101",
@@ -940,6 +941,7 @@ test "profile form masks and clears key input on submit and cancel" {
     }
     try form.submit(&profile);
     try std.testing.expect(profile.valid);
+    try std.testing.expectEqual(@as(u16, 2222), profile.port);
     try std.testing.expectEqualStrings("alice", profile.user());
     for (std.mem.asBytes(&form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
     form.selected = .seed;
@@ -949,6 +951,21 @@ test "profile form masks and clears key input on submit and cancel" {
     try form.append('b');
     form.clear();
     for (std.mem.asBytes(&form)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    profile.clear();
+}
+
+test "profile form uses SSH default only for an empty port" {
+    var form: ProfileForm = .{};
+    var profile: Profile = .{};
+    for ([_][]const u8{
+        "10.0.2.2",                                           "",                                                                 "alice",
+        "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101",
+    }) |value| {
+        for (value) |byte| try form.append(byte);
+        form.next();
+    }
+    try form.submit(&profile);
+    try std.testing.expectEqual(@as(u16, 22), profile.port);
     profile.clear();
 }
 

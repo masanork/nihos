@@ -163,7 +163,7 @@ fn footer(instance: *Session, target: anytype, reading: bool, can_try: bool) !vo
 /// The view contains public text or a length only; seed bytes never cross
 /// into the renderer, glyph cache, framebuffer or render stack.
 fn privateSetup(instance: *Session, target: anytype, view: *const protocol.PrivateInputView, x: i32) !void {
-    const titles = [_][]const u8{ "1/5 IPv4 address", "2/5 Port", "3/5 User", "4/5 Host fingerprint (SHA256:...)", "5/5 Ed25519 seed (hex)" };
+    const titles = [_][]const u8{ "1/5 IPv4 address", "2/5 Port (empty: 22)", "3/5 User", "4/5 Host fingerprint (SHA256:...)", "5/5 Ed25519 seed (hex)" };
     if (view.field >= titles.len or view.text_length > 64 or view.secret_length > 64 or view.invalid > 1) return error.Range;
     if ((view.field == 4 and view.text_length != 0) or (view.field != 4 and view.secret_length != 0)) return error.Range;
     try label(instance, target, x, 36, "SSH setup", 32, 0x2147);
