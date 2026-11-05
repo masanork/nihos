@@ -26,6 +26,7 @@ pub const Driver = struct {
     /// Worker key generation has completed and its secret remains worker-owned.
     /// On init failure, the owner must cancel and reclaim that worker.
     pub fn init(protocol: handshake.Handshake, cookie: [16]u8, token: kem.Token, now: u64, deadline: u64) !Driver {
+        // SAFETY: protocol is assigned below and initInPlace initializes every other field before success.
         var self: Driver = undefined;
         self.protocol = protocol;
         try self.initInPlace(cookie, token, now, deadline);
@@ -206,7 +207,7 @@ test "worker response is authenticated before NEWKEYS and transport activation" 
         pos += item.len;
     }
     const Worker = struct {
-        ct: [1088]u8 = undefined,
+        ct: [1088]u8 = @splat(0),
         called: bool = false,
         fn submit(ctx: ?*anyopaque, _: kem.Token, ct: *const [1088]u8) bool {
             const self: *@This() = @ptrCast(@alignCast(ctx.?));
