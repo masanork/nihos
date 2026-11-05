@@ -47,5 +47,9 @@ result = {'profile': 'headless ESP-EMU 0.50.0; non-secret stub; no SSH',
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))
 PY
+    # Preserve the exact audited fixture objects; never flash the test image.
+    cp "$image/nihos-native.elf" "$out/fixture-do-not-flash.elf"
+    cp "$image/nihos-native.bin" "$out/fixture-do-not-flash.bin"
+    cp "$image/image-audit.json" "$out/image-audit.json"
 )
 printf 'Evidence: %s\n' "$out"
