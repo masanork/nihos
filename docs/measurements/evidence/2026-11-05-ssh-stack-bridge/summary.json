@@ -1,0 +1,17 @@
+{
+  "profile": "headless ESP-EMU 0.50.0; non-secret stub; no SSH",
+  "fixture_patch_sha256": "4d018c238078cd8efd0143653f180d24a4b795f4ca9ba4b6047c8c0ab92e320b",
+  "elf_sha256": "c0a49e26519bb314f3c2a117149283aee75f5717d6e657984c7cdb1549fcd13d",
+  "image_sha256": "e12226757cc7189ee71520643008e3ce5ae29c937933180189f53ca2f7483771",
+  "heap_bytes": 120832,
+  "emulator_log_sha256": "731337c3ec30a8ccbc168f9b16a785fb31e172b05f3a0844dce57931da3f5e69",
+  "checks": [
+    "PSRAM stack pointer",
+    "timer interrupt while switched",
+    "nested admission rejected",
+    "stack admission released",
+    "transient stack cleared"
+  ],
+  "fixture_patch_sha256_original": "c75e0e7ded06b99e94a512beb956c0219db1a058504f1ecb24057d513592a0fd",
+  "note": "The recorded run used the original contextual patch; the current patch has equivalent changes without context."
+}
