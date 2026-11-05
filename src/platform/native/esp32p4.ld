@@ -97,6 +97,15 @@ SECTIONS
     .flash.pmp : ALIGN(16) {
         __flash_pmp_start = .;
         *(.flash.text.pmp .flash.text.pmp.*)
+#if NIH_NATIVE_PQC_TASK
+        /* Headless emulator fixture only; not cache-off safe. */
+        *pqc_ssh_fixture.o(.text.ssh_host_key.verify)
+        *pqc_ssh_fixture.o(.text.crypto.sha2.Sha2x64*.round)
+        /* Headless KEX driver fixture, not cache-off safe. */
+        *pqc_ssh_fixture.o(.text.crypto.sha2.Sha2x32*.round)
+        *pqc_ssh_fixture.o(.text.ssh_hybrid_fixture.nih_ssh_driver_fixture_*)
+        *pqc_ssh_fixture.o(.text.ssh_hybrid_driver.Driver.abort)
+#endif
         __flash_pmp_end = .;
     } > flash_boot
 #if NIH_NATIVE_PMP_PROBE
@@ -124,6 +133,10 @@ SECTIONS
         *(.flash.rodata.card_pin)
         *(.flash.rodata.bmi270)
         *(.flash.rodata.camera)
+#if NIH_NATIVE_PQC_TASK
+        /* Fixed-vector and crypto data for the headless emulator fixture. */
+        *pqc_ssh_fixture.o(.rodata .rodata.*)
+#endif
 #if NIH_NATIVE_XY
         . = ALIGN(4);
 #endif

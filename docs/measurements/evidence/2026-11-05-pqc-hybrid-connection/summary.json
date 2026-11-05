@@ -1,0 +1,20 @@
+{
+  "base": "a302edee",
+  "note": "Host-only connection fixture, nihos TCP through libslirp, main thread waits while worker owns driver. ML-KEM keygen remains synchronous, no P4 task or physical device proof.",
+  "libslirp_archive_sha256": "2a98852e65666db313481943e7a1997abff0183bd9bea80caec1b5da89fda28c",
+  "mlkem_archive_sha256": "b9f225b455ef268d2469aee26bdd6f6e47e7b24762849bf180074b79ed2db1c4",
+  "source_sha256": {
+    "src/net/ssh_hybrid_connection.zig": "ada97713e555e6ff8a4ab52284e9396675d3ba3d77ebfd64ff8d769ca0ae804a",
+    "src/net/ssh_hybrid_driver.zig": "c31b36f555a60bc54e26462d18bcaa6a8ad0207b2251164ff2d161c7f2a5b06a",
+    "src/net/ssh_hybrid_handshake.zig": "4fd4c1472aafd4cc651d386e65a6234c4b62cc4d40649baa4471b445b84953cc",
+    "src/net/ssh_identification.zig": "e50810e0026a5b80f3b5dbc8ac01087c1dd83f54f414d75ba1d4c7565b014299",
+    "src/net/ssh_socket_pump.zig": "70211ca18e41e948219af292dabd7e79375fdecb2dd63c406f60f00da4761a4f",
+    "src/net/ssh_kex_host_probe.zig": "fae266bcf7c7d433dcc7e3f8156877cb64fde1d6ed3b6098171926738fae4ee0",
+    "tools/ssh_openssh_probe.py": "ee775f13c8feac67938940b24cf72fb847a5f1807022f28d8e85e5fc71a78f35"
+  },
+  "logs": {
+    "bad-pin.log": "9d9b75ee449ea168102d279d950a29bb32700b2ac6cb9a65ad034c4b1f06cc1c",
+    "good.log": "1b0786bc6f83c5ca087010554f391ff1753b502f067a7f7457819da7bb31b99e",
+    "unit.log": "cc00d93f26197403f21d311473a0cfaa2cf84f5db557c7c55bb148f5efe291dd"
+  }
+}

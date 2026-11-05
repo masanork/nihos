@@ -1,0 +1,17 @@
+{
+  "note": "Experimental KEM job retained for link only; no scheduler, stack, allocation, or runtime proof",
+  "elf_sha256": "f6c81c8ee79d7dea8ea72d06652fe360e233137e2507078376eff3efd69d3f18",
+  "image_sha256": "4f15a0a8bd81c4d275c1bb1060301fa1f18468e6761e02e852ef0e9d9a0f6873",
+  "heap_bytes": 53056,
+  "primary_static_bytes": 110784,
+  "xy_code_bytes": 229216,
+  "negative_controls": [
+    "missing root rejected",
+    "byte-identical SRAM constant copy rejected"
+  ],
+  "host_job_tests": [
+    "epoch, retirement and single-use tests",
+    "7 keygen and 19 decaps allocation failures",
+    "OpenSSH ML-KEM/X25519 KEX with pinned host key and PTY"
+  ]
+}

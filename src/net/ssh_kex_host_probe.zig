@@ -39,6 +39,161 @@ export fn probe_pause(paused: bool) void {
 }
 var ssh_session: ?session.Session = null;
 var hs: ?handshake.Handshake = null;
+const hybrid_probe = @import("ssh_hybrid_host_probe.zig");
+const handoff_module = @import("ssh_kem_handoff.zig");
+const hybrid_reply = @import("ssh_hybrid_reply.zig");
+const handoff_token = handoff_module.Token{ .epoch = 1, .request = 1 };
+var hybrid_exchange: @import("ssh_hybrid_exchange.zig").Exchange = .{};
+extern fn nih_host_mlkem_peak() usize;
+extern fn nih_host_mlkem_allocation_failure() c_int;
+export fn probe_mlkem_peak() usize {
+    return if (@import("pqc_config").native) nih_host_mlkem_peak() else 0;
+}
+export fn probe_mlkem_allocation_failure() bool {
+    return if (@import("pqc_config").native) nih_host_mlkem_allocation_failure() == 1 else false;
+}
+var hybrid: ?hybrid_probe.Probe = null;
+var hybrid_keys: ?@import("ssh_kex.zig").Keys = null;
+export fn probe_hybrid_init(out: [*]u8, cap: usize, cookie: *const [16]u8, seed: *const [64]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, len: usize) usize {
+    hybrid = hybrid_probe.Probe.init(seed.*, secret.*, pin.*, banner[0..len]) catch return 0;
+    const h = if (hybrid) |*v| v else return 0;
+    hybrid_exchange = .{};
+    hybrid_exchange.handoff.start(handoff_token, 1, 100) catch return 0;
+    hybrid_exchange.handoff.publicComplete(handoff_token, 2, h.protocol.client[0..1184]) catch return 0;
+    var public: [1184]u8 = undefined;
+    hybrid_exchange.handoff.takePublic(handoff_token, 3, &public) catch return 0;
+    if (!std.mem.eql(u8, &public, h.protocol.client[0..1184])) return 0;
+    const result = h.start(cookie.*, out[0..cap]) catch return 0;
+    return result.len;
+}
+export fn probe_hybrid_server_init(input: [*]const u8, len: usize, out: [*]u8, cap: usize) usize {
+    const h = if (hybrid) |*v| v else return 0;
+    const result = h.serverInit(input[0..len], out[0..cap]) catch return 0;
+    return result.len;
+}
+export fn probe_hybrid_reply(input: [*]const u8, len: usize) bool {
+    const h = if (hybrid) |*v| v else return false;
+    defer h.deinit();
+    var wrong = h.*;
+    defer wrong.deinit();
+    wrong.protocol.pin[0] ^= 1;
+    if (wrong.finish(input[0..len])) |_| return false else |err| if (err != error.HostKeyMismatch) return false;
+    if (h.finish(input[0..len -| 1])) |_| return false else |_| {}
+    if (len > 2048 or len < 10) return false;
+    var altered: [2048]u8 = undefined;
+    @memcpy(altered[0..len], input[0..len]);
+    const parsed = hybrid_reply.parse(input[0..len]) catch return false;
+    const ciphertext_start = @intFromPtr(parsed.ciphertext()) - @intFromPtr(input);
+    altered[ciphertext_start] ^= 1;
+    var altered_job = h.*;
+    defer altered_job.deinit();
+    if (altered_job.finish(altered[0..len])) |_| return false else |err| if (err != error.InvalidSignature) return false;
+    var copied: [1088]u8 = undefined;
+    hybrid_exchange.handoff.takeCiphertext(handoff_token, 5, &copied) catch return false;
+    var pq = h.decaps(&copied) catch return false;
+    defer std.crypto.secureZero(u8, &pq);
+    hybrid_exchange.handoff.secretComplete(handoff_token, 6, &pq) catch return false;
+    const Verify = struct {
+        probe: *hybrid_probe.Probe,
+        keys: ?@import("ssh_kex.zig").Keys = null,
+        fn run(context: ?*anyopaque, received: []const u8, shared: *const [32]u8) bool {
+            const self: *@This() = @ptrCast(@alignCast(context.?));
+            self.keys = self.probe.finishWithPq(received, shared) catch return false;
+            return true;
+        }
+    };
+    var verifier = Verify{ .probe = h };
+    defer if (verifier.keys) |*keys| std.crypto.secureZero(u8, std.mem.asBytes(keys));
+    const accepted = hybrid_exchange.authenticate(handoff_token, 7, &verifier, &Verify.run) catch return false;
+    if (!accepted or !hybrid_exchange.handoff.reclaimable()) return false;
+    hybrid_keys = verifier.keys orelse return false;
+    return true;
+}
+export fn probe_hybrid_capture() bool {
+    hybrid_exchange.captureReply(&wire, handoff_token, 4) catch return false;
+    return true;
+}
+export fn probe_hybrid_reply_owned() bool {
+    if (hybrid_exchange.reply.len == 0) return false;
+    defer hybrid_exchange.abort();
+    return probe_hybrid_reply(&hybrid_exchange.reply.bytes, hybrid_exchange.reply.len);
+}
+export fn probe_hybrid_activate(input: [*]const u8, len: usize) bool {
+    if (!std.mem.eql(u8, input[0..len], &.{21})) return false;
+    const keys = if (hybrid_keys) |*v| v else return false;
+    defer {
+        std.crypto.secureZero(u8, std.mem.asBytes(keys));
+        hybrid_keys = null;
+    }
+    ssh_session = .{ .session_id = keys.exchange_hash };
+    wire.enableEncryption(keys) catch return false;
+    return true;
+}
+const hybrid_driver_mod = @import("ssh_hybrid_driver.zig");
+var hybrid_driver: ?hybrid_driver_mod.Driver = null;
+var hybrid_connection: ?@import("ssh_hybrid_connection.zig").Connection = null;
+var hybrid_worker_ciphertext: ?[1088]u8 = null;
+fn hybridWorkerSubmit(_: ?*anyopaque, token: handoff_module.Token, ct: *const [1088]u8) bool {
+    if (token.epoch != handoff_token.epoch or token.request != handoff_token.request or hybrid_worker_ciphertext != null) return false;
+    hybrid_worker_ciphertext = ct.*;
+    return true;
+}
+export fn probe_hybrid_driver_begin(cookie: *const [16]u8, seed: *const [64]u8, secret: *const [32]u8, pin: *const [32]u8, banner: [*]const u8, len: usize, now: u64, deadline: u64) bool {
+    hybrid = hybrid_probe.Probe.init(seed.*, secret.*, pin.*, banner[0..len]) catch return false;
+    const h = if (hybrid) |*value| value else return false;
+    hybrid_driver = hybrid_driver_mod.Driver.init(h.protocol, cookie.*, handoff_token, now, deadline) catch {
+        h.deinit();
+        return false;
+    };
+    return true;
+}
+export fn probe_hybrid_driver_step(now: u64, padding: *const [32]u8) isize {
+    const d = if (hybrid_driver) |*value| value else return -1;
+    const done = d.step(&wire, now, padding, null, &hybridWorkerSubmit) catch return -1;
+    if (!done) return 0;
+    ssh_session = .{ .session_id = d.session_id orelse return -1 };
+    return 1;
+}
+export fn probe_hybrid_connection_begin(cookie: *const [16]u8, seed: *const [64]u8, secret: *const [32]u8, pin: *const [32]u8, now: u64, deadline: u64) bool {
+    hybrid = hybrid_probe.Probe.init(seed.*, secret.*, pin.*, "SSH-2.0-pending") catch return false;
+    const h = if (hybrid) |*value| value else return false;
+    hybrid_connection = @import("ssh_hybrid_connection.zig").Connection.init(1, handoff_token, now, deadline, secret.*, pin.*, cookie.*, h.protocol.client[0..1184].*) catch {
+        h.deinit();
+        return false;
+    };
+    return true;
+}
+export fn probe_hybrid_connection_poll(now: u64, padding: *const [32]u8) isize {
+    const c = if (hybrid_connection) |*value| value else return -1;
+    const done = c.poll(&wire, &pump, probeIo(), 1, now, padding, null, &hybridWorkerSubmit) catch return -1;
+    if (!done) return 0;
+    ssh_session = .{ .session_id = c.driver.session_id orelse return -1 };
+    return 1;
+}
+export fn probe_hybrid_worker_pending() bool {
+    return hybrid_worker_ciphertext != null;
+}
+export fn probe_hybrid_worker_complete(now: u64) isize {
+    const h = if (hybrid) |*value| value else return -1;
+    const ct = if (hybrid_worker_ciphertext) |*value| value else return -1;
+    var secret = h.decaps(ct) catch {
+        std.crypto.secureZero(u8, ct);
+        hybrid_worker_ciphertext = null;
+        if (hybrid_connection) |*c| c.abort(&wire, &pump) else if (hybrid_driver) |*d| d.abort(&wire);
+        h.deinit();
+        return -1;
+    };
+    defer std.crypto.secureZero(u8, &secret);
+    std.crypto.secureZero(u8, ct);
+    hybrid_worker_ciphertext = null;
+    h.deinit();
+    if (hybrid_connection) |*c| {
+        c.complete(&wire, &pump, handoff_token, now, &secret) catch |err| return if (err == error.HostProofFailed) -2 else -1;
+    } else if (hybrid_driver) |*d| {
+        d.complete(&wire, handoff_token, now, &secret) catch |err| return if (err == error.HostProofFailed) -2 else -1;
+    } else return -1;
+    return 1;
+}
 var driver: ?kex_driver.Driver = null;
 var ident = identification.Exchange{ .epoch = 1 };
 var ssh_client: ?client.Client = null;
