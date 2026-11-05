@@ -163,6 +163,8 @@ pub fn build(b: *std.Build) void {
     const vt100_module = b.createModule(.{ .root_source_file = b.path("src/net/vt100.zig"), .target = target, .optimize = optimize });
     vt100_module.addImport("terminal_adapter", terminal_adapter_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = vt100_module })).step);
+    const native_stacks_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/stacks.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = native_stacks_module })).step);
     const ssh_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_module })).step);
     const ssh_host_key_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_host_key.zig"), .target = target, .optimize = optimize });
