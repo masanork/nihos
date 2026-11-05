@@ -11,6 +11,18 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeInstructionTests(unittest.TestCase):
+    def test_boot_sprite_table_must_be_flash_without_sram_copy(self):
+        name, start = 'boot_graphics.paintTo__struct_60.sprites', 0x40012000
+        table = bytes(range(256)) * 5 + bytes(range(200))
+        self.assertEqual(len(table), 1480)
+        result = MODULE.audit_boot_sprite_tables({name: start}, {name: 1480}, start, table, b'')
+        self.assertEqual(result[0]['bytes'], 1480)
+        for symbols, sizes, resident in [({name: 0x4ff10000}, {name: 1480}, b''),
+                                         ({name: start}, {name: 1476}, b''),
+                                         ({name: start}, {name: 1480}, table)]:
+            with self.subTest(symbols=symbols, sizes=sizes), self.assertRaises(ValueError):
+                MODULE.audit_boot_sprite_tables(symbols, sizes, start, table, resident)
+
     def test_romaji_table_must_be_in_flash_without_sram_copy(self):
         name, start = 'xy.ime_omni.romaji_table', 0x40070000
         table = bytes(range(256)) * 12 + bytes(range(216))
