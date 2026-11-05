@@ -179,6 +179,14 @@ pub const Link = struct {
     }
 };
 
+test "in-place initialization resets reused link storage" {
+    // SAFETY: initInPlace initializes every live field before use.
+    var link: Link = undefined;
+    @memset(std.mem.asBytes(&link), 0xa5);
+    link.initInPlace();
+    try std.testing.expectEqualDeep(Link{}, link);
+}
+
 test "link owns outgoing frame and invalidates on lease change" {
     var link: Link = .{};
     const lease = arp.Lease{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 }, .epoch = 7 };
