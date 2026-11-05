@@ -151,3 +151,7 @@ P4 エミュレータ fixture は 320 KiB の pinned PSRAM に driver・transpor
 `ssh_hybrid_connection.zig` は既存の識別交換・socket pump と hybrid driver を一つの接続状態機械にまとめる。KEM 公開鍵は呼出し前にワーカーが生成済みという契約で、識別交換が終わった後に driver を初期化する。P4 向けに状態を既存領域へ直接初期化できる。epoch、単調時刻と全体 deadline を確認し、識別交換前の失敗でも KEM ワーカーを取消確認前に回収しない。worker が driver と transport を排他的に所有している間に親が poll しないこと、取消の通知・停止確認、鍵生成と乱数の提供は呼出し側の契約である。
 
 ホスト上では識別文字列交換から NEWKEYS までをこの接続処理で進め、nihos TCP + libslirp 4.8.0 経由で OpenSSH の `mlkem768x25519-sha256`、公開鍵認証、PTY、FIN が成功。復号と proof は別ホストスレッドで行い、親は終了まで driver・transport に触れない。誤 pin の拒否と 40 件の host test も確認した。[ログと source hash](../measurements/evidence/2026-11-05-pqc-hybrid-connection/)を保存する。KEM keygen はホスト側で接続前に同期実行し、排他は呼出し順序による試験契約である。native Hosted service・P4 scheduler・C6・Tab5 の接続、実乱数、実機は未検証。
+
+## 現行 main への移植後のエミュレータ再検証
+
+旧実験を現行 main 上へ移植したソース候補 `7a6fb4ca0174bf211040ef2202a78fac0f241c46` で、固定 ML-KEM archive と ESP-EMU 0.50.0 を使用して headless fixture を再ビルドした。正常、PSRAM なし、暗号文改変、誤 pin、timeout、署名改変の各ケースが画像 digest と出力の照合を通過した。正常画像の監査済み heap は 64,768 B、観測した子スタックは 10,208 B、arena は 19,232 B、PSRAM 課金は 524,288 B。UI asset の source hash 更新とこの記録は候補の実行コードを変更しない。[画像・ログの hash と各結果](../measurements/evidence/2026-11-05-pqc-main-port/summary.json)を保存する。これは固定応答を使うエミュレータ試験であり、実 TCP、C6、実乱数、Tab5 実機や物理消去の検証ではない。
