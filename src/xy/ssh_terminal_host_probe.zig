@@ -93,7 +93,8 @@ const HostNetwork = struct {
     cancel_fn: Action,
     close_fn: Action,
     complete_fn: Action,
-    pub fn open(_: *@This(), _: [4]u8, _: u16, _: u16, _: u32, _: u64) !Handle {
+    pub fn open(_: *@This(), remote: [4]u8, port: u16, local: u16, _: u32, deadline: u64) !Handle {
+        if (!@import("std").mem.eql(u8, &remote, &.{ 10, 0, 2, 2 }) or port != 22 or local < 49152 or deadline == 0) return error.InvalidDestination;
         return 1;
     }
     pub fn ready(self: *@This(), _: Handle) !bool {
@@ -182,7 +183,7 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     }
     foreground.initInPlace(&model, &controller, &host_entropy, 20_000_000, 20_000_000) catch return false;
     if ((foreground.poll(true, now) catch return false) != .editing) return false;
-    for ([_][]const u8{ "10.0.2.2", "22", user[0..user_len], fingerprint, seed_hex }) |value| {
+    for ([_][]const u8{ "10.0.2.2", "", user[0..user_len], fingerprint, seed_hex }) |value| {
         for (value) |byte| {
             model.feedSerial(byte, now);
             if (model.status != .none) {
