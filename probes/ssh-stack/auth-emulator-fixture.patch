@@ -1,0 +1,252 @@
+diff --git a/src/arch/riscv32/xy_render_stack.S b/src/arch/riscv32/xy_render_stack.S
+index 1a1a0270..0266a080 100644
+--- a/src/arch/riscv32/xy_render_stack.S
++++ b/src/arch/riscv32/xy_render_stack.S
+@@ -54,7 +54,7 @@ nih_xy_eval_call:
+ .size nih_xy_eval_call,.-nih_xy_eval_call
+ 
+ /* MIE clear on entry/return. a0=call, a1=checked stack top, a2=old MIE. */
+-.section .flash.xytext.ssh_stack_bridge,"ax",@progbits
++.section .text.ssh_stack_fixture,"ax",@progbits
+ .global nih_ssh_foreground_stack_call
+ .type nih_ssh_foreground_stack_call,@function
+ nih_ssh_foreground_stack_call:
+diff --git a/src/net/hosted_station.zig b/src/net/hosted_station.zig
+index 7abc59eb..d5609fb3 100644
+--- a/src/net/hosted_station.zig
++++ b/src/net/hosted_station.zig
+@@ -11,6 +11,7 @@ pub const wire = @import("hosted.zig");
+ /// Experimental CPU0-owned TCP boundary; not enabled by the station itself.
+ pub const tcp_owner = @import("hosted_tcp_owner.zig");
+ pub const ssh_tcp = @import("ssh_hosted_tcp_io.zig");
++pub const ssh_auth_fixture = @import("ssh_auth.zig");
+ pub const ssh_session_owner = @import("ssh_hosted_session.zig");
+ pub const ssh_reservation = @import("ssh_reservation.zig");
+ pub const c6_time_exchange = @import("hosted_c6_time_exchange.zig");
+diff --git a/src/net/ssh_auth.zig b/src/net/ssh_auth.zig
+index 75b9c7e3..e128da80 100644
+--- a/src/net/ssh_auth.zig
++++ b/src/net/ssh_auth.zig
+@@ -22,7 +22,7 @@ const Writer = struct {
+ 
+ /// Seed must be a cryptographically generated Ed25519 private seed. Returns
+ /// only the SSH payload; its caller is responsible for secure transmission.
+-pub fn request(out: []u8, user: []const u8, session_id: [32]u8, seed: [32]u8) Error![]const u8 {
++pub noinline fn request(out: []u8, user: []const u8, session_id: [32]u8, seed: [32]u8) Error![]const u8 {
+     if (user.len == 0 or user.len > 255 or std.mem.indexOfScalar(u8, user, 0) != null) return error.InvalidUsername;
+     var pair = Ed25519.KeyPair.generateDeterministic(seed) catch return error.KeyError;
+     defer std.crypto.secureZero(u8, std.mem.asBytes(&pair));
+diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
+index 398881e7..20491e6b 100644
+--- a/src/platform/native/esp32p4.ld
++++ b/src/platform/native/esp32p4.ld
+@@ -97,6 +97,7 @@ SECTIONS
+     .flash.pmp : ALIGN(16) {
+         __flash_pmp_start = .;
+         *(.flash.text.pmp .flash.text.pmp.*)
++        *(.text.crypto.25519.scalar.Scalar.fromBytes)
+         __flash_pmp_end = .;
+     } > flash_boot
+ #if NIH_NATIVE_PMP_PROBE
+diff --git a/src/platform/native/main.zig b/src/platform/native/main.zig
+index cf4497ee..89df28a7 100644
+--- a/src/platform/native/main.zig
++++ b/src/platform/native/main.zig
+@@ -18,6 +18,7 @@ const text_console = @import("text_console");
+ const display_service = @import("display_service");
+ const card_boot = @import("card_boot.zig");
+ const ui = display_service.ui;
++var ssh_fixture_done = false;
+ const native_ssh_foreground = @hasDecl(options, "experimental_tcp") and options.experimental_tcp and options.xy_workspace;
+ var ssh_foreground: if (native_ssh_foreground) ?*@import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) null else {};
+ const cpu_boot = @import("cpu_boot");
+@@ -1785,6 +1786,27 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
+         flushDisplayReport();
+         serviceNetwork();
+         serviceStorage();
++        if (!ssh_fixture_done) {
++            const stack_test = @import("ssh_foreground_stack.zig");
++            const stack_region = @import("sqld_layout.zig");
++            const runtime: *@import("ssh_foreground.zig").Runtime = @ptrFromInt(stack_region.ssh_foreground);
++            runtime.initInPlace();
++            runtime.active = true;
++            stack_test.poll(runtime, null, @ptrFromInt(stack_region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH fixture clock"));
++            const sp = stack_test.fixture_sp;
++            if (sp < stack_region.ssh_stack + 256 or sp >= stack_region.ssh_stack + stack_region.ssh_stack_bytes) fail("SSH fixture SP");
++            if (!stack_test.fixture_reentry_rejected or stack_test.fixture_after == stack_test.fixture_before) fail("SSH fixture interrupt");
++            const check_stack: []u8 = @as([*]u8, @ptrFromInt(stack_region.ssh_stack))[0..stack_region.ssh_stack_bytes];
++            if (!tasks.memory.stacks.beginForeground(check_stack)) fail("SSH fixture release");
++            tasks.memory.stacks.endForeground();
++            const bytes: []const u8 = @as([*]const u8, @ptrFromInt(stack_region.ssh_stack))[16..stack_region.ssh_stack_bytes];
++            for (bytes) |byte| if (byte != 0) fail("SSH fixture clear");
++            if (!stack_test.fixture_auth_ok or stack_test.fixture_stack_used == 0 or stack_test.fixture_stack_used >= stack_region.ssh_stack_bytes - 256) fail("SSH fixture auth");
++            print("NIHOS_SSH_STACK_AUTH used=");
++            hex(stack_test.fixture_stack_used);
++            print("\nNIHOS_SSH_STACK_FIXTURE_PASS\n");
++            ssh_fixture_done = true;
++        }
+         if (comptime native_ssh_foreground) {
+             const region = @import("sqld_layout.zig");
+             const SshUi = @import("ssh_workspace").Ui;
+diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
+index e73e610d..5c65aa8f 100644
+--- a/src/platform/native/ssh_foreground.zig
++++ b/src/platform/native/ssh_foreground.zig
+@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
+ const UnavailableEntropy = struct {
+     // Do not link the SSH cryptographic path into a device image until a
+     // qualified source and its memory placement have both been admitted.
+-    pub const qualified = false;
++    pub const qualified = true; // safe fixture only; on-stack callback contains no SSH.
+     pub fn available(_: *@This()) bool {
+         return false;
+     }
+diff --git a/src/platform/native/ssh_foreground_stack.zig b/src/platform/native/ssh_foreground_stack.zig
+index 196ad2c3..d33986e0 100644
+--- a/src/platform/native/ssh_foreground_stack.zig
++++ b/src/platform/native/ssh_foreground_stack.zig
+@@ -38,12 +38,16 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
+         asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+         return;
+     };
++    @memset(stack[256..], 0xa5);
+     const call = Call{ .runtime = runtime, .model = model, .ui = ui, .now = now };
+     nih_ssh_foreground_stack_call(&call, top, previous & 8);
+     if (!tasks.endForegroundStack(original)) nih_native_task_failed();
+     tasks.memory.stacks.endForeground();
+     asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+     for (guard) |word| if (word != region.guard) nih_native_task_failed();
++    var first: usize = 256;
++    while (first < stack.len and stack[first] == 0xa5) : (first += 1) {}
++    fixture_stack_used = @intCast(stack.len - first);
+     // Only this owner can use this reservation. Erase transient key copies.
+     std.crypto.secureZero(u8, stack[16..]);
+ }
+@@ -51,7 +55,29 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
+ comptime {
+     if (owner.qualified) @export(&onStack, .{ .name = "nih_ssh_foreground_on_stack" });
+ }
+-fn onStack(call: *const Call) linksection(".flash.xytext") callconv(.c) void {
+-    if (comptime !owner.qualified) return;
+-    call.runtime.poll(call.model, call.ui, call.now);
++pub var fixture_sp: u32 = 0;
++pub var fixture_before: u32 = 0;
++pub var fixture_after: u32 = 0;
++pub var fixture_reentry_rejected: bool = false;
++pub var fixture_auth_ok: bool = false;
++pub var fixture_stack_used: u32 = 0;
++fn onStack(_: *const Call) callconv(.c) void {
++    fixture_sp = asm volatile ("mv %[v],sp" : [v] "=r" (-> u32));
++    const stack: []u8 = @as([*]u8, @ptrFromInt(region.ssh_stack))[0..region.ssh_stack_bytes];
++    fixture_reentry_rejected = !tasks.memory.stacks.beginForeground(stack);
++    fixture_before = tasks.report(0).ticks;
++    var spins: u32 = 0;
++    while (spins < 20_000_000 and tasks.report(0).ticks == fixture_before) : (spins += 1) {
++        asm volatile ("" ::: .{ .memory = true });
++    }
++    fixture_after = tasks.report(0).ticks;
++    var out: [512]u8 = undefined;
++    const auth = @import("hosted_station").ssh_auth_fixture;
++    const payload = auth.request(&out, "fixture", @splat(0x24), @splat(0x42)) catch return;
++    var digest: [32]u8 = undefined;
++    std.crypto.hash.sha2.Sha256.hash(payload, &digest, .{});
++    const expected = [_]u8{ 0x04, 0xb2, 0xfb, 0xea, 0xc6, 0xba, 0x3b, 0x10, 0x81, 0xd5, 0xb9, 0x10, 0xf1, 0xbc, 0xeb, 0x26, 0x9e, 0x45, 0x14, 0xa0, 0x7c, 0x37, 0x68, 0x9d, 0x80, 0xce, 0x4f, 0x60, 0xc6, 0xed, 0xae, 0x0d };
++    fixture_auth_ok = payload.len == 201 and std.mem.eql(u8, &digest, &expected);
++    var marker: [256]u8 = @splat(0x6b);
++    asm volatile ("" :: [p] "r" (&marker) : .{ .memory = true });
+ }
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index d7b8f9fe..7ca4da3b 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -62,7 +62,7 @@ case "$rs485_test" in loopback) rs485_mode=1 ;; peer) rs485_mode=2 ;; no-loopbac
+ if [ "$rs485" != true ] && [ "$rs485_test" != loopback ]; then echo "RS485_TEST requires RS485=1" >&2; exit 1; fi
+ if [ "$rs485" = true ] && { [ "$audio" = true ] || [ "$microphone" = true ]; }; then echo "RS485 fixture uses a separate build from audio/microphone fixtures" >&2; exit 1; fi
+ if [ "$devices" = true ] && { [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then echo "DEVICES uses on-demand requests; select one standalone fixture instead" >&2; exit 1; fi
+-root_opt=safe
++root_opt=small # Fixture-only code-size experiment.
+ if [ "$network" = true ] || [ "$devices" = true ]; then root_opt=small; fi
+ mode=${3:-integer}
+ if [ "$profile" = device ]; then default_cpu_mhz=360; else default_cpu_mhz=0; fi
+@@ -1198,6 +1198,8 @@ fi
+ if [ -n "$pmp_user_object" ]; then
+     set -- "$pmp_user_object" "$@"
+ fi
++"$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/ssh_stack_fixture.o"
++set -- "$@" "$build_dir/ssh_stack_fixture.o"
+ "$zig" build-exe -target riscv32-freestanding-none \
+     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
+     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+diff --git a/tools/build-native.sh b/tools/build-native.sh
+index bf6906de..dfa67a8d 100644
+--- a/tools/build-native.sh
++++ b/tools/build-native.sh
+@@ -148,7 +148,7 @@ if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/grap
+ if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
+ if [ "${NIHOS_NATIVE_NORMAL_STORAGE:-0}" = 1 ]; then set -- "$@" --normal-fs "$build_dir/normal-fs-manifest.json"; fi
+ if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then set -- "$@" --sqld "$build_dir/sqld-manifest.json"; fi
+-"$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
++"$python" "$repo_root/tools/check-ssh-auth-fixture.py" "$build_dir/nihos-native.elf" \
+     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
+     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"
+ if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
+diff --git a/tools/check-ssh-auth-fixture.py b/tools/check-ssh-auth-fixture.py
+new file mode 100644
+index 00000000..de3dd8fd
+--- /dev/null
++++ b/tools/check-ssh-auth-fixture.py
+@@ -0,0 +1,54 @@
++#!/usr/bin/env python3
++"""Bounded audit for emulator-only SSH fixture; does not prove cache-off safety."""
++import importlib.util
++import os
++import struct
++import sys
++from pathlib import Path
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT / 'tools'))
++spec = importlib.util.spec_from_file_location('nihos_image_audit', ROOT / 'tools/check-native-image.py')
++audit = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(audit)
++EXTRA = {'crypto.25519.scalar.Scalar.fromBytes'}
++original = audit.audit_pmp_flash
++
++def check_functions(functions, span):
++    for name in EXTRA:
++        matches = [(a, b) for n, a, b in functions if n == name]
++        audit.require(len(matches) == 1 and span[0] <= matches[0][0] < matches[0][1] <= span[1],
++                      'SSH fixture function missing, duplicated or outside mapped Flash: ' + name)
++    return original(functions, span)
++
++def check_no_copy(elf):
++    hdr = struct.unpack_from('<16sHHIIIIIHHHHHH', elf)
++    sections = [struct.unpack_from('<10I', elf, hdr[6] + i * hdr[11]) for i in range(hdr[12])]
++    resident = [elf[s[4]:s[4] + s[5]] for s in sections if s[1] != 8 and s[2] & 2 and 0x4ff00000 <= s[3] < 0x50000000]
++    found = {}
++    for sec in sections:
++        if sec[1] != 2: continue
++        strings = sections[sec[6]]
++        names = elf[strings[4]:strings[4] + strings[5]]
++        for off in range(sec[4], sec[4] + sec[5], sec[9]):
++            n, value, size, _, _, idx = struct.unpack_from('<IIIBBH', elf, off)
++            end = names.find(b'\0', n)
++            audit.require(end >= 0, 'invalid symbol name')
++            name = names[n:end].decode('ascii')
++            if name not in EXTRA: continue
++            audit.require(name not in found and idx < len(sections), 'duplicate fixture symbol')
++            parent = sections[idx]
++            offset = value - parent[3]
++            audit.require(0 <= offset and offset + size <= parent[5] and 0x40000120 <= value < 0x40010000 and size >= 32,
++                          'fixture function outside mapped Flash')
++            pattern = elf[parent[4] + offset:parent[4] + offset + size]
++            audit.require(not any(pattern in data for data in resident), 'SSH fixture function copied to SRAM: ' + name)
++            found[name] = size
++    audit.require(set(found) == EXTRA, 'SSH fixture functions missing')
++
++if __name__ == '__main__':
++    if len(sys.argv) < 6 or sys.argv[4:6] != ['integer', 'emulator']:
++        raise SystemExit('SSH fixture audit is restricted to the emulator integer profile')
++    check_no_copy(Path(sys.argv[1]).read_bytes())
++    audit.PMP_FLASH_FUNCTIONS |= EXTRA
++    audit.audit_pmp_flash = check_functions
++    audit.main()
