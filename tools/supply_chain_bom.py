@@ -15,6 +15,9 @@ PATTERNS = {
     'BLAKE2s-256': (r'\bBlake2s256\b', 'hash'),
     'X25519': (r'\bX25519\b', 'key-agree'),
     'Ed25519': (r'\bEd25519\b', 'signature'),
+    # The card verifier implements RSA with Zig's generic finite-field API.
+    # A Modulus match is a candidate only, not proof of RSA or image membership.
+    'RSA-2048': (r'(?i:\bRSA[-_ ]?2048\b)|\bRsa2048\b|std\.crypto\.ff\.Modulus\s*\(\s*2048\s*\)', 'signature'),
     'AES-128': (r'\bAes128\b', 'block-cipher'),
     'ChaCha20-Poly1305': (r'\bChaCha20Poly1305\b', 'ae'),
     'ML-KEM': (r'\b(?:MlKem|MLKEM|mlkem)\w*\b', 'kem'),

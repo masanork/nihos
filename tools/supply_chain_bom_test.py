@@ -12,7 +12,7 @@ class BomTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             (root / 'src').mkdir()
-            (root / 'src' / 'demo.zig').write_text('const X = std.crypto.dh.X25519;\n')
+            (root / 'src' / 'demo.zig').write_text('const X = std.crypto.dh.X25519;\nconst M = std.crypto.ff.Modulus(2048);\n')
             (root / 'provenance.toml').write_text('[[source]]\nname="example"\nstatus="reference-only"\n')
             img = root / 'image'
             img.mkdir()
@@ -27,6 +27,9 @@ class BomTest(unittest.TestCase):
             self.assertEqual(sbom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(bytes(0x10000) + b'app').hexdigest())
             self.assertEqual(cbom['components'][0]['name'], 'X25519')
             self.assertIn({'name': 'nihos:source-location', 'value': 'src/demo.zig:1'}, cbom['components'][0]['properties'])
+            rsa = next(c for c in cbom['components'] if c['name'] == 'RSA-2048')
+            self.assertIn({'name': 'nihos:source-location', 'value': 'src/demo.zig:2'}, rsa['properties'])
+            self.assertIn({'name': 'nihos:image-membership', 'value': 'unverified'}, rsa['properties'])
             (img / 'nihos-native-flash.bin').write_bytes(bytes(0x10000) + b'bad')
             with self.assertRaises(ValueError):
                 bom.generate(root, img, out)
@@ -35,6 +38,12 @@ class BomTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bom.generate(root, img, out)
 
+
+    def test_rsa_rule_finds_real_verifier_code(self):
+        import re
+        source = (bom.ROOT / 'src/card/license_crypto.zig').read_text()
+        code = [line for line in source.splitlines() if not line.lstrip().startswith(('//', 'test '))]
+        self.assertTrue(any(re.search(bom.PATTERNS['RSA-2048'][0], line) for line in code))
 
     def test_audited_input_manifests_are_checked(self):
         with tempfile.TemporaryDirectory() as d:

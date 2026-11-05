@@ -15,7 +15,10 @@ for the normal Tab5 device build, retaining them with the image evidence:
   set of cryptographic identifiers. Matches include comments and tests. It is
   not a complete crypto inventory and does not establish that a match is linked,
   enabled, or used. C sources, generated code, Zig standard library internals,
-  external components, bootloader and C6 firmware are not covered.
+  external components, bootloader and C6 firmware are not covered. RSA-2048
+  candidates include generic 2048-bit finite-field declarations because the
+  NPA card verifier uses that API; such a match alone does not establish RSA
+  use. The verifier is built only in selected card profiles.
 
 The image audit and manifests are local unsigned evidence: the generator checks
 consistency with them, not their authenticity. It does not rerun the native
