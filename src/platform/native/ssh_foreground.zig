@@ -13,6 +13,7 @@ const UnavailableEntropy = struct {
         return error.EntropyUnavailable;
     }
 };
+pub const qualified = UnavailableEntropy.qualified;
 const Visit = ssh.Foreground(UnavailableEntropy);
 
 pub const Runtime = struct {

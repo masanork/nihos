@@ -1793,7 +1793,7 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
                 if (region.ssh_ui_experiment % @alignOf(SshUi) != 0) @compileError("SSH UI reservation misaligned");
             }
             const foreground = ssh_foreground orelse fail("SSH foreground not bound");
-            foreground.poll(ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
+            @import("ssh_foreground_stack.zig").poll(foreground, ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
         }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
         if (native_sqld and !native_udp_smoke) serviceSqld();
