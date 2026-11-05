@@ -39,8 +39,9 @@ pub const Handshake = struct {
     client_len: usize = 0,
     server_init: [8192]u8 = @splat(0),
     server_len: usize = 0,
-    client: [hybrid.client_len]u8 = undefined,
+    client: [hybrid.client_len]u8,
     pub fn init(secret: [32]u8, pin: [32]u8, banner: []const u8, public: *const [1184]u8) !Handshake {
+        // SAFETY: initInPlace initializes every field before returning success.
         var self: Handshake = undefined;
         try self.initInPlace(secret, pin, banner, public);
         return self;

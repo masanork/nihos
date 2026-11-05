@@ -8,6 +8,7 @@ const server_banner = @import("ssh_hybrid_vector.zig").server_banner;
 const client_kex = @import("ssh_hybrid_vector.zig").client_kex;
 const server_kex = @import("ssh_hybrid_vector.zig").server_kex;
 pub fn generate() !Vector {
+    // SAFETY: each field is populated before the vector is returned.
     var v: Vector = undefined;
     v.seed = @splat(0x37);
     v.xsecret = @splat(0x24);

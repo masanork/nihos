@@ -10,7 +10,7 @@ const transport = @import("ssh_transport.zig");
 pub const Connection = struct {
     const Phase = enum { identification, kex, ready, failed };
     identification: ident.Exchange,
-    driver: driver_mod.Driver = undefined,
+    driver: driver_mod.Driver,
     driver_ready: bool = false,
     pre_worker_owned: bool = true,
     secret: [32]u8,
@@ -25,6 +25,7 @@ pub const Connection = struct {
     /// The caller has already started the worker and received its public key.
     /// A failed init or connection requires explicit worker cancellation.
     pub fn init(epoch: u64, token: kem.Token, now: u64, deadline: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, public: [1184]u8) !Connection {
+        // SAFETY: initInPlace initializes all live fields; driver remains inaccessible until initialized.
         var self: Connection = undefined;
         try self.initInPlace(epoch, token, now, deadline, secret, pin, cookie, &public);
         return self;
@@ -33,6 +34,8 @@ pub const Connection = struct {
     pub fn initInPlace(self: *Connection, epoch: u64, token: kem.Token, now: u64, deadline: u64, secret: [32]u8, pin: [32]u8, cookie: [16]u8, public: *const [1184]u8) !void {
         if (epoch == 0 or token.epoch == 0 or token.request == 0 or deadline <= now) return error.InvalidToken;
         self.identification = .{ .epoch = epoch };
+        // SAFETY: driver is initialized in place before driver_ready becomes true.
+        self.driver = undefined;
         self.driver_ready = false;
         self.pre_worker_owned = true;
         self.secret = secret;
