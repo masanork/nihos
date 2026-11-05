@@ -1,0 +1,34 @@
+{
+  "object_sha256": "e396a5a24601cabf91195a0fe2d23a8df2408d1cdabeb6a0a571c14380958f19",
+  "functions": {
+    "crypto.aes.bitsliced.Batch(1).addRoundKey": 24,
+    "crypto.aes.bitsliced.Batch(1).packRoundKey": 2512,
+    "crypto.aes.bitsliced.Batch(1).round": 720,
+    "crypto.aes.bitsliced.Batch(1).sbox": 586,
+    "crypto.aes.bitsliced.Batch(1).shiftRows": 64,
+    "crypto.aes.bitsliced.Batch(1).subBytes": 58,
+    "crypto.aes.bitsliced.Batch(1).swapMove__func_15": 32,
+    "crypto.aes.bitsliced.Batch(1).swapMove__func_16": 32,
+    "crypto.aes.bitsliced.Batch(1).swapMove__func_17": 32,
+    "crypto.aes.bitsliced.Batch(1).swapMove__func_18": 28,
+    "crypto.aes.bitsliced.Batch(1).swapMove__func_19": 32,
+    "crypto.aes.soft.KeySchedule(crypto.aes.soft.Aes128).expandKey__struct_1.func": 278,
+    "crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).final": 220,
+    "crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).round": 9026,
+    "crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).update": 194,
+    "nih_stream_feed": 1238,
+    "nih_stream_keys": 3522,
+    "nih_stream_release": 76,
+    "nih_stream_size": 8,
+    "ssh.Aes128Ctr.crypt": 1284,
+    "stream_rv32.nih_stream_feed": 1238,
+    "stream_rv32.nih_stream_keys": 3522,
+    "stream_rv32.nih_stream_release": 76,
+    "stream_rv32.nih_stream_size": 8
+  },
+  "constants": {
+    "__anon_14317": 112,
+    "crypto.aes.soft.sbox_key_schedule": 256
+  },
+  "baseline_elf_sha256": "84f63b26445177578b3c790c946e8f7c6b0ef932a6ec05ef9d3ff65b37e023fc"
+}

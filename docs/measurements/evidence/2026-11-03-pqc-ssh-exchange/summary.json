@@ -1,0 +1,48 @@
+{
+  "base": "309ac946",
+  "note": "Fixed synthetic exchange, no TCP, no deployed SSH, no physical or cache-off proof",
+  "candidates": {
+    "good": {
+      "elf_sha256": "48b6e42f44281b180f4064f2c740f90734903dc076db593035f0ad10d6ace09b",
+      "image_sha256": "a42ff80e9148f0fb71d829ac6c46cf7afa04797672fee6b6b4dc5c27dcbd4675",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    },
+    "bad-ct": {
+      "elf_sha256": "c0d9a4ec7dc9b360bff3701f5bf989d9d82ecb87ff5fb4eed573d9477064d860",
+      "image_sha256": "4eb13ffd946852e5d8ed9f241083e1b59a93beb57d86abf6418a06aacfea834a",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    },
+    "bad-pin": {
+      "elf_sha256": "dcf741db3878126aee8eac0f0629d9082ff97f518342214b53e643e1ed030cd2",
+      "image_sha256": "9d70f7de029d53e93a185703fe95a30c036df1548f05f4545506cbdf2ed3466e",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    }
+  },
+  "logs": {
+    "bad-ct.log": "2e942ba90c73a24c70622cb3a43ab7fac05899a67ac7274110352d3d30837c87",
+    "bad-pin.log": "5b087f0a7fa9efc2295c3c91463dfa2293c00cbd5b04f48bbf599a5f9043b3e8",
+    "good.log": "7bfcb34535959890d2a61f2d7e73225d11a3ea5d092ad700c2bcbc49c3cfb018",
+    "no-psram.log": "e61a281c47cf87cf91ff3332e6d4bd4d69b198cb6d9b7f5478d116114dff85bb"
+  },
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "79ba02906367883f477bf415212ab3b69d9ea89d63061eaca92b66e824d1b7ac",
+    "src/platform/native/main.zig": "0d1e5c2c47784299f9125eb1e966cd1fff7b70d7ae4ffbb78329297c63d90718",
+    "src/platform/native/pqc_task.zig": "c9ff7c6e1d3f3de9d19b76a34110227fed7480abdbbd0ab887ce51b17ac39899",
+    "src/platform/native/esp32p4.ld": "b7c461c9fd1c0178640f10b2eea8c49c4b4b612b8c65be43871bbb780ab795d7",
+    "tools/build-native.sh": "5cb8122dcfa224739b17a4504312c2b3d3bd67e34b418ce54c87edd7139551d3",
+    "tools/build-native-elf.sh": "b7fba9b0278494f7ed76eff36d44b667ca40a667601969025f93010f4e6de6ac",
+    "probes/pqc-ssh/task_fixture.c": "bc9ec99140e7e04bf9f894fbc947f73106ef4880914f689dd6715686d605ccb8",
+    "probes/pqc-ssh/kem_job.c": "325ee1437394cccfebc43ec347b682b8d2d711e1a974615f6e04b96a199d319e",
+    "probes/pqc-ssh/kem_job.h": "24f87082c40f3484f50570225f93dce16310dbd4cbdf56d7d2f0198d52782662",
+    "src/net/ssh_hybrid_fixture.zig": "cbe2b44ea885bca2583815b5424899d7920b0e65f3bedc375be1e512cd055ad6",
+    "src/net/ssh_hybrid_public_vector.bin": "e25db9b11a3fc86e69e70f4a16a1951d7560f29856273efa15393651e91dd7c9",
+    "src/net/ssh_hybrid_vector.zig": "51ac74cedbe1a581530fcd0d27d0cf8ccb30a30262bdac30032c2c9496c8102d",
+    "src/net/ssh_hybrid_transcript.zig": "0bbce79c7ccc41ebbb376f33cd4d947ea3db83528cf52beea59b8b0aa06d9cc0",
+    "src/net/ssh_host_key.zig": "8da903c050bda4c27299afe2e78288587a774e70fb496fa80e54846e1b19034b",
+    "probes/pqc-ssh/audit_emulator_ssh.py": "46fdaa6e2dd1ba5ae314753ccdf4fd8485bef1aedaf8b18fb9552538879444aa"
+  },
+  "upstream_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06"
+}

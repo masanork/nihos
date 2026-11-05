@@ -1,0 +1,30 @@
+{
+  "base": "4f85da32",
+  "note": "Compile-only RV32 object sections before link and garbage collection; not firmware incremental size, stack, device or full SSH proof. The NEWKEYS transition was tested on host only.",
+  "target": "riscv32-freestanding-none generic_rv32+m+a+c+zicsr+zifencei ReleaseSafe Zig 0.17.0",
+  "objects": {
+    "initial": {
+      "sha256": "9ad16878d694ab05b22f6defef689ad31f72f7c60c6a666ea22578c7827e9881",
+      "executable_bytes": 4950,
+      "readonly_bytes": 1267,
+      "writable_bytes": 0,
+      "nobits_bytes": 0,
+      "decoder_size_bytes": 36752
+    },
+    "full": {
+      "sha256": "b3efa262312d1115e7d5b24932854ebde0bb15c9c41663553358b38c5e89692b",
+      "executable_bytes": 36672,
+      "readonly_bytes": 1909,
+      "writable_bytes": 0,
+      "nobits_bytes": 0,
+      "decoder_size_bytes": 36752
+    }
+  },
+  "source_sha256": {
+    "src/net/ssh_stream.zig": "12fe4645f7c7d8ca751985e451f47be6b1545619dccdfac97fd28e22684c0594",
+    "src/net/ssh.zig": "b3bb34a98b465a5372dbf3ebd50575205cc9365c1985fbb8eb839d810371ff26",
+    "probes/pqc-ssh/stream_rv32.zig": "097f7a91499122704bce644bf03a1704e81fbb30867b088d07c87d4b8c666488",
+    "probes/pqc-ssh/stream-rv32-study.sh": "cc5cfa7b8183960b016f35e977e6f29019f52a7d4ad45b6f23a052da3a6719cb",
+    "probes/pqc-ssh/measure.py": "45249e0342ff860848bc6e8b4f320229016c4b62a8a12ef921d994fbb9b934b5"
+  }
+}

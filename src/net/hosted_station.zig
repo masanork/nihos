@@ -1,6 +1,10 @@
 //! Single-flight factory-Hosted station boot experiment. Keeps credentials
 //! volatile, correlates RPC UID + ID, and requires an actual DHCP ACK.
 const std = @import("std");
+pub const pqc_handoff = @import("ssh_kem_handoff.zig");
+pub const pqc_reply = @import("ssh_hybrid_reply.zig");
+pub const pqc_stream = @import("ssh_stream.zig");
+pub const pqc_ssh = @import("ssh.zig");
 fn timeSection() []const u8 {
     const root = @import("root");
     if (@hasDecl(root, "HostedStationSection")) return root.HostedStationSection;

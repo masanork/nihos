@@ -1,0 +1,34 @@
+{
+  "base": "79431c49",
+  "note": "Rooted link-only experiment; normal audit rejects this unapproved placement, experimental audit passes. No actual SSH runtime, reserved buffers, entropy, cache-off analysis, emulator boot, or physical proof.",
+  "baseline": {
+    "elf_sha256": "84f63b26445177578b3c790c946e8f7c6b0ef932a6ec05ef9d3ff65b37e023fc",
+    "image_sha256": "2e11c35182e22877723d679bec4392c2043093aefe2ee42c9c8bb3b6be80dabf",
+    "heap_bytes": 53056,
+    "primary_static_bytes": 110784,
+    "xy_code_bytes": 209936,
+    "xy_rodata_bytes": 3306844
+  },
+  "candidate": {
+    "elf_sha256": "f8e5ed467c0647b9417983cc61df80a1e8bed22d216e64f4071cd37d9c53df12",
+    "image_sha256": "56296a57ed15d09d3bab3130c9978ec405cd5a7e148aaa4972e4907574f48a9e",
+    "heap_bytes": 53056,
+    "primary_static_bytes": 110784,
+    "xy_code_bytes": 249216,
+    "xy_rodata_bytes": 3307660
+  },
+  "stream_object_sha256": "e396a5a24601cabf91195a0fe2d23a8df2408d1cdabeb6a0a571c14380958f19",
+  "matching_resident_constant": "__anon_14317 is SHA-256 initial state plus zeros; same bytes and count already in exact baseline.",
+  "negative_tests": "injected KEM copy, injected stream copy, and missing stream symbol rejected",
+  "source_sha256": {
+    "probes/pqc-ssh/device-stream-link-study.patch": "6d70b7d997a9222b0ec421d17fb590b13126df056c978c6b84ed46ffe5a98f27",
+    "probes/pqc-ssh/device-stream-witness.json": "97a15195c1adc64600efb8b970419722ef61f3bf93e1ce7db0edc3f2553dd440",
+    "probes/pqc-ssh/audit_device_stream.py": "22271d01cd4af797d6986063a4fe0c2e90b5e2a9328a6eaa75ac2a061a890138",
+    "probes/pqc-ssh/audit_device_stream_test.py": "527e4ef2c364592b4bb4080b0ee09a2e0776dcc2823cf2011b0df5649d867957",
+    "probes/pqc-ssh/audit_flash_fixture.py": "a62487e8aff505133dc930e81bac38649e2dbde6af775098b06094b01b78df47",
+    "probes/pqc-ssh/stream_rv32.zig": "097f7a91499122704bce644bf03a1704e81fbb30867b088d07c87d4b8c666488",
+    "src/net/ssh_stream.zig": "12fe4645f7c7d8ca751985e451f47be6b1545619dccdfac97fd28e22684c0594",
+    "src/net/ssh.zig": "b3bb34a98b465a5372dbf3ebd50575205cc9365c1985fbb8eb839d810371ff26",
+    "tools/check-native-image.py": "b0d853d6ba98b6b62968c64b25333a0673f98df14f8ddb6dea6e308a9bd70674"
+  }
+}

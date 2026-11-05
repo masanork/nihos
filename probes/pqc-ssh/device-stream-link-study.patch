@@ -1,0 +1,46 @@
+diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
+index b16fd6ac..e39a6700 100644
+--- a/src/platform/native/esp32p4.ld
++++ b/src/platform/native/esp32p4.ld
+@@ -321,6 +321,12 @@ SECTIONS
+     } > flash_xy_gap
+     .flash.xytext : ALIGN(16) {
+         __flash_xy_start = .;
++        KEEP(*job_roots.o(.text.nih_pqc_ssh_job_roots))
++        . += 16;
++        *mlkem.o(.text .text.*)
++        *arena.o(.text .text.*)
++        *kem_job.o(.text .text.*)
++        KEEP(*stream-full.o(.text .text.*))
+         *xy_render.o(.text .text.*)
+         *xy_decimal.o(.text .text.*)
+ #if !NIH_NATIVE_SQLD && !NIH_NATIVE_WASM
+@@ -337,11 +343,15 @@ SECTIONS
+         *(.text.hosted_station.Client.afterVersion .text.hosted_station.Client.encodeFrame)
+         *(.text.hosted_station.Client.maintain .text.hosted_station.Client.beginDual)
+ #endif
+-        . = ALIGN(16);
++        . = ALIGN(64);
+         __flash_xy_text_end = .;
+     } > flash_xy
+     .flash.xyrodata : ALIGN(16) {
+         __flash_xy_rodata_start = .;
++        *mlkem.o(.rodata .rodata.* .srodata .srodata.*)
++        *arena.o(.rodata .rodata.* .srodata .srodata.*)
++        *kem_job.o(.rodata .rodata.* .srodata .srodata.*)
++        *stream-full.o(.rodata .rodata.* .srodata .srodata.*)
+         *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
+         *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
+         /* LLVM's switch tables do not inherit the function's linksection.
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index b6fe9bf7..cf4c589a 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -1187,6 +1187,7 @@ fi
+ if [ -n "$pmp_user_object" ]; then
+     set -- "$pmp_user_object" "$@"
+ fi
++set -- "$@" "$repo_root/build/pqc-ssh-rv32/mlkem.o" "$repo_root/build/pqc-ssh-rv32/arena.o" "$repo_root/build/pqc-ssh-rv32/kem_job.o" "$repo_root/build/pqc-ssh-rv32/job_roots.o" "$repo_root/build/pqc-ssh-stream-rv32/stream-full.o"
+ if [ "$pqc_task" = true ]; then
+     : "${NIHOS_MLKEM_ARCHIVE:?PQC_TASK requires pinned ML-KEM archive}"
+     ZIG="$zig" sh "$repo_root/probes/pqc-ssh/rv32-study.sh"

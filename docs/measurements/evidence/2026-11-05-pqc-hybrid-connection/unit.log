@@ -1,0 +1,41 @@
+1/40 ssh_hybrid_connection.test.identification failure requires worker cancellation without harming another pump...OK
+2/40 ssh_kem_handoff.test.request buffers are copied, one-shot, and secret is erased after authentication...OK
+3/40 ssh_kem_handoff.test.stale completions do not release worker and timeout requires acknowledgement...OK
+4/40 ssh_kem_handoff.test.failed authentication and clock regression fail closed...OK
+5/40 ssh_kem_handoff.test.completion racing a cancellation is discarded before worker acknowledgement...OK
+6/40 ssh_kem_handoff.test.worker completion only publishes SSH transport keys after pinned host proof...OK
+7/40 ssh_identification.test.fragmented identification preserves the following packet...OK
+8/40 ssh_identification.test.identification rejects unsupported versions and malformed input...OK
+9/40 ssh_identification.test.backpressure is retryable and invalid progress fails closed...OK
+10/40 ssh_hybrid_driver.test.worker response is authenticated before NEWKEYS and transport activation...OK
+11/40 ssh_hybrid_driver.test.worker submission failure waits for cancellation acknowledgement...OK
+12/40 ssh_hybrid_driver.test.silent worker timeout aborts transport and retains worker backing...OK
+13/40 ssh_hybrid_driver.test.late verified result cannot send NEWKEYS...OK
+14/40 ssh_hybrid_driver.test.in-place initialization failure clears protocol and cookie...OK
+15/40 ssh_hybrid_handshake.test.shared handshake verifies worker secret against fixed transcript and pin...OK
+16/40 ssh_hybrid_exchange.test.capture and timeout retain worker ownership but erase reply...OK
+17/40 ssh_hybrid_exchange.test.authentication callback is bounded by deadline and clears retained data...OK
+18/40 ssh_kex.test.server proof gates exchange keys...OK
+19/40 ssh_kex.test.KEXINIT requires every supported direction and no speculative packet...OK
+20/40 ssh_hybrid_transcript.test.hybrid transcript hashes fixed-width secrets and SSH strings...OK
+21/40 ssh_hybrid_reply_buffer.test.fragmented transport reply remains owned after release and abort...OK
+22/40 ssh_hybrid_reply_buffer.test.malformed reply does not consume decoder packet...OK
+23/40 ssh_hybrid_reply_buffer.test.oversized packet remains with decoder...OK
+24/40 ssh_transport.test.partial writes retain bytes and prevent overlapping packets...OK
+25/40 ssh_stream.test.fragmented encrypted packets and authentication failure...OK
+26/40 ssh_stream.test.multiple plaintext packets preserve boundaries and reject oversized headers...OK
+27/40 ssh_stream.test.initial decoder matches normal plaintext decoder on fragmented and invalid packets...OK
+28/40 ssh_stream.test.initial NEWKEYS transfers sequence and leaves subsequent encrypted bytes unread...OK
+29/40 ssh_stream.test.initial transfer rejects wrong packet, dirty destination and exhausted sequence...OK
+30/40 ssh.test.AES-128-CTR round-trip encryption...OK
+31/40 ssh.test.SSH packet packing and unpacking (unencrypted)...OK
+32/40 ssh.test.packet validation rejects missing padding entropy, malformed lengths and MAC changes...OK
+33/40 ssh.test.SSH packet packing and unpacking (encrypted with AES-128-CTR and HMAC-SHA256)...OK
+34/40 ssh.test.formatMpint for SSH integers...OK
+35/40 ssh.test.SSH key derivation (RFC 4253 section 7.2) using std.crypto...OK
+36/40 ssh_socket_pump.test.pump preserves partial I/O, packet boundaries and fails on epoch reset...OK
+37/40 ssh_hybrid_reply.test.complete reply is required before ciphertext is exposed...OK
+38/40 ssh_handshake.test.handshake prevents out-of-order and invalid server progress...OK
+39/40 ssh_host_key.test.exchange hash encodes SSH strings and positive shared mpint...OK
+40/40 ssh_host_key.test.pinned Ed25519 host key verifies the exchange and rejects changes...OK
+All 40 tests passed.

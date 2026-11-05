@@ -1,0 +1,21 @@
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -1177,6 +1177,7 @@
+ if [ -n "$pmp_user_object" ]; then
+     set -- "$pmp_user_object" "$@"
+ fi
++set -- "$@" "$repo_root/build/pqc-ssh-rv32/mlkem.o" "$repo_root/build/pqc-ssh-rv32/arena.o" "$repo_root/build/pqc-ssh-rv32/roots.o"
+ "$zig" build-exe -target riscv32-freestanding-none \
+     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
+     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+--- a/src/platform/native/esp32p4.ld
++++ b/src/platform/native/esp32p4.ld
+@@ -419,7 +419,7 @@
+         __flash_wasm_rodata_end = .;
+     } > flash_sql
+ #endif
+-    .text : ALIGN(64) { KEEP(*(.text.start)) *(.text .text.* .iram1 .iram1.*) } > ram
++    .text : ALIGN(64) { KEEP(*(.text.start)) KEEP(*(.text.nih_pqc_ssh_roots)) *(.text .text.* .iram1 .iram1.*) } > ram
+     .fp_app : ALIGN(16) {
+         __fp_app_start = .;
+         *(.fp_app .fp_app.*)
