@@ -221,7 +221,9 @@ boundary and modifications.
 
 Sources used as specifications, references, or dependencies are recorded in
 [`provenance.toml`](provenance.toml). A source marked `reference-only` must not
-be copied into the repository.
+be copied into the repository. The native build can also produce explicitly
+incomplete [source SBOM and CBOM candidates](docs/supply-chain-inventory.md)
+bound to an image digest.
 
 ## Repository policy
 

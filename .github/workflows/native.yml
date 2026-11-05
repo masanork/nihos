@@ -55,6 +55,8 @@ jobs:
       - name: Build physical Tab5 revision 1.x image
         run: |
           sh tools/build-native.sh device
+          python3 -m unittest discover -s tools -p 'supply_chain_bom_test.py'
+          python3 tools/supply_chain_bom.py build/native-device-network-devices-camera-sqld build/native-device-network-devices-camera-sqld/bom
           sh tools/build-native.sh device floating
           sh tools/build-native.sh device compiled
           sh tools/build-native.sh device sqlite
@@ -83,6 +85,7 @@ jobs:
         with:
           name: native-boot-evidence
           path: |
+            build/native-*/bom/*.cdx.json
             build/native-*/image-audit.json
             build/native-*/fatfs-link-audit.json
             build/native-*/call-stack.json
