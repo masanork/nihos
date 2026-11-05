@@ -169,6 +169,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_host_key_module })).step);
     const ssh_stream_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_stream.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_stream_module })).step);
+    const ssh_hybrid_connection_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_hybrid_connection.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_hybrid_connection_module })).step);
     const ssh_kex_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_kex.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_kex_module })).step);
     const ssh_auth_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_auth.zig"), .target = target, .optimize = optimize });
