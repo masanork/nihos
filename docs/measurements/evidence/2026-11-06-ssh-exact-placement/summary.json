@@ -1,0 +1,34 @@
+{
+  "profile": "link-only; entropy unavailable; do not flash or execute",
+  "source_head": "37a65f96aa8bde729ef451ca05fe518f13ef130a",
+  "fixture_patch_sha256": "2460524bd58d289593af38c26a6fbf87bd2b8d1544cdabb4d5f7e8547008808e",
+  "elf_sha256": "a6aa0e51c6415016a36a788ea522f8e2f9146b204d1642b772c4aaf4d91e2379",
+  "heap_bytes": 54080,
+  "normal_audit": "rejected unapproved xy Flash functions",
+  "study_audit": "exact function names and structural image checks passed; not cache-off qualification",
+  "negative_controls": "misplaced function and full SRAM code copy rejected",
+  "table_audit": {
+    "table_sha256": "97dfc18d19f9cf8952f9409cffe06bba8804cfdc21a731ff9705dc887e49f75b",
+    "table_bytes": 2688,
+    "symbols": [
+      {
+        "symbol": "__anon_84718",
+        "address": "0x400b23b0"
+      }
+    ],
+    "copies": [
+      {
+        "address": "0x400b23b0",
+        "writable": false,
+        "region": "mapped_flash"
+      }
+    ]
+  },
+  "irq_graph": {
+    "directly_reachable_functions": 417,
+    "directly_reachable_ssh_crypto_names": [],
+    "unresolved_indirect_count": 155,
+    "limitations": "Named direct and adjacent AUIPC/JALR edges only; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven."
+  },
+  "irq_graph_sha256": "e50e2dd82d9a84c1985d12b55be9d32f3c126976cabaf5a480efb744f870f5d0"
+}
