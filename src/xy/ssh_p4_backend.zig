@@ -456,3 +456,77 @@ test "stuck analog restoration never admits or retains cancelled entropy" {
     try std.testing.expect(gate.trySqlite());
     try std.testing.expect(gate.releaseSqlite());
 }
+
+test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
+    const sessions = @import("ssh_entropy_session.zig");
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Model = struct {
+        pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
+        pub const PrivateInputPortType = struct {
+            pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
+            context: *anyopaque,
+            key: *const fn (*anyopaque, PrivateInputKey) bool,
+            close: *const fn (*anyopaque) void,
+            snapshot: *const fn (*anyopaque, *View) bool,
+        };
+        private_input: ?PrivateInputPortType = null,
+        pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
+            if (self.private_input != null) return false;
+            self.private_input = port;
+            return true;
+        }
+        pub fn detachPrivateInput(self: *@This()) void {
+            const port = self.private_input orelse return;
+            self.private_input = null;
+            port.close(port.context);
+        }
+    };
+    const Controller = struct {
+        state: lifecycle.State = .idle,
+        pub fn beginProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
+        pub fn pollProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: ?*const lifecycle.ExchangeEntropy, _: *const [32]u8) !lifecycle.State {
+            return .opening;
+        }
+        pub fn cancel(_: *@This()) void {}
+        pub fn retryCleanup(_: *@This()) bool {
+            return true;
+        }
+    };
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    var model: Model = .{};
+    var controller: Controller = .{};
+    var foreground = try lifecycle.PreparedForeground(Model, Controller, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectEqual(.acquiring, foreground.poll(true, 0));
+    io.tick();
+    try std.testing.expectEqual(.acquiring, foreground.poll(true, io.now));
+    try std.testing.expect(!io.acquired and model.private_input == null);
+    try std.testing.expect(gate.releaseSqlite());
+    io.tick();
+    try std.testing.expectEqual(.preparing, foreground.poll(true, io.now));
+    try std.testing.expectEqual(@as(u64, 100_000), session.collector.deadline);
+    var saw_restore = false;
+    for (0..800) |_| {
+        io.tick();
+        const state = foreground.poll(true, io.now);
+        if (session.state == .restoring) {
+            saw_restore = true;
+            try std.testing.expect(!gate.trySqlite());
+        }
+        try std.testing.expect(model.private_input == null);
+        if (state == .active) break;
+    }
+    try std.testing.expect(saw_restore and foreground.state == .active);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    io.tick();
+    try std.testing.expectEqual(.active, foreground.poll(true, io.now));
+    try std.testing.expect(model.private_input != null);
+    io.tick();
+    _ = foreground.poll(false, io.now);
+    try std.testing.expect(model.private_input == null and !session.available());
+}
