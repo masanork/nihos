@@ -142,7 +142,7 @@ pub const Engine = struct {
     }
 
     /// Convert reading (hiragana UTF-8 string) into bunsetsu segments using Viterbi DP.
-    pub fn convert(self: *Engine, dict: *const NfstDict, reading: []const u8) linksection(code_section) void {
+    pub fn convert(self: *Engine, dict: anytype, reading: []const u8) linksection(code_section) void {
         const len = @min(reading.len, max_reading);
         @memcpy(self.reading_buf[0..len], reading[0..len]);
         self.reading_len = len;
@@ -213,7 +213,7 @@ pub const Engine = struct {
     }
 
     /// Calculate cost for reading phrase [i..j)
-    fn calcPhraseCost(self: *Engine, dict: *const NfstDict, phrase: []const u8, start_offset: u8, best_k: *u8, is_ari: *bool) linksection(code_section) i32 {
+    fn calcPhraseCost(self: *Engine, dict: anytype, phrase: []const u8, start_offset: u8, best_k: *u8, is_ari: *bool) linksection(code_section) i32 {
         _ = self;
         var min_cost = inf_cost;
         var bk = start_offset;
@@ -296,7 +296,7 @@ pub const Engine = struct {
         return min_cost;
     }
 
-    fn populateCandidates(self: *Engine, dict: *const NfstDict, seg: *Segment) linksection(code_section) void {
+    fn populateCandidates(self: *Engine, dict: anytype, seg: *Segment) linksection(code_section) void {
         const phrase = self.reading_buf[seg.start..seg.end];
         const dict_part = self.reading_buf[seg.start..seg.dict_end];
         const tail_part = self.reading_buf[seg.dict_end..seg.end];
