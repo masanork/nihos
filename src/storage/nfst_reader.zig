@@ -8,7 +8,7 @@ pub const max_key_bytes = 128;
 pub const max_candidates = 8;
 pub const Error = error{ Io, Corrupt, InvalidKey };
 pub const Candidates = struct {
-    bytes: [max_candidates][255]u8 = undefined,
+    bytes: [max_candidates][255]u8 = @splat(@splat(0)),
     lengths: [max_candidates]u8 = @splat(0),
     count: u8 = 0,
     truncated: bool = false,
@@ -28,7 +28,7 @@ pub fn Dictionary(comptime Reader: type) type {
         cand_length: u32,
         arena_start: u64,
         arena_length: u32,
-        cache: [page_bytes]u8 = undefined,
+        cache: [page_bytes]u8 = @splat(0),
         cache_start: u64 = 0,
         cache_length: usize = 0,
         cache_valid: bool = false,
