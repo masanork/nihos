@@ -33,7 +33,9 @@ jobs:
           version: v5.4.4
 
       - name: Check smoke log validator regressions
-        run: python3 -m unittest discover -s tools -p 'native*_test.py'
+        run: |
+          sh tools/bootstrap-zig.sh
+          python3 -m unittest discover -s tools -p 'native*_test.py'
 
       - name: Integer native boot without external RAM
         run: sh tools/run-native-smoke.sh
