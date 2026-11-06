@@ -42,6 +42,24 @@ test "large paged dictionary drives IME after remount" {
     const pin = try recovered.pinObject(1);
     defer recovered.release(pin) catch unreachable;
     var source = fixture.StoreReader{ .store = &recovered, .pin = pin, .base = 0 };
+    // A delayed host completion traverses the real pinned store. The page
+    // coordinator never exposes its internal buffer to an I/O producer.
+    var async_page: @import("storage/async_page.zig").Coordinator = .{};
+    try async_page.attach(1, size);
+    const request = try async_page.request(0);
+    var magic: [4]u8 = undefined;
+    try std.testing.expectError(error.NotReady, async_page.copy(request, 0, &magic));
+    var received: [4096]u8 = undefined;
+    try std.testing.expectEqual(request.length, try source.read(request.offset, received[0..request.length]));
+    try async_page.complete(request, received[0..request.length]);
+    try async_page.copy(request, 0, &magic);
+    try std.testing.expectEqualStrings("NFST", &magic);
+    const cancelled = try async_page.request(4096);
+    try async_page.cancel(cancelled);
+    try std.testing.expectError(error.Busy, async_page.detach());
+    try std.testing.expectEqual(cancelled.length, try source.read(cancelled.offset, received[0..cancelled.length]));
+    try async_page.complete(cancelled, received[0..cancelled.length]);
+    try async_page.detach();
     var dict = try nfst.Dictionary(fixture.StoreReader).init(&source, size);
     defer dict.invalidate();
     var result: nfst.Candidates = .{};
