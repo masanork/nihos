@@ -41,11 +41,13 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
     const call = Call{ .runtime = runtime, .model = model, .ui = ui, .now = now };
     nih_ssh_foreground_stack_call(&call, top, previous & 8);
     if (!tasks.endForegroundStack(original)) nih_native_task_failed();
-    tasks.memory.stacks.endForeground();
-    asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
     for (guard) |word| if (word != region.guard) nih_native_task_failed();
-    // Only this owner can use this reservation. Erase transient key copies.
+    // The scheduler image now describes the restored boot stack. Keep the
+    // foreground reservation through the wipe, but allow interrupts while
+    // clearing PSRAM so another visit cannot reuse partially erased memory.
+    asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
     std.crypto.secureZero(u8, stack[16..]);
+    tasks.memory.stacks.endForeground();
 }
 
 comptime {
