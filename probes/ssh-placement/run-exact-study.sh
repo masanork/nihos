@@ -32,6 +32,9 @@ git -C "$tmp/tree" apply "$root/probes/ssh-placement/exact-link-only.patch"
     grep -q 'Native image audit failed: unapproved xy Flash function:' "$out/standard-audit.log"
     cp "$dir/image-audit.json" "$out/study-audit.json"
     python3 "$root/probes/ssh-placement/test-audit-negative.py" "$image" > "$out/negative-controls.log"
+    if [ -n "${NIHOS_OBJDUMP:-}" ]; then
+        python3 "$root/probes/ssh-placement/inspect-irq-edges.py" "$NIHOS_OBJDUMP" "$image" "$out/irq-edges.json" > "$out/irq-summary.log"
+    fi
     python3 "$root/tools/audit-ssh-ed25519-table.py" "$image" --require-flash > "$out/table-audit.json"
     python3 - "$image" "$out" "$root/probes/ssh-placement/exact-link-only.patch" <<'PY'
 import hashlib, json, pathlib, struct, subprocess, sys
@@ -62,6 +65,11 @@ result = {'profile': 'link-only; entropy unavailable; do not flash or execute',
           'study_audit': 'exact function names and structural image checks passed; not cache-off qualification',
           'negative_controls': 'misplaced function and full SRAM code copy rejected',
           'table_audit': json.loads((out / 'table-audit.json').read_text())}
+irq = out / 'irq-edges.json'
+if irq.exists():
+    graph = json.loads(irq.read_text())
+    result['irq_graph'] = {key: graph[key] for key in ('directly_reachable_functions', 'directly_reachable_ssh_crypto_names', 'unresolved_indirect_count', 'limitations')}
+    result['irq_graph_sha256'] = hashlib.sha256(irq.read_bytes()).hexdigest()
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))
 PY
