@@ -95,6 +95,7 @@ test "paged IME preserves composition on read failure and copies candidates" {
     for ("nihon") |c| try ime.key(&doc, &adapter, c);
     // Force the next page fetch to fail while composition is active.
     dict.cache_valid = false;
+    dict.root_cache_valid = false;
     reader.fail = true;
     try std.testing.expectError(error.Io, ime.key(&doc, &adapter, ' '));
     try std.testing.expectEqualStrings("幹事", doc.slice());
@@ -119,6 +120,7 @@ test "existence memo resets per conversion and never stores failed reads" {
     adapter.beginConversion();
     try std.testing.expectEqual(@as(usize, 0), adapter.memo_count);
     dict.cache_valid = false;
+    dict.root_cache_valid = false;
     reader.fail = true;
     try std.testing.expect(!adapter.contains("かんじ"));
     try std.testing.expectError(error.Io, adapter.conversionError());

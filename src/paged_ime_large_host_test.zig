@@ -87,11 +87,15 @@ test "large paged dictionary drives IME after remount" {
             try optimized.key(&optimized_doc, &adapter, c);
         }
         dict.cache_valid = false;
-        adapter.memo_enabled = false;
+        dict.root_cache_valid = false;
+        dict.root_cache_enabled = false;
+        adapter.memo_enabled = true;
         const before = dict.cache_misses;
         try baseline.key(&baseline_doc, &adapter, ' ');
         const old_reads = dict.cache_misses - before;
         dict.cache_valid = false;
+        dict.root_cache_valid = false;
+        dict.root_cache_enabled = true;
         adapter.memo_enabled = true;
         const middle = dict.cache_misses;
         try optimized.key(&optimized_doc, &adapter, ' ');
@@ -107,5 +111,5 @@ test "large paged dictionary drives IME after remount" {
         try std.testing.expect(new_reads <= old_reads);
         std.debug.print("PAGED_IME keys={s} before={d} after={d} memo_hits={d}\n", .{ keys, old_reads, new_reads, adapter.memo_hits });
     }
-    std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
+    std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} data_cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
