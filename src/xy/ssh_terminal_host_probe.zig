@@ -80,7 +80,7 @@ export fn probe_vt_cell(index: usize) u32 {
 }
 
 const lifecycle = @import("ssh_lifecycle");
-const seeded_entropy = @import("ssh_entropy");
+const seeded_entropy = lifecycle.seeded_entropy;
 const Start = *const fn (*const [16]u8, *const [32]u8, *const [32]u8) callconv(.c) bool;
 const Action = *const fn () callconv(.c) bool;
 const Fill = *const fn ([*]u8, usize) callconv(.c) bool;
