@@ -36,8 +36,8 @@ existing document/minibuffer input path. The `ime` minibuffer command toggles
 the workspace SKK romaji-to-kana input path for both physical and touch keys.
 The native session uses a bundled read-only SKK-S fixture dictionary with
 3,375 entries. Press Esc, type `ime`, then Enter to enable hiragana. Type
-`kanji` for かんじ; type `Kanji` then Space for 漢字. The bottom status line
-shows the uncommitted reading or selected candidate. Space advances candidates,
+`kanji` for かんじ; type `Kanji` then Space for 漢字. The uncommitted reading
+appears at the insertion point, with a candidate list beside the caret. Space advances candidates,
 `x` goes back, Enter commits, and Esc cancels. `q` toggles katakana, `l`
 returns to ASCII, and `IKu` selects 行く with okurigana. Words absent from the
 small dictionary have no candidates; learning and sentence conversion are not
