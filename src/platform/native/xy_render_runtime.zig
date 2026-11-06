@@ -76,7 +76,19 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
         const preedit = model.doc.preedit.slice();
         request.preedit = preedit.ptr;
         request.preedit_length = preedit.len;
-        if (model.ime.phase == .selecting) {
+        if (!model.skk_input and model.standard_input.converting) {
+            const state = &model.standard_input;
+            const segment = &state.engine.segments[state.focus];
+            const first = (@as(usize, segment.selected) / 8) * 8;
+            const count = @min(@as(usize, segment.cand_count) - first, candidates.len);
+            for (0..count) |i| {
+                const candidate = state.engine.candidateText(state.focus, first + i);
+                candidates[i] = .{ .text = candidate.ptr, .length = candidate.len };
+            }
+            request.candidates = &candidates;
+            request.candidate_count = @intCast(count);
+            request.candidate_selected = @intCast(@as(usize, segment.selected) - first);
+        } else if (model.skk_input and model.ime.phase == .selecting) {
             for (model.ime.candidates.items[0..model.ime.candidates.count], 0..) |candidate, i| {
                 candidates[i] = .{ .text = candidate.insert_text.ptr, .length = candidate.insert_text.len };
             }
