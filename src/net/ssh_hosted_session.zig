@@ -93,7 +93,7 @@ test "Hosted session fails closed when its network owner resets" {
     wifi.mac_address = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 };
     wifi.dhcp_client = .{ .mac = wifi.mac_address, .xid = 1, .phase = .bound, .bound_at = 0, .renew_at = 20_000_000, .rebind_at = 30_000_000, .expires_at = 40_000_000, .lease = .{ .ip = 0x0a00020f, .mask = 0xffffff00, .gateway = 0x0a000202, .server = 0x0a000202, .seconds = 40 } };
     const handle = try network.open(&wifi, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 123, 0, 5000);
-    const link = &network.service.link.?;
+    const link = network.service.link.?;
     link.state = .active;
     link.stream = @import("tcp_stream.zig").Stream.init(.{ .local = .{ .address = .{ 10, 0, 2, 15 }, .port = 50001 }, .remote = .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, .send_next = 1, .receive_next = 1, .remote_window = 4096, .remote_mss = 1460 });
     const adapter = try hosted.Adapter.init(&network, &wifi, handle, 0, 5000);

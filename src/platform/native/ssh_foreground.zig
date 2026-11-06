@@ -22,9 +22,12 @@ pub const Runtime = struct {
     model: ?*ssh.Model = null,
     active: bool = false,
 
-    pub fn init() Runtime {
-        // SAFETY: workspace and visit are initialized on entry before access.
-        return .{ .workspace = undefined, .visit = undefined };
+    /// Initialize the reserved, stable PSRAM storage before the first poll.
+    /// Workspace and visit are initialized in place before their first use.
+    pub fn initInPlace(self: *Runtime) void {
+        self.entropy = .{};
+        self.model = null;
+        self.active = false;
     }
 
     /// Call on CPU0 after the network owner and UI have each been serviced.
