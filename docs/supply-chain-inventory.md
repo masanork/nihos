@@ -77,3 +77,30 @@ assessment or claim of SLSA Build Level 3: the reusable workflow is taken from
 the same source revision as the caller, so consumers must trust and verify both
 revisions. It still requires an independent assessment of builder isolation and
 provenance integrity, dependency controls and a verified release process.
+
+## Experimental consumer policy
+
+After obtaining the expected commit SHA independently, verify the downloaded
+image and all three inventory files as one artifact set:
+
+```sh
+python3 tools/verify_native_provenance.py PATH/TO/IMAGE-DIRECTORY \
+  --source-sha TRUSTED_COMMIT_SHA
+```
+
+The directory must contain `nihos-native-flash.bin` and the three `.cdx.json`
+files under `bom/`. The optional `--bundle PATH` uses a downloaded Sigstore
+bundle; this does not by itself provide all requirements for offline trust-root
+verification. `gh` must be installed and able to verify the attestation. The
+policy defaults to `refs/heads/main`; a different `--source-ref` is intended
+for explicit test builds and must itself be trusted independently.
+
+The tool first invokes `gh attestation verify`, requiring the expected repository,
+source ref and commit, reusable signer path and commit, and a GitHub-hosted
+runner. It then checks the verified statement's exact four subject names and
+local SHA-256 digests, the inventory image hashes, build type, caller workflow,
+branch, builder identity, source dependency, and workflow-dispatch event. It
+rejects unexpected external parameters. It does not infer the trusted commit
+from the artifact or attestations. The current GitHub statement does not expose
+all build inputs or prove inventory completeness, dependency integrity, actual
+device behavior, a release decision, or SLSA Build Level 3.
