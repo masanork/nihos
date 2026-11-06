@@ -34,6 +34,28 @@ test "large NFST staged mapped import remount and digest" {
     var dev = try fixture.Device.open(io, tmp.dir, "store");
     var store: fixture.Store = .{};
     try store.format(&dev);
+    // Fill five 3 MiB extents, then release alternating extents. The two
+    // retained objects separate the free space into smaller physical runs.
+    const part_bytes = 3 * 1024 * 1024;
+    for (1..6) |key| {
+        try store.begin();
+        const stream = try store.beginStream(@intCast(key), part_bytes);
+        const contents: [page]u8 = @splat(@intCast(key));
+        var filled: usize = 0;
+        while (filled < part_bytes) filled += try store.writeStream(stream, &contents);
+        try store.finishStream(stream);
+        try store.commit();
+    }
+    try store.begin();
+    for ([_]u32{ 1, 3, 5 }) |key| try store.remove(key);
+    try store.commit();
+    try store.collectPayload();
+    const space = try store.payloadSpace();
+    try std.testing.expect(space.free_pages * page > length);
+    try std.testing.expect(space.largest_run * page < length);
+    try store.begin();
+    try std.testing.expectError(error.NoSpace, store.beginStream(1, length));
+    try store.rollback();
     var scratch = model.MapScratch{};
     try store.begin();
     try store.put(1, "");
@@ -72,6 +94,12 @@ test "large NFST staged mapped import remount and digest" {
     var recovered: fixture.Store = .{};
     try recovered.recover(&dev);
     try recovered.verify(1);
+    for ([_]u32{ 2, 4 }) |key| {
+        try recovered.verify(key);
+        var byte: [1]u8 = undefined;
+        try std.testing.expectEqual(@as(usize, 1), try recovered.read(key, 0, &byte));
+        try std.testing.expectEqual(@as(u8, @intCast(key)), byte[0]);
+    }
     var output_hash = std.crypto.hash.sha2.Sha256.init(.{});
     at = 0;
     while (at < length) {
@@ -93,5 +121,5 @@ test "large NFST staged mapped import remount and digest" {
     var result: nfst.Candidates = .{};
     try dict.lookup("かんじ", &result);
     try std.testing.expectEqualStrings("漢字", result.slice(0));
-    std.debug.print("MAPPED_LARGE bytes={d} batches={d} search_steps={d} candidate={s}\n", .{ length, batches, steps, result.slice(0) });
+    std.debug.print("MAPPED_LARGE bytes={d} free_pages={d} largest_run_pages={d} batches={d} search_steps={d} candidate={s}\n", .{ length, space.free_pages, space.largest_run, batches, steps, result.slice(0) });
 }

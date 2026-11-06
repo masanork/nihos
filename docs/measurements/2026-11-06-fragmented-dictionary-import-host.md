@@ -24,15 +24,20 @@ old state or the complete new object, and the pre-existing object was intact.
 These are two specified writeback models, not an exhaustive real-card test.
 
 An opt-in host-file test uses the same 5,129,285-byte NFST input identified in
-[the paged-reader report](2026-11-06-paged-dictionary-host.md). With initially
-free space it imports 79 batches of at most 16 data pages into a single staged
-mapped object, publishes, closes/reopens, verifies the store checksums, and
-compares SHA-256 over every input and recovered byte. It then uses the paged
-reader to look up 漢字. The run recorded 80 bounded allocation-search steps
-(budget: eight leaf visits and 128 bitmap pages each). This full-size run did
-not create a fragmented 5 MiB allocation; that condition is covered only by
-the small, deliberately fragmented fixture. Neither search-step counts nor
-host timings predict Tab5 latency.
+[the paged-reader report](2026-11-06-paged-dictionary-host.md). It first fills
+five 3 MiB objects and removes alternating objects, retaining two 3 MiB objects
+between the gaps. After retiring the old root, 2,548 pages were free but the
+largest contiguous run was 1,010 pages (3.95 MiB), less than the dictionary.
+The ordinary contiguous stream rejected the dictionary with `NoSpace`.
+
+The test then imports the complete dictionary as 79 batches of at most 16 data
+pages into one staged mapped object, publishes, closes/reopens, verifies the
+store checksums, and compares SHA-256 over every input and recovered byte. It
+also verifies both retained objects and uses the paged reader to look up 漢字.
+The run recorded 555 bounded allocation-search steps (budget: eight leaf
+visits and 128 bitmap pages each). This is one deliberately constructed host
+fragmentation pattern, not a worst-case guarantee. Neither search-step counts
+nor host timings predict Tab5 latency.
 
 ```sh
 .tools/zig-0.17.0/zig test -O ReleaseSafe src/storage/fragmented_import_test.zig
