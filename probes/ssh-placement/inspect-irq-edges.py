@@ -36,6 +36,7 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
     indirect = {start: [] for start in starts}
     for start, function in functions.items():
         previous = None
+        history = []
         for pc, op, operands in function['insns']:
             if op in ('jalr', 'jr'):
                 resolved = False
@@ -50,7 +51,8 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                             edges[start].add(address)
                             resolved = True
                 if not resolved:
-                    indirect[start].append({'pc': hex(pc), 'op': op, 'operands': operands})
+                    indirect[start].append({'pc': hex(pc), 'op': op, 'operands': operands,
+                                            'possible_jump_table_hint': op == 'jr' and any('.LJTI' in item[2] for item in history)})
             elif op in BRANCHES:
                 m = TARGET.search(operands)
                 if m:
@@ -59,6 +61,7 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                     if index >= 0 and starts[index] != start and starts[index] == address:
                         edges[start].add(address)
             previous = (pc, op, operands)
+            history = (history + [previous])[-10:]
     seen = set()
     queue = [names[name] for name in roots]
     while queue:
@@ -72,8 +75,10 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
     placed_addresses = placed_addresses or {}
     placed_reachable = [{'address': hex(start), 'symbols': placed_addresses[start]} for start in sorted(seen) if start in placed_addresses]
     return {'roots': list(roots), 'directly_reachable_placed_functions': placed_reachable, 'directly_reachable_functions': len(seen), 'directly_reachable_ssh_crypto_names': sorted(selected),
-            'unresolved_indirect_count': len(unresolved), 'unresolved_indirect_sites': unresolved,
-            'limitations': 'Named direct and adjacent AUIPC/JALR or AUIPC/JR edges only; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven.'}
+            'unresolved_indirect_count': len(unresolved),
+            'possible_jump_table_hints': sum(site['possible_jump_table_hint'] for site in unresolved),
+            'unresolved_indirect_sites': unresolved,
+            'limitations': 'Named direct and adjacent AUIPC/JALR or AUIPC/JR edges only; jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven.'}
 
 
 def main():

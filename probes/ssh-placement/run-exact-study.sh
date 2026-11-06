@@ -68,7 +68,7 @@ result = {'profile': 'link-only; entropy unavailable; do not flash or execute',
 irq = out / 'irq-edges.json'
 if irq.exists():
     graph = json.loads(irq.read_text())
-    result['irq_graph'] = {key: graph[key] for key in ('directly_reachable_functions', 'directly_reachable_ssh_crypto_names', 'directly_reachable_placed_functions', 'unresolved_indirect_count', 'limitations')}
+    result['irq_graph'] = {key: graph[key] for key in ('directly_reachable_functions', 'directly_reachable_ssh_crypto_names', 'directly_reachable_placed_functions', 'unresolved_indirect_count', 'possible_jump_table_hints', 'limitations')}
     result['irq_graph_sha256'] = hashlib.sha256(irq.read_bytes()).hexdigest()
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))

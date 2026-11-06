@@ -47,6 +47,21 @@ class EdgeTest(unittest.TestCase):
         self.assertEqual([], result['directly_reachable_ssh_crypto_names'])
         self.assertEqual(2, result['unresolved_indirect_count'])
 
+    def test_jump_table_hint_stays_unresolved(self):
+        asm = """
+1000 <nih_native_trap>:
+1000: lui a1,0x4ff13
+1004: addi a1,a1,-1788 # 4ff12904 <.LJTI383_0>
+1008: lw a0,0(a0)
+100c: jr a0
+1010 <nih_native_dispatch>:
+1010: ret
+"""
+        result = module.analyze(asm)
+        self.assertEqual(1, result['possible_jump_table_hints'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+        self.assertTrue(result['unresolved_indirect_sites'][0]['possible_jump_table_hint'])
+
     def test_missing_root_fails_closed(self):
         with self.assertRaises(ValueError):
             module.analyze('1000 <nih_native_trap>:\n1000: ret\n')
