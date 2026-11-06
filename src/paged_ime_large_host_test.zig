@@ -62,6 +62,37 @@ test "large paged dictionary drives IME after remount" {
     try async_page.detach();
     var dict = try nfst.Dictionary(fixture.StoreReader).init(&source, size);
     defer dict.invalidate();
+    var resumable_page: @import("storage/async_page.zig").Coordinator = .{};
+    try resumable_page.attach(2, size);
+    var page_count: usize = 0;
+    for ([_][]const u8{ "かんじ", "にほん", "とうきょう", "がっこう", "ぷろぐらみんぐ" }) |key| {
+        var expected: nfst.Candidates = .{};
+        try dict.lookup(key, &expected);
+        var lookup = try @import("storage/async_nfst.zig").Lookup.begin(&resumable_page, key);
+        var work: usize = 0;
+        while (true) {
+            work += 1;
+            try std.testing.expect(work < 100000);
+            switch (try lookup.step(64)) {
+                .pending => {},
+                .need_page => {
+                    const req = lookup.request().?;
+                    var async_bytes: [4096]u8 = undefined;
+                    try std.testing.expectEqual(req.length, try source.read(req.offset, async_bytes[0..req.length]));
+                    try lookup.supply(req, async_bytes[0..req.length]);
+                    page_count += 1;
+                },
+                .complete => break,
+                .cancelled => return error.TestUnexpectedResult,
+            }
+        }
+        const actual = try lookup.candidates();
+        try std.testing.expectEqual(expected.count, actual.count);
+        try std.testing.expectEqual(expected.truncated, actual.truncated);
+        for (0..expected.count) |i| try std.testing.expectEqualStrings(expected.slice(i), actual.slice(i));
+    }
+    try resumable_page.detach();
+    std.debug.print("ASYNC_NFST keys=5 page_requests={d}\n", .{page_count});
     var result: nfst.Candidates = .{};
     const samples = [_]struct { key: []const u8, first: []const u8, count: u8 }{
         .{ .key = "かんじ", .first = "漢字", .count = 8 },
