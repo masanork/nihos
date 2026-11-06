@@ -39,7 +39,7 @@ def readonly_elf_reader(path):
     return read_words
 
 
-def internal_jump_table(insns, idx, read_words, branch_targets):
+def internal_jump_table(insns, idx, read_words, branch_edges):
     """Recognize one guarded compiler switch; return None on any ambiguity."""
     if read_words is None or insns[idx][1] != 'jr':
         return None
@@ -67,32 +67,61 @@ def internal_jump_table(insns, idx, read_words, branch_targets):
             continue
         trailing = insns[sh + 5:idx]
         if any(op not in ('li', 'lui', 'addi', 'mv', 'sw') or
+               (op == 'sw' and not re.fullmatch(r'\w+,\s*-?[0-9]+\(sp\)', args_.split('#', 1)[0].strip())) or
                (op != 'sw' and args_.split(',', 1)[0].strip() == jump_reg)
                for _, op, args_ in trailing):
             continue
-        # A guard must dominate this short sequence: branch out if index>N.
-        for g in range(max(0, sh - 6), sh - 1):
-            li, branch = insns[g:g + 2]
+        # A guard must dominate this short sequence. Permit only register-
+        # harmless instructions between bound materialization and the guard.
+        for g in range(max(0, sh - 12), sh - 1):
+            li = insns[g]
             bound = re.fullmatch(r'(\w+),\s*(0x[0-9a-fA-F]+|[0-9]+)', li[2]) if li[1] == 'li' else None
-            guard = re.match(r'^(\w+),\s*(\w+),\s*([0-9a-fA-F]+)\s*<', branch[2]) if branch[1] == 'bltu' else None
-            if not bound or not guard or branch[0] - li[0] not in (2, 4) or guard[1] != bound[1] or guard[2] != shift[2] or int(guard[3], 16) <= pc:
+            if not bound:
                 continue
-            # No modification or branch between guard and shift, and no
-            # statically named entry into the guarded instruction interval.
-            middle = insns[g + 2:sh]
-            if any(op not in ('li', 'lui', 'addi', 'mv', 'sw') or
-                   (op != 'sw' and args_.split(',', 1)[0].strip() == shift[2])
-                   for _, op, args_ in middle):
-                continue
-            if any(insns[g][0] < address <= pc for address in branch_targets):
-                continue
-            count = int(bound[2], 0) + 1
-            address = ((int(base[2], 0) << 12) + int(adj[3], 0)) & 0xffffffff
-            targets = read_words(address, count)
-            pcs = {item[0] for item in insns}
-            if targets is None or any(target not in pcs for target in targets):
-                continue
-            return {'table_address': hex(address), 'entries': count, 'targets': sorted(set(hex(target) for target in targets))}
+            for branch_index in range(g + 1, min(g + 6, sh)):
+                branch = insns[branch_index]
+                guard = re.match(r'^(\w+),\s*(\w+),\s*([0-9a-fA-F]+)\s*<', branch[2]) if branch[1] in ('bltu', 'bgeu') else None
+                if not guard or guard[1] != bound[1] or guard[2] != shift[2]:
+                    continue
+                before = insns[g + 1:branch_index]
+                if any(op not in ('sw', 'li', 'lui', 'addi', 'mv') or
+                       (op == 'sw' and not re.fullmatch(r'\w+,\s*-?[0-9]+\(sp\)', args_.split('#', 1)[0].strip())) or
+                       (op != 'sw' and args_.split(',', 1)[0].strip() in (bound[1], shift[2]))
+                       for _, op, args_ in before):
+                    continue
+                allow_incoming = None
+                after_index = branch_index + 1
+                if branch[1] == 'bltu':
+                    if int(guard[3], 16) <= pc:
+                        continue
+                else:
+                    # Inverted guard: valid indices jump over one unconditional
+                    # branch whose destination is beyond this table jump.
+                    if after_index + 1 >= len(insns) or insns[after_index][1] != 'j':
+                        continue
+                    fallback = TARGET.search(insns[after_index][2])
+                    if not fallback or int(fallback[1], 16) <= pc or int(guard[3], 16) != insns[after_index + 1][0]:
+                        continue
+                    allow_incoming = (branch[0], int(guard[3], 16))
+                    after_index += 1
+                middle = insns[after_index:sh]
+                if any(op not in ('sw', 'li', 'lui', 'addi', 'mv') or
+                       (op == 'sw' and not re.fullmatch(r'\w+,\s*-?[0-9]+\(sp\)', args_.split('#', 1)[0].strip())) or
+                       (op != 'sw' and args_.split(',', 1)[0].strip() == shift[2])
+                       for _, op, args_ in middle):
+                    continue
+                interval = insns[g:idx + 1]
+                if any(right[0] - left[0] not in (2, 4) for left, right in zip(interval, interval[1:])):
+                    continue
+                if any(insns[g][0] < target <= pc and (origin, target) != allow_incoming for origin, target in branch_edges):
+                    continue
+                count = int(bound[2], 0) + 1
+                address = ((int(base[2], 0) << 12) + int(adj[3], 0)) & 0xffffffff
+                targets = read_words(address, count)
+                pcs = {item[0] for item in insns}
+                if targets is None or any(target not in pcs for target in targets):
+                    continue
+                return {'table_address': hex(address), 'entries': count, 'targets': sorted(set(hex(target) for target in targets))}
     return None
 
 
@@ -112,12 +141,12 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
     names = {value['name']: key for key, value in functions.items()}
     if not all(name in names for name in roots):
         raise ValueError('missing trap/dispatcher root in disassembly')
-    branch_targets = set()
+    branch_edges = set()
     for function in functions.values():
-        for _, op, operands in function['insns']:
+        for pc, op, operands in function['insns']:
             m = TARGET.search(operands) if op in BRANCHES else None
             if m:
-                branch_targets.add(int(m[1], 16))
+                branch_edges.add((pc, int(m[1], 16)))
     tables = {start: [] for start in starts}
     edges = {start: set() for start in starts}
     indirect = {start: [] for start in starts}
@@ -138,7 +167,7 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                             edges[start].add(address)
                             resolved = True
                 if not resolved:
-                    table = internal_jump_table(function['insns'], index, read_words, branch_targets)
+                    table = internal_jump_table(function['insns'], index, read_words, branch_edges)
                     if table is not None:
                         tables[start].append({'pc': hex(pc), **table})
                         resolved = True

@@ -105,6 +105,25 @@ class EdgeTest(unittest.TestCase):
         self.assertEqual(0, result['resolved_internal_jump_table_count'])
         self.assertEqual(1, result['unresolved_indirect_count'])
 
+    def test_inverted_guard_and_intervening_stack_store(self):
+        asm = self.switch_program().replace(
+            '1000: li a1,1\n1002: bltu a1,a0,1020 <nih_native_trap+0x20>\n1006: slli',
+            '0ffc: li a1,1\n0ffe: sw s1,4(sp)\n1000: bgeu a1,a0,1006 <nih_native_trap+0x6>\n1004: j 1020 <nih_native_trap+0x20>\n1006: slli')
+        result = module.analyze(asm, read_words=lambda a, n: (0x1016, 0x1018))
+        self.assertEqual(1, result['resolved_internal_jump_table_count'])
+        self.assertEqual(0, result['unresolved_indirect_count'])
+        # Another jump to the guarded body can bypass the bound entirely.
+        asm = asm.replace('0ffc: li a1,1', '0ff8: j 1006 <nih_native_trap+0x6>\n0ffc: li a1,1')
+        result = module.analyze(asm, read_words=lambda a, n: (0x1016, 0x1018))
+        self.assertEqual(0, result['resolved_internal_jump_table_count'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+
+    def test_untrusted_store_does_not_qualify_table(self):
+        asm = self.switch_program().replace('1014: jr a0\n1016: nop\n1018: ret', '1014: sw a2,0(a3)\n1016: jr a0\n1018: nop\n101a: ret')
+        result = module.analyze(asm, read_words=lambda a, n: (0x1018, 0x101a))
+        self.assertEqual(0, result['resolved_internal_jump_table_count'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+
     def test_table_reader_rejects_writable_and_out_of_bounds(self):
         path = Path(__file__).resolve().parents[2] / 'tools/audit_ssh_ed25519_table_test.py'
         spec = importlib.util.spec_from_file_location('table_fixture', path)
