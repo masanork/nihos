@@ -305,8 +305,9 @@ mod tests {
         }
         emu.step_frame(120_000_000);
         assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
-        for byte in b"EMU_NOTE_39" {
-            emu.send_key(*byte);
+        let payload = "EMU_NOTE_39 日本語\nSECOND";
+        for byte in crate::encode_emulator_paste(payload).unwrap() {
+            emu.send_key(byte);
         }
         emu.step_frame(80_000_000);
         for key in ["ctrl-s", "ctrl-q"] {
@@ -315,6 +316,7 @@ mod tests {
             assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
         }
         let before = emu.bus.console_output.len();
+        let expected = "EMU_NOTE_39 日本語\r\nSECOND".as_bytes();
         for byte in b"cat /note.txt\n" {
             emu.send_key(*byte);
         }
@@ -322,8 +324,8 @@ mod tests {
             emu.step_frame(500_000);
             assert!(emu.fault().is_none(), "guest fault: {:?}", emu.fault());
             if emu.bus.console_output[before..]
-                .windows(11)
-                .any(|w| w == b"EMU_NOTE_39")
+                .windows(expected.len())
+                .any(|w| w == expected)
             {
                 return;
             }
