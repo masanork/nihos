@@ -5,6 +5,7 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 tool_root=${NIHOS_TOOLS_ROOT:-"$root/.tools"}
 zig=${ZIG:-"$tool_root/zig-0.17.0/zig"}
 [ -x "$zig" ] && [ "$("$zig" version)" = 0.17.0 ]
+python3 "$root/probes/ssh-placement/inspect-irq-edges-test.py"
 mkdir -p "$root/build"
 out=$(mktemp -d "$root/build/ssh-exact-placement-study.XXXXXX")
 temp_root=$(CDPATH= cd -- "${TMPDIR:-/tmp}" && pwd -P)
