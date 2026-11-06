@@ -16,7 +16,7 @@ extern var __flash_sql_rodata_start: u8;
 extern var __flash_sql_rodata_end: u8;
 extern fn nih_native_task_failed() callconv(.c) noreturn;
 extern fn nih_rom_putc(u8) callconv(.c) i32;
-fn fail(step: u32, code: c_int) noreturn {
+noinline fn fail(step: u32, code: c_int) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") noreturn {
     for ("NIHOS_SQLITE_DETAIL step=") |c| _ = nih_rom_putc(c);
     for ([_]u32{ step, @bitCast(code), @as(*volatile u32, &nih_sqlite_native_failed_size).* }, 0..) |word, index| {
         if (index != 0) {
