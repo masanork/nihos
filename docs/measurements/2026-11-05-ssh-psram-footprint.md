@@ -1,0 +1,15 @@
+# SSH foreground and TCP storage placement
+
+This is a resource and host-interop step toward SSH from xy, not a device SSH qualification. The default native foreground still refuses setup because it has no qualified hardware entropy source.
+
+The foreground now uses a 4 KiB subregion at `0x483f0000` inside the existing 2 MiB boot-owned sqld reservation, after the experimental network, SSH session, UI and sqld stack regions. The admission check requires the existing 8 MiB PSRAM minimum, and compile-time checks bind size and alignment. The CPU0 runtime is initialized in its final location. It is not allocated from the heap. A live `hosted_tcp_service.Service` must stay at a stable address: its link is initialized in preallocated, aligned owner storage and never copied after opening. Retire still invalidates the stream and wipes packet buffers. The explicit initialization removes the compiler-generated large optional-link initialization template.
+
+The setup fingerprint parser decodes exactly 43 canonical, unpadded Base64 characters directly, including the required zero trailing bits. It rejects malformed or noncanonical pins; host comparisons against the standard encoder and OpenSSH wrong-pin rejection cover the change. The boot splash now reads the existing mapped Flash sprite table by address in its milestone path, and the image audit checks that any linked sprite table is in readonly Flash without an identical SRAM `.rodata` copy.
+
+## Audited normal images
+
+For the code candidate `80c4eaf9cd7a88f0575589f2cde471fbcdbb0f0d`, Zig 0.17.0 and the standard device image with `NIHOS_NATIVE_EXPERIMENTAL_TCP=1`, normal and xy-trace images passed the native image audit. Both reported 54,976 B primary heap, above the 49,152 B floor. ELF hashes were `fe297115baa48403f27f2de0c9b912ac3ba58557ecb6f73b3af4508f94eae2ea` (normal) and `e1aa8d7b50b84c00879f0fe8cf3de38b6d883b6447ed22f9ae9a9d6bd667dbb3` (trace). The audit located the 1,480 B sprite table in Flash and found no identical SRAM `.rodata` copy. SSH itself remains disabled in these images.
+
+## Link-only upper-bound study
+
+A separate, disposable worktree deliberately supplied non-random zero bytes, forced the foreground to link, broadly placed `.text.ssh*`, `.text.vt100*` and `.text.crypto*` into mapped Flash, and temporarily disabled the heap assertion. It was never executed or flashed, and its generated images were deleted. In that study the heap evolved from 31,360 B on the earlier source to 31,936 B with the PSRAM foreground, 40,896 B after the fingerprint parser, 48,064 B after TCP in-place initialization, and 49,472 B after removing the splash sprite copy. The study used an earlier 64 KiB reservation bound for the same foreground address; the shipped change limits it to 4 KiB. These are indicative link results, not a qualified candidate: the standard audit rejects the broad function placement, no complete cache-off call-graph or negative-copy review was done for SSH/crypto, and the remaining 320 B above the floor is not sufficient operational margin. The actual platform owner for the P4 noise source, real TCP/C6 path and physical Tab5 behavior remain unverified.

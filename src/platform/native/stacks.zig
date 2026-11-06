@@ -63,11 +63,12 @@ pub noinline fn begin(core: u32) bool {
 // rendering or Scheme evaluation, so interrupts can validate the saved SP.
 pub const foreground_bytes = 512 * 1024;
 pub const evaluation_bytes = 64 * 1024;
+pub const ssh_bytes = 60 * 1024;
 var foreground_low: u32 = 0;
 var foreground_high: u32 = 0;
 pub inline fn beginForeground(stack: []u8) bool {
     const low = @intFromPtr(stack.ptr);
-    if (@atomicLoad(u32, &foreground_high, .acquire) != 0 or (stack.len != foreground_bytes and stack.len != evaluation_bytes) or
+    if (@atomicLoad(u32, &foreground_high, .acquire) != 0 or (stack.len != foreground_bytes and stack.len != evaluation_bytes and stack.len != ssh_bytes) or
         low % 16 != 0 or low < 0x48030000 or low > 0x4a000000 - stack.len) return false;
     foreground_low = @intCast(low);
     @atomicStore(u32, &foreground_high, @intCast(low + stack.len), .release);
@@ -161,4 +162,19 @@ pub fn report(core: u32) ?Report {
     const first = layout.worker(core, 0).?;
     const sample = owners[core].samples;
     return .{ .start = layout.base, .end = layout.end, .boot_start = boot.start, .boot_end = boot.end, .irq_start = irq.start, .irq_end = irq.end, .task_start = first.start, .task_end = first.start + 3 * layout.worker_bytes, .boot_frame = sample.boot_frame, .irq_sp = sample.irq_sp, .task0_frame = sample.task_frames[0], .task1_frame = sample.task_frames[1], .task2_frame = sample.task_frames[2], .frames = sample.frames, .zeroed = owners[core].zeroed, .confirmed = 1 };
+}
+
+test "SSH foreground stack admission is bounded and exclusive" {
+    const std = @import("std");
+    const base: [*]u8 = @ptrFromInt(0x483f1000);
+    endForeground();
+    defer endForeground();
+    try std.testing.expect(beginForeground(base[0..ssh_bytes]));
+    try std.testing.expect(!beginForeground(base[0..ssh_bytes]));
+    endForeground();
+    try std.testing.expect(!beginForeground((base + 1)[0..ssh_bytes]));
+    try std.testing.expect(!beginForeground(base[0 .. ssh_bytes - 16]));
+    const outside: [*]u8 = @ptrFromInt(0x4a000000 - ssh_bytes + 16);
+    try std.testing.expect(!beginForeground(outside[0..ssh_bytes]));
+    try std.testing.expect(beginForeground(base[0..ssh_bytes]));
 }

@@ -52,3 +52,22 @@ nih_xy_eval_call:
     mv sp, t0
     ret
 .size nih_xy_eval_call,.-nih_xy_eval_call
+
+/* MIE clear on entry/return. a0=call, a1=checked stack top, a2=old MIE. */
+.section .flash.xytext.ssh_stack_bridge,"ax",@progbits
+.global nih_ssh_foreground_stack_call
+.type nih_ssh_foreground_stack_call,@function
+nih_ssh_foreground_stack_call:
+    mv t0, sp
+    mv sp, a1
+    addi sp, sp, -16
+    sw t0, 0(sp)
+    sw ra, 4(sp)
+    csrs mstatus, a2
+    call nih_ssh_foreground_on_stack
+    csrci mstatus, 8
+    lw ra, 4(sp)
+    lw t0, 0(sp)
+    mv sp, t0
+    ret
+.size nih_ssh_foreground_stack_call,.-nih_ssh_foreground_stack_call

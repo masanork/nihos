@@ -11,6 +11,35 @@ pub const State = enum { idle, opening, need_material, handshaking, ready, closi
 /// this object in an editor buffer. Input slices must not alias this object.
 /// The fingerprint is OpenSSH's SHA256 hash of the complete host-key blob;
 /// the seed is exactly 32 raw Ed25519 seed bytes, encoded as 64 hex digits.
+// OpenSSH SHA256 fingerprints use canonical, unpadded RFC 4648 base64.
+// Decode directly to avoid retaining a general-purpose decoder table on device.
+fn decodeFingerprint(encoded: []const u8, output: *[32]u8) error{InvalidProfile}!void {
+    if (encoded.len != 43) return error.InvalidProfile;
+    var bits: u5 = 0;
+    var pending: u32 = 0;
+    var written: usize = 0;
+    for (encoded) |c| {
+        const value: u32 = switch (c) {
+            'A'...'Z' => c - 'A',
+            'a'...'z' => c - 'a' + 26,
+            '0'...'9' => c - '0' + 52,
+            '+' => 62,
+            '/' => 63,
+            else => return error.InvalidProfile,
+        };
+        pending = (pending << 6) | value;
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            if (written >= output.len) return error.InvalidProfile;
+            output[written] = @intCast((pending >> bits) & 0xff);
+            written += 1;
+            pending &= (@as(u32, 1) << bits) - 1;
+        }
+    }
+    if (written != output.len or bits != 2 or pending != 0) return error.InvalidProfile;
+}
+
 pub const Profile = struct {
     address: [4]u8 = @splat(0),
     port: u16 = 0,
@@ -40,10 +69,7 @@ pub const Profile = struct {
         @memcpy(next.username[0..username.len], username);
         next.username_len = @intCast(username.len);
         if (!std.mem.startsWith(u8, fingerprint, "SHA256:") or fingerprint.len != 50) return error.InvalidProfile;
-        const encoded = fingerprint[7..];
-        std.base64.standard_no_pad.Decoder.decode(&next.pin, encoded) catch return error.InvalidProfile;
-        var canonical: [43]u8 = undefined;
-        if (!std.mem.eql(u8, std.base64.standard_no_pad.Encoder.encode(&canonical, &next.pin), encoded)) return error.InvalidProfile;
+        try decodeFingerprint(fingerprint[7..], &next.pin);
         if (seed_hex.len != 64) return error.InvalidProfile;
         _ = std.fmt.hexToBytes(&next.seed, seed_hex) catch return error.InvalidProfile;
         next.valid = true;
@@ -893,6 +919,24 @@ test "journey wipes the signing seed after authentication and profile on close" 
     try std.testing.expectEqual(State.closed, try journey.poll(13, null, &padding));
     try std.testing.expectEqual(@TypeOf(journey).Status.closed, journey.status);
     for (std.mem.asBytes(&journey.profile)) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+}
+
+test "fingerprint decoder accepts canonical base64 and rejects noncanonical input" {
+    for (0..256) |seed| {
+        var expected: [32]u8 = undefined;
+        for (&expected, 0..) |*byte, i| byte.* = @truncate(seed +% (i *% 73));
+        var text: [43]u8 = undefined;
+        _ = std.base64.standard_no_pad.Encoder.encode(&text, &expected);
+        var actual: [32]u8 = undefined;
+        try decodeFingerprint(&text, &actual);
+        try std.testing.expectEqualSlices(u8, &expected, &actual);
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const last = std.mem.indexOfScalar(u8, alphabet, text[42]) orelse unreachable;
+        text[42] = alphabet[last + 1];
+        try std.testing.expectError(error.InvalidProfile, decodeFingerprint(&text, &actual));
+        text[0] = '=';
+        try std.testing.expectError(error.InvalidProfile, decodeFingerprint(&text, &actual));
+    }
 }
 
 test "profile validates OpenSSH fingerprint and wipes credentials" {
