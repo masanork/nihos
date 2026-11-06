@@ -131,3 +131,29 @@ test "existence memo resets per conversion and never stores failed reads" {
     try std.testing.expect(!adapter.contains("かんじ"));
     try std.testing.expectError(error.Io, adapter.conversionError());
 }
+
+test "sliced paged conversion fails without publishing partial candidates" {
+    const conv = @import("conv.zig");
+    const bytes = @embedFile("fixtures/jisyo_s_nfst.bin");
+    var reader = Bytes{ .bytes = bytes };
+    var dict = try nfst.Dictionary(Bytes).init(&reader, bytes.len);
+    var adapter = Adapter(Bytes){ .dictionary = &dict };
+    var engine: conv.Engine = .{};
+    var sliced: conv.SlicedConversion = .{};
+    sliced.begin(&engine, &adapter, "かんじ");
+    dict.root_cache_valid = false;
+    dict.cache_valid = false;
+    dict.victim_valid = false;
+    reader.fail = true;
+    var got_error = false;
+    for (0..100) |_| {
+        _ = sliced.step(&engine, &adapter, 1) catch |err| {
+            try std.testing.expectEqual(error.Io, err);
+            got_error = true;
+            break;
+        };
+    }
+    try std.testing.expect(got_error);
+    try std.testing.expectEqual(@as(usize, 0), engine.segment_count);
+    try std.testing.expectEqual(conv.SlicedConversion.Progress.cancelled, try sliced.step(&engine, &adapter, 1));
+}

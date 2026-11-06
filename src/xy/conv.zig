@@ -559,3 +559,152 @@ test "bunsetsu DP conversion with real SKK-S dictionary" {
         std.debug.print("  seg[{}]: '{s}'\n", .{ i, engine.candidateText(i, engine.segments[i].selected) });
     }
 }
+
+/// Cooperative host prototype. One unit is one phrase cost calculation,
+/// one backtrack, or one candidate population. Dictionary calls inside a unit
+/// remain synchronous; this is not a time or I/O bound and is not thread safe.
+/// Caller owns the engine and an unchanged pinned dictionary until completion.
+pub const SlicedConversion = struct {
+    pub const Progress = enum { pending, complete, cancelled };
+    const Phase = enum { scan, backtrack, populate, complete, cancelled };
+    phase: Phase = .cancelled,
+    i: usize = 0,
+    j: usize = 1,
+    current: usize = 0,
+    rev_count: usize = 0,
+    populate_index: usize = 0,
+    reverse: [max_segments]Segment = @splat(.{}),
+
+    pub fn begin(self: *SlicedConversion, engine: *Engine, dict: anytype, reading: []const u8) void {
+        self.* = .{};
+        if (@hasDecl(@TypeOf(dict.*), "beginConversion")) dict.beginConversion();
+        const len = @min(reading.len, max_reading);
+        @memcpy(engine.reading_buf[0..len], reading[0..len]);
+        engine.reading_len = len;
+        engine.cand_pool_len = 0;
+        engine.segment_count = 0;
+        for (0..len + 1) |index| {
+            engine.dp_cost[index] = inf_cost;
+            engine.dp_back[index] = 0;
+            engine.dp_dict_end[index] = 0;
+            engine.dp_is_ari[index] = false;
+        }
+        engine.dp_cost[0] = 0;
+        self.phase = if (len == 0) .complete else .scan;
+    }
+
+    pub fn cancel(self: *SlicedConversion, engine: *Engine) void {
+        engine.segment_count = 0;
+        engine.cand_pool_len = 0;
+        self.phase = .cancelled;
+    }
+
+    pub fn step(self: *SlicedConversion, engine: *Engine, dict: anytype, budget: usize) !Progress {
+        var remaining = budget;
+        while (remaining > 0) : (remaining -= 1) {
+            switch (self.phase) {
+                .cancelled => return .cancelled,
+                .complete => return .complete,
+                .scan => {
+                    if (self.i >= engine.reading_len) {
+                        self.current = engine.reading_len;
+                        self.phase = .backtrack;
+                        continue;
+                    }
+                    const max_j = @min(engine.reading_len, self.i + 48);
+                    if (engine.dp_cost[self.i] >= inf_cost or self.j > max_j) {
+                        self.i += 1;
+                        self.j = self.i + 1;
+                        continue;
+                    }
+                    const end = self.j;
+                    self.j += 1;
+                    if (end < engine.reading_len and (engine.reading_buf[end] & 0xc0) == 0x80) continue;
+                    var best_k: u8 = @intCast(self.i);
+                    var is_ari = false;
+                    const cost = engine.calcPhraseCost(dict, engine.reading_buf[self.i..end], @intCast(self.i), &best_k, &is_ari);
+                    if (@hasDecl(@TypeOf(dict.*), "conversionError")) dict.conversionError() catch |err| {
+                        self.cancel(engine);
+                        return err;
+                    };
+                    if (cost < inf_cost) {
+                        const total = engine.dp_cost[self.i] + cost;
+                        if (total < engine.dp_cost[end]) {
+                            engine.dp_cost[end] = total;
+                            engine.dp_back[end] = @intCast(self.i);
+                            engine.dp_dict_end[end] = best_k;
+                            engine.dp_is_ari[end] = is_ari;
+                        }
+                    }
+                },
+                .backtrack => {
+                    if (self.current == 0 or self.rev_count == max_segments) {
+                        self.phase = .populate;
+                        continue;
+                    }
+                    const previous = engine.dp_back[self.current];
+                    self.reverse[self.rev_count] = .{
+                        .start = previous,
+                        .end = @intCast(self.current),
+                        .dict_end = engine.dp_dict_end[self.current],
+                        .is_ari = engine.dp_is_ari[self.current],
+                    };
+                    self.rev_count += 1;
+                    self.current = previous;
+                },
+                .populate => {
+                    if (self.populate_index == self.rev_count) {
+                        engine.segment_count = self.rev_count;
+                        self.phase = .complete;
+                        return .complete;
+                    }
+                    const index = self.populate_index;
+                    engine.segments[index] = self.reverse[self.rev_count - 1 - index];
+                    engine.populateCandidates(dict, &engine.segments[index]);
+                    if (@hasDecl(@TypeOf(dict.*), "conversionError")) dict.conversionError() catch |err| {
+                        self.cancel(engine);
+                        return err;
+                    };
+                    self.populate_index += 1;
+                },
+            }
+        }
+        return switch (self.phase) {
+            .complete => .complete,
+            .cancelled => .cancelled,
+            else => .pending,
+        };
+    }
+};
+
+test "sliced conversion matches synchronous candidates and can be cancelled" {
+    const dict = try NfstDict.init(@embedFile("fixtures/jisyo_s_nfst.bin"));
+    for ([_][]const u8{ "かんじ", "きょうはいいてんきですね", "わたしはがくせいです", "" }) |reading| {
+        var reference: Engine = .{};
+        var actual: Engine = .{};
+        reference.convert(&dict, reading);
+        var sliced: SlicedConversion = .{};
+        sliced.begin(&actual, &dict, reading);
+        if (reading.len != 0) try std.testing.expectEqual(SlicedConversion.Progress.pending, try sliced.step(&actual, &dict, 0));
+        var steps: usize = 0;
+        while (try sliced.step(&actual, &dict, 1) == .pending) {
+            try std.testing.expectEqual(@as(usize, 0), actual.segment_count);
+            steps += 1;
+            try std.testing.expect(steps < 20000);
+        }
+        try std.testing.expectEqual(reference.segment_count, actual.segment_count);
+        for (0..reference.segment_count) |i| {
+            try std.testing.expectEqual(reference.segments[i].cand_count, actual.segments[i].cand_count);
+            for (0..reference.segments[i].cand_count) |j| try std.testing.expectEqualStrings(reference.candidateText(i, j), actual.candidateText(i, j));
+        }
+        for ([_]usize{ 0, 1, 10, 100, 300 }) |cancel_after| {
+            sliced.begin(&actual, &dict, reading);
+            for (0..cancel_after) |_| {
+                if (try sliced.step(&actual, &dict, 1) != .pending) break;
+            }
+            sliced.cancel(&actual);
+            try std.testing.expectEqual(SlicedConversion.Progress.cancelled, try sliced.step(&actual, &dict, 1));
+            try std.testing.expectEqual(@as(usize, 0), actual.segment_count);
+        }
+    }
+}

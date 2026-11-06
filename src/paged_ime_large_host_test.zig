@@ -115,5 +115,27 @@ test "large paged dictionary drives IME after remount" {
         try std.testing.expect(new_reads <= old_reads);
         std.debug.print("PAGED_IME keys={s} before={d} after={d} memo_hits={d}\n", .{ keys, old_reads, new_reads, adapter.memo_hits });
     }
+    const conv = @import("xy/conv.zig");
+    var reference: conv.Engine = .{};
+    var sliced_engine: conv.Engine = .{};
+    const reading = "きょうはいいてんきですね";
+    adapter.beginConversion();
+    reference.convert(&adapter, reading);
+    try adapter.conversionError();
+    var cursor: conv.SlicedConversion = .{};
+    cursor.begin(&sliced_engine, &adapter, reading);
+    var yields: usize = 0;
+    while (try cursor.step(&sliced_engine, &adapter, 1) == .pending) {
+        try std.testing.expectEqual(@as(usize, 0), sliced_engine.segment_count);
+        yields += 1;
+        try std.testing.expect(yields < 20000);
+    }
+    try std.testing.expect(yields > 1);
+    try std.testing.expectEqual(reference.segment_count, sliced_engine.segment_count);
+    for (0..reference.segment_count) |i| {
+        try std.testing.expectEqual(reference.segments[i].cand_count, sliced_engine.segments[i].cand_count);
+        for (0..reference.segments[i].cand_count) |j| try std.testing.expectEqualStrings(reference.candidateText(i, j), sliced_engine.candidateText(i, j));
+    }
+    std.debug.print("SLICED_PAGED_IME yields={d} cursor_bytes={d}\n", .{ yields, @sizeOf(conv.SlicedConversion) });
     std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} data_cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
