@@ -34,6 +34,11 @@ pub fn Dictionary(comptime Reader: type) type {
         root_cache_valid: bool = false,
         root_cache_length: usize = 0,
         root_cache_enabled: bool = true,
+        victim: [page_bytes]u8 = @splat(0),
+        victim_start: u64 = 0,
+        victim_length: usize = 0,
+        victim_valid: bool = false,
+        victim_enabled: bool = true,
         cache: [page_bytes]u8 = @splat(0),
         cache_start: u64 = 0,
         cache_length: usize = 0,
@@ -45,6 +50,7 @@ pub fn Dictionary(comptime Reader: type) type {
             self.closed = true;
             self.cache_valid = false;
             self.root_cache_valid = false;
+            self.victim_valid = false;
         }
 
         fn read(self: *Self, offset: u64, out: []u8) Error!void {
@@ -75,20 +81,34 @@ pub fn Dictionary(comptime Reader: type) type {
                     continue;
                 }
                 if (!self.cache_valid or at < self.cache_start or at >= self.cache_start + self.cache_length) {
-                    self.cache_valid = false;
-                    self.cache_start = at - at % page_bytes;
-                    const n: usize = @intCast(@min(page_bytes, self.length - self.cache_start));
-                    const got = self.reader.read(self.cache_start, self.cache[0..n]) catch {
-                        self.invalidate();
-                        return error.Io;
-                    };
-                    if (got != n) {
-                        self.invalidate();
-                        return error.Io;
+                    if (self.victim_enabled and self.victim_valid and at >= self.victim_start and at < self.victim_start + self.victim_length) {
+                        const local: usize = @intCast(at - self.victim_start);
+                        const n = @min(out.len - done, self.victim_length - local);
+                        @memcpy(out[done..][0..n], self.victim[local..][0..n]);
+                        done += n;
+                        continue;
+                    } else {
+                        if (self.victim_enabled and self.cache_valid) {
+                            @memcpy(&self.victim, &self.cache);
+                            self.victim_start = self.cache_start;
+                            self.victim_length = self.cache_length;
+                            self.victim_valid = true;
+                        }
+                        self.cache_valid = false;
+                        self.cache_start = at - at % page_bytes;
+                        const n: usize = @intCast(@min(page_bytes, self.length - self.cache_start));
+                        const got = self.reader.read(self.cache_start, self.cache[0..n]) catch {
+                            self.invalidate();
+                            return error.Io;
+                        };
+                        if (got != n) {
+                            self.invalidate();
+                            return error.Io;
+                        }
+                        self.cache_length = n;
+                        self.cache_valid = true;
+                        self.cache_misses += 1;
                     }
-                    self.cache_length = n;
-                    self.cache_valid = true;
-                    self.cache_misses += 1;
                 }
                 const local: usize = @intCast(at - self.cache_start);
                 const n = @min(out.len - done, self.cache_length - local);

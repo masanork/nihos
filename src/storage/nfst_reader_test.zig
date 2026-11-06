@@ -173,3 +173,19 @@ test "root page cache is pinned to dictionary lifetime and fails closed" {
     source.fail = false;
     try std.testing.expectError(error.Io, dict.lookup("a", &result));
 }
+
+test "victim page is invalidated on dictionary I/O error" {
+    const bytes = @embedFile("../xy/fixtures/jisyo_s_nfst.bin");
+    var source = Bytes{ .bytes = bytes };
+    var dict = try nfst.Dictionary(Bytes).init(&source, bytes.len);
+    var result: nfst.Candidates = .{};
+    try dict.lookup("かんじ", &result);
+    try std.testing.expectEqualStrings("漢字", result.slice(0));
+    try std.testing.expect(dict.victim_valid);
+    dict.root_cache_valid = false;
+    source.fail = true;
+    try std.testing.expectError(error.Io, dict.lookup("かんじ", &result));
+    try std.testing.expect(!dict.cache_valid and !dict.root_cache_valid and !dict.victim_valid);
+    source.fail = false;
+    try std.testing.expectError(error.Io, dict.lookup("かんじ", &result));
+}
