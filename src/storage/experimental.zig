@@ -6,6 +6,7 @@ pub const sector_media = @import("sector_media.zig");
 pub const file_media = @import("file_media.zig");
 pub const checkpoint = @import("checkpoint_model.zig");
 pub const service = @import("checkpoint_service.zig");
+pub const nfst_reader = @import("nfst_reader.zig");
 
 test {
     _ = publication_model;
@@ -14,6 +15,8 @@ test {
     _ = @import("sector_media_test.zig");
     _ = checkpoint;
     _ = service;
+    _ = nfst_reader;
+    _ = @import("nfst_reader_test.zig");
     _ = service.reader_drain;
     _ = service.deadline;
     _ = service.recovery_budget;
