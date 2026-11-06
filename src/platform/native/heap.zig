@@ -831,7 +831,7 @@ fn valid(allocation: Allocation, core: u32, worker: u32) bool {
     return true;
 }
 
-pub noinline fn probe(argument: u32) void {
+pub noinline fn probe(argument: u32) linksection(if (@import("native_options").cold_flash) ".flash.text.cold" else ".text") void {
     const core = hart();
     if (core >= 2 or @atomicLoad(u32, &prepared[core], .acquire) != 1 or argument / 4 != core) nih_native_task_failed();
     const worker = argument % 4;

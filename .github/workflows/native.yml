@@ -33,7 +33,9 @@ jobs:
           version: v5.4.4
 
       - name: Check smoke log validator regressions
-        run: python3 -m unittest discover -s tools -p 'native*_test.py'
+        run: |
+          sh tools/bootstrap-zig.sh
+          python3 -m unittest discover -s tools -p 'native*_test.py'
 
       - name: Integer native boot without external RAM
         run: sh tools/run-native-smoke.sh
@@ -79,7 +81,6 @@ jobs:
         run: |
           sh tools/build-native-elf.sh device build/native-fatfs-fixture sqlite
           python3 tools/check-fatfs-native-input.py build/native-fatfs-fixture/fatfs-fixture-manifest.json
-          . "$IDF_PATH/export.sh" >/dev/null
           python3 tools/check-native-call-stack.py build/native-fatfs-fixture/nihos-native.elf \
             build/native-fatfs-fixture/call-stack.json --objdump riscv32-esp-elf-objdump \
             --derive-frames --candidate-edge disk_read:nih_fatfs_fixture_read --resolve-jump-tables

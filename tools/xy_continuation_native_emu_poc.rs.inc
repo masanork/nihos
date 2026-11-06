@@ -444,5 +444,11 @@
         wait(&mut emu, appended, "NIHOS_NATIVE_XY_REPLY data=78");
         wait(&mut emu, appended, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
         eprintln!("APPEND_NATIVE resumed copy=90 result=x");
+        let count = format!("(length '({}))", "x ".repeat(90));
+        let length = command(&mut emu, &count);
+        wait(&mut emu, length, "NIHOS_NATIVE_XY_CONT_STATE state=00000001");
+        wait(&mut emu, length, "NIHOS_NATIVE_XY_REPLY data=3930");
+        wait(&mut emu, length, "NIHOS_NATIVE_XY_CONT_STATE state=00000002");
+        eprintln!("LENGTH_NATIVE resumed count=90 result=90");
         eprintln!("SELECTORS_NATIVE suspended recursion=31 cadddr=d");
     }
