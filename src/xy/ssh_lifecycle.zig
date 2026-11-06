@@ -415,7 +415,7 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
     return struct {
         const Self = @This();
         const Visit = Foreground(Model, ControllerType, EntropySession);
-        pub const State = enum { idle, preparing, active, stopping, finished, failed };
+        pub const State = enum { idle, acquiring, preparing, active, stopping, finished, failed };
         model: *Model,
         controller: *ControllerType,
         entropy: *EntropySession,
@@ -423,6 +423,8 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
         visit_live: bool = false,
         state: Self.State = .idle,
         seed_timeout: u64,
+        seed_deadline: u64 = 0,
+        seed_last: u64 = 0,
         connect_timeout: u64,
         close_timeout: u64,
 
@@ -441,6 +443,8 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
             self.visit_live = false;
             self.state = .idle;
             self.seed_timeout = seed_timeout;
+            self.seed_deadline = 0;
+            self.seed_last = 0;
             self.connect_timeout = connect_timeout;
             self.close_timeout = close_timeout;
         }
@@ -451,12 +455,15 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
             if (!visible and self.state != .idle and self.state != .stopping) self.beginStop();
             switch (self.state) {
                 .idle => if (visible) {
-                    self.entropy.begin(now, self.seed_timeout) catch {
+                    self.seed_deadline = std.math.add(u64, now, self.seed_timeout) catch {
                         self.state = .failed;
                         return self.state;
                     };
-                    self.state = .preparing;
+                    self.seed_last = now;
+                    self.state = .acquiring;
+                    self.acquire(now);
                 },
+                .acquiring => self.acquire(now),
                 .preparing => {
                     self.entropy.poll(now);
                     if (self.entropy.state == .failed) {
@@ -488,6 +495,22 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
                 .finished => {},
             }
             return self.state;
+        }
+
+        /// A busy backend must have taken no ownership. Retry only that
+        /// explicit result, once per tick, within the original deadline.
+        fn acquire(self: *Self, now: u64) void {
+            if (now < self.seed_last or now >= self.seed_deadline) {
+                self.state = .failed;
+                return;
+            }
+            self.seed_last = now;
+            self.entropy.begin(now, self.seed_deadline - now) catch |err| {
+                const failure: anyerror = err;
+                if (failure != error.Unavailable) self.state = .failed;
+                return;
+            };
+            self.state = .preparing;
         }
 
         fn beginStop(self: *Self) void {
@@ -1192,10 +1215,14 @@ test "lifecycle times out and retains failed cleanup for retry" {
 
 const PreparedTestBackend = struct {
     held: bool = false,
+    unavailable: bool = false,
+    attempts: u32 = 0,
     release_ready: bool = false,
     fail: bool = false,
     byte: u8 = 1,
     pub fn begin(self: *@This()) !void {
+        self.attempts += 1;
+        if (self.unavailable) return error.Unavailable;
         if (self.held) return error.Busy;
         self.held = true;
     }
@@ -1278,4 +1305,73 @@ test "prepared foreground cancellation and entropy failure never open credential
     _ = prepared.poll(true, 10);
     try std.testing.expect(model.private_input == null and !session.available());
     try std.testing.expectEqual(@as(u64, 2), generations.last);
+}
+
+test "prepared foreground retries transient entropy contention within one deadline" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{ .unavailable = true, .release_ready = true };
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 50, 100, 20);
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 10));
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 11));
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 19));
+    try std.testing.expectEqual(@as(u32, 3), backend.attempts);
+    try std.testing.expectEqual(@as(u64, 0), generations.last);
+    try std.testing.expect(!backend.held and model.private_input == null);
+    backend.unavailable = false;
+    try std.testing.expectEqual(.preparing, prepared.poll(true, 20));
+    try std.testing.expectEqual(@as(u64, 60), session.collector.deadline);
+    for (0..32) |_| _ = prepared.poll(true, 21);
+    try std.testing.expectEqual(.active, prepared.poll(true, 22));
+    try std.testing.expect(model.private_input == null);
+    _ = prepared.poll(true, 23);
+    try std.testing.expect(model.private_input != null);
+    _ = prepared.poll(false, 24);
+}
+
+test "entropy contention stops at deadline or time rollback without claiming resources" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{ .unavailable = true };
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 10, 100, 20);
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 10));
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 19));
+    try std.testing.expectEqual(.failed, prepared.poll(true, 20));
+    try std.testing.expectEqual(@as(u32, 2), backend.attempts);
+    try std.testing.expectEqual(.failed, prepared.poll(true, 21));
+    try std.testing.expect(!backend.held and model.private_input == null);
+    try std.testing.expectEqual(.idle, prepared.poll(false, 22));
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 30));
+    try std.testing.expectEqual(.failed, prepared.poll(true, 29));
+    try std.testing.expectEqual(@as(u64, 0), generations.last);
+    try std.testing.expect(!backend.held and model.private_input == null);
+}
+
+test "cancel or nontransient acquisition failure does not retry or release another owner" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{ .unavailable = true };
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 10, 100, 20);
+    try std.testing.expectEqual(.acquiring, prepared.poll(true, 1));
+    try std.testing.expectEqual(.idle, prepared.poll(false, 2));
+    try std.testing.expectEqual(@as(u32, 1), backend.attempts);
+    backend.unavailable = false;
+    backend.held = true; // A foreign owner makes begin return a nontransient Busy.
+    try std.testing.expectEqual(.failed, prepared.poll(true, 3));
+    try std.testing.expectEqual(.failed, prepared.poll(true, 4));
+    try std.testing.expectEqual(@as(u32, 2), backend.attempts);
+    try std.testing.expectEqual(.idle, prepared.poll(false, 5));
+    try std.testing.expect(backend.held and model.private_input == null);
 }
