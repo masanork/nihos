@@ -122,6 +122,12 @@ pub const Segment = struct {
     cands: [max_candidates]u16 = @splat(0), // offsets into candidate pool
 };
 
+fn dictionaryContains(dict: anytype, key: []const u8) bool {
+    if (@hasDecl(@TypeOf(dict.*), "contains")) return dict.contains(key);
+    var candidate: [1][]const u8 = undefined;
+    return dict.lookup(key, &candidate) > 0;
+}
+
 pub const Engine = struct {
     reading_buf: [max_reading]u8 = @splat(0),
     reading_len: usize = 0,
@@ -233,8 +239,7 @@ pub const Engine = struct {
             const tail = phrase[k_len..];
 
             // 1. Plain noun / word
-            var dummy_cand: [1][]const u8 = undefined;
-            if (dict.lookup(stem, &dummy_cand) > 0) {
+            if (dictionaryContains(dict, stem)) {
                 if (checkTail(tail, TailMask.noun)) {
                     const char_count: i32 = @intCast(std.unicode.utf8CountCodepoints(stem) catch 1);
                     var cost = seg_base - @min(char_count, 6) * word_bonus;
@@ -258,7 +263,7 @@ pub const Engine = struct {
                         ari_key_buf[stem.len] = okuri_info.consonant;
                         const ari_key = ari_key_buf[0 .. stem.len + 1];
 
-                        if (dict.lookup(ari_key, &dummy_cand) > 0) {
+                        if (dictionaryContains(dict, ari_key)) {
                             const rem_tail = phrase[k_len + okuri_info.kana_len ..];
                             if (checkConjugationTail(rem_tail, okuri_info.class)) {
                                 const char_count: i32 = @intCast(std.unicode.utf8CountCodepoints(stem) catch 1);
