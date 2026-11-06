@@ -734,6 +734,16 @@ def audit_io_lifetimes(config, symbols, sizes, low, high):
     return config
 
 
+def audit_fatfs_soak_flash(functions, sql_span):
+    """Require one foreground diagnostic loop in Flash, with no SRAM clone."""
+    matches = [(name, start, end) for name, start, end in functions
+               if name == 'main.qualificationSoak' or name.startswith('main.qualificationSoak__func_')]
+    require(len(matches) == 1 and matches[0][0] == 'main.qualificationSoak' and
+            sql_span[0] <= matches[0][1] < matches[0][2] <= sql_span[1],
+            'FatFs qualification loop missing, duplicated, or outside Flash')
+    return {'start': hex(matches[0][1]), 'end': hex(matches[0][2])}
+
+
 def audit_cold_flash(manifest, symbols, functions, low, high, heap_start, sql_span, profile, broker):
     start, end = symbols.get('__flash_cold_start'), symbols.get('__flash_cold_end')
     require((start is None) == (end is None), 'partial cold Flash linker extent')
@@ -1192,6 +1202,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(len(stack_data) == 1, "missing/duplicate C stack metadata")
         sql_report["static_c_stack"] = decode_stack_sizes(stack_data[0], functions)
         if fatfs_native is not None:
+            if (fatfs_native.get('qualification_soak_flash') is True or
+                    (sqlite_manifest.get('cold_flash') and not allow_photo and
+                     any(name == 'main.qualificationSoak' or name.startswith('main.qualificationSoak__func_')
+                         for name, _, _ in functions))):
+                sql_report['fatfs_soak_flash'] = audit_fatfs_soak_flash(functions, sql_span)
             require(profile == 'device' and 'broker' in sqlite_manifest and 'service' not in sqlite_manifest.get('littlefs', {}),
                     'native FatFs requires exclusive broker/storage phase')
             sql_report['fatfs_native'] = fatfs_native_profile.audit(fatfs_native, symbols, symbol_sizes, low, high,

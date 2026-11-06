@@ -1379,7 +1379,8 @@ fn reportPmpProbe() noreturn {
     while (true) asm volatile ("wfi" ::: .{ .memory = true });
 }
 
-noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (options.card_photo) ".flash.photo" else ".text") noreturn {
+// This diagnostic loop runs after Flash mapping and is not an interrupt handler.
+noinline fn qualificationSoak(sd_crc: u32, display_panel: u32) linksection(if (options.card_photo) ".flash.photo" else if (options.cold_flash and options.fatfs_native) ".flash.text.storage" else ".text") noreturn {
     var previous: u32 = 0;
     var rounds: u32 = 0;
     var previous_ticks = [_]u32{ 0, 0 };

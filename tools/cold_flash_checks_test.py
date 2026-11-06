@@ -40,6 +40,15 @@ class ColdFlashImageChecks(unittest.TestCase):
         self.assertEqual(result['recovered_bytes'], 12 * 1024)
         self.assertFalse(result['irq_call_graph_proven'])
 
+    def test_fatfs_soak_requires_one_flash_copy(self):
+        span = (0x40020000, 0x400c0000)
+        good = ('main.qualificationSoak', 0x40030000, 0x40031000)
+        self.assertEqual(IMAGE.audit_fatfs_soak_flash([good], span)['start'], '0x40030000')
+        for functions in ([], [('main.qualificationSoak', 0x4ff01000, 0x4ff02000)],
+                          [good, ('main.qualificationSoak__func_2', 0x4ff01000, 0x4ff02000)]):
+            with self.subTest(functions=functions), self.assertRaises(ValueError):
+                IMAGE.audit_fatfs_soak_flash(functions, span)
+
     def test_old_images_and_empty_opt_out_extent_still_pass(self):
         self.assertIsNone(audit(None, {}, []))
         self.assertIsNone(audit(None, {'__flash_cold_start': 0x400a0000,

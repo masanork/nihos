@@ -70,6 +70,11 @@ def main(directory, source, littlefs=None):
         fixture = json.loads((directory / 'fatfs-fixture-manifest.json').read_text())
         result['fatfs_native'] = {'version': 3, 'source': fixture['source'], 'fixture': fixture, 'flash_end': '0x400d0000', 'c_no_inline': True,
             'sources': {path: sha(root / path) for path in SOURCES}}
+        options = (directory / 'native_options.zig').read_text()
+        result['fatfs_native']['qualification_soak_flash'] = (
+            'pub const cold_flash = true;' in options and
+            'pub const pmp_probe = false;' in options and
+            'pub const card_photo = false;' in options)
         if fatfs_sd:
             result['fatfs_native']['card'] = {'version':4 if card_rpc else 2, 'mode':'inserted' if card_direct else 'swap',
                 **({'rpc':True,'cancel_relay':True} if card_rpc else {}),
@@ -77,7 +82,7 @@ def main(directory, source, littlefs=None):
                 'charged':65536 if card_rpc else 32768,
                 'sources':{path:sha(root/path) for path in CARD_SOURCES}}
         result['allowed_functions'] = sorted(set(result['allowed_functions']) | {
-            'main.runFatFsTasks', 'main.runSqlProbe', 'main.resourceReport', 'sdmmc_probe.freshCardSession',
+            'main.runFatFsTasks', 'main.runSqlProbe', 'main.resourceReport', 'main.qualificationSoak', 'sdmmc_probe.freshCardSession',
             'nih_storage_fatfs_session_begin', 'nih_storage_fatfs_session_end',
             'sdmmc_probe.beginFatFsSession', 'sdmmc_probe.endFatFsSession'})
         if fatfs_sd:
