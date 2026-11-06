@@ -3,8 +3,8 @@
 | Physical source lines | nihos |
 |---|---:|
 | implementation | 85,689 |
-| tests | 45,969 |
-| tooling | 31,088 |
+| tests | 46,037 |
+| tooling | 31,204 |
 | probes | 17,388 |
 | vendored | 723 |
 | generated | 0 |
@@ -13,8 +13,8 @@ Physical lines include comments and blanks. Test-code volume is not execution co
 
 ## nihos
 
-Commit: `805050def603dffb517fb4baecb732587ae5062f`; working tree dirty: `False`; UTC: 2026-11-06T16:20:35.821300+00:00.
-Measured source fingerprint: `8013d82cfab73d78991fc4ce3925456b1cb21552fa72ef65afa86210531fb173`.
+Commit: `35b171aea33b4d53d078d9edff2d48b55321f3a3`; working tree dirty: `False`; UTC: 2026-11-06T23:14:30.253827+00:00.
+Measured source fingerprint: `56af725fbb99510427ce929f2f6140b0d517cdf5fda62aef6bf06741ba446bac`.
 
 | Area | Implementation | Tests | Tooling |
 |---|---:|---:|---:|
@@ -24,7 +24,7 @@ Measured source fingerprint: `8013d82cfab73d78991fc4ce3925456b1cb21552fa72ef65af
 | probes | 0 | 0 | 0 |
 | src | 83,752 | 35,050 | 0 |
 | third_party | 0 | 0 | 0 |
-| tools | 0 | 10,919 | 30,767 |
+| tools | 0 | 10,987 | 30,883 |
 
 Host Zig emitted implementation line coverage: **94.1% (16882/17935)**.
 170 files represented; 375 src/ files unrepresented.
