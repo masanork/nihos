@@ -60,6 +60,13 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
     const reply = if (terminal_mode) model.statusText() else if (model.mode == .system) "" else if (model.mode == .command) model.command[0..model.command_length] else if (model.status == .scheme_error or model.status == .scheme_result) model.reply[0..model.reply_length] else model.statusText();
     @memcpy(status[length..][0..reply.len], reply);
     length += reply.len;
+    // Display the uncommitted SKK reading or selected candidate in the
+    // status line until the document renderer supports inline preedit.
+    if (!terminal_mode and model.mode == .edit and model.doc.preedit.len != 0) {
+        const preedit = model.doc.preedit.slice();
+        length = @min(preedit.len, status.len);
+        @memcpy(status[0..length], preedit[0..length]);
+    }
     var text: []const u8 = if (model.mode == .help) &console.scratch.help_text else if (model.mode == .system) model.snapshot.slice() else model.doc.slice();
     if (model.mode == .system) {
         var row: usize = 0;
