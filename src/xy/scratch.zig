@@ -13,6 +13,8 @@ pub const camera = @import("camera.zig");
 pub const card = @import("card.zig");
 pub const soft_keyboard = @import("soft_keyboard.zig");
 pub const ime_omni = @import("ime_omni.zig");
+const ime_dict = @import("dict.zig");
+const default_ime_bytes linksection(scheme.data_section) = @embedFile("fixtures/jisyo_s_nfst.bin").*;
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
@@ -118,7 +120,7 @@ pub const Model = struct {
     /// command `ime` toggles Japanese input.
     ime: ime_omni.OmniIme,
     /// Candidate backend for the IME. Hosts may replace it (the sqld
-    /// dictionary provider is a follow-up); null means no candidates.
+    /// dictionary provider can override the built-in read-only SKK-S dictionary.
     ime_provider: ?ime_omni.OmniProvider,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
@@ -272,11 +274,17 @@ pub const Model = struct {
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
     }
-    fn emptyImeQuery(_: *anyopaque, _: ime_omni.PrefixKind, _: u8, _: []const u8, _: *ime_omni.CandidateList) linksection(scheme.code_section) void {}
+    fn defaultImeQuery(_: *anyopaque, kind: ime_omni.PrefixKind, _: u8, key: []const u8, out: *ime_omni.CandidateList) linksection(scheme.code_section) void {
+        if (kind != .kanji) return;
+        const dict = ime_dict.NfstDict.init(&default_ime_bytes) catch return;
+        var candidates: [16][]const u8 = undefined;
+        const count = dict.lookup(key, &candidates);
+        for (candidates[0..count]) |candidate| _ = out.append(candidate, "");
+    }
 
     fn imeProvider(self: *Model) linksection(scheme.code_section) ime_omni.OmniProvider {
         if (self.ime_provider) |provider| return provider;
-        return .{ .ctx = self, .queryFn = emptyImeQuery };
+        return .{ .ctx = self, .queryFn = defaultImeQuery };
     }
 
     fn imeKey(self: *Model, byte: u8) linksection(scheme.code_section) void {
@@ -1814,6 +1822,23 @@ test "SKK conversion runs through the workspace provider and learns the commit" 
     try std.testing.expectEqualStrings("漢字", model.doc.slice());
     try std.testing.expectEqual(ime_omni.OmniPhase.idle, model.ime.phase);
     try std.testing.expect(mock.learned);
+}
+
+test "built-in dictionary converts and cycles candidates in the workspace" {
+    var model: Model = undefined;
+    model.initInPlace();
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "Kanji ");
+    try std.testing.expectEqualStrings("▼漢字", model.doc.preedit.slice());
+    typeKeys(&model, " ");
+    try std.testing.expectEqualStrings("▼幹事", model.doc.preedit.slice());
+    typeKeys(&model, "x");
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字", model.doc.slice());
+    typeKeys(&model, "IKu");
+    try std.testing.expectEqualStrings("▼行く", model.doc.preedit.slice());
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字行く", model.doc.slice());
 }
 
 test "Escape cancels a composition instead of opening the minibuffer" {

@@ -34,9 +34,15 @@ right, Esc and Hide. Hide is reversible by flicking up from the bottom edge;
 a downward flick dismisses it. The keyboard supports printable ASCII and the
 existing document/minibuffer input path. The `ime` minibuffer command toggles
 the workspace SKK romaji-to-kana input path for both physical and touch keys.
-The native session does not yet bind a dictionary provider or render IME
-preedit/candidates, so kana-to-kanji interaction is not yet complete. A touch
-caret and hold-to-repeat are also pending. The portrait and input
+The native session uses a bundled read-only SKK-S fixture dictionary with
+3,375 entries. Press Esc, type `ime`, then Enter to enable hiragana. Type
+`kanji` for かんじ; type `Kanji` then Space for 漢字. The bottom status line
+shows the uncommitted reading or selected candidate. Space advances candidates,
+`x` goes back, Enter commits, and Esc cancels. `q` toggles katakana, `l`
+returns to ASCII, and `IKu` selects 行く with okurigana. Words absent from the
+small dictionary have no candidates; learning and sentence conversion are not
+implemented here. This integration requires physical Tab5 validation.
+A touch caret and hold-to-repeat are also pending. The portrait and input
 paths have host coverage. One physical attach/detach and touch cycle was
 observed in the [hot-plug checkpoint](measurements/2026-11-01-xy-keyboard-hotplug.md);
 repeat, fault, cold-boot and broader physical qualification remain open.
@@ -53,9 +59,8 @@ repeat, fault, cold-boot and broader physical qualification remain open.
 | Document: touch body | Return Home; no touch caret placement |
 
 The minibuffer evaluates Scheme or opens `help`, `log`, `mem` and `tasks`.
-Those system views are read-only. USB/Bluetooth keyboard adapters, native IME
-candidate presentation/provider integration, and automatic startup restoration
-of RAM text/settings remain separate work.
+Those system views are read-only. USB/Bluetooth keyboard adapters and automatic
+startup restoration of RAM text/settings remain separate work.
 [Persistent storage bindings](planning/sqld-xy-service.md) are available through
 the normal sqld owner; unknown media are never automatically initialized. Japanese display and serial UTF-8 input are separate from IME.
 The [Tab5 reader report](measurements/2026-10-31-xy-tab5-reader.md) and
