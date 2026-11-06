@@ -57,14 +57,33 @@ test "large NFST staged mapped import remount and digest" {
     try std.testing.expectError(error.NoSpace, store.beginStream(1, length));
     try store.rollback();
     var scratch = model.MapScratch{};
-    try store.begin();
+    // Plan a conservative payload budget from every fixed batch and a
+    // maximum-height allowance for initial creation of the sparse map.
+    var block: [page * model.max_mapped_batch_pages]u8 = @splat(0);
+    var patches: [model.max_mapped_batch_pages]model.MappedPatch = undefined;
+    var payload_plan: u64 = model.extent_map.max_height + 1;
+    var planned_batches: u32 = 0;
+    var planned: u64 = 0;
+    while (planned < length) {
+        const n: usize = @intCast(@min(block.len, length - planned));
+        var count: usize = 0;
+        var cursor: usize = 0;
+        while (cursor < n) {
+            const chunk = @min(page, n - cursor);
+            patches[count] = .{ .offset = planned + cursor, .bytes = block[cursor..][0..chunk] };
+            count += 1;
+            cursor += chunk;
+        }
+        payload_plan += try fixture.Store.mappedBatchPages(length, patches[0..count]);
+        planned += n;
+        planned_batches += 1;
+    }
+    try store.beginBudgeted(.{ .payload_writes = payload_plan, .index_writes = planned_batches + 2, .index_peak = 2, .payload_margin = 4, .index_margin = 1 });
     try store.put(1, "");
     var steps: usize = 0;
     try store.requireIndexHeadroom(1);
     try search(&store, try store.mappedResizePages(1, length, &scratch), &steps);
     try store.resizeMappedPrepared(1, length, &scratch);
-    var block: [page * model.max_mapped_batch_pages]u8 = undefined;
-    var patches: [model.max_mapped_batch_pages]model.MappedPatch = undefined;
     var input_hash = std.crypto.hash.sha2.Sha256.init(.{});
     var written: u64 = 0;
     var batches: usize = 0;
@@ -87,7 +106,11 @@ test "large NFST staged mapped import remount and digest" {
         written += n;
         batches += 1;
     }
+    const used_payload = store.budget_payload_used;
+    const used_index = store.budget_index_used;
     try store.commit();
+    try std.testing.expectError(error.Busy, store.begin());
+    try store.releaseBudget();
     dev.close();
     dev = try fixture.Device.open(io, tmp.dir, "store");
     defer dev.close();
@@ -121,5 +144,5 @@ test "large NFST staged mapped import remount and digest" {
     var result: nfst.Candidates = .{};
     try dict.lookup("かんじ", &result);
     try std.testing.expectEqualStrings("漢字", result.slice(0));
-    std.debug.print("MAPPED_LARGE bytes={d} free_pages={d} largest_run_pages={d} batches={d} search_steps={d} candidate={s}\n", .{ length, space.free_pages, space.largest_run, batches, steps, result.slice(0) });
+    std.debug.print("BUDGET_MAPPED bytes={d} free_pages={d} largest_run_pages={d} batches={d} search_steps={d} payload={d}/{d} index={d}/{d} candidate={s}\n", .{ length, space.free_pages, space.largest_run, batches, steps, used_payload, payload_plan, used_index, planned_batches + 2, result.slice(0) });
 }
