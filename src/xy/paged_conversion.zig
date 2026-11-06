@@ -11,13 +11,45 @@ pub fn Adapter(comptime Reader: type) type {
         candidates: nfst.Candidates = .{},
         failure: ?nfst.Error = null,
         truncated: bool = false,
+        memo_enabled: bool = true,
+        memo: [64]Memo = @splat(.{}),
+        memo_count: usize = 0,
+        memo_hits: usize = 0,
+        const Memo = struct {
+            key: [64]u8 = @splat(0),
+            len: u8 = 0,
+            found: bool = false,
+        };
 
         pub fn beginConversion(self: *Self) void {
             self.failure = null;
             self.truncated = false;
+            self.memo_count = 0;
+            self.memo_hits = 0;
         }
         pub fn conversionError(self: *const Self) nfst.Error!void {
             if (self.failure) |err| return err;
+        }
+        /// Existence answers are scoped to one conversion and one pinned
+        /// dictionary. A failed lookup is never inserted into the memo.
+        pub fn contains(self: *Self, key: []const u8) bool {
+            if (self.failure != null) return false;
+            if (self.memo_enabled) for (self.memo[0..self.memo_count]) |*entry| {
+                if (std.mem.eql(u8, entry.key[0..entry.len], key)) {
+                    self.memo_hits += 1;
+                    return entry.found;
+                }
+            };
+            var out: [1][]const u8 = undefined;
+            const found = self.lookup(key, &out) != 0;
+            if (self.failure == null and self.memo_enabled and key.len <= 64 and self.memo_count < self.memo.len) {
+                const entry = &self.memo[self.memo_count];
+                @memcpy(entry.key[0..key.len], key);
+                entry.len = @intCast(key.len);
+                entry.found = found;
+                self.memo_count += 1;
+            }
+            return found;
         }
         pub fn lookup(self: *Self, key: []const u8, out: [][]const u8) usize {
             if (self.failure != null) return 0;
@@ -71,4 +103,29 @@ test "paged IME preserves composition on read failure and copies candidates" {
     try std.testing.expectEqual(@as(usize, 0), ime.engine.segment_count);
     reader.fail = false;
     try std.testing.expectError(error.Io, ime.key(&doc, &adapter, ' '));
+}
+
+test "existence memo resets per conversion and never stores failed reads" {
+    const bytes = @embedFile("fixtures/jisyo_s_nfst.bin");
+    var reader = Bytes{ .bytes = bytes };
+    var dict = try nfst.Dictionary(Bytes).init(&reader, bytes.len);
+    var adapter = Adapter(Bytes){ .dictionary = &dict };
+    adapter.beginConversion();
+    try std.testing.expect(adapter.contains("かんじ"));
+    const misses = dict.cache_misses;
+    try std.testing.expect(adapter.contains("かんじ"));
+    try std.testing.expectEqual(misses, dict.cache_misses);
+    try std.testing.expectEqual(@as(usize, 1), adapter.memo_hits);
+    adapter.beginConversion();
+    try std.testing.expectEqual(@as(usize, 0), adapter.memo_count);
+    dict.cache_valid = false;
+    reader.fail = true;
+    try std.testing.expect(!adapter.contains("かんじ"));
+    try std.testing.expectError(error.Io, adapter.conversionError());
+    try std.testing.expectEqual(@as(usize, 0), adapter.memo_count);
+    // A previous successful answer must not mask an invalidated reader.
+    adapter.beginConversion();
+    reader.fail = false;
+    try std.testing.expect(!adapter.contains("かんじ"));
+    try std.testing.expectError(error.Io, adapter.conversionError());
 }

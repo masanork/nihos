@@ -74,5 +74,38 @@ test "large paged dictionary drives IME after remount" {
     try std.testing.expectEqualStrings("幹事", document.preedit.slice());
     try ime.key(&document, &adapter, '\n');
     try std.testing.expectEqualStrings("幹事", document.slice());
-    std.debug.print("LARGE_NFST bytes={d} queries=7 cache_misses={d} cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
+    // Compare identical conversions from cold page caches. No device latency is
+    // inferred from these host file-backed read counts.
+    const cases = [_][]const u8{ "kanji", "kyouhaiitenkidesune", "watashihagakuseidesu" };
+    for (cases) |keys| {
+        var baseline = @import("xy/standard_ime.zig").State{};
+        var optimized = @import("xy/standard_ime.zig").State{};
+        var baseline_doc: @import("xy/document.zig").Document(512, 16, 512, 1, 64) = .{};
+        var optimized_doc: @import("xy/document.zig").Document(512, 16, 512, 1, 64) = .{};
+        for (keys) |c| {
+            try baseline.key(&baseline_doc, &adapter, c);
+            try optimized.key(&optimized_doc, &adapter, c);
+        }
+        dict.cache_valid = false;
+        adapter.memo_enabled = false;
+        const before = dict.cache_misses;
+        try baseline.key(&baseline_doc, &adapter, ' ');
+        const old_reads = dict.cache_misses - before;
+        dict.cache_valid = false;
+        adapter.memo_enabled = true;
+        const middle = dict.cache_misses;
+        try optimized.key(&optimized_doc, &adapter, ' ');
+        const new_reads = dict.cache_misses - middle;
+        try std.testing.expectEqualStrings(baseline_doc.preedit.slice(), optimized_doc.preedit.slice());
+        try std.testing.expectEqual(baseline.engine.segment_count, optimized.engine.segment_count);
+        for (0..baseline.engine.segment_count) |i| {
+            try std.testing.expectEqual(baseline.engine.segments[i].cand_count, optimized.engine.segments[i].cand_count);
+            for (0..baseline.engine.segments[i].cand_count) |j| {
+                try std.testing.expectEqualStrings(baseline.engine.candidateText(i, j), optimized.engine.candidateText(i, j));
+            }
+        }
+        try std.testing.expect(new_reads <= old_reads);
+        std.debug.print("PAGED_IME keys={s} before={d} after={d} memo_hits={d}\n", .{ keys, old_reads, new_reads, adapter.memo_hits });
+    }
+    std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
