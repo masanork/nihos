@@ -191,13 +191,13 @@ def run():
         if hosted_vt_requested:
             vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
             subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
-                "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "--dep", "ssh_entropy", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
+                "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
                 "--dep", "vt100", "--dep", "terminal_adapter", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
                 "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
                 "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig",
                 "--dep", "view_config", "--dep", "canvas", "-Mtext_console=src/console.zig",
                 "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig",
-                "-Mssh_lifecycle=src/xy/ssh_lifecycle.zig", "-Mssh_entropy=src/xy/ssh_entropy.zig"], cwd=ROOT, check=True)
+                "-Mssh_lifecycle=src/xy/ssh_lifecycle.zig"], cwd=ROOT, check=True)
         log = (tmp / "sshd.log").open("wb")
         server = subprocess.Popen(["/usr/sbin/sshd", "-D", "-e", "-f", str(config)], stdout=log, stderr=log)
         try:
