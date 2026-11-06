@@ -5,6 +5,7 @@ const std = @import("std");
 
 pub const Material = struct { secret: [32]u8, pin: [32]u8, cookie: [16]u8 };
 pub const ExchangeEntropy = struct { secret: [32]u8, cookie: [16]u8 };
+pub const seeded_entropy = @import("ssh_entropy.zig");
 pub const State = enum { idle, opening, need_material, handshaking, ready, closing, closed, failed };
 
 /// Volatile caller-owned connection material. Never copy, persist, log or put
@@ -391,7 +392,7 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
         model: *Model,
         controller: *ControllerType,
         entropy: *EntropySession,
-        visit: Visit = undefined,
+        visit: Visit,
         visit_live: bool = false,
         state: Self.State = .idle,
         seed_timeout: u64,
@@ -400,7 +401,8 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
 
         pub fn init(model: *Model, controller: *ControllerType, entropy: *EntropySession, seed_timeout: u64, connect_timeout: u64, close_timeout: u64) !Self {
             if (seed_timeout == 0 or connect_timeout == 0 or close_timeout == 0) return error.InvalidArgument;
-            return .{ .model = model, .controller = controller, .entropy = entropy, .seed_timeout = seed_timeout, .connect_timeout = connect_timeout, .close_timeout = close_timeout };
+            // SAFETY: visit is initialized in place before visit_live is set.
+            return .{ .model = model, .controller = controller, .entropy = entropy, .visit = undefined, .seed_timeout = seed_timeout, .connect_timeout = connect_timeout, .close_timeout = close_timeout };
         }
 
         /// Call once per foreground tick, after servicing the network. A
