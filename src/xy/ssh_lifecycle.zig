@@ -430,6 +430,19 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
             return .{ .model = model, .controller = controller, .entropy = entropy, .seed_timeout = seed_timeout, .connect_timeout = connect_timeout, .close_timeout = close_timeout };
         }
 
+        /// Initialize in final storage; no foreground or crypto state is copied.
+        pub fn initInPlace(self: *Self, model: *Model, controller: *ControllerType, entropy: *EntropySession, seed_timeout: u64, connect_timeout: u64, close_timeout: u64) !void {
+            if (seed_timeout == 0 or connect_timeout == 0 or close_timeout == 0) return error.InvalidArgument;
+            self.model = model;
+            self.controller = controller;
+            self.entropy = entropy;
+            self.visit_live = false;
+            self.state = .idle;
+            self.seed_timeout = seed_timeout;
+            self.connect_timeout = connect_timeout;
+            self.close_timeout = close_timeout;
+        }
+
         /// Call once per foreground tick, after servicing the network. A
         /// failed visit is not retried while the SSH screen remains visible.
         pub fn poll(self: *Self, visible: bool, now: u64) Self.State {
