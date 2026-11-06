@@ -380,6 +380,83 @@ pub fn Foreground(comptime Model: type, comptime SessionController: type, compti
     };
 }
 
+/// Prepare entropy without blocking the UI or attaching a credential form.
+/// The session and this object must stay in stable storage until stop finishes.
+/// Neither this coordinator nor its tests qualify the entropy backend.
+pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, comptime EntropySession: type) type {
+    return struct {
+        const Self = @This();
+        const Visit = Foreground(Model, ControllerType, EntropySession);
+        pub const State = enum { idle, preparing, active, stopping, finished, failed };
+        model: *Model,
+        controller: *ControllerType,
+        entropy: *EntropySession,
+        visit: Visit = undefined,
+        visit_live: bool = false,
+        state: Self.State = .idle,
+        seed_timeout: u64,
+        connect_timeout: u64,
+        close_timeout: u64,
+
+        pub fn init(model: *Model, controller: *ControllerType, entropy: *EntropySession, seed_timeout: u64, connect_timeout: u64, close_timeout: u64) !Self {
+            if (seed_timeout == 0 or connect_timeout == 0 or close_timeout == 0) return error.InvalidArgument;
+            return .{ .model = model, .controller = controller, .entropy = entropy, .seed_timeout = seed_timeout, .connect_timeout = connect_timeout, .close_timeout = close_timeout };
+        }
+
+        /// Call once per foreground tick, after servicing the network. A
+        /// failed visit is not retried while the SSH screen remains visible.
+        pub fn poll(self: *Self, visible: bool, now: u64) Self.State {
+            if (!visible and self.state != .idle and self.state != .stopping) self.beginStop();
+            switch (self.state) {
+                .idle => if (visible) {
+                    self.entropy.begin(now, self.seed_timeout) catch {
+                        self.state = .failed;
+                        return self.state;
+                    };
+                    self.state = .preparing;
+                },
+                .preparing => {
+                    self.entropy.poll(now);
+                    if (self.entropy.state == .failed) {
+                        self.entropy.cancel();
+                        self.state = .failed;
+                    } else if (self.entropy.available()) {
+                        self.visit.initInPlace(self.model, self.controller, self.entropy, self.connect_timeout, self.close_timeout) catch {
+                            self.entropy.cancel();
+                            self.state = .failed;
+                            return self.state;
+                        };
+                        self.visit_live = true;
+                        self.state = .active;
+                    }
+                },
+                .active => {
+                    const status = self.visit.poll(true, now) catch {
+                        self.beginStop();
+                        return self.state;
+                    };
+                    if (status == .closed or status == .failed) self.beginStop();
+                },
+                .stopping => {
+                    if (self.visit_live and self.visit.stop()) self.visit_live = false;
+                    self.entropy.poll(now);
+                    if (!self.visit_live and self.entropy.state == .idle) self.state = if (visible) .finished else .idle;
+                },
+                .failed => self.entropy.poll(now),
+                .finished => {},
+            }
+            return self.state;
+        }
+
+        fn beginStop(self: *Self) void {
+            // Retain the visit and its model until transport cleanup succeeds.
+            if (self.visit_live and self.visit.stop()) self.visit_live = false;
+            self.entropy.cancel();
+            self.state = .stopping;
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {
@@ -1035,4 +1112,94 @@ test "lifecycle times out and retains failed cleanup for retry" {
     network.fail_cancel = false;
     try std.testing.expect(c.retryCleanup());
     try std.testing.expect(c.owner == null and c.handle == null);
+}
+
+const PreparedTestBackend = struct {
+    held: bool = false,
+    release_ready: bool = false,
+    fail: bool = false,
+    byte: u8 = 1,
+    pub fn begin(self: *@This()) !void {
+        if (self.held) return error.Busy;
+        self.held = true;
+    }
+    pub fn owned(self: *@This()) bool {
+        return self.held;
+    }
+    pub fn sample(self: *@This()) !?u8 {
+        if (self.fail) return error.SampleFailed;
+        defer self.byte +%= 1;
+        return self.byte;
+    }
+    pub fn release(self: *@This()) bool {
+        if (!self.release_ready) return false;
+        self.held = false;
+        return true;
+    }
+};
+
+test "prepared foreground waits for entropy and cleanup before credentials" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{};
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 200, 100, 20);
+    try std.testing.expectEqual(.preparing, prepared.poll(true, 0));
+    for (0..40) |_| {
+        _ = prepared.poll(true, 1);
+        try std.testing.expect(model.private_input == null);
+    }
+    try std.testing.expectEqual(.restoring, session.state);
+    backend.release_ready = true;
+    try std.testing.expectEqual(.active, prepared.poll(true, 2));
+    try std.testing.expect(model.private_input == null);
+    try std.testing.expectEqual(.active, prepared.poll(true, 3));
+    try std.testing.expect(model.private_input != null);
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    try std.testing.expectEqual(.active, prepared.poll(true, 3));
+    try std.testing.expectEqual(State.opening, controller.state);
+    controller.cleanup_ok = false;
+    try std.testing.expectEqual(.stopping, prepared.poll(false, 4));
+    try std.testing.expect(model.private_input == null);
+    try std.testing.expect(!session.available());
+    try std.testing.expectEqual(.stopping, prepared.poll(true, 5));
+    try std.testing.expectEqual(@as(u64, 1), generations.last);
+    controller.cleanup_ok = true;
+    try std.testing.expectEqual(.finished, prepared.poll(true, 6));
+    try std.testing.expectEqual(.idle, prepared.poll(false, 7));
+    try std.testing.expectEqual(.preparing, prepared.poll(true, 9));
+    try std.testing.expectEqual(@as(u64, 2), generations.last);
+}
+
+test "prepared foreground cancellation and entropy failure never open credentials" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{};
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 200, 100, 20);
+    _ = prepared.poll(true, 0);
+    _ = prepared.poll(true, 1);
+    try std.testing.expectEqual(.stopping, prepared.poll(false, 2));
+    try std.testing.expectEqual(.stopping, prepared.poll(true, 3));
+    try std.testing.expect(model.private_input == null and backend.held);
+    backend.release_ready = true;
+    try std.testing.expectEqual(.finished, prepared.poll(true, 4));
+    _ = prepared.poll(false, 5);
+    _ = prepared.poll(false, 6);
+    backend.fail = true;
+    try std.testing.expectEqual(.preparing, prepared.poll(true, 7));
+    _ = prepared.poll(true, 8);
+    try std.testing.expectEqual(.failed, prepared.poll(true, 9));
+    _ = prepared.poll(true, 10);
+    try std.testing.expect(model.private_input == null and !session.available());
+    try std.testing.expectEqual(@as(u64, 2), generations.last);
 }
