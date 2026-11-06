@@ -92,15 +92,9 @@ diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_fo
 index e73e610d..5c65aa8f 100644
 --- a/src/platform/native/ssh_foreground.zig
 +++ b/src/platform/native/ssh_foreground.zig
-@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
- const UnavailableEntropy = struct {
-     // Do not link the SSH cryptographic path into a device image until a
-     // qualified source and its memory placement have both been admitted.
+@@ -8 +8 @@
 -    pub const qualified = false;
 +    pub const qualified = true; // test-only: callback uses fixed key and no network.
-     pub fn available(_: *@This()) bool {
-         return false;
-     }
 diff --git a/src/platform/native/ssh_foreground_stack.zig b/src/platform/native/ssh_foreground_stack.zig
 index 196ad2c3..d33986e0 100644
 --- a/src/platform/native/ssh_foreground_stack.zig
