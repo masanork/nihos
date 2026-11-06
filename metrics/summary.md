@@ -13,7 +13,7 @@ Physical lines include comments and blanks. Test-code volume is not execution co
 
 ## nihos
 
-Commit: `e910dbb3ac7a83f655c6d456db83ad31b82869aa`; working tree dirty: `False`; UTC: 2026-11-06T06:23:53.620647+00:00.
+Commit: `fc97ce83526179bc75c0e900771e79384332f5d0`; working tree dirty: `False`; UTC: 2026-11-06T08:24:09.572043+00:00.
 Measured source fingerprint: `8013d82cfab73d78991fc4ce3925456b1cb21552fa72ef65afa86210531fb173`.
 
 | Area | Implementation | Tests | Tooling |
