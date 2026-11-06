@@ -31,6 +31,7 @@ git -C "$tmp/tree" apply "$root/probes/ssh-placement/exact-link-only.patch"
     fi
     grep -q 'Native image audit failed: unapproved xy Flash function:' "$out/standard-audit.log"
     cp "$dir/image-audit.json" "$out/study-audit.json"
+    python3 "$root/probes/ssh-placement/test-audit-negative.py" "$image" > "$out/negative-controls.log"
     python3 "$root/tools/audit-ssh-ed25519-table.py" "$image" --require-flash > "$out/table-audit.json"
     python3 - "$image" "$out" "$root/probes/ssh-placement/exact-link-only.patch" <<'PY'
 import hashlib, json, pathlib, struct, subprocess, sys
@@ -59,6 +60,7 @@ result = {'profile': 'link-only; entropy unavailable; do not flash or execute',
           'elf_sha256': hashlib.sha256(b).hexdigest(), 'heap_bytes': heap,
           'normal_audit': 'rejected unapproved xy Flash functions',
           'study_audit': 'exact function names and structural image checks passed; not cache-off qualification',
+          'negative_controls': 'misplaced function and full SRAM code copy rejected',
           'table_audit': json.loads((out / 'table-audit.json').read_text())}
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))
