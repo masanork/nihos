@@ -565,7 +565,7 @@ test "bunsetsu DP conversion with real SKK-S dictionary" {
 /// remain synchronous; this is not a time or I/O bound and is not thread safe.
 /// Caller owns the engine and an unchanged pinned dictionary until completion.
 pub const SlicedConversion = struct {
-    pub const Progress = enum { pending, complete, cancelled };
+    pub const Progress = enum { pending, waiting, complete, cancelled };
     const Phase = enum { scan, backtrack, populate, complete, cancelled };
     phase: Phase = .cancelled,
     i: usize = 0,
@@ -624,6 +624,10 @@ pub const SlicedConversion = struct {
                     var is_ari = false;
                     const cost = engine.calcPhraseCost(dict, engine.reading_buf[self.i..end], @intCast(self.i), &best_k, &is_ari);
                     if (@hasDecl(@TypeOf(dict.*), "conversionError")) dict.conversionError() catch |err| {
+                        if (err == error.WouldBlock) {
+                            self.j = end;
+                            return .waiting;
+                        }
                         self.cancel(engine);
                         return err;
                     };
@@ -660,8 +664,12 @@ pub const SlicedConversion = struct {
                     }
                     const index = self.populate_index;
                     engine.segments[index] = self.reverse[self.rev_count - 1 - index];
+                    const pool_before = engine.cand_pool_len;
                     engine.populateCandidates(dict, &engine.segments[index]);
                     if (@hasDecl(@TypeOf(dict.*), "conversionError")) dict.conversionError() catch |err| {
+                        engine.cand_pool_len = pool_before;
+                        engine.segments[index] = self.reverse[self.rev_count - 1 - index];
+                        if (err == error.WouldBlock) return .waiting;
                         self.cancel(engine);
                         return err;
                     };

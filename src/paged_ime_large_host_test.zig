@@ -186,5 +186,47 @@ test "large paged dictionary drives IME after remount" {
         for (0..reference.segments[i].cand_count) |j| try std.testing.expectEqualStrings(reference.candidateText(i, j), sliced_engine.candidateText(i, j));
     }
     std.debug.print("SLICED_PAGED_IME yields={d} cursor_bytes={d}\n", .{ yields, @sizeOf(conv.SlicedConversion) });
+    var worker_page: @import("storage/async_page.zig").Coordinator = .{};
+    try worker_page.attach(3, size);
+    var async_adapter = @import("xy/async_conversion.zig").Adapter{ .coordinator = &worker_page };
+    var async_engine: conv.Engine = .{};
+    var async_cursor: conv.SlicedConversion = .{};
+    async_cursor.begin(&async_engine, &async_adapter, "かんじ");
+    var async_waits: usize = 0;
+    var async_pages: usize = 0;
+    while (true) {
+        switch (try async_cursor.step(&async_engine, &async_adapter, 8)) {
+            .pending => {},
+            .waiting => {
+                async_waits += 1;
+                try std.testing.expect(async_waits < 1000);
+                while (true) switch (try async_adapter.step(128)) {
+                    .pending => {},
+                    .need_page => {
+                        const req = async_adapter.request().?;
+                        var async_bytes: [4096]u8 = undefined;
+                        try std.testing.expectEqual(req.length, try source.read(req.offset, async_bytes[0..req.length]));
+                        try async_adapter.supply(req, async_bytes[0..req.length]);
+                        async_pages += 1;
+                    },
+                    .complete => break,
+                    .cancelled => return error.TestUnexpectedResult,
+                };
+            },
+            .complete => break,
+            .cancelled => return error.TestUnexpectedResult,
+        }
+    }
+    adapter.beginConversion();
+    var async_reference: conv.Engine = .{};
+    async_reference.convert(&adapter, "かんじ");
+    try adapter.conversionError();
+    try std.testing.expectEqual(async_reference.segment_count, async_engine.segment_count);
+    for (0..async_reference.segment_count) |i| {
+        try std.testing.expectEqual(async_reference.segments[i].cand_count, async_engine.segments[i].cand_count);
+        for (0..async_reference.segments[i].cand_count) |j| try std.testing.expectEqualStrings(async_reference.candidateText(i, j), async_engine.candidateText(i, j));
+    }
+    try worker_page.detach();
+    std.debug.print("ASYNC_CONVERSION waits={d} page_requests={d} adapter_bytes={d}\n", .{ async_waits, async_pages, @sizeOf(@import("xy/async_conversion.zig").Adapter) });
     std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} data_cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
