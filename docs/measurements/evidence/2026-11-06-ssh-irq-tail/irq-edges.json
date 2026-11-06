@@ -1,0 +1,847 @@
+{
+  "roots": [
+    "nih_native_trap",
+    "nih_native_dispatch"
+  ],
+  "directly_reachable_placed_functions": [],
+  "directly_reachable_functions": 429,
+  "directly_reachable_ssh_crypto_names": [],
+  "unresolved_indirect_count": 119,
+  "possible_jump_table_hints": 43,
+  "unresolved_indirect_sites": [
+    {
+      "function": "board_devices.requestDevice",
+      "pc": "0x40004ec2",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "task_runtime.Runtime(4,2).finishCall",
+      "pc": "0x4000c816",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "render_session.SizedSession(2048).renderKeyboard__func_3",
+      "pc": "0x4007cc84",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "render_session.SizedSession(2048).renderKeyboard__func_5",
+      "pc": "0x4007d020",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "ttf.TwoTierCache(24,1024,48,16384).getOrRender",
+      "pc": "0x4007e974",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.TwoTierCache(24,1024,48,16384).getOrRender",
+      "pc": "0x4007ed1c",
+      "op": "jr",
+      "operands": "s2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.TwoTierCache(24,1024,48,16384).getOrRender",
+      "pc": "0x4007f602",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.glyphSpan",
+      "pc": "0x4007f6a0",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.glyphSpan",
+      "pc": "0x4007f6e4",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.glyphSpan",
+      "pc": "0x4007f716",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.glyphSpan",
+      "pc": "0x4007f756",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.glyphSpan",
+      "pc": "0x4007f810",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007fce0",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007fd62",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007fe34",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007febe",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007ff24",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Family.resolve",
+      "pc": "0x4007ffaa",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x40080268",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x40080310",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x40080414",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x40080488",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x400804dc",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x40080526",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x4008054e",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.lookupBaseGlyph",
+      "pc": "0x400805a0",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "nih_xy_render",
+      "pc": "0x40083944",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "nih_xy_render",
+      "pc": "0x40083bf6",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "Io.Writer.writeAll",
+      "pc": "0x40086c8e",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "viewport_layout.ClusterIterator.next",
+      "pc": "0x4008bef0",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "viewport_layout.ClusterIterator.next",
+      "pc": "0x4008bf2c",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c3d4",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c4be",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c688",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c6ec",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c72e",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c768",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c836",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "ttf.Face.init",
+      "pc": "0x4008c8c8",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "nih_xy_decimal_format",
+      "pc": "0x4008d6f6",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.eval__func_33",
+      "pc": "0x4009129e",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.collectSlice",
+      "pc": "0x40092c8a",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x400931e8",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x40093338",
+      "op": "jr",
+      "operands": "a3",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x400934e2",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x4009433a",
+      "op": "jr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x4009444c",
+      "op": "jr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x4009491c",
+      "op": "jalr",
+      "operands": "a1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x40094d08",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_36",
+      "pc": "0x40095bf4",
+      "op": "jalr",
+      "operands": "ra # 40099bf0 <xy.scheme_runtime.Runtime.inexactNumber>",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyCard__func_42",
+      "pc": "0x40095f96",
+      "op": "jalr",
+      "operands": "a1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyCard__func_42",
+      "pc": "0x40095fc6",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyCard__func_42",
+      "pc": "0x40095ff4",
+      "op": "jalr",
+      "operands": "a1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyCard__func_42",
+      "pc": "0x4009605e",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyStorage__func_41",
+      "pc": "0x40096478",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyStorage__func_41",
+      "pc": "0x40096880",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyApp",
+      "pc": "0x40096f40",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.cameraRead__func_37",
+      "pc": "0x400987fc",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.cameraRead__func_37",
+      "pc": "0x40098852",
+      "op": "jalr",
+      "operands": "a4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.schemeCall",
+      "pc": "0x40098988",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.storage.Client.load",
+      "pc": "0x40098ae8",
+      "op": "jalr",
+      "operands": "s4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.load",
+      "pc": "0x40098b4a",
+      "op": "jalr",
+      "operands": "s4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.load",
+      "pc": "0x40098baa",
+      "op": "jalr",
+      "operands": "s4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.load",
+      "pc": "0x40098c7a",
+      "op": "jalr",
+      "operands": "s4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.load",
+      "pc": "0x40098d9e",
+      "op": "jalr",
+      "operands": "s4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x400994a0",
+      "op": "jalr",
+      "operands": "s1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x400994f0",
+      "op": "jalr",
+      "operands": "s1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x4009955a",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x400995c8",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x400995f0",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x4009963a",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.storage.Client.save",
+      "pc": "0x40099672",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.compileExpr",
+      "pc": "0x4009aa92",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.runVm__func_30",
+      "pc": "0x4009b7d2",
+      "op": "jr",
+      "operands": "a4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.print",
+      "pc": "0x4009c13a",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.read",
+      "pc": "0x4009cf58",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy_render_runtime.draw",
+      "pc": "0x4009ed4e",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy_render_runtime.draw",
+      "pc": "0x4009ed6c",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.statusText",
+      "pc": "0x4009f1f8",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.touchNow",
+      "pc": "0x4009f680",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.touchNow",
+      "pc": "0x4009f9a4",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.touchNow",
+      "pc": "0x4009fa4e",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.touchNow",
+      "pc": "0x4009fbe8",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.detachPrivateInput",
+      "pc": "0x4009fe46",
+      "op": "jalr",
+      "operands": "s3",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.navigation.State.handle",
+      "pc": "0x4009fe98",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.navigation.State.handle",
+      "pc": "0x4009feae",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.navigation.State.handle",
+      "pc": "0x4009fef8",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.navigation.State.handle",
+      "pc": "0x4009ff58",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.navigation.State.handle",
+      "pc": "0x400a00a8",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.learning_session.Session.notice",
+      "pc": "0x400a0938",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.learning_session.Session.handle",
+      "pc": "0x400a102c",
+      "op": "jr",
+      "operands": "a3",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.learning_session.Session.handle",
+      "pc": "0x400a1110",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.runVm__func_91",
+      "pc": "0x400a165e",
+      "op": "jr",
+      "operands": "a4",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.eval__func_93",
+      "pc": "0x400a2122",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_94",
+      "pc": "0x400a3752",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_94",
+      "pc": "0x400a38e8",
+      "op": "jr",
+      "operands": "a3",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_94",
+      "pc": "0x400a3a60",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_94",
+      "pc": "0x400a47d0",
+      "op": "jr",
+      "operands": "a5",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.apply__func_94",
+      "pc": "0x400a48b0",
+      "op": "jr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scheme_runtime.Runtime.applyStorage__func_96",
+      "pc": "0x400a6314",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a6d32",
+      "op": "jalr",
+      "operands": "a2",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a6e42",
+      "op": "jr",
+      "operands": "a4",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a6fda",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a6fe2",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a70a8",
+      "op": "jalr",
+      "operands": "a3",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.scratch.Model.handle",
+      "pc": "0x400a7142",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "xy.scratch.Model.insert",
+      "pc": "0x400a7c94",
+      "op": "jalr",
+      "operands": "a3",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.ime_omni.OmniIme.commitSelected__func_108",
+      "pc": "0x400a7f36",
+      "op": "jalr",
+      "operands": "s6",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "xy.ime_omni.OmniIme.triggerConversion__func_110",
+      "pc": "0x400a80f6",
+      "op": "jalr",
+      "operands": "s6",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "nih_xy_eval_on_stack",
+      "pc": "0x400ade84",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "nih_display_diagnostic",
+      "pc": "0x4ff02ff6",
+      "op": "jr",
+      "operands": "a0",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "restart_dma",
+      "pc": "0x4ff03dd2",
+      "op": "jalr",
+      "operands": "1574(ra) # 4fc003f4 <nih_rom_cache_writeback>",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "diagnostic_ui.present",
+      "pc": "0x4ff06db2",
+      "op": "jalr",
+      "operands": "1606(ra) # 4fc003f4 <nih_rom_cache_writeback>",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "diagnostic_ui.flushSpan",
+      "pc": "0x4ff06e78",
+      "op": "jalr",
+      "operands": "1408(ra) # 4fc003f4 <nih_rom_cache_writeback>",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "__zig_tag_name_diagnostics.boot_state.Stage",
+      "pc": "0x4ff07836",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "console.snapshot.status__func_71",
+      "pc": "0x4ff07aac",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "Io.Writer.writeAll",
+      "pc": "0x4ff0898a",
+      "op": "jalr",
+      "operands": "a5",
+      "possible_jump_table_hint": false
+    },
+    {
+      "function": "console.session_input.Serial.feed",
+      "pc": "0x4ff08a54",
+      "op": "jr",
+      "operands": "a1",
+      "possible_jump_table_hint": true
+    },
+    {
+      "function": "console.session_input.Hid.feed",
+      "pc": "0x4ff08c72",
+      "op": "jr",
+      "operands": "a2",
+      "possible_jump_table_hint": true
+    }
+  ],
+  "limitations": "Named direct and adjacent AUIPC/JALR or AUIPC/JR edges only; jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven."
+}
