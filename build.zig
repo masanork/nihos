@@ -202,6 +202,10 @@ pub fn build(b: *std.Build) void {
     const p4_ssh_backend_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_p4_backend.zig"), .target = target, .optimize = optimize });
     p4_ssh_backend_module.addImport("rng_noise", p4_rng_noise_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_ssh_backend_module })).step);
+    const hosted_long_storage_module = b.createModule(.{ .root_source_file = b.path("src/net/hosted_long_storage.zig"), .target = target, .optimize = optimize });
+    const native_long_storage_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/hosted_long_storage.zig"), .target = target, .optimize = optimize });
+    native_long_storage_module.addImport("hosted_long_storage", hosted_long_storage_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = native_long_storage_module })).step);
     const ssh_reservation_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_reservation.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_reservation_module })).step);
     const ssh_hosted_session_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_hosted_session.zig"), .target = target, .optimize = optimize });

@@ -138,8 +138,17 @@ existing non-shared fixture keeps its original path. Host tests and both
 shared/exclusive RV32 code generation cover this prerequisite; neither proves
 a native shared-host DMA transfer on hardware.
 
-Before enabling a 1,200-byte native socket, the provider still needs a
-long-lived DMA-accessible aligned buffer, cache-engine serialization, the
+An experimental native storage owner can reserve one 1,664-byte, 64-byte
+aligned buffer from the existing service SRAM pool. It checks the lease
+against the actual linker-defined pool regions and retains it until reboot,
+including after an ambiguous transfer or an invalid lease. Allocation can fail
+when other services consume the pool. This owner is not wired into the normal
+network service, so it neither consumes SRAM in the current runtime nor
+changes the socket limit. Host tests and an RV32 compile probe do not establish
+that this reservation coexists with the enabled services on a running device.
+
+Before enabling a 1,200-byte native socket, the provider still needs to
+integrate and budget that reservation, plus cache-engine serialization, the
 running C6's long-buffer contract, shared host lease and reset integration,
 and a bounded physical run with independently verified payload and recovery.
 The short socket limit must remain in effect until those conditions are met.
