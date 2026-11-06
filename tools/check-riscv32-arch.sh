@@ -182,6 +182,21 @@ echo "P4 RNG ADC RV32 codegen: ok (not target execution)"
     "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig"
 echo "P4 RNG noise setup RV32 codegen: ok (not target execution)"
 
+# Fixed ownership stubs do not qualify or enable hardware entropy.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend \
+    "-Mroot=$repo_root/tools/probes/ssh-p4-backend.zig" \
+    --dep rng_noise "-Mssh_p4_backend=$repo_root/src/xy/ssh_p4_backend.zig" \
+    "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig"
+echo "SSH P4 entropy pipeline RV32 codegen: ok (not target execution)"
+
+# This fixed-source probe is code generation only; no entropy is qualified.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-entropy-session.o" --dep ssh_entropy_session \
+    "-Mroot=$repo_root/tools/probes/ssh-entropy-session.zig" \
+    "-Mssh_entropy_session=$repo_root/src/xy/ssh_entropy_session.zig"
+echo "SSH entropy cleanup/admission RV32 codegen: ok (not target execution)"
+
 # Fixed bytes exercise code generation only and must never be used as entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
     -femit-bin="$out_dir/ssh-entropy.o" --dep ssh_entropy \
