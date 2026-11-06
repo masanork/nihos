@@ -152,3 +152,24 @@ test "five MiB object streams, remounts, and supports pinned paged lookup" {
     try recovered.release(pin);
     try std.testing.expectError(error.Io, dict.lookup("a", &result));
 }
+
+test "root page cache is pinned to dictionary lifetime and fails closed" {
+    const bytes = fixture();
+    var source = Bytes{ .bytes = &bytes };
+    var dict = try nfst.Dictionary(Bytes).init(&source, bytes.len);
+    var result: nfst.Candidates = .{};
+    try dict.lookup("a", &result);
+    const misses = dict.cache_misses;
+    // The candidate is on page 1, but the trie root stays on page 0.
+    try dict.lookup("a", &result);
+    try std.testing.expectEqual(misses, dict.cache_misses);
+    try std.testing.expectEqualStrings("漢字", result.slice(0));
+    // A failed page read invalidates both caches, including the pinned root.
+    dict.cache_valid = false;
+    source.fail = true;
+    try std.testing.expectError(error.Io, dict.lookup("a", &result));
+    try std.testing.expect(!dict.root_cache_valid);
+    try std.testing.expect(!dict.cache_valid);
+    source.fail = false;
+    try std.testing.expectError(error.Io, dict.lookup("a", &result));
+}

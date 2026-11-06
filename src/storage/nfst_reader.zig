@@ -28,6 +28,12 @@ pub fn Dictionary(comptime Reader: type) type {
         cand_length: u32,
         arena_start: u64,
         arena_length: u32,
+        // The root page is revisited for every trie search. Keep it apart
+        // from the rotating data page; both belong to the same pinned object.
+        root_cache: [page_bytes]u8 = @splat(0),
+        root_cache_valid: bool = false,
+        root_cache_length: usize = 0,
+        root_cache_enabled: bool = true,
         cache: [page_bytes]u8 = @splat(0),
         cache_start: u64 = 0,
         cache_length: usize = 0,
@@ -38,6 +44,7 @@ pub fn Dictionary(comptime Reader: type) type {
         pub fn invalidate(self: *Self) void {
             self.closed = true;
             self.cache_valid = false;
+            self.root_cache_valid = false;
         }
 
         fn read(self: *Self, offset: u64, out: []u8) Error!void {
@@ -46,6 +53,27 @@ pub fn Dictionary(comptime Reader: type) type {
             var done: usize = 0;
             while (done < out.len) {
                 const at = offset + done;
+                if (self.root_cache_enabled and at < page_bytes) {
+                    if (!self.root_cache_valid) {
+                        const n: usize = @intCast(@min(page_bytes, self.length));
+                        const got = self.reader.read(0, self.root_cache[0..n]) catch {
+                            self.invalidate();
+                            return error.Io;
+                        };
+                        if (got != n) {
+                            self.invalidate();
+                            return error.Io;
+                        }
+                        self.root_cache_length = n;
+                        self.root_cache_valid = true;
+                        self.cache_misses += 1;
+                    }
+                    const local: usize = @intCast(at);
+                    const n = @min(out.len - done, self.root_cache_length - local);
+                    @memcpy(out[done..][0..n], self.root_cache[local..][0..n]);
+                    done += n;
+                    continue;
+                }
                 if (!self.cache_valid or at < self.cache_start or at >= self.cache_start + self.cache_length) {
                     self.cache_valid = false;
                     self.cache_start = at - at % page_bytes;
