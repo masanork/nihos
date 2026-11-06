@@ -1,0 +1,9 @@
+{
+  "profile": "headless ESP-EMU 0.50.0; deliberate early release; no SSH",
+  "source_head": "f6a372466424abac85885705aea55e8cb4083f89",
+  "fixture_patch_sha256": "4b406e3fed4c3e97e4210ba98df447696ae35460ae9c91decc7744006f754005",
+  "elf_sha256": "a427700e68ade190ff0a23f2ba3afbd911edee1f913570812a625513c79008a3",
+  "image_sha256": "22ca2699511b8d1d14266cd24136f7785c8e5c5c9542cb6c094fd07bcae7e2b5",
+  "emulator_log_sha256": "6e6c2d90c78dd43cf725155f50dff5f2a3e84974d4ebd8d5d56ce631bd0a648c",
+  "expected": "foreground gate rejected early release"
+}
