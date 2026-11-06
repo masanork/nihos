@@ -392,3 +392,67 @@ test "native RNG gate remains held through simulated entropy cleanup" {
     try std.testing.expect(gate.trySqlite());
     try std.testing.expect(gate.releaseSqlite());
 }
+
+test "entropy session waits for the real backend and gate cleanup" {
+    const sessions = @import("ssh_entropy_session.zig");
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    try session.begin(0, 100_000);
+    var saw_restoring = false;
+    for (0..800) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .restoring) {
+            saw_restoring = true;
+            try std.testing.expect(!session.available());
+            try std.testing.expect(!gate.trySqlite());
+        }
+        if (session.available()) break;
+    }
+    try std.testing.expect(saw_restoring and session.available());
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    var output: [32]u8 = undefined;
+    try session.fill(&output);
+    try std.testing.expect(!std.mem.allEqual(u8, &output, 0));
+    session.cancel();
+    session.poll(io.now);
+    try std.testing.expectEqual(.idle, session.state);
+}
+
+test "stuck analog restoration never admits or retains cancelled entropy" {
+    const sessions = @import("ssh_entropy_session.zig");
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 100, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    try session.begin(0, 100_000);
+    for (0..400) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .restoring) break;
+    }
+    try std.testing.expectEqual(.restoring, session.state);
+    io.stuck = true;
+    for (0..20) |_| {
+        io.tick();
+        session.poll(io.now);
+        try std.testing.expect(!session.available());
+        try std.testing.expect(!gate.trySqlite());
+    }
+    session.cancel();
+    try std.testing.expect(!session.entropy.available());
+    io.stuck = false;
+    for (0..200) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .idle) break;
+    }
+    try std.testing.expectEqual(.idle, session.state);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+}
