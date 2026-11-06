@@ -6,8 +6,8 @@
 const std = @import("std");
 const dict_mod = @import("dict.zig");
 pub const NfstDict = dict_mod.NfstDict;
-const code_section = @import("ime_omni.zig").code_section;
-const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__DATA_CONST,__const" else ".rodata";
+pub const code_section = @import("ime_omni.zig").code_section;
+pub const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__DATA_CONST,__const" else ".rodata";
 
 pub const max_reading = 128;
 pub const max_segments = 32;
