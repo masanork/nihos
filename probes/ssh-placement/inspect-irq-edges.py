@@ -5,6 +5,7 @@ import bisect
 import json
 import re
 import subprocess
+import struct
 from pathlib import Path
 
 HEADER = re.compile(r'^([0-9a-fA-F]+) <(.+)>:$')
@@ -16,7 +17,86 @@ BRANCHES = {'j', 'jal', 'beq', 'bne', 'blt', 'bge', 'bltu', 'bgeu',
             'beqz', 'bnez', 'bltz', 'bgez', 'bgtz', 'blez'}
 
 
-def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addresses=None):
+def readonly_elf_reader(path):
+    elf = Path(path).read_bytes()
+    header = struct.unpack_from('<16sHHIIIIIHHHHHH', elf)
+    if header[0][:6] != b'\x7fELF\x01\x01' or header[11] != 40:
+        raise ValueError('expected little-endian ELF32')
+    sections = [struct.unpack_from('<10I', elf, header[6] + i * header[11]) for i in range(header[12])]
+
+    def read_words(address, count):
+        if count < 1 or count > 256 or address % 4:
+            return None
+        matches = [sec for sec in sections if sec[1] != 8 and sec[2] & 2 and not sec[2] & 1 and
+                   sec[3] <= address and address + 4 * count <= sec[3] + sec[5]]
+        if len(matches) != 1:
+            return None
+        sec = matches[0]
+        offset = sec[4] + address - sec[3]
+        if offset + 4 * count > len(elf):
+            return None
+        return struct.unpack_from('<' + 'I' * count, elf, offset)
+    return read_words
+
+
+def internal_jump_table(insns, idx, read_words, branch_targets):
+    """Recognize one guarded compiler switch; return None on any ambiguity."""
+    if read_words is None or insns[idx][1] != 'jr':
+        return None
+    pc, _, operands = insns[idx]
+    jump_reg = operands.split('#', 1)[0].strip()
+    if not re.fullmatch(r'\w+', jump_reg):
+        return None
+    # Require contiguous slli/lui/addi/add/lw and bounded harmless setup.
+    for sh in range(max(0, idx - 10), idx - 4):
+        seq = insns[sh:sh + 5]
+        if [item[1] for item in seq] != ['slli', 'lui', 'addi', 'add', 'lw']:
+            continue
+        args = [item[2].split('#', 1)[0].replace(' ', '') for item in seq]
+        shift = re.fullmatch(r'(\w+),(\w+),(?:0x2|2)', args[0])
+        base = re.fullmatch(r'(\w+),(0x[0-9a-fA-F]+|[0-9]+)', args[1])
+        if not shift or not base or shift[1] == base[1]:
+            continue
+        if any(right[0] - left[0] not in (2, 4) for left, right in zip(seq, seq[1:])):
+            continue
+        adj = re.fullmatch(r'(\w+),(\w+),(-?(?:0x[0-9a-fA-F]+|[0-9]+))', args[2])
+        add = re.fullmatch(r'(\w+),(\w+),(\w+)', args[3])
+        load = re.fullmatch(r'(\w+),0\((\w+)\)', args[4])
+        if not adj or not add or not load or adj[1] != base[1] or adj[2] != base[1] or \
+           add[2] != shift[1] or add[3] != base[1] or load[1] != jump_reg or load[2] != add[1]:
+            continue
+        trailing = insns[sh + 5:idx]
+        if any(op not in ('li', 'lui', 'addi', 'mv', 'sw') or
+               (op != 'sw' and args_.split(',', 1)[0].strip() == jump_reg)
+               for _, op, args_ in trailing):
+            continue
+        # A guard must dominate this short sequence: branch out if index>N.
+        for g in range(max(0, sh - 6), sh - 1):
+            li, branch = insns[g:g + 2]
+            bound = re.fullmatch(r'(\w+),\s*(0x[0-9a-fA-F]+|[0-9]+)', li[2]) if li[1] == 'li' else None
+            guard = re.match(r'^(\w+),\s*(\w+),\s*([0-9a-fA-F]+)\s*<', branch[2]) if branch[1] == 'bltu' else None
+            if not bound or not guard or branch[0] - li[0] not in (2, 4) or guard[1] != bound[1] or guard[2] != shift[2] or int(guard[3], 16) <= pc:
+                continue
+            # No modification or branch between guard and shift, and no
+            # statically named entry into the guarded instruction interval.
+            middle = insns[g + 2:sh]
+            if any(op not in ('li', 'lui', 'addi', 'mv', 'sw') or
+                   (op != 'sw' and args_.split(',', 1)[0].strip() == shift[2])
+                   for _, op, args_ in middle):
+                continue
+            if any(insns[g][0] < address <= pc for address in branch_targets):
+                continue
+            count = int(bound[2], 0) + 1
+            address = ((int(base[2], 0) << 12) + int(adj[3], 0)) & 0xffffffff
+            targets = read_words(address, count)
+            pcs = {item[0] for item in insns}
+            if targets is None or any(target not in pcs for target in targets):
+                continue
+            return {'table_address': hex(address), 'entries': count, 'targets': sorted(set(hex(target) for target in targets))}
+    return None
+
+
+def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addresses=None, read_words=None):
     functions = {}
     current = None
     for line in text.splitlines():
@@ -32,12 +112,19 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
     names = {value['name']: key for key, value in functions.items()}
     if not all(name in names for name in roots):
         raise ValueError('missing trap/dispatcher root in disassembly')
+    branch_targets = set()
+    for function in functions.values():
+        for _, op, operands in function['insns']:
+            m = TARGET.search(operands) if op in BRANCHES else None
+            if m:
+                branch_targets.add(int(m[1], 16))
+    tables = {start: [] for start in starts}
     edges = {start: set() for start in starts}
     indirect = {start: [] for start in starts}
     for start, function in functions.items():
         previous = None
         history = []
-        for pc, op, operands in function['insns']:
+        for index, (pc, op, operands) in enumerate(function['insns']):
             if op in ('jalr', 'jr'):
                 resolved = False
                 # A contiguous AUIPC/JALR or AUIPC/JR pair with the same
@@ -50,6 +137,11 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                         if address in functions:
                             edges[start].add(address)
                             resolved = True
+                if not resolved:
+                    table = internal_jump_table(function['insns'], index, read_words, branch_targets)
+                    if table is not None:
+                        tables[start].append({'pc': hex(pc), **table})
+                        resolved = True
                 if not resolved:
                     indirect[start].append({'pc': hex(pc), 'op': op, 'operands': operands,
                                             'possible_jump_table_hint': op == 'jr' and any('.LJTI' in item[2] for item in history)})
@@ -74,11 +166,12 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
     unresolved = [{'function': functions[start]['name'], **call} for start in sorted(seen) for call in indirect[start]]
     placed_addresses = placed_addresses or {}
     placed_reachable = [{'address': hex(start), 'symbols': placed_addresses[start]} for start in sorted(seen) if start in placed_addresses]
-    return {'roots': list(roots), 'directly_reachable_placed_functions': placed_reachable, 'directly_reachable_functions': len(seen), 'directly_reachable_ssh_crypto_names': sorted(selected),
+    resolved_tables = [{'function': functions[start]['name'], **table} for start in sorted(seen) for table in tables[start]]
+    return {'roots': list(roots), 'resolved_internal_jump_tables': resolved_tables, 'resolved_internal_jump_table_count': len(resolved_tables), 'directly_reachable_placed_functions': placed_reachable, 'directly_reachable_functions': len(seen), 'directly_reachable_ssh_crypto_names': sorted(selected),
             'unresolved_indirect_count': len(unresolved),
             'possible_jump_table_hints': sum(site['possible_jump_table_hint'] for site in unresolved),
             'unresolved_indirect_sites': unresolved,
-            'limitations': 'Named direct and adjacent AUIPC/JALR or AUIPC/JR edges only; jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven.'}
+            'limitations': 'Named direct, adjacent AUIPC/JALR or AUIPC/JR edges and guarded same-function tables only; remaining jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven.'}
 
 
 def main():
@@ -101,11 +194,11 @@ def main():
         found.add(fields[5])
     if found != expected:
         raise ValueError('exact placement symbols missing from objdump symbol table')
-    result = analyze(text, placed_addresses=placed)
+    result = analyze(text, placed_addresses=placed, read_words=readonly_elf_reader(args.elf))
     with open(args.output, 'w') as f:
         json.dump(result, f, indent=2)
         f.write('\n')
-    print(json.dumps({k: v for k, v in result.items() if k != 'unresolved_indirect_sites'}, sort_keys=True))
+    print(json.dumps({k: v for k, v in result.items() if k not in ('unresolved_indirect_sites', 'resolved_internal_jump_tables')}, sort_keys=True))
 
 
 if __name__ == '__main__':

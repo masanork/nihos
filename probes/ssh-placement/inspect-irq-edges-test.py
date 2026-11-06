@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import tempfile
 
 spec = importlib.util.spec_from_file_location('irq_edges', Path(__file__).with_name('inspect-irq-edges.py'))
 module = importlib.util.module_from_spec(spec)
@@ -61,6 +62,64 @@ class EdgeTest(unittest.TestCase):
         self.assertEqual(1, result['possible_jump_table_hints'])
         self.assertEqual(1, result['unresolved_indirect_count'])
         self.assertTrue(result['unresolved_indirect_sites'][0]['possible_jump_table_hint'])
+
+    @staticmethod
+    def switch_program():
+        return """
+1000 <nih_native_trap>:
+1000: li a1,1
+1002: bltu a1,a0,1020 <nih_native_trap+0x20>
+1006: slli a0,a0,0x2
+1008: lui a2,0x1
+100c: addi a2,a2,0 # 1000 <.LJTI0_0>
+1010: add a0,a0,a2
+1012: lw a0,0(a0)
+1014: jr a0
+1016: nop
+1018: ret
+1020: ret
+1030 <nih_native_dispatch>:
+1030: ret
+"""
+
+    def test_guarded_internal_table_resolves_only_with_valid_entries(self):
+        calls = []
+        def read_words(address, count):
+            calls.append((address, count))
+            return (0x1016, 0x1018)
+        result = module.analyze(self.switch_program(), read_words=read_words)
+        self.assertEqual([(0x1000, 2)], calls)
+        self.assertEqual(1, result['resolved_internal_jump_table_count'])
+        self.assertEqual(0, result['unresolved_indirect_count'])
+        result = module.analyze(self.switch_program(), read_words=lambda a, n: (0x1016, 0x2000))
+        self.assertEqual(0, result['resolved_internal_jump_table_count'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+
+    def test_table_remains_unresolved_if_guard_can_be_bypassed(self):
+        asm = self.switch_program().replace('1000: li a1,1', '0ffc: j 1006 <nih_native_trap+0x6>\n1000: li a1,1')
+        result = module.analyze(asm, read_words=lambda a, n: (0x1016, 0x1018))
+        self.assertEqual(0, result['resolved_internal_jump_table_count'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+        asm = self.switch_program().replace('bltu a1,a0,1020', 'bltu a0,a1,1020')
+        result = module.analyze(asm, read_words=lambda a, n: (0x1016, 0x1018))
+        self.assertEqual(0, result['resolved_internal_jump_table_count'])
+        self.assertEqual(1, result['unresolved_indirect_count'])
+
+    def test_table_reader_rejects_writable_and_out_of_bounds(self):
+        path = Path(__file__).resolve().parents[2] / 'tools/audit_ssh_ed25519_table_test.py'
+        spec = importlib.util.spec_from_file_location('table_fixture', path)
+        table_fixture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(table_fixture)
+        with tempfile.TemporaryDirectory() as directory:
+            elf = Path(directory) / 'case.elf'
+            elf.write_bytes(table_fixture.fixture([(0x40011000, False)]))
+            read = module.readonly_elf_reader(elf)
+            self.assertEqual((0x03020100, 0x07060504), read(0x40011000, 2))
+            self.assertIsNone(read(0x40011001, 2))
+            self.assertIsNone(read(0x40011000, 257))
+            elf.write_bytes(table_fixture.fixture([(0x4ff01000, True)]))
+            read = module.readonly_elf_reader(elf)
+            self.assertIsNone(read(0x4ff01000, 2))
 
     def test_missing_root_fails_closed(self):
         with self.assertRaises(ValueError):
