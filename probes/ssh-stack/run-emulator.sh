@@ -43,7 +43,7 @@ result = {'profile': 'headless ESP-EMU 0.50.0; non-secret stub; no SSH',
           'fixture_patch_sha256': digest(patch), 'elf_sha256': audit['elf_sha256'],
           'image_sha256': audit['image_sha256'], 'heap_bytes': audit['heap']['bytes'],
           'emulator_log_sha256': digest(out / 'emulator.log'),
-          'checks': ['PSRAM stack pointer', 'timer interrupt while switched', 'nested admission rejected', 'stack admission released', 'transient stack cleared']}
+          'checks': ['PSRAM stack pointer', 'timer interrupt while switched', 'nested admission rejected', 'stack admission released', 'stack reservation retained through wipe', 'transient stack cleared']}
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))
 PY

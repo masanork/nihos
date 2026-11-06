@@ -31,17 +31,20 @@ index cf4497ee..2c771077 100644
 +            ssh_fixture_done = true;
 +        }
 diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
-index e73e610d..5c65aa8f 100644
+index 09fd90fb..1ee9a792 100644
 --- a/src/platform/native/ssh_foreground.zig
 +++ b/src/platform/native/ssh_foreground.zig
 @@ -8 +8 @@ const UnavailableEntropy = struct {
 -    pub const qualified = false;
 +    pub const qualified = true; // safe fixture only; on-stack callback contains no SSH.
 diff --git a/src/platform/native/ssh_foreground_stack.zig b/src/platform/native/ssh_foreground_stack.zig
-index 196ad2c3..9de8e0e3 100644
+index 4531f425..21a78ef3 100644
 --- a/src/platform/native/ssh_foreground_stack.zig
 +++ b/src/platform/native/ssh_foreground_stack.zig
-@@ -54,3 +54,16 @@ comptime {
+@@ -49,0 +50,2 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
++    // The real admission gate must still reject reentry after the wipe.
++    if (tasks.memory.stacks.beginForeground(stack)) nih_native_task_failed();
+@@ -56,3 +58,16 @@ comptime {
 -fn onStack(call: *const Call) linksection(".flash.xytext") callconv(.c) void {
 -    if (comptime !owner.qualified) return;
 -    call.runtime.poll(call.model, call.ui, call.now);
