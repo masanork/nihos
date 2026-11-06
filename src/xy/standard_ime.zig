@@ -3,7 +3,7 @@ const std = @import("std");
 const omni = @import("ime_omni.zig");
 const conv = @import("conv.zig");
 const document = @import("document.zig");
-const code_section = omni.code_section;
+pub const code_section = omni.code_section;
 
 pub const State = struct {
     romaji: omni.RomajiAutomaton = .{},
