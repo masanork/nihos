@@ -140,6 +140,21 @@ class EdgeTest(unittest.TestCase):
             read = module.readonly_elf_reader(elf)
             self.assertIsNone(read(0x4ff01000, 2))
 
+    def test_flash_witness_preserves_branch_and_call_sites(self):
+        asm = """
+4ff01000 <nih_native_trap>:
+4ff01000: jal 40060000 <render>
+4ff01004: ret
+4ff02000 <nih_native_dispatch>:
+4ff02000: ret
+40060000 <render>:
+40060000: ret
+"""
+        path = module.analyze(asm)['example_existing_xy_flash_path']
+        self.assertEqual(['nih_native_trap', 'render'], [item['symbol'] for item in path])
+        self.assertEqual('0x4ff01000', path[1]['incoming_edge']['pc'])
+        self.assertEqual('jal', path[1]['incoming_edge']['op'])
+
     def test_missing_root_fails_closed(self):
         with self.assertRaises(ValueError):
             module.analyze('1000 <nih_native_trap>:\n1000: ret\n')

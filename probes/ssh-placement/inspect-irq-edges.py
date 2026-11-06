@@ -2,6 +2,7 @@
 """Report statically named trap edges, not a complete IRQ/cache-off proof."""
 import argparse
 import bisect
+from collections import deque
 import json
 import re
 import subprocess
@@ -125,6 +126,14 @@ def internal_jump_table(insns, idx, read_words, branch_edges):
     return None
 
 
+def _chain(address, parents):
+    chain = []
+    while address is not None:
+        chain.append(address)
+        address = parents[address]
+    return list(reversed(chain))
+
+
 def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addresses=None, read_words=None):
     functions = {}
     current = None
@@ -149,6 +158,7 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                 branch_edges.add((pc, int(m[1], 16)))
     tables = {start: [] for start in starts}
     edges = {start: set() for start in starts}
+    edge_sites = {}
     indirect = {start: [] for start in starts}
     for start, function in functions.items():
         previous = None
@@ -165,6 +175,7 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                         address = (previous[0] + (int(upper[2], 0) << 12) + int(match[1], 0)) & 0xffffffff
                         if address in functions:
                             edges[start].add(address)
+                            edge_sites.setdefault((start, address), {'pc': hex(pc), 'op': op, 'operands': operands})
                             resolved = True
                 if not resolved:
                     table = internal_jump_table(function['insns'], index, read_words, branch_edges)
@@ -181,22 +192,35 @@ def analyze(text, roots=('nih_native_trap', 'nih_native_dispatch'), placed_addre
                     index = bisect.bisect_right(starts, address) - 1
                     if index >= 0 and starts[index] != start and starts[index] == address:
                         edges[start].add(address)
+                        edge_sites.setdefault((start, address), {'pc': hex(pc), 'op': op, 'operands': operands})
             previous = (pc, op, operands)
             history = (history + [previous])[-10:]
     seen = set()
-    queue = [names[name] for name in roots]
+    queue = deque(names[name] for name in roots)
+    parents = {address: None for address in queue}
     while queue:
-        current = queue.pop()
+        current = queue.popleft()
         if current in seen:
             continue
         seen.add(current)
-        queue.extend(edges.get(current, ()))
+        for successor in sorted(edges.get(current, ())):
+            if successor not in parents:
+                parents[successor] = current
+                queue.append(successor)
+    flash_candidates = [start for start in seen if 0x40060000 <= start < 0x400c0000]
+    flash_path = []
+    if flash_candidates:
+        current = min(flash_candidates, key=lambda start: (len(_chain(start, parents)), start))
+        chain = _chain(current, parents)
+        flash_path = [{'address': hex(addr), 'symbol': functions[addr]['name'],
+                       'incoming_edge': edge_sites.get((chain[index - 1], addr)) if index else None}
+                      for index, addr in enumerate(chain)]
     selected = [functions[start]['name'] for start in seen if re.match(r'(?:ssh(?:_|\.)|crypto\.|vt100\.)', functions[start]['name'])]
     unresolved = [{'function': functions[start]['name'], **call} for start in sorted(seen) for call in indirect[start]]
     placed_addresses = placed_addresses or {}
     placed_reachable = [{'address': hex(start), 'symbols': placed_addresses[start]} for start in sorted(seen) if start in placed_addresses]
     resolved_tables = [{'function': functions[start]['name'], **table} for start in sorted(seen) for table in tables[start]]
-    return {'roots': list(roots), 'resolved_internal_jump_tables': resolved_tables, 'resolved_internal_jump_table_count': len(resolved_tables), 'directly_reachable_placed_functions': placed_reachable, 'directly_reachable_functions': len(seen), 'directly_reachable_ssh_crypto_names': sorted(selected),
+    return {'roots': list(roots), 'example_existing_xy_flash_path': flash_path, 'resolved_internal_jump_tables': resolved_tables, 'resolved_internal_jump_table_count': len(resolved_tables), 'directly_reachable_placed_functions': placed_reachable, 'directly_reachable_functions': len(seen), 'directly_reachable_ssh_crypto_names': sorted(selected),
             'unresolved_indirect_count': len(unresolved),
             'possible_jump_table_hints': sum(site['possible_jump_table_hint'] for site in unresolved),
             'unresolved_indirect_sites': unresolved,
