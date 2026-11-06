@@ -1,0 +1,45 @@
+{
+  "base": "e9264a7a",
+  "note": "Scheduler tick in fixed-vector emulator fixture; timeout applies after public key readiness and cooperative cancellation only. Not production timeout, TCP, parent signature verification, physical erasure or device proof.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "b7fe6168e74e9c8b3c6c6920d03e91ec921e9b89e3d43d9b1786693c1b7d2870",
+      "image_sha256": "c113bae295759d6691bf378386fed9d2b9440b903e8d53f21b566c3611b2205b",
+      "primary_static_bytes": 110720,
+      "heap_bytes": 53120
+    },
+    "bad-ct": {
+      "elf_sha256": "e4b9e971da9031c2f83ce19866ec4d16a04584cf65c54a6219d4bf60ea81b9e4",
+      "image_sha256": "e815793f331b397f9c7c43caab87776ff98a0084361e501d5dfa0c6de413f939",
+      "primary_static_bytes": 110720,
+      "heap_bytes": 53120
+    },
+    "bad-pin": {
+      "elf_sha256": "291fda3aa0aed28fe1a770176f4db8480f4d8335aef3eedb5925a275c95ae8d8",
+      "image_sha256": "6fe84baf6d202d129edd46f95c917e8ed8ac04729f95960069389bd43bc7c197",
+      "primary_static_bytes": 110720,
+      "heap_bytes": 53120
+    },
+    "timeout": {
+      "elf_sha256": "328d828338ad9716513ef91b61d9e2be53dce64cebacf5ac9eae0b6feef3b6fe",
+      "image_sha256": "5f05fbb5c2aab470c42d4f77fb900c156031379e1093e7bba143362dc92b4010",
+      "primary_static_bytes": 109824,
+      "heap_bytes": 54016
+    }
+  },
+  "logs": {
+    "bad-ct.log": "88a0e8ef4423837b14eec3fd6e50ec9ac0ab052ad79f35be767a5b6c50e72821",
+    "bad-pin.log": "ca6210a04fc798ed2777808d82433faadae21ed3f27fc30b34b74f64a4598a0e",
+    "good.log": "8d18dc44c800c5208255c36dd3f0a88e18532a6f52ae01e6cb01020ac2e569c6",
+    "no-psram.log": "fb3b4e56706aa9bcd5e111099273b4c7552975a96c2ac482199ea2afb074f5a1",
+    "timeout.log": "eb22b91a8434c24d86d4d4f9845dc8b04b00caa05191ce92008853aed39deeec"
+  },
+  "source_sha256": {
+    "src/platform/native/pqc_task.zig": "68adcc2d2a0bbf12488848b71629fe5ce8d626028a53692258f752980a5dfdd6",
+    "src/net/hosted_station.zig": "e500f79087f4cd1936b5c68875c730ed99d2797a350be82aa9d3eb5fcf9229bf",
+    "src/net/ssh_hybrid_fixture.zig": "b2ae730814f2d3ef56b5bfeb12390250398e69741e6cb4d6214136f68cf3a31d",
+    "src/net/ssh_kem_handoff.zig": "920b542eaf2c9f02f92610f3f514db6408beba29d8e900b31634090f83b6773f",
+    "probes/pqc-ssh/check_task_log.py": "1929a5482d76034f84a6e2c881172ab54685b7d672d80a507b208d1ef1a441ac",
+    "probes/pqc-ssh/check_task_log_test.py": "652fac8a89cf2af6b574020a7b1d4147d8bdf0678b3d08b65afea39019a9104c"
+  }
+}

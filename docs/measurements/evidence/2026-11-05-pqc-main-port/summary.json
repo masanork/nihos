@@ -1,0 +1,38 @@
+{
+  "qualification": "Headless P4 emulator fixture, fixed SSH response; not real network or physical device",
+  "source_base": "7a6fb4ca0174bf211040ef2202a78fac0f241c46",
+  "note": "Only UI source hash manifests differ from source_base; they do not affect this fixture.",
+  "elf_sha256": "9c47c32e35eb66bdbef554762f240bf45dfd81cf9f29c604ce025b1b3180e9cc",
+  "image_sha256": "ee59b3dc880a58a3c077984fa5fd6bf8657d1d0b66d08870ed8bcfd4c4e9a938",
+  "heap_bytes": 64768,
+  "logs": {
+    "good.log": "fc8347ee0b03cf8304f12e77d661e837760c3acc40d4ecfe8588909a84ff3f6f",
+    "no-psram.log": "f1e60142ec7b5293a6f687ef29b2bde554f42e42f9f3679c4911b2e35bb0a0b4"
+  },
+  "negative_cases": {
+    "bad-ct": {
+      "elf_sha256": "6cd7b518dff0b1e564e7e4348276535339285091e4a83119f1bfd335fbfa7d0b",
+      "image_sha256": "ff19536dd8203d2362442a06be891a0974eb4635674cda862e696ff506b06a65",
+      "heap_bytes": 64768,
+      "log_sha256": "db3757ef4036f67ccf6299e552452d6a59c7c3e819d946cb100212d7b7ac6537"
+    },
+    "bad-pin": {
+      "elf_sha256": "33c9519fe82b035f1c12be53ada6b37dfff29928d750d4409fce61272526cccc",
+      "image_sha256": "48f3eb8a8b6a4d8c885cd50864171dca336abd68f5c20d96cce7ef894d4787cf",
+      "heap_bytes": 64768,
+      "log_sha256": "8fb8d0266037acc551302b814254b2649d6e66c6db319ec02e3d10eab4def851"
+    },
+    "timeout": {
+      "elf_sha256": "f630b9b67d87b8297ffa812cbd39b16b723c128f0adbe3edc469712c09ad51ad",
+      "image_sha256": "31973cc8efb151352fe7de9ad7789f1e916f15a9080d2dab71c79435b2364798",
+      "heap_bytes": 68224,
+      "log_sha256": "90efa32422d27af0b5b8cfdb6edd53a22cfba94311e8ea809839b8d4d5971794"
+    },
+    "bad-signature": {
+      "elf_sha256": "912b6a9e6839a41594f6373f81248d771830ad48e51ad94907c086f981808944",
+      "image_sha256": "db36b4d964ddd5ffeab9105e0cd64ce3a728c3a09968a9138a27135967032c76",
+      "heap_bytes": 64768,
+      "log_sha256": "750117f20d3507dee47354ba88ce205c418e92bf1093c3834538fd67e079e4d4"
+    }
+  }
+}

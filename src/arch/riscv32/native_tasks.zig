@@ -58,7 +58,7 @@ pub fn rustTaskPass() bool {
     return @atomicLoad(u32, &rust_task_pass, .acquire) == 1;
 }
 const normal_boot = @import("native_options").boot_fast;
-const wasm_task_enabled = @hasDecl(options, "wasm_task") and options.wasm_task;
+const wasm_task_enabled = (@hasDecl(options, "wasm_task") and options.wasm_task) or (@hasDecl(options, "pqc_task") and options.pqc_task);
 const leased_stack = @import("leased_stack.zig");
 const WasmTask = struct {
     handle: ?scheduler.TaskHandle = null,

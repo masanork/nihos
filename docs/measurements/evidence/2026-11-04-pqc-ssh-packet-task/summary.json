@@ -1,0 +1,55 @@
+{
+  "base": "7dc6cc67",
+  "note": "Synthetic SSH reply payload parsed on emulator and authenticated by worker; no packet framing, TCP, live SSH negotiation, parent signature verification, physical erasure or device proof.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "d43ac62d6ecffb348978056e16f9c0ace7889f23b44d28f2552c7ab92d820e63",
+      "image_sha256": "417dc24939e35423ae9811ca8679a197b450583d78fb712999e662dde6dc2d33",
+      "primary_static_bytes": 111744,
+      "heap_bytes": 52096
+    },
+    "bad-ct": {
+      "elf_sha256": "9500666f82dd4e2ef5792b3994450e47fd8d9ca190ea23b12018d8330e41531e",
+      "image_sha256": "879779e7626e776fec6859f81d4a69ac04f3b2027a09357cae52f3fa6f5d4f87",
+      "primary_static_bytes": 111744,
+      "heap_bytes": 52096
+    },
+    "bad-pin": {
+      "elf_sha256": "04b09fe7c40c83b37fe6c91ff83e750c7a227bf500a166ba84d5526266e6599d",
+      "image_sha256": "7e4f05e5c35c0312e5cd28515ef5d56ed3db4be514d48acd4aca0cc9c2124a9c",
+      "primary_static_bytes": 111744,
+      "heap_bytes": 52096
+    },
+    "timeout": {
+      "elf_sha256": "78da4768f069d5d454eac0efb31b1ae79e6c38ec32a57398662783fe8421bf61",
+      "image_sha256": "31fe4b4e449a37b2e454f67df3797f3af553d31cf888773ff18e98334913ec78",
+      "primary_static_bytes": 110208,
+      "heap_bytes": 53632
+    },
+    "bad-signature": {
+      "elf_sha256": "4c468a553207b7911c71c9710612e621d433aec9807e98df796dcbeb04f4a829",
+      "image_sha256": "7a92beeba69b43b2cdc7b342a1c4697a6a9ed85e32e282b7110056412349aebc",
+      "primary_static_bytes": 111744,
+      "heap_bytes": 52096
+    }
+  },
+  "logs": {
+    "bad-ct.log": "702d84a56a6c3bb21dc46cf256aaeaa54cda04508dba7dd8165bbaaf7534d5e1",
+    "bad-pin.log": "b99ea346e26ac8da6a58c4f892a122a67903676f9adbc4cadc1bd2edea6423dd",
+    "bad-signature.log": "8cc70f85a617fafa9cb208694fc966647efa5c51f9a955263c6e13ba05877adb",
+    "good.log": "fbd6b89d8a0acd4f03714bf025e311776de1cd36d1623fcbad63e90e971b282f",
+    "no-psram.log": "eee91fc042d171019d0c423084f7971a4e0d18d1c290ef1a19dab568eeac9967",
+    "timeout.log": "08b549b5dc4f519c4a6b5a171a14b78a65eae1611f1a8bb3e3ab4e8546c255ef"
+  },
+  "source_sha256": {
+    "src/platform/native/pqc_task.zig": "aece7a1250288f532c46fd813309575b5051a54b90477abc6cfa66027a3fa12e",
+    "src/net/hosted_station.zig": "6524e78faaa023b245ff163589184432d3ed11ec3cd0c3c66afca521d580c471",
+    "src/net/ssh_hybrid_fixture.zig": "b3f5f4533654ac0e0a780bf036de18fb6fadc5ef1c75d0bd1785b81a12835b05",
+    "src/net/ssh_hybrid_reply.zig": "fb80c3797a3454a8881b5eec335cdd60245d568c58b8b5c4bc07b953b02cc3b9",
+    "src/net/ssh_kem_handoff.zig": "920b542eaf2c9f02f92610f3f514db6408beba29d8e900b31634090f83b6773f",
+    "probes/pqc-ssh/check_task_log.py": "c69b11c23c31e7536d887200081008bf9d1876fa16b0c6069c5f3c0091d6b5fc",
+    "probes/pqc-ssh/check_task_log_test.py": "c7b2fefe05cda41a3794ccc4344911894d3d03fd131db2110cc1c25ba99fd306",
+    "probes/pqc-ssh/run-exchange-negative.sh": "d98780fc94ed4e615d2cc92ed15ec5d1032bfe2b2afba3d6e0ba94048fe409d5",
+    "tools/build-native-elf.sh": "159f44e13b8e6868e0f6090378918057d685a8e8bac392ef7244dd6b8ce125e8"
+  }
+}

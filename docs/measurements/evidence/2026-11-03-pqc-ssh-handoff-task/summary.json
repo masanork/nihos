@@ -1,0 +1,45 @@
+{
+  "base": "8a5dd343",
+  "note": "Public fixed vector, worker performs SSH proof, synthetic handoff times and cooperative timeout; not TCP, device, physical erasure or production security. no-psram log uses timeout candidate.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "c19f553c77fea30c9cba8ffaba39984184ddbb246fdeea222a584ebb5723e094",
+      "image_sha256": "a468ebeedcb17bd98066478d8cf84c628d4e461a8bf049c588f0c2b4c26fbb3d",
+      "primary_static_bytes": 110336,
+      "heap_bytes": 53504
+    },
+    "bad-ct": {
+      "elf_sha256": "c904bd70bdcd55d6e43ac66e5d66eaa4cb078083a29e47ee813e8e13ae637276",
+      "image_sha256": "1d434d6c11084b749146cbe103cdc58355f2053dc90e88351f69652c9ffcc704",
+      "primary_static_bytes": 110336,
+      "heap_bytes": 53504
+    },
+    "bad-pin": {
+      "elf_sha256": "25745ac2bc6b8c4ef30426631ea03c3493e660ac3f3412e616e53a2d936f43d0",
+      "image_sha256": "e58bc026923f1f13f75a09b3172bcbabcc9e901539fbe8bf9acb2eddcded723c",
+      "primary_static_bytes": 110336,
+      "heap_bytes": 53504
+    },
+    "timeout": {
+      "elf_sha256": "fb173bb00456d06690e53fca4160f17e5e69a249f3b4af69c71dc29ee0273bdc",
+      "image_sha256": "070d603c2c6ac139266a7da3a4ff5e61cebac9b2ebc00579ef2713a10f1b6d88",
+      "primary_static_bytes": 109440,
+      "heap_bytes": 54400
+    }
+  },
+  "logs": {
+    "bad-ct.log": "03c39b95085e4b20f5178b415b360e79300a4860faf6221df81b38863c2eb611",
+    "bad-pin.log": "362948cf57187b553df994b89ba44b58026990f04a824f413c336df1bd704e13",
+    "good.log": "5dd2fff3c0409ab043b84b9f767a2a956a8c0c27a0d8702925def25d9b48a6d8",
+    "no-psram.log": "b4fdb2716585e83db8b8ec0ef7ef06020e015f1f545268b272ee9bbe33ba2e94",
+    "timeout.log": "70a8646fb0b82f82ae52d832b8c3e11c531e4a4c28f245d956d37e7262eb1f52"
+  },
+  "source_sha256": {
+    "src/platform/native/pqc_task.zig": "5fb73e37959b8b87e1339b4b7e42ca48ca7491e7ed04491ffe7ab8efdd9622c8",
+    "src/net/hosted_station.zig": "e500f79087f4cd1936b5c68875c730ed99d2797a350be82aa9d3eb5fcf9229bf",
+    "src/net/ssh_hybrid_fixture.zig": "b2ae730814f2d3ef56b5bfeb12390250398e69741e6cb4d6214136f68cf3a31d",
+    "src/net/ssh_kem_handoff.zig": "2f82249f003d11904afcf196f78b8d6ae130ad3bd19cbfcc366a1d37250b6a92",
+    "probes/pqc-ssh/check_task_log.py": "c8e556678a51c6722d003717983684b18638365a49fa4d76fd184cfbfcf5d331",
+    "probes/pqc-ssh/check_task_log_test.py": "b0415e29c73000512e3dd20151164ab7069d356271d79ecc5134af28981b3515"
+  }
+}
