@@ -88,7 +88,9 @@ test "large paged dictionary drives IME after remount" {
         }
         dict.cache_valid = false;
         dict.root_cache_valid = false;
-        dict.root_cache_enabled = false;
+        dict.root_cache_enabled = true;
+        dict.victim_valid = false;
+        dict.victim_enabled = false;
         adapter.memo_enabled = true;
         const before = dict.cache_misses;
         try baseline.key(&baseline_doc, &adapter, ' ');
@@ -96,6 +98,8 @@ test "large paged dictionary drives IME after remount" {
         dict.cache_valid = false;
         dict.root_cache_valid = false;
         dict.root_cache_enabled = true;
+        dict.victim_valid = false;
+        dict.victim_enabled = true;
         adapter.memo_enabled = true;
         const middle = dict.cache_misses;
         try optimized.key(&optimized_doc, &adapter, ' ');
