@@ -68,6 +68,13 @@ sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
     "-Mroot=$repo_root/tools/probes/hosted-long-dma.zig" \
     "-Mhosted_long_dma=$repo_root/src/net/hosted_long_dma.zig"
 
+# Compile the experimental native SRAM reservation; never execute this probe.
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/hosted-long-storage.o" --dep native_long_storage \
+    "-Mroot=$repo_root/tools/probes/hosted-long-storage.zig" \
+    --dep hosted_long_storage "-Mnative_long_storage=$repo_root/src/platform/native/hosted_long_storage.zig" \
+    "-Mhosted_long_storage=$repo_root/src/net/hosted_long_storage.zig"
+
 # Generate both owner paths without SDK headers, credentials or device access.
 # Exporting begin/poll/snapshot through the probe forces codegen of the live
 # owner, which the SDK-free qualification images intentionally eliminate.
