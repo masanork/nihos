@@ -11496,23 +11496,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-06",
-    "measuredAt": "2026-11-06T05:05:21.201558+00:00",
+    "measuredAt": "2026-11-06T23:14:30.253827+00:00",
     "project": "nihos",
-    "commit": "75a98ca51cea4310e5819bbd3df26e8621eac421",
+    "commit": "35b171aea33b4d53d078d9edff2d48b55321f3a3",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "b74d21b607a9a1d296221bcc4721d818e3aa3ebca3f2254a3775e6fbb17a5b8c",
+    "sourceTreeSha256": "56af725fbb99510427ce929f2f6140b0d517cdf5fda62aef6bf06741ba446bac",
     "code": {
-      "implementation": 85667,
-      "tests": 45901,
-      "tooling": 31082,
+      "implementation": 85689,
+      "tests": 46037,
+      "tooling": 31204,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 77952,
-        "tests": 34856,
+        "implementation": 77974,
+        "tests": 34924,
         "tooling": 1821,
         "probes": 5642,
         "vendored": 0,
@@ -11544,8 +11544,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 10886,
-        "tooling": 22401,
+        "tests": 10954,
+        "tooling": 22517,
         "probes": 2269,
         "vendored": 0,
         "generated": 0
@@ -11569,7 +11569,7 @@
       "Include/data": {
         "implementation": 44,
         "tests": 0,
-        "tooling": 1503,
+        "tooling": 1509,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -11609,8 +11609,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 83730,
-        "tests": 34982,
+        "implementation": 83752,
+        "tests": 35050,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -11626,8 +11626,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 10919,
-        "tooling": 30761,
+        "tests": 10987,
+        "tooling": 30883,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -12168,7 +12168,7 @@
         "src/xy/render_session.zig": "fe34a48eee71aa796e40da253fbd89cc946176bfd0c6a0af4c17b4c69f734e38",
         "src/xy/scheme_bridge.zig": "4874c4e3696b17f33e01b739d4ff68eef8eb489f6f72a3950e79e6be61dfaece",
         "src/xy/scheme_decimal.zig": "8682778ff3768736c0fc9f949af3b13214adb5d90942b139a701cfcf6f50024e",
-        "src/xy/scheme_runtime.zig": "82bc840807867c4db86c7d5d4ed9ec71e92f888cf241e246d5fb3defa9fdd561",
+        "src/xy/scheme_runtime.zig": "5f0e27e30c79262e52d3d59389ecd355f81a92695e2ca437a9db6c63c9a7f5e0",
         "src/xy/scratch.zig": "3699d287f8e58b26fed7c548e95a2090c8afcf11a1abc93004ed17f4218e2dc4",
         "src/xy/soft_keyboard.zig": "19b2c16b30a3a9f7b40a6067e4e0f87afc97b23c6ba42d90ff0e58193794047c",
         "src/xy/ssh_entropy.zig": "4e5d59cecb8357931d0d950aaff85e90b1e65c234e1b12710a814a846b445954",
@@ -12184,9 +12184,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 16865,
-        "count": 17918,
-        "percent": 94.12322803884362
+        "covered": 16882,
+        "count": 17935,
+        "percent": 94.1287984388068
       },
       "files": {
         "src/app/animation.zig": {
@@ -12846,8 +12846,8 @@
           "count": 60
         },
         "src/xy/scheme_runtime.zig": {
-          "covered": 2901,
-          "count": 3099
+          "covered": 2918,
+          "count": 3116
         },
         "src/xy/scratch.zig": {
           "covered": 609,

@@ -26,6 +26,7 @@ fn publish(emu: &Emulator, shared: &Mutex<Snapshot>) {
 
 enum Command {
     Key(u8),
+    Paste(Vec<u8>),
     Arrow(String),
     Touch(Option<(u16, u16)>),
     Pause(bool),
@@ -77,6 +78,11 @@ impl Worker {
                 };
                 match command {
                     Some(Command::Key(key)) if powered && !emu.paused => emu.send_key(key),
+                    Some(Command::Paste(bytes)) if powered && !emu.paused => {
+                        for byte in bytes {
+                            emu.send_key(byte);
+                        }
+                    }
                     Some(Command::Arrow(key)) if powered && !emu.paused => {
                         crate::send_emulator_arrow(&mut emu, &key);
                     }
@@ -172,6 +178,9 @@ impl Worker {
 
     pub fn send_key(&self, key: u8) {
         let _ = self.tx.send(Command::Key(key));
+    }
+    pub fn paste(&self, bytes: Vec<u8>) {
+        let _ = self.tx.send(Command::Paste(bytes));
     }
     pub fn touch(&self, point: Option<(u16, u16)>) {
         let _ = self.tx.send(Command::Touch(point));
@@ -302,6 +311,20 @@ mod tests {
             assert!(
                 Instant::now() < deadline,
                 "guest frame did not respond to input"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let document = worker.snapshot().0.expect("document frame missing");
+        worker.paste(b"PASTE_42".to_vec());
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            worker.request_frame();
+            if worker.snapshot().0.as_deref() != Some(document.as_ref()) {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "guest frame did not respond to paste"
             );
             std::thread::sleep(Duration::from_millis(10));
         }
