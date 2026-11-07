@@ -6,44 +6,44 @@
 <path d="M65 262.0H790" stroke="#eaecf0"/>
 <text x="55" y="266.0" text-anchor="end" font-size="11">0</text>
 <path d="M65 216.0H790" stroke="#eaecf0"/>
-<text x="55" y="220.0" text-anchor="end" font-size="11">45,296</text>
+<text x="55" y="220.0" text-anchor="end" font-size="11">45,321</text>
 <path d="M65 170.0H790" stroke="#eaecf0"/>
-<text x="55" y="174.0" text-anchor="end" font-size="11">90,592</text>
+<text x="55" y="174.0" text-anchor="end" font-size="11">90,642</text>
 <path d="M65 124.0H790" stroke="#eaecf0"/>
-<text x="55" y="128.0" text-anchor="end" font-size="11">135,888</text>
+<text x="55" y="128.0" text-anchor="end" font-size="11">135,962</text>
 <path d="M65 78.0H790" stroke="#eaecf0"/>
-<text x="55" y="82.0" text-anchor="end" font-size="11">181,184</text>
-<rect x="82.5" y="255.17455209971283" width="55" height="6.825447900287165" fill="#2563eb"><title>2026-10-25: implementation 6,721.0</title></rect>
-<rect x="82.5" y="253.21049671522312" width="55" height="1.9640553844897155" fill="#10b981"><title>2026-10-25: tests 1,934.0</title></rect>
-<rect x="82.5" y="251.98880145796298" width="55" height="1.2216952572601487" fill="#f59e0b"><title>2026-10-25: tooling 1,203.0</title></rect>
+<text x="55" y="82.0" text-anchor="end" font-size="11">181,283</text>
+<rect x="82.5" y="255.17827952161065" width="55" height="6.8217204783893495" fill="#2563eb"><title>2026-10-25: implementation 6,721.0</title></rect>
+<rect x="82.5" y="253.21529672065768" width="55" height="1.9629828009529833" fill="#10b981"><title>2026-10-25: tests 1,934.0</title></rect>
+<rect x="82.5" y="251.99426863919624" width="55" height="1.2210280814614471" fill="#f59e0b"><title>2026-10-25: tooling 1,203.0</title></rect>
 <text x="110.0" y="286" text-anchor="middle" font-size="11">2026-10-25</text>
-<rect x="153.61111111111111" y="207.37509044657844" width="55" height="54.62490955342157" fill="#2563eb"><title>2026-10-30: implementation 53,789.0</title></rect>
-<rect x="153.61111111111111" y="179.37257587991897" width="55" height="28.00251456665947" fill="#10b981"><title>2026-10-30: tests 27,574.0</title></rect>
-<rect x="153.61111111111111" y="161.6909997168629" width="55" height="17.68157616305607" fill="#f59e0b"><title>2026-10-30: tooling 17,411.0</title></rect>
-<rect x="224.72222222222223" y="199.30052769472854" width="55" height="62.69947230527147" fill="#2563eb"><title>2026-10-31: implementation 61,740.0</title></rect>
-<rect x="224.72222222222223" y="167.48364289841894" width="55" height="31.81688479630961" fill="#10b981"><title>2026-10-31: tests 31,330.0</title></rect>
-<rect x="224.72222222222223" y="146.33501136687892" width="55" height="21.14863153153998" fill="#f59e0b"><title>2026-10-31: tooling 20,825.0</title></rect>
-<rect x="295.83333333333337" y="186.21731905027093" width="55" height="75.78268094972908" fill="#2563eb"><title>2026-11-01: implementation 74,623.0</title></rect>
-<rect x="295.83333333333337" y="148.41280729069794" width="55" height="37.80451175957299" fill="#10b981"><title>2026-11-01: tests 37,226.0</title></rect>
-<rect x="295.83333333333337" y="123.66205350022048" width="55" height="24.750753790477425" fill="#f59e0b"><title>2026-11-01: tooling 24,372.0</title></rect>
-<rect x="366.94444444444446" y="177.78223941036833" width="55" height="84.21776058963165" fill="#2563eb"><title>2026-11-02: implementation 82,929.0</title></rect>
-<rect x="366.94444444444446" y="133.77582163575983" width="55" height="44.0064177746085" fill="#10b981"><title>2026-11-02: tests 43,333.0</title></rect>
-<rect x="366.94444444444446" y="103.52083817416853" width="55" height="30.25498346159132" fill="#f59e0b"><title>2026-11-02: tooling 29,792.0</title></rect>
-<rect x="438.05555555555554" y="176.13503267115308" width="55" height="85.86496732884692" fill="#2563eb"><title>2026-11-03: implementation 84,551.0</title></rect>
-<rect x="438.05555555555554" y="130.5088277516319" width="55" height="45.626204919521165" fill="#10b981"><title>2026-11-03: tests 44,928.0</title></rect>
-<rect x="438.05555555555554" y="99.35407538070353" width="55" height="31.15475237092838" fill="#f59e0b"><title>2026-11-03: tooling 30,678.0</title></rect>
-<rect x="509.16666666666674" y="175.3693151117398" width="55" height="86.63068488826018" fill="#2563eb"><title>2026-11-04: implementation 85,305.0</title></rect>
-<rect x="509.16666666666674" y="129.0413716861781" width="55" height="46.3279434255617" fill="#10b981"><title>2026-11-04: tests 45,619.0</title></rect>
-<rect x="509.16666666666674" y="97.67538688506679" width="55" height="31.365984801111352" fill="#f59e0b"><title>2026-11-04: tooling 30,886.0</title></rect>
-<rect x="580.2777777777778" y="175.36626849015065" width="55" height="86.63373150984935" fill="#2563eb"><title>2026-11-05: implementation 85,308.0</title></rect>
-<rect x="580.2777777777778" y="129.02309195664304" width="55" height="46.34317653350759" fill="#10b981"><title>2026-11-05: tests 45,634.0</title></rect>
-<rect x="580.2777777777778" y="97.65710715553169" width="55" height="31.365984801111352" fill="#f59e0b"><title>2026-11-05: tooling 30,886.0</title></rect>
-<rect x="651.3888888888889" y="174.9793475483251" width="55" height="87.02065245167489" fill="#2563eb"><title>2026-11-06: implementation 85,689.0</title></rect>
-<rect x="651.3888888888889" y="128.22690818133802" width="55" height="46.75243936698709" fill="#10b981"><title>2026-11-06: tests 46,037.0</title></rect>
-<rect x="651.3888888888889" y="96.53798149177386" width="55" height="31.68892668956416" fill="#f59e0b"><title>2026-11-06: tooling 31,204.0</title></rect>
-<rect x="722.5" y="174.36291444678153" width="55" height="87.63708555321845" fill="#2563eb"><title>2026-11-07: implementation 86,296.0</title></rect>
-<rect x="722.5" y="126.47713184862044" width="55" height="47.88578259816109" fill="#10b981"><title>2026-11-07: tests 47,153.0</title></rect>
-<rect x="722.5" y="94.72727272727273" width="55" height="31.749859121347708" fill="#f59e0b"><title>2026-11-07: tooling 31,264.0</title></rect>
+<rect x="153.61111111111111" y="207.4049214682213" width="55" height="54.595078531778704" fill="#2563eb"><title>2026-10-30: implementation 53,789.0</title></rect>
+<rect x="153.61111111111111" y="179.4176992585638" width="55" height="27.987222209657478" fill="#10b981"><title>2026-10-30: tests 27,574.0</title></rect>
+<rect x="153.61111111111111" y="161.74577912030506" width="55" height="17.671920138258734" fill="#f59e0b"><title>2026-10-30: tooling 17,411.0</title></rect>
+<rect x="224.72222222222223" y="199.33476828808833" width="55" height="62.66523171191168" fill="#2563eb"><title>2026-10-31: implementation 61,740.0</title></rect>
+<rect x="224.72222222222223" y="167.5352589013991" width="55" height="31.79950938668923" fill="#10b981"><title>2026-10-31: tests 31,330.0</title></rect>
+<rect x="224.72222222222223" y="146.39817677634952" width="55" height="21.137082125049574" fill="#f59e0b"><title>2026-10-31: tooling 20,825.0</title></rect>
+<rect x="295.83333333333337" y="186.25870446974432" width="55" height="75.74129553025567" fill="#2563eb"><title>2026-11-01: implementation 74,623.0</title></rect>
+<rect x="295.83333333333337" y="148.4748380021767" width="55" height="37.783866467567606" fill="#10b981"><title>2026-11-01: tests 37,226.0</title></rect>
+<rect x="295.83333333333337" y="123.73760076079819" width="55" height="24.737237241378544" fill="#f59e0b"><title>2026-11-01: tooling 24,372.0</title></rect>
+<rect x="366.94444444444446" y="177.82823128219752" width="55" height="84.17176871780246" fill="#2563eb"><title>2026-11-02: implementation 82,929.0</title></rect>
+<rect x="366.94444444444446" y="133.845845701176" width="55" height="43.982385581021525" fill="#10b981"><title>2026-11-02: tests 43,333.0</title></rect>
+<rect x="366.94444444444446" y="103.60738468463451" width="55" height="30.23846101654151" fill="#f59e0b"><title>2026-11-02: tooling 29,792.0</title></rect>
+<rect x="438.05555555555554" y="176.18192409339417" width="55" height="85.81807590660584" fill="#2563eb"><title>2026-11-03: implementation 84,551.0</title></rect>
+<rect x="438.05555555555554" y="130.58063594385146" width="55" height="45.601288149542725" fill="#10b981"><title>2026-11-03: tests 44,928.0</title></rect>
+<rect x="438.05555555555554" y="99.44289738767996" width="55" height="31.13773855617147" fill="#f59e0b"><title>2026-11-03: tooling 30,678.0</title></rect>
+<rect x="509.16666666666674" y="175.41662469736593" width="55" height="86.58337530263405" fill="#2563eb"><title>2026-11-04: implementation 85,305.0</title></rect>
+<rect x="509.16666666666674" y="129.11398126578675" width="55" height="46.302643431579185" fill="#10b981"><title>2026-11-04: tests 45,619.0</title></rect>
+<rect x="509.16666666666674" y="97.76512563484891" width="55" height="31.34885563093787" fill="#f59e0b"><title>2026-11-04: tooling 30,886.0</title></rect>
+<rect x="580.2777777777778" y="175.41357973955684" width="55" height="86.58642026044318" fill="#2563eb"><title>2026-11-05: implementation 85,308.0</title></rect>
+<rect x="580.2777777777778" y="129.095711518932" width="55" height="46.31786822062484" fill="#10b981"><title>2026-11-05: tests 45,634.0</title></rect>
+<rect x="580.2777777777778" y="97.74685588799412" width="55" height="31.34885563093787" fill="#f59e0b"><title>2026-11-05: tooling 30,886.0</title></rect>
+<rect x="651.3888888888889" y="175.0268700977972" width="55" height="86.97312990220279" fill="#2563eb"><title>2026-11-06: implementation 85,689.0</title></rect>
+<rect x="651.3888888888889" y="128.29996254481244" width="55" height="46.72690755298475" fill="#10b981"><title>2026-11-06: tests 46,037.0</title></rect>
+<rect x="651.3888888888889" y="96.62834138610674" width="55" height="31.671621158705733" fill="#f59e0b"><title>2026-11-06: tooling 31,204.0</title></rect>
+<rect x="722.5" y="174.41077363441642" width="55" height="87.58922636558358" fill="#2563eb"><title>2026-11-07: implementation 86,296.0</title></rect>
+<rect x="722.5" y="126.5125723108527" width="55" height="47.89820132356372" fill="#10b981"><title>2026-11-07: tests 47,191.0</title></rect>
+<rect x="722.5" y="94.72727272727275" width="55" height="31.785299583579953" fill="#f59e0b"><title>2026-11-07: tooling 31,316.0</title></rect>
 <text x="750.0" y="286" text-anchor="middle" font-size="11">2026-11-07</text>
 <rect x="65" y="309" width="12" height="12" fill="#2563eb"/>
 <text x="83" y="320" font-size="12">implementation</text>
