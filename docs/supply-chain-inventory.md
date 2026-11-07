@@ -4,7 +4,8 @@ The native CI workflow generates CycloneDX 1.6 inventories
 for the normal Tab5 device build, retaining them with the image evidence:
 
 * `audited-inputs.cdx.json` records the SHA-256 of the bootloader, partition
-  table and application binaries after matching their flash-image slices. It
+  table and application binaries after matching their flash-image slices. Each
+  records its offset and length for independent verification. It
   also identifies FatFs and SQLite when the image audit
   contains the corresponding normal FS and sqld identities. The generator checks
   those identity digests, the FatFs source pin and the current SQLite source
@@ -89,7 +90,7 @@ image and all three inventory files as one artifact set:
 
 ```sh
 python3 tools/verify_native_provenance.py PATH/TO/IMAGE-DIRECTORY \
-  --source-sha TRUSTED_COMMIT_SHA
+  --source-sha TRUSTED_COMMIT_SHA --require-image-layout
 ```
 
 The directory must contain `nihos-native-flash.bin` and the three `.cdx.json`
@@ -108,3 +109,10 @@ rejects unexpected external parameters. It does not infer the trusted commit
 from the artifact or attestations. The current GitHub statement does not expose
 all build inputs or prove inventory completeness, dependency integrity, actual
 device behavior, a release decision, or SLSA Build Level 3.
+
+The consumer also checks binary offsets, lengths, SHA-256 hashes and erased
+padding against the flash image. `--require-image-layout` rejects older signed
+inventories that lack lengths; without the flag those older inventories remain
+verifiable but their component slices cannot be independently checked. When
+lengths are present the layout is always checked, even without the flag. These
+checks establish byte consistency, not source-to-binary provenance.

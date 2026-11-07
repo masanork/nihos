@@ -42,6 +42,43 @@ class PolicyTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 verify.check_statement(value, hashes, SHA, REF)
 
+    def test_binary_layout_checks_and_legacy_compatibility(self):
+        flash = bytearray(b'\xff' * 0x10000 + b'app')
+        flash[0x2000:0x2004] = b'boot'
+        flash[0x8000:0x8009] = b'partition'
+        components = []
+        for name, offset, payload in [('bootloader.bin', 0x2000, b'boot'),
+                                      ('partition-table.bin', 0x8000, b'partition'),
+                                      ('nihos-native.bin', 0x10000, b'app')]:
+            components.append({'name': name, 'type': 'file',
+                'hashes': [{'alg': 'SHA-256', 'content': hashlib.sha256(payload).hexdigest()}],
+                'properties': [{'name': 'nihos:flash-offset', 'value': hex(offset)},
+                               {'name': 'nihos:flash-size-bytes', 'value': str(len(payload))}]})
+        bom = {'components': components}
+        self.assertTrue(verify.check_image_layout(flash, bom, required=True))
+        for offset in (0, 0x2000, 0x8000, 0x10000):
+            altered = bytearray(flash); altered[offset] ^= 1
+            with self.subTest(offset=offset), self.assertRaises(ValueError):
+                verify.check_image_layout(altered, bom, required=True)
+        for changed in (flash[:-1], flash + b'\xff'):
+            with self.assertRaises(ValueError):
+                verify.check_image_layout(changed, bom, required=True)
+        variants = []
+        x = copy.deepcopy(bom); x['components'].append(copy.deepcopy(x['components'][0])); variants.append(x)
+        x = copy.deepcopy(bom); x['components'][0]['properties'][1]['value'] = '999999'; variants.append(x)
+        x = copy.deepcopy(bom); x['components'][1]['properties'][0]['value'] = '0x9000'; variants.append(x)
+        x = copy.deepcopy(bom); x['components'][2]['hashes'][0]['content'] = '0' * 64; variants.append(x)
+        x = copy.deepcopy(bom); x['components'][2]['properties'].pop(); variants.append(x)
+        for x in variants:
+            with self.assertRaises(ValueError):
+                verify.check_image_layout(flash, x, required=True)
+        old = copy.deepcopy(bom)
+        for component in old['components']:
+            component['properties'].pop()
+        self.assertFalse(verify.check_image_layout(flash, old))
+        with self.assertRaises(ValueError):
+            verify.check_image_layout(flash, old, required=True)
+
     def test_requires_matching_inventory_and_invokes_gh_with_pins(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d); (root / 'bom').mkdir()
