@@ -405,6 +405,19 @@ def audit_xy_functions(functions, span):
     return {n: {'start': hex(a), 'end': hex(b)} for a, b, n in selected}
 
 
+def audit_boot_sprite_tables(symbols, sizes, ro_start, ro_data, resident_rodata):
+    names = [name for name in symbols if name.startswith('boot_graphics.paintTo__struct_') and name.endswith('.sprites')]
+    result = []
+    for name in names:
+        start, size = symbols[name], sizes.get(name)
+        require(size == 1480 and start % 4 == 0 and ro_start <= start <= ro_start + len(ro_data) - size,
+                'boot sprite table outside declared readonly Flash storage')
+        table = ro_data[start - ro_start:start - ro_start + size]
+        require(table not in resident_rodata, 'boot sprite table has an anonymous SRAM copy')
+        result.append({'symbol': name, 'start': hex(start), 'bytes': size, 'sram_copy': False})
+    return result
+
+
 def audit_xy_plot_table(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
     names = [name for name in ('xy.plot_config.sine', 'plot_config.sine') if name in symbols]
     if not required and not names:
@@ -1279,6 +1292,7 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(symbols.get("__user_probe_start") == user_start and symbols.get("__user_probe_end") == user_span[1], "user probe symbols differ from section")
         require({name for name, address, stop in functions if user_span[0] <= address < stop <= user_span[1]} == USER_PROBE_FUNCTIONS, "user probe functions differ")
     flash_start = FLASH_SECTIONS[".flash.rodata"][0]
+    boot_sprites = audit_boot_sprite_tables(symbols, symbol_sizes, flash_start, flash_tables, resident_rodata)
     xy_span = None
     xy_report = None
     xy_payload = None
@@ -1400,6 +1414,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                                 "bytes": len(flash_tables), "fnv1a": fnv1a(flash_tables),
                                 "executable": False, "writable": False},
               "rom_symbols": {name: hex(value) for name, value in (ROM_SYMBOLS | OPTIONAL_ROM_SYMBOLS | OPTIONAL_ROM_DATA).items() if name in symbols}, "sections": allocated}
+    if boot_sprites:
+        report["boot_sprites"] = boot_sprites
     if high_sram is not None:
         report["high_sram"] = high_sram
         report["memory"]["total_bytes"] += high_sram["tested_bytes"]

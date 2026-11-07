@@ -68,6 +68,13 @@ sh "$repo_root/tools/build-hosted-long-link.sh" "$out_dir/hosted-long-link"
     "-Mroot=$repo_root/tools/probes/hosted-long-dma.zig" \
     "-Mhosted_long_dma=$repo_root/src/net/hosted_long_dma.zig"
 
+# Compile the experimental native SRAM reservation; never execute this probe.
+"$zig" build-obj -target "$target" -mcpu="$cpu" \
+    -femit-bin="$out_dir/hosted-long-storage.o" --dep native_long_storage \
+    "-Mroot=$repo_root/tools/probes/hosted-long-storage.zig" \
+    --dep hosted_long_storage "-Mnative_long_storage=$repo_root/src/platform/native/hosted_long_storage.zig" \
+    "-Mhosted_long_storage=$repo_root/src/net/hosted_long_storage.zig"
+
 # Generate both owner paths without SDK headers, credentials or device access.
 # Exporting begin/poll/snapshot through the probe forces codegen of the live
 # owner, which the SDK-free qualification images intentionally eliminate.
@@ -184,11 +191,22 @@ echo "P4 RNG noise setup RV32 codegen: ok (not target execution)"
 
 # Fixed ownership stubs do not qualify or enable hardware entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend \
+    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend --dep p4_entropy_lease --dep p4_entropy_hardware --dep p4_entropy_clock \
     "-Mroot=$repo_root/tools/probes/ssh-p4-backend.zig" \
     --dep rng_noise "-Mssh_p4_backend=$repo_root/src/xy/ssh_p4_backend.zig" \
-    "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig"
+    "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig" \
+    --dep p4_rng_gate "-Mp4_entropy_lease=$repo_root/src/platform/native/p4_entropy_lease.zig" \
+    "-Mp4_rng_gate=$repo_root/src/platform/native/p4_rng_gate.zig" \
+    "-Mp4_entropy_hardware=$repo_root/src/platform/native/p4_entropy_hardware.zig" \
+    "-Mp4_entropy_clock=$repo_root/src/platform/native/p4_entropy_clock.zig"
 echo "SSH P4 entropy pipeline RV32 codegen: ok (not target execution)"
+
+# This fixed-source probe is code generation only; no entropy is qualified.
+"$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
+    -femit-bin="$out_dir/ssh-entropy-session.o" --dep ssh_entropy_session \
+    "-Mroot=$repo_root/tools/probes/ssh-entropy-session.zig" \
+    "-Mssh_entropy_session=$repo_root/src/xy/ssh_entropy_session.zig"
+echo "SSH entropy cleanup/admission RV32 codegen: ok (not target execution)"
 
 # Fixed bytes exercise code generation only and must never be used as entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \

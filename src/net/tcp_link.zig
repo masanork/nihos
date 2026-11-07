@@ -22,6 +22,22 @@ pub const Link = struct {
     frame: [1600]u8 = @splat(0),
     frame_len: usize = 0,
 
+    /// Initialize in stable caller-owned storage without a large aggregate copy.
+    pub fn initInPlace(self: *Link) void {
+        self.state = .idle;
+        self.pending = .none;
+        self.lease = .{ .ip = @splat(0), .mask = @splat(0), .gateway = @splat(0), .mac = @splat(0), .epoch = 0 };
+        self.target = .{ .address = @splat(0), .port = 0 };
+        self.local_port = 0;
+        self.initial_seq = 0;
+        self.deadline = 0;
+        self.resolver = .{};
+        self.opening = .{};
+        self.stream = null;
+        @memset(&self.frame, 0);
+        self.frame_len = 0;
+    }
+
     pub fn begin(self: *Link, lease: arp.Lease, target: connect.Endpoint, local_port: u16, initial_seq: u32, now: u64, deadline: u64) Error!void {
         if (self.state != .idle) return error.InvalidState;
         if (local_port == 0 or target.port == 0) return error.InvalidArgument;
@@ -162,6 +178,14 @@ pub const Link = struct {
         return err;
     }
 };
+
+test "in-place initialization resets reused link storage" {
+    // SAFETY: initInPlace initializes every live field before use.
+    var link: Link = undefined;
+    @memset(std.mem.asBytes(&link), 0xa5);
+    link.initInPlace();
+    try std.testing.expectEqualDeep(Link{}, link);
+}
 
 test "link owns outgoing frame and invalidates on lease change" {
     var link: Link = .{};

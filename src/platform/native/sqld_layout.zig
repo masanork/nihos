@@ -25,6 +25,11 @@ pub const ssh_experiment_bytes: u32 = 0x20000;
 pub const ssh_owner_bytes: u32 = 0x16000;
 pub const ssh_ui_experiment: u32 = ssh_experiment + ssh_owner_bytes;
 pub const ssh_ui_experiment_bytes: u32 = ssh_experiment_bytes - ssh_owner_bytes;
+pub const ssh_foreground: u32 = ssh_experiment + ssh_experiment_bytes;
+pub const ssh_foreground_bytes: u32 = 0x1000;
+// Exclusive CPU0 SSH stack, distinct from the Scheme and render stacks.
+pub const ssh_stack: u32 = ssh_foreground + ssh_foreground_bytes;
+pub const ssh_stack_bytes: u32 = 0xf000;
 pub const guard: u32 = 0xa5a5a5a5;
 pub const first_sector: u32 = 2048;
 pub const sector_count: u32 = 8192;
@@ -48,5 +53,7 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(cache + cache_bytes <= stack);
     try std.testing.expect(stack_top <= ssh_experiment);
     try std.testing.expect(ssh_experiment + ssh_owner_bytes <= ssh_ui_experiment);
-    try std.testing.expect(ssh_ui_experiment + ssh_ui_experiment_bytes <= base + bytes);
+    try std.testing.expect(ssh_ui_experiment + ssh_ui_experiment_bytes <= ssh_foreground);
+    try std.testing.expect(ssh_foreground + ssh_foreground_bytes <= ssh_stack);
+    try std.testing.expect(ssh_stack + ssh_stack_bytes <= base + bytes);
 }

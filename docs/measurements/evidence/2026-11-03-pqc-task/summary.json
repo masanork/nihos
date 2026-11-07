@@ -1,0 +1,34 @@
+{
+  "base": "3bc5bfa6",
+  "profile": "headless emulator integer BOOT_TEST=1 PQC_TASK=1",
+  "elf_sha256": "86693d93c02613f456642aeda1108cfce9316bbd1b4fc56d16430de006043d3b",
+  "image_sha256": "7dee2732dc038e6eb6941c14e609458ccf4af0de9c58769559e9f8b83223343e",
+  "heap": {
+    "start": "0x4ff30540",
+    "end": "0x4ff48000",
+    "bytes": 96960,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "primary_static_bytes": 66880,
+  "rtos_linked": false,
+  "logs": {
+    "4m.log": "6ef40e2da9dc5efc65171b60bb07ddcb6655b849fbde2e5fb5bc4bbf8a376907",
+    "no-psram.log": "a1e5abe7d432a6b88faa0ac3fcf56c02a9fa5be9ac222e40f4802f5e38d18258"
+  },
+  "note": "fixed-data separate scheduler task; no native SSH, P4 physical device, production entropy, or cache-off proof",
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "79ba02906367883f477bf415212ab3b69d9ea89d63061eaca92b66e824d1b7ac",
+    "src/platform/native/main.zig": "0d1e5c2c47784299f9125eb1e966cd1fff7b70d7ae4ffbb78329297c63d90718",
+    "src/platform/native/pqc_task.zig": "6594a3a7dc4b697be5b8f91de26579c2dc18e9a5ecb02212788619446b525e32",
+    "tools/build-native-elf.sh": "2c09f704f45601900a9480008c08906fe355e368cfd5f2ca44c509043c70783d",
+    "probes/pqc-ssh/task_fixture.c": "bc9ec99140e7e04bf9f894fbc947f73106ef4880914f689dd6715686d605ccb8",
+    "probes/pqc-ssh/kem_job.c": "325ee1437394cccfebc43ec347b682b8d2d711e1a974615f6e04b96a199d319e",
+    "probes/pqc-ssh/kem_job.h": "24f87082c40f3484f50570225f93dce16310dbd4cbdf56d7d2f0198d52782662",
+    "probes/pqc-ssh/mlkem_arena.c": "09dd0aaf2a05017791b3651145c850c97cf1c5103db528f50ac8b06eead5aa92",
+    "probes/pqc-ssh/mlkem_arena.h": "b4ecdecd777b99dca10aaf61a28ecb9747b8b680ee6d860b09f1d541c5574abe"
+  },
+  "upstream_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06",
+  "upstream_archive_sha256": "b9f225b455ef268d2469aee26bdd6f6e47e7b24762849bf180074b79ed2db1c4"
+}

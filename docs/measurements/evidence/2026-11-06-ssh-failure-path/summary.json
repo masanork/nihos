@@ -1,0 +1,71 @@
+{
+  "profile": "link-only; entropy unavailable; do not flash or execute",
+  "source_head": "7385f4b2dd773ad72a1792a35675227155bbed26",
+  "fixture_patch_sha256": "52144629750a37ca5a1b1eac1091eca16bc73c381a2e5d3d3ca63d653b17b1a7",
+  "elf_sha256": "f8e2c3dce51c706566db9fa6004430e00144d116e73e48ad923c7df469d8de81",
+  "heap_bytes": 54080,
+  "normal_audit": "rejected unapproved xy Flash functions",
+  "study_audit": "exact function names and structural image checks passed; not cache-off qualification",
+  "negative_controls": "misplaced function and full SRAM code copy rejected",
+  "table_audit": {
+    "table_sha256": "97dfc18d19f9cf8952f9409cffe06bba8804cfdc21a731ff9705dc887e49f75b",
+    "table_bytes": 2688,
+    "symbols": [
+      {
+        "symbol": "__anon_84721",
+        "address": "0x400b2410"
+      }
+    ],
+    "copies": [
+      {
+        "address": "0x400b2410",
+        "writable": false,
+        "region": "mapped_flash"
+      }
+    ]
+  },
+  "irq_graph": {
+    "directly_reachable_functions": 429,
+    "directly_reachable_ssh_crypto_names": [],
+    "directly_reachable_placed_functions": [],
+    "example_existing_xy_flash_path": [
+      {
+        "address": "0x4ff1036c",
+        "symbol": "nih_native_dispatch",
+        "incoming_edge": null
+      },
+      {
+        "address": "0x4ff06510",
+        "symbol": "main.fail",
+        "incoming_edge": {
+          "pc": "0x4ff1047e",
+          "op": "jalr",
+          "operands": "150(ra) # 4ff06510 <main.fail>"
+        }
+      },
+      {
+        "address": "0x40486062",
+        "symbol": "diagnostic_ui.service__func_0",
+        "incoming_edge": {
+          "pc": "0x4ff065a0",
+          "op": "jalr",
+          "operands": "-1338(ra) # 40486062 <diagnostic_ui.service__func_0>"
+        }
+      },
+      {
+        "address": "0x400908f4",
+        "symbol": "diagnostic_ui.beginSession__func_22",
+        "incoming_edge": {
+          "pc": "0x4048651a",
+          "op": "jalr",
+          "operands": "990(ra) # 400908f4 <diagnostic_ui.beginSession__func_22>"
+        }
+      }
+    ],
+    "unresolved_indirect_count": 109,
+    "possible_jump_table_hints": 33,
+    "resolved_internal_jump_table_count": 10,
+    "limitations": "Named direct, adjacent AUIPC/JALR or AUIPC/JR edges and guarded same-function tables only; remaining jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven."
+  },
+  "irq_graph_sha256": "e4edc944ede789da13b46909b435391c8878d9d32af6aa22c0a6ed75566943f9"
+}

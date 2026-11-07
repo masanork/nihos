@@ -145,6 +145,7 @@ const Fake = struct {
     cycle: u32 = 0,
     random: u32 = 0,
     cpu: u32 = 160_000_000,
+    apb: u32 = 80_000_000,
     timer: u8 = 0,
     control: u32 = 0,
     conf1: u32 = 0x2345,
@@ -177,8 +178,8 @@ const Fake = struct {
     pub fn cpuHz(self: *@This()) u32 {
         return self.cpu;
     }
-    pub fn apbHz(_: *@This()) u32 {
-        return 80_000_000;
+    pub fn apbHz(self: *@This()) u32 {
+        return self.apb;
     }
     pub fn cycles(self: *@This()) u32 {
         return self.cycle;
@@ -210,6 +211,9 @@ const Fake = struct {
     }
     pub fn read(self: *@This(), addr: usize) u32 {
         return switch (addr) {
+            0x501101a4 => self.readRng(),
+            0x50112010 => 0,
+            0x50112014 => self.lowTimerByte(),
             0x50124000 => self.control | (if (self.stuck) @as(u32, 1 << 25) else 0),
             0x50124004 => 0,
             0x5012401c => self.conf1,
@@ -220,6 +224,7 @@ const Fake = struct {
     }
     pub fn write(self: *@This(), addr: usize, value: u32) void {
         switch (addr) {
+            0x50112010 => {},
             0x50124000 => {
                 const reg: usize = (value >> 8) & 255;
                 if (value & (1 << 24) != 0) self.sar[reg] = @truncate(value >> 16);
@@ -233,7 +238,7 @@ const Fake = struct {
     }
     fn tick(self: *@This()) void {
         self.now += 28;
-        self.cycle +%= 4480;
+        self.cycle +%= self.cpu / 1_000_000 * 28;
     }
 };
 
@@ -391,4 +396,233 @@ test "native RNG gate remains held through simulated entropy cleanup" {
     collector.poll(io.now);
     try std.testing.expect(gate.trySqlite());
     try std.testing.expect(gate.releaseSqlite());
+}
+
+test "entropy session waits for the real backend and gate cleanup" {
+    const sessions = @import("ssh_entropy_session.zig");
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    try session.begin(0, 100_000);
+    var saw_restoring = false;
+    for (0..800) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .restoring) {
+            saw_restoring = true;
+            try std.testing.expect(!session.available());
+            try std.testing.expect(!gate.trySqlite());
+        }
+        if (session.available()) break;
+    }
+    try std.testing.expect(saw_restoring and session.available());
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    var output: [32]u8 = undefined;
+    try session.fill(&output);
+    try std.testing.expect(!std.mem.allEqual(u8, &output, 0));
+    session.cancel();
+    session.poll(io.now);
+    try std.testing.expectEqual(.idle, session.state);
+}
+
+test "stuck analog restoration never admits or retains cancelled entropy" {
+    const sessions = @import("ssh_entropy_session.zig");
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 100, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    try session.begin(0, 100_000);
+    for (0..400) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .restoring) break;
+    }
+    try std.testing.expectEqual(.restoring, session.state);
+    io.stuck = true;
+    for (0..20) |_| {
+        io.tick();
+        session.poll(io.now);
+        try std.testing.expect(!session.available());
+        try std.testing.expect(!gate.trySqlite());
+    }
+    session.cancel();
+    try std.testing.expect(!session.entropy.available());
+    io.stuck = false;
+    for (0..200) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (session.state == .idle) break;
+    }
+    try std.testing.expectEqual(.idle, session.state);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+}
+
+test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
+    const sessions = @import("ssh_entropy_session.zig");
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Model = struct {
+        pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
+        pub const PrivateInputPortType = struct {
+            pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
+            context: *anyopaque,
+            key: *const fn (*anyopaque, PrivateInputKey) bool,
+            close: *const fn (*anyopaque) void,
+            snapshot: *const fn (*anyopaque, *View) bool,
+        };
+        private_input: ?PrivateInputPortType = null,
+        pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
+            if (self.private_input != null) return false;
+            self.private_input = port;
+            return true;
+        }
+        pub fn detachPrivateInput(self: *@This()) void {
+            const port = self.private_input orelse return;
+            self.private_input = null;
+            port.close(port.context);
+        }
+    };
+    const Controller = struct {
+        state: lifecycle.State = .idle,
+        pub fn beginProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
+        pub fn pollProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: ?*const lifecycle.ExchangeEntropy, _: *const [32]u8) !lifecycle.State {
+            return .opening;
+        }
+        pub fn cancel(_: *@This()) void {}
+        pub fn retryCleanup(_: *@This()) bool {
+            return true;
+        }
+    };
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
+    var model: Model = .{};
+    var controller: Controller = .{};
+    var foreground = try lifecycle.PreparedForeground(Model, Controller, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectEqual(.acquiring, foreground.poll(true, 0));
+    io.tick();
+    try std.testing.expectEqual(.acquiring, foreground.poll(true, io.now));
+    try std.testing.expect(!io.acquired and model.private_input == null);
+    try std.testing.expect(gate.releaseSqlite());
+    io.tick();
+    try std.testing.expectEqual(.preparing, foreground.poll(true, io.now));
+    try std.testing.expectEqual(@as(u64, 100_000), session.collector.deadline);
+    var saw_restore = false;
+    for (0..800) |_| {
+        io.tick();
+        const state = foreground.poll(true, io.now);
+        if (session.state == .restoring) {
+            saw_restore = true;
+            try std.testing.expect(!gate.trySqlite());
+        }
+        try std.testing.expect(model.private_input == null);
+        if (state == .active) break;
+    }
+    try std.testing.expect(saw_restore and foreground.state == .active);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    io.tick();
+    try std.testing.expectEqual(.active, foreground.poll(true, io.now));
+    try std.testing.expect(model.private_input != null);
+    io.tick();
+    _ = foreground.poll(false, io.now);
+    try std.testing.expect(model.private_input == null and !session.available());
+}
+
+test "composed reservation and P4 backend restore before seed becomes available" {
+    const lease_mod = @import("p4_entropy_lease");
+    const hw_mod = @import("p4_entropy_hardware");
+    const clock_mod = @import("p4_entropy_clock");
+    const sessions = @import("ssh_entropy_session.zig");
+    const Gate = @import("p4_rng_gate").Gate;
+    const Resources = struct {
+        io: *Fake,
+        original_sar: [10]u8,
+        original_adc: [9]u32,
+        reserved: bool = false,
+        release_allowed: bool = false,
+        saw_restored: bool = false,
+        pub fn tryReserve(self: *@This()) bool {
+            if (self.reserved) return false;
+            self.reserved = true;
+            return true;
+        }
+        pub fn owned(self: *@This()) bool {
+            return self.reserved;
+        }
+        pub fn releaseUnused(self: *@This()) void {
+            self.reserved = false;
+        }
+        pub fn releaseRestored(self: *@This()) bool {
+            self.saw_restored = std.mem.eql(u8, &self.io.sar, &self.original_sar) and
+                std.mem.eql(u32, &self.io.adc, &self.original_adc);
+            if (!self.release_allowed or !self.saw_restored) return false;
+            self.reserved = false;
+            return true;
+        }
+    };
+    var gate: Gate = .{};
+    var io: Fake = .{};
+    var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
+    var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
+    const ClockIO = struct {
+        io: *Fake,
+        reservation: *@TypeOf(reservation),
+        pub fn owned(self: *@This()) bool {
+            return self.reservation.owned();
+        }
+        pub fn counter(self: *@This()) ?u64 {
+            return self.io.nowMicros();
+        }
+        pub fn read(_: *@This(), address: usize) u32 {
+            return switch (address) {
+                clock_mod.root => 0,
+                clock_mod.mem_sys => 1,
+                clock_mod.apb => 1 << 16,
+                clock_mod.source => 1,
+                else => unreachable,
+            };
+        }
+    };
+    var clock_io = ClockIO{ .io = &io, .reservation = &reservation };
+    const Clock = clock_mod.Guard(ClockIO);
+    var clock = Clock.init(&clock_io, .{ .root = 0, .mem_sys = 1, .apb = 1 << 16, .source = 1, .cpu_hz = 360_000_000, .apb_hz = 90_000_000 });
+    io.cpu = 360_000_000;
+    io.apb = 90_000_000;
+    var hardware = hw_mod.Hardware(Fake, Clock){ .access = &io, .clock = &clock };
+    const Platform = lease_mod.Platform(@TypeOf(reservation), @TypeOf(hardware));
+    var platform = Platform{ .reservation = &reservation, .hardware = &hardware };
+    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 360);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);
+
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectError(error.Unavailable, session.begin(0, 100_000));
+    try std.testing.expect(!resources.reserved);
+    try std.testing.expect(gate.releaseSqlite());
+    try session.begin(0, 100_000);
+    for (0..800) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (resources.saw_restored) break;
+    }
+    try std.testing.expect(resources.saw_restored and resources.reserved);
+    try std.testing.expectEqual(.restoring, session.state);
+    try std.testing.expect(!session.available() and !gate.trySqlite());
+    resources.release_allowed = true;
+    io.tick();
+    session.poll(io.now);
+    try std.testing.expect(session.available() and !resources.reserved);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    session.cancel();
+    session.poll(io.now);
+    try std.testing.expectEqual(.idle, session.state);
 }

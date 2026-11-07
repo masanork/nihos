@@ -225,6 +225,7 @@ test {
     _ = @import("net/hosted_tx_staging_test.zig");
     _ = @import("net/hosted_long_sender_test.zig");
     _ = @import("net/hosted_long_dma_test.zig");
+    _ = @import("net/hosted_long_storage_test.zig");
     _ = @import("net/hosted_long_integration_test.zig");
     _ = @import("net/hosted_dma_bus_test.zig");
     _ = @import("net/long_udp_probe_test.zig");
@@ -254,4 +255,8 @@ test {
     _ = @import("card/license_trust.zig");
     _ = @import("card/license_session_test.zig");
     _ = @import("xy/scratch.zig");
+    _ = @import("xy/paged_conversion.zig");
+    _ = @import("xy/async_conversion.zig");
+    _ = @import("xy/async_ime_session.zig");
+    _ = @import("xy/ime_page_queue.zig");
 }

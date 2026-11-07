@@ -81,6 +81,14 @@ graphics_cpp=0
 wasm=false
 wasm_cpp=0
 wasm_task=${NIHOS_NATIVE_WASM_TASK:-0}
+pqc_task=${NIHOS_NATIVE_PQC_TASK:-0}
+case "$pqc_task" in 0) pqc_task=false; pqc_task_cpp=0 ;; 1) pqc_task=true; pqc_task_cpp=1 ;; *) echo "PQC_TASK must be 0 or 1" >&2; exit 1 ;; esac
+pqc_ssh_negative=${NIHOS_NATIVE_PQC_SSH_NEGATIVE:-0}
+case "$pqc_ssh_negative" in 0|1|2|3|4) ;; *) echo "PQC_SSH_NEGATIVE must be 0, 1, 2, 3 or 4" >&2; exit 1 ;; esac
+if [ "$pqc_ssh_negative" != 0 ] && [ "$pqc_task" != true ]; then echo "PQC_SSH_NEGATIVE requires PQC_TASK" >&2; exit 1; fi
+if [ "$pqc_task" = true ] && { [ "$profile" != emulator ] || [ "$mode" != integer ] || [ "${NIHOS_NATIVE_BOOT_TEST:-0}" != 1 ] || [ "$wasm_task" != 0 ]; }; then
+    echo "PQC_TASK requires headless emulator integer BOOT_TEST=1 without Wasm" >&2; exit 1
+fi
 case "$wasm_task" in
     0) wasm_task=false; wasm_task_define= ;;
     1) wasm_task=true; wasm_task_define=-DNIHOS_WAMR_TASK=1 ;;
@@ -634,7 +642,7 @@ if [ "$xy_cpp" = 1 ] && { [ "$sqlite" = true ] || [ "$graphics" = true ] || [ "$
     echo "xy runtime requires the ordinary integer workspace/interactive emulator profile" >&2
     exit 1
 fi
-"$zig" cc -E -P -x c -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_EXPERIMENTAL_TCP="$experimental_tcp_cpp" -DNIH_NATIVE_EXPERIMENTAL_UDP="$experimental_udp_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
+"$zig" cc -E -P -x c -DNIH_NATIVE_PQC_TASK="$pqc_task_cpp" -DNIH_NATIVE_SQLD="$sqld_cpp" -DNIH_NATIVE_XY="$xy_cpp" -DNIH_NATIVE_EXPERIMENTAL_TCP="$experimental_tcp_cpp" -DNIH_NATIVE_EXPERIMENTAL_UDP="$experimental_udp_cpp" -DNIH_NATIVE_GRAPHICS="$graphics_cpp" -DNIH_NATIVE_NORMAL_STORAGE="$normal_storage_cpp" -DNIH_NATIVE_NETWORK="$network_cpp" -DNIH_NATIVE_DEVICES="$devices_cpp" -DNIH_NATIVE_REV3="$rev3" -DNIH_NATIVE_SQLITE="$sqlite_cpp" -DNIH_NATIVE_WASM="$wasm_cpp" -DNIH_NATIVE_RUST_SESSION_TEST="$rust_session_test_cpp" -DNIH_NATIVE_KEYPAD="$keypad_cpp" -DNIH_NATIVE_CARD_READ="$card_read_cpp" -DNIH_NATIVE_PHOTO="$photo_cpp" -DNIH_NATIVE_HIGH_SRAM="$high_cpp" -DNIH_NATIVE_CAPTURE="$capture_cpp" -DNIH_NATIVE_FATFS_RPC="$fatfs_cpp" -DNIH_NATIVE_PMP_PROBE="$pmp_probe_cpp" -DNIH_NATIVE_USB="$usb_cpp" \
     "$repo_root/src/platform/native/esp32p4.ld" -o "$build_dir/native-layout.ld"
 printf 'pub const floating = %s;\npub const compiled = %s;\npub const sqlite = %s;\npub const qualification = %s;\npub const sdmmc = %s;\npub const sdmmc_profile: u32 = %s;\npub const storage = %s;\npub const display = %s;\npub const display_scanout = %s;\npub const display_white = %s;\npub const display_pattern = %s;\npub const display_sram = %s;\npub const display_tile = %s;\npub const display_scene = %s;\npub const psram_mpll = %s;\npub const psram_200 = %s;\npub const display_hz: u32 = %s;\npub const console = %s;\npub const console_palette: u32 = %s;\npub const console_font: u32 = %s;\npub const console_live = %s;\npub const keyboard_i2c = %s;\npub const console_fault = %s;\n' "$floating" "$compiled" "$sqlite" "$qualification" "$sdmmc" "$sdmmc_profile" "$storage" "$display" "$display_scanout" "$display_white" "$display_pattern" "$display_sram" "$display_tile" "$display_scene" "$psram_mpll" "$psram_200" "$display_hz" "$console" "$console_palette" "$console_font" "$console_live" "$keyboard_i2c" "$console_fault" > "$build_dir/native_options.next"
 printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const canvas_interactive = %s;\npub const canvas_workloads = %s;\npub const canvas_splash = %s;\n' "$canvas_demo" "$canvas_offscreen" "$canvas_interactive" "$canvas_workloads" "$canvas_splash" >> "$build_dir/native_options.next"
@@ -647,6 +655,8 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const rust_session_test = %s;\n' "$rust_session_test"
     printf 'pub const wasm_probe = %s;\n' "$wasm"
     printf 'pub const wasm_task = %s;\n' "$wasm_task"
+    printf 'pub const pqc_task = %s;\n' "$pqc_task"
+    printf 'pub const pqc_ssh_negative: u32 = %s;\n' "$pqc_ssh_negative"
     printf 'pub const wasm_session_test = %s;\n' "$wasm_session_test"
     printf 'pub const wasm_interactive = %s;\n' "$wasm_interactive"
     printf 'pub const wasm_interactive_repeat = %s;\n' "$wasm_repeat"
@@ -1197,6 +1207,16 @@ EOF
 fi
 if [ -n "$pmp_user_object" ]; then
     set -- "$pmp_user_object" "$@"
+fi
+if [ "$pqc_task" = true ]; then
+    : "${NIHOS_MLKEM_ARCHIVE:?PQC_TASK requires pinned ML-KEM archive}"
+    ZIG="$zig" sh "$repo_root/probes/pqc-ssh/rv32-study.sh"
+    "$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -O2 -std=c11 -ffreestanding -fno-builtin -ffunction-sections -fdata-sections \
+        -isystem "$repo_root/.tools/zig-0.17.0/lib/libc/include/riscv32-linux-musl" -isystem "$repo_root/.tools/zig-0.17.0/lib/libc/include/generic-musl" \
+        -c "$repo_root/probes/pqc-ssh/task_fixture.c" -o "$build_dir/pqc_task_fixture.o"
+    "$zig" build-obj -target riscv32-freestanding-none -mcpu="$cpu" -O small -fllvm -fno-strip -ffunction-sections -fno-stack-check -fno-stack-protector \
+        "$repo_root/src/net/ssh_hybrid_fixture.zig" -femit-bin="$build_dir/pqc_ssh_fixture.o"
+    set -- "$@" "$repo_root/build/pqc-ssh-rv32/mlkem.o" "$repo_root/build/pqc-ssh-rv32/arena.o" "$repo_root/build/pqc-ssh-rv32/kem_job.o" "$build_dir/pqc_task_fixture.o" "$build_dir/pqc_ssh_fixture.o"
 fi
 "$zig" build-exe -target riscv32-freestanding-none \
     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \

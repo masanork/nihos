@@ -53,6 +53,10 @@ pub fn App(comptime Entropy: type) type {
 pub fn Foreground(comptime Entropy: type) type {
     return lifecycle.Foreground(Model, Controller, Entropy);
 }
+/// The caller still supplies and qualifies the platform entropy session.
+pub fn PreparedForeground(comptime EntropySession: type) type {
+    return lifecycle.PreparedForeground(Model, Controller, EntropySession);
+}
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,

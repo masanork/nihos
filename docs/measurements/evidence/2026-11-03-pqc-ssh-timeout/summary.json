@@ -1,0 +1,55 @@
+{
+  "base": "7881ba0f",
+  "note": "Fixed synthetic exchange and cooperative timeout fixture; no actual TCP, product SSH, forced task kill, physical device, or cache-off proof",
+  "candidates": {
+    "good": {
+      "elf_sha256": "4b314577fdeb79ba35942192c30704102e621a420bbcdde18058fa29a20d7ac3",
+      "image_sha256": "9dfa46de6e8556f01c7eeb67b2c165d9481dfc6e7410e28fb1f100ef754b5c05",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    },
+    "bad-ct": {
+      "elf_sha256": "f553ddf99c3875f67252e5c12bd84b6b5329a78f20309fb4014b00532cda18f0",
+      "image_sha256": "73e59621d8a14da0b259b2b578eb9aada945ee9d23c6e6b892b13e57e2b8d3cc",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    },
+    "bad-pin": {
+      "elf_sha256": "ebc73aa6752771fefe975bfe26882a0cfafd0b1744c67309d264b7aa82b2f554",
+      "image_sha256": "79332e291cb6227afa0d27e64c882c57d2636b7e9288a3227604af1cf359884f",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    },
+    "timeout": {
+      "elf_sha256": "ac65d24f8f7a4d6b8492dd2eeaea1531b953482059027d77a587a775594f9438",
+      "image_sha256": "ec32f50428d3a4e79f522b5824170fe9211b6e2cf174cae19cf8f2ff9d0110d0",
+      "heap_bytes": 57728,
+      "primary_static_bytes": 106112
+    }
+  },
+  "logs": {
+    "bad-ct.log": "d87f796b54e8c988f52a51fb7a83bca27e9b5170781ccb9674297efcaf98b1d8",
+    "bad-pin.log": "7a23dbe4fd9fa35f0a8965b44e859e44f282a32b36ec92d41247133b847aaa15",
+    "good.log": "cc3dfb0c919814205617bd18c52d21b7703afc3e077a42277c0e5502c96a09a2",
+    "no-psram.log": "89b3964df4c3c4ff3d535e5f7f178e8100b8ac6c958345082e49743314d95464",
+    "timeout.log": "7e0fcb53eb719d0d2f9fb7e04f6d87fe44f9bc38f76454d222c3e015c85c0cec"
+  },
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "79ba02906367883f477bf415212ab3b69d9ea89d63061eaca92b66e824d1b7ac",
+    "src/platform/native/main.zig": "0d1e5c2c47784299f9125eb1e966cd1fff7b70d7ae4ffbb78329297c63d90718",
+    "src/platform/native/pqc_task.zig": "75a0547d7a7b4ea6d70bb912340d6a7ae6d510b0925c299284e6cdbe64c5d798",
+    "src/platform/native/esp32p4.ld": "b7c461c9fd1c0178640f10b2eea8c49c4b4b612b8c65be43871bbb780ab795d7",
+    "tools/build-native.sh": "5cb8122dcfa224739b17a4504312c2b3d3bd67e34b418ce54c87edd7139551d3",
+    "tools/build-native-elf.sh": "996bcb90fe98e64cf6499f8c65846264ce1dc6575f001cb411cff7bd58177207",
+    "probes/pqc-ssh/task_fixture.c": "bc9ec99140e7e04bf9f894fbc947f73106ef4880914f689dd6715686d605ccb8",
+    "probes/pqc-ssh/kem_job.c": "325ee1437394cccfebc43ec347b682b8d2d711e1a974615f6e04b96a199d319e",
+    "probes/pqc-ssh/kem_job.h": "24f87082c40f3484f50570225f93dce16310dbd4cbdf56d7d2f0198d52782662",
+    "src/net/ssh_hybrid_fixture.zig": "8f29b2d0e1b349288a0456708632afe88239b1c690026e7bc88f00de1b64e62d",
+    "src/net/ssh_hybrid_public_vector.bin": "e25db9b11a3fc86e69e70f4a16a1951d7560f29856273efa15393651e91dd7c9",
+    "src/net/ssh_hybrid_vector.zig": "51ac74cedbe1a581530fcd0d27d0cf8ccb30a30262bdac30032c2c9496c8102d",
+    "src/net/ssh_hybrid_transcript.zig": "0bbce79c7ccc41ebbb376f33cd4d947ea3db83528cf52beea59b8b0aa06d9cc0",
+    "src/net/ssh_host_key.zig": "8da903c050bda4c27299afe2e78288587a774e70fb496fa80e54846e1b19034b",
+    "probes/pqc-ssh/audit_emulator_ssh.py": "46fdaa6e2dd1ba5ae314753ccdf4fd8485bef1aedaf8b18fb9552538879444aa"
+  },
+  "upstream_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06"
+}

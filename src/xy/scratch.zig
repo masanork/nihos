@@ -60,6 +60,15 @@ pub const PrivateInputPort = struct {
     close: *const fn (*anyopaque) void,
     snapshot: *const fn (*anyopaque, *View) bool,
 };
+/// Optional externally owned IME worker. All callbacks run on the serialized
+/// workspace owner. The port remains attached until its pending I/O drains.
+pub const AsyncImePort = struct {
+    context: *anyopaque,
+    busy: *const fn (*anyopaque) bool,
+    start: *const fn (*anyopaque, *Model) bool,
+    cancel: *const fn (*anyopaque, *Model) void,
+    poll: *const fn (*anyopaque, *Model, usize) bool,
+};
 const DeferredTouchKind = enum { down, move, up, cancel };
 pub const Model = struct {
     pub const TerminalPortType = TerminalPort;
@@ -124,6 +133,7 @@ pub const Model = struct {
     skk_input: bool,
     /// Optional provider for the legacy SKK composition core.
     ime_provider: ?ime_omni.OmniProvider,
+    async_ime: ?*const AsyncImePort,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
         @memset(std.mem.asBytes(self), 0);
@@ -133,6 +143,23 @@ pub const Model = struct {
         self.doc.next_group_id = 1;
         self.revision = 1;
         self.resetScheme();
+    }
+    pub fn attachAsyncIme(self: *Model, port: *const AsyncImePort) bool {
+        if (self.async_ime != null or port.busy(port.context)) return false;
+        self.async_ime = port;
+        return true;
+    }
+    pub fn detachAsyncIme(self: *Model) bool {
+        const port = self.async_ime orelse return true;
+        if (port.busy(port.context)) return false;
+        self.async_ime = null;
+        return true;
+    }
+    /// Called by the owning event loop; no I/O is performed by this method.
+    pub fn pollAsyncIme(self: *Model, budget: usize) void {
+        const port = self.async_ime orelse return;
+        if (!port.busy(port.context)) return;
+        if (port.poll(port.context, self, budget)) self.changed();
     }
     /// Caller retains the context and cell storage until detach; no screen is
     /// made available without an attached, explicitly started backend.
@@ -304,6 +331,22 @@ pub const Model = struct {
     fn imeRoute(self: *Model, key: input.Key) linksection(scheme.code_section) bool {
         if (self.mode != .edit) return false;
         if (!self.skk_input and self.ime.mode != .direct) {
+            if (self.async_ime) |port| {
+                if (port.busy(port.context)) {
+                    switch (key) {
+                        .text => |byte| if (byte == ' ') return true else port.cancel(port.context, self),
+                        .escape, .cancel => {
+                            port.cancel(port.context, self);
+                            return true;
+                        },
+                        else => port.cancel(port.context, self),
+                    }
+                }
+                if (key == .text and key.text == ' ' and self.standard_input.active and !self.standard_input.converting) {
+                    if (!port.start(port.context, self)) self.status = .invalid_input;
+                    return true;
+                }
+            }
             const dict = ime_dict.NfstDict.init(&default_ime_bytes) catch return false;
             const active = self.standard_input.active;
             switch (key) {

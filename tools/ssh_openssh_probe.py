@@ -12,7 +12,9 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIG = os.environ.get("ZIG", str(ROOT / ".tools/zig-0.17.0/zig"))
@@ -92,8 +94,57 @@ def run():
     with tempfile.TemporaryDirectory(prefix="nihos-ssh-test-") as tmp:
         tmp = Path(tmp)
         lib = tmp / ("probe.dylib" if sys.platform == "darwin" else "probe.so")
-        subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(lib), "src/net/ssh_kex_host_probe.zig"], cwd=ROOT, check=True)
+        native_archive = os.environ.get("NIHOS_MLKEM_ARCHIVE")
+        link_args = []
+        if native_archive:
+            if os.environ.get("NIHOS_SSH_HYBRID_HOST_PROBE") != "1":
+                raise ValueError("ML-KEM archive is only used by the hybrid host probe")
+            archive = Path(native_archive)
+            if hashlib.sha256(archive.read_bytes()).hexdigest() != "b9f225b455ef268d2469aee26bdd6f6e47e7b24762849bf180074b79ed2db1c4":
+                raise ValueError("ML-KEM source archive digest mismatch")
+            source = tmp / "source"
+            source.mkdir()
+            with tarfile.open(archive) as tar:
+                prefix = "mlkem-native-e0e0ae95765f4c48585dc8cdaa0656d4eda46a06/mlkem/"
+                members = [member for member in tar.getmembers() if member.name.startswith(prefix)]
+                for member in members:
+                    target = (source / member.name).resolve()
+                    if (source.resolve() not in target.parents or member.issym() or member.islnk() or not (member.isfile() or member.isdir())):
+                        raise ValueError("unsafe ML-KEM archive member")
+                tar.extractall(source, members=members)
+            kem = source / "mlkem-native-e0e0ae95765f4c48585dc8cdaa0656d4eda46a06" / "mlkem"
+            for name, path, extra in [
+                ("mlkem", kem / "mlkem_native.c", ["-DMLK_CONFIG_PARAMETER_SET=768", "-DMLK_CONFIG_NO_RANDOMIZED_API", "-include", "probes/pqc-ssh/mlkem_arena.h", "-I", str(kem)]),
+                ("arena", ROOT / "probes/pqc-ssh/mlkem_arena.c", []),
+                ("job", ROOT / "probes/pqc-ssh/kem_job.c", []),
+                ("bridge", ROOT / "probes/pqc-ssh/native_host.c", []),
+            ]:
+                obj = tmp / (name + ".o")
+                subprocess.run([ZIG, "cc", "-O2", "-fPIC", "-std=c11", *extra, "-c", str(path), "-o", str(obj)], cwd=ROOT, check=True)
+                link_args.append(str(obj))
+            link_args.append("-lc")
+        config_module = tmp / "pqc_config.zig"
+        config_module.write_text("pub const native = " + ("true" if native_archive else "false") + ";\n")
+        subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(lib), *link_args, "--dep", "pqc_config", "-Mroot=src/net/ssh_kex_host_probe.zig", "-Mpqc_config=" + str(config_module)], cwd=ROOT, check=True)
         p = c.CDLL(str(lib))
+        p.probe_mlkem_peak.restype = c.c_size_t
+        p.probe_mlkem_allocation_failure.restype = c.c_bool
+        if native_archive and not p.probe_mlkem_allocation_failure():
+            raise RuntimeError("ML-KEM arena allocation failure was not cleaned up")
+        hybrid = os.environ.get("NIHOS_SSH_HYBRID_HOST_PROBE") == "1"
+        hybrid_connection_mode = hybrid and os.environ.get("NIHOS_SSH_HYBRID_CONNECTION_PROBE") == "1"
+        p.probe_hybrid_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_hybrid_init.restype = c.c_size_t
+        p.probe_hybrid_server_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_size_t]; p.probe_hybrid_server_init.restype = c.c_size_t
+        p.probe_hybrid_reply.argtypes = [c.c_void_p, c.c_size_t]; p.probe_hybrid_reply.restype = c.c_bool
+        p.probe_hybrid_capture.restype = c.c_bool
+        p.probe_hybrid_reply_owned.restype = c.c_bool
+        p.probe_hybrid_activate.argtypes = [c.c_void_p, c.c_size_t]; p.probe_hybrid_activate.restype = c.c_bool
+        p.probe_hybrid_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t, c.c_uint64, c.c_uint64]; p.probe_hybrid_driver_begin.restype = c.c_bool
+        p.probe_hybrid_driver_step.argtypes = [c.c_uint64, c.c_void_p]; p.probe_hybrid_driver_step.restype = c.c_ssize_t
+        p.probe_hybrid_connection_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_uint64, c.c_uint64]; p.probe_hybrid_connection_begin.restype = c.c_bool
+        p.probe_hybrid_connection_poll.argtypes = [c.c_uint64, c.c_void_p]; p.probe_hybrid_connection_poll.restype = c.c_ssize_t
+        p.probe_hybrid_worker_pending.restype = c.c_bool
+        p.probe_hybrid_worker_complete.argtypes = [c.c_uint64]; p.probe_hybrid_worker_complete.restype = c.c_ssize_t
         p.probe_init.argtypes = [c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_init.restype = c.c_size_t
         p.probe_driver_begin.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t]; p.probe_driver_begin.restype = c.c_bool
         p.probe_driver_step.argtypes = [c.c_void_p]; p.probe_driver_step.restype = c.c_ssize_t
@@ -169,8 +220,9 @@ def run():
             pin = bytes([pin[0] ^ 1]) + pin[1:]
         bad_pin = os.environ.get("NIHOS_SSH_BADPIN") == "1"
         if bad_pin:
-            if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1") or bridge:
-                raise ValueError("bad-pin control requires automatic KEX over a host socket")
+            hybrid_driver_mode = hybrid and (os.environ.get("NIHOS_SSH_HYBRID_DRIVER_PROBE") == "1" or hybrid_connection_mode)
+            if not (os.environ.get("NIHOS_SSH_AUTOKEX") == "1" or os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1" or hybrid_driver_mode) or (bridge and not hybrid_driver_mode):
+                raise ValueError("bad-pin control requires an automatic SSH KEX")
             pin = bytes([pin[0] ^ 1]) + pin[1:]
         bad_auth = os.environ.get("NIHOS_SSH_BADAUTH") == "1"
         if bad_auth and (os.environ.get("NIHOS_SSH_AUTOCLIENT") != "1" or bridge or bad_pin):
@@ -191,13 +243,13 @@ def run():
         if hosted_vt_requested:
             vt_lib = tmp / ("vt.dylib" if sys.platform == "darwin" else "vt.so")
             subprocess.run([ZIG, "build-lib", "-dynamic", "-O", "ReleaseSafe", "-femit-bin=" + str(vt_lib),
-                "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "--dep", "ssh_entropy", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
+                "--dep", "ssh_terminal_session", "--dep", "text_console", "--dep", "terminal_adapter", "--dep", "ssh_lifecycle", "-Mroot=src/xy/ssh_terminal_host_probe.zig",
                 "--dep", "vt100", "--dep", "terminal_adapter", "-Mssh_terminal_session=src/xy/ssh_terminal_session.zig",
                 "--dep", "terminal_adapter", "-Mvt100=src/net/vt100.zig",
                 "-Mterminal_adapter=src/net/terminal_adapter.zig", "-Mview_config=src/xy/view_config.zig",
                 "--dep", "view_config", "--dep", "canvas", "-Mtext_console=src/console.zig",
                 "--dep", "surface", "-Mcanvas=src/graphics/canvas.zig", "-Msurface=src/graphics/surface.zig",
-                "-Mssh_lifecycle=src/xy/ssh_lifecycle.zig", "-Mssh_entropy=src/xy/ssh_entropy.zig"], cwd=ROOT, check=True)
+                "-Mssh_lifecycle=src/xy/ssh_lifecycle.zig"], cwd=ROOT, check=True)
         log = (tmp / "sshd.log").open("wb")
         server = subprocess.Popen(["/usr/sbin/sshd", "-D", "-e", "-f", str(config)], stdout=log, stderr=log)
         try:
@@ -221,7 +273,9 @@ def run():
                 auto_client = os.environ.get("NIHOS_SSH_AUTOCLIENT") == "1" or hosted_session
                 auto_connect = os.environ.get("NIHOS_SSH_AUTOCONNECT") == "1" or auto_client
                 auto_ident = os.environ.get("NIHOS_SSH_AUTOIDENT") == "1"
-                if not auto_ident and not auto_connect:
+                if hybrid and (auto_client or auto_connect or auto_ident or lifecycle_mode or os.environ.get("NIHOS_SSH_AUTOKEX") == "1"):
+                    raise ValueError("hybrid host probe supports only the explicit manual KEX fixture")
+                if not auto_ident and not auto_connect and not hybrid_connection_mode:
                     client_banner = b"SSH-2.0-nihos_1.0"
                     sock.sendall(client_banner + b"\r\n")
                     banner = b""
@@ -321,6 +375,67 @@ def run():
                             break
                         if bridge: time.sleep(0.001)
                         else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                elif hybrid_connection_mode:
+                    now = time.monotonic_ns() // 1000
+                    assert p.probe_hybrid_connection_begin(buffer(os.urandom(16)), buffer(os.urandom(64)), buffer(os.urandom(32)), buffer(pin), now, now + 20_000_000)
+                    deadline_us = now + 20_000_000
+                    while True:
+                        now = time.monotonic_ns() // 1000
+                        state = p.probe_hybrid_connection_poll(now, buffer(os.urandom(32)))
+                        if state < 0: raise RuntimeError("hybrid connection failed")
+                        if state == 1:
+                            if bad_pin: raise RuntimeError("hybrid connection accepted a wrong host pin")
+                            break
+                        if p.probe_hybrid_worker_pending():
+                            if os.environ.get("NIHOS_SSH_HYBRID_WORKER_THREAD") == "1":
+                                result = []
+                                def complete_on_worker():
+                                    result.append(p.probe_hybrid_worker_complete(time.monotonic_ns() // 1000))
+                                worker_thread = threading.Thread(target=complete_on_worker)
+                                worker_thread.start()
+                                # No driver or transport access until the worker has returned.
+                                worker_thread.join()
+                                completed = result[0] if result else -1
+                            else:
+                                completed = p.probe_hybrid_worker_complete(time.monotonic_ns() // 1000)
+                            if completed == -2 and bad_pin:
+                                print("Hybrid SSH driver rejected the wrong host pin: OK")
+                                return
+                            if completed != 1: raise RuntimeError(f"hybrid worker completion failed: {completed}")
+                        if time.monotonic_ns() // 1000 > deadline_us: raise TimeoutError("hybrid connection timeout")
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
+                elif hybrid and os.environ.get("NIHOS_SSH_HYBRID_DRIVER_PROBE") == "1":
+                    now = time.monotonic_ns() // 1000
+                    assert p.probe_hybrid_driver_begin(buffer(os.urandom(16)), buffer(os.urandom(64)), buffer(os.urandom(32)), buffer(pin), buffer(server_banner), len(server_banner), now, now + 20_000_000)
+                    deadline_us = now + 20_000_000
+                    while True:
+                        now = time.monotonic_ns() // 1000
+                        state = p.probe_hybrid_driver_step(now, buffer(os.urandom(32)))
+                        if state < 0: raise RuntimeError("hybrid driver failed")
+                        if state == 1:
+                            if bad_pin: raise RuntimeError("hybrid driver accepted a wrong host pin")
+                            break
+                        if p.probe_hybrid_worker_pending():
+                            if os.environ.get("NIHOS_SSH_HYBRID_WORKER_THREAD") == "1":
+                                result = []
+                                def complete_on_worker():
+                                    result.append(p.probe_hybrid_worker_complete(time.monotonic_ns() // 1000))
+                                worker_thread = threading.Thread(target=complete_on_worker)
+                                worker_thread.start()
+                                # No driver or transport access until the worker has returned.
+                                worker_thread.join()
+                                completed = result[0] if result else -1
+                            else:
+                                completed = p.probe_hybrid_worker_complete(time.monotonic_ns() // 1000)
+                            if completed == -2 and bad_pin:
+                                print("Hybrid SSH driver rejected the wrong host pin: OK")
+                                return
+                            if completed != 1: raise RuntimeError(f"hybrid worker completion failed: {completed}")
+                        assert p.probe_poll(), "socket pump failed"
+                        if time.monotonic_ns() // 1000 > deadline_us: raise TimeoutError("hybrid driver timeout")
+                        if bridge: time.sleep(0.001)
+                        else: select.select([sock], [sock] if p.probe_pending() else [], [], 0.001)
                 elif os.environ.get("NIHOS_SSH_AUTOKEX") == "1":
                     assert p.probe_driver_begin(buffer(os.urandom(16)), buffer(os.urandom(32)), buffer(pin), buffer(server_banner), len(server_banner))
                     deadline = time.monotonic() + (20 if bridge else 5)
@@ -340,24 +455,34 @@ def run():
                 else:
                     out = c.create_string_buffer(512)
                     secret = buffer(os.urandom(32))
-                    size = p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
+                    size = p.probe_hybrid_init(out, len(out), buffer(os.urandom(16)), buffer(os.urandom(64)), secret, buffer(pin), buffer(server_banner), len(server_banner)) if hybrid else p.probe_init(out, len(out), buffer(os.urandom(16)), secret, buffer(pin), buffer(server_banner), len(server_banner))
                     assert size
                     client_init = out.raw[:size]
                     send(client_init)
                     server_init = raw_receive()
                     assert server_init[0] == 20
-                    ecdh = c.create_string_buffer(64)
-                    size = p.probe_server_init(buffer(server_init), len(server_init), ecdh, len(ecdh))
+                    ecdh = c.create_string_buffer(1300 if hybrid else 64)
+                    size = (p.probe_hybrid_server_init if hybrid else p.probe_server_init)(buffer(server_init), len(server_init), ecdh, len(ecdh))
                     assert size
                     send(ecdh.raw[:size])
-                    reply = raw_receive()
-                    assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
+                    if hybrid:
+                        received = c.create_string_buffer(35000)
+                        poll_until(lambda: p.probe_payload(received, len(received)) != 0)
+                        assert p.probe_hybrid_capture(), "hybrid reply capture failed"
+                        assert p.probe_hybrid_reply_owned(), "server proof rejected or wrong pin accepted"
+                    else:
+                        reply = raw_receive()
+                        assert p.probe_reply(buffer(reply), len(reply)), "server proof rejected or wrong pin accepted"
                     newkeys = raw_receive(pause=True)
                     key_message = c.create_string_buffer(8)
-                    size = p.probe_newkeys(key_message, len(key_message))
+                    if hybrid:
+                        key_message.raw = b"\x15" + bytes(7)
+                        size = 1
+                    else:
+                        size = p.probe_newkeys(key_message, len(key_message))
                     assert size
                     send(key_message.raw[:size])
-                    assert p.probe_activate(buffer(newkeys), len(newkeys))
+                    assert (p.probe_hybrid_activate if hybrid else p.probe_activate)(buffer(newkeys), len(newkeys))
                     p.probe_pause(False)
                 if not auto_client:
                     request_buffer = c.create_string_buffer(64)
@@ -598,7 +723,18 @@ def run():
                             break
                     else:
                         raise RuntimeError("channel close not received")
-            print("OpenSSH KEX, host pin, public-key authentication and interactive PTY: OK" + (" (nihos TCP via libslirp, TCP FIN confirmed)" if bridge else ""))
+            if native_archive:
+                peak = p.probe_mlkem_peak()
+                if not 0 < peak <= 32768: raise RuntimeError("invalid ML-KEM arena peak")
+                print(f"mlkem-native host arena cursor peak: {peak} bytes")
+            if hybrid_connection_mode or os.environ.get("NIHOS_SSH_HYBRID_DRIVER_PROBE") == "1":
+                layer = "connection" if hybrid_connection_mode else "KEX driver"
+                execution = "separate host worker thread" if os.environ.get("NIHOS_SSH_HYBRID_WORKER_THREAD") == "1" else "deferred KEM completion"
+                hybrid_description = "OpenSSH mlkem768x25519-sha256, hybrid " + layer + " and " + execution
+            else:
+                hybrid_description = "OpenSSH mlkem768x25519-sha256, bounded KEM handoff, wrong pin / truncated reply / altered ciphertext rejection"
+            hybrid_description += " (" + ("mlkem-native arena" if native_archive else "Zig ML-KEM") + ")"
+            print((hybrid_description if hybrid else "OpenSSH KEX, host pin") + ", public-key authentication and interactive PTY: OK" + (" (nihos TCP via libslirp, TCP FIN confirmed)" if bridge else ""))
         finally:
             server.terminate()
             try: server.wait(timeout=3)

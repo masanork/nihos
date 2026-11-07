@@ -23,7 +23,9 @@ pub const Service = struct {
     used_ports: [max_attempts]u16 = @splat(0),
     attempts: usize = 0,
     exhausted: bool = false,
-    link: ?tcp.Link = null,
+    // The service must stay at a stable address while a link is open.
+    link_storage: [@sizeOf(tcp.Link)]u8 align(@alignOf(tcp.Link)) = @splat(0),
+    link: ?*tcp.Link = null,
     frame: [1512]u8 = @splat(0),
     frame_len: usize = 0,
 
@@ -56,8 +58,9 @@ pub const Service = struct {
             return error.EpochExhausted;
         }
         lease.epoch = self.generation;
-        self.link = .{};
-        const link = if (self.link) |*value| value else unreachable;
+        const link: *tcp.Link = @ptrCast(&self.link_storage);
+        link.initInPlace();
+        self.link = link;
         link.begin(lease, remote, local_port, initial_seq, now, deadline) catch |err| {
             self.link = null;
             return err;
@@ -125,10 +128,10 @@ pub const Service = struct {
     }
     fn get(self: *Service, handle: Handle) Error!*tcp.Link {
         if (self.current == null or !std.meta.eql(self.current.?, handle)) return error.StaleHandle;
-        return if (self.link) |*link| link else error.StaleHandle;
+        return self.link orelse error.StaleHandle;
     }
     fn retire(self: *Service) void {
-        if (self.link) |*link| link.invalidate();
+        if (self.link) |link| link.invalidate();
         self.link = null;
         self.current = null;
         std.crypto.secureZero(u8, &self.frame);
@@ -145,7 +148,7 @@ test "large writes fit the normal short Hosted transport" {
     const lease = arp.Lease{ .ip = .{ 10, 0, 2, 15 }, .mask = .{ 255, 255, 255, 0 }, .gateway = .{ 10, 0, 2, 2 }, .mac = .{ 0x52, 0x54, 0, 0x12, 0x34, 0x56 }, .epoch = 7 };
     try service.sync(lease);
     const handle = try service.open(.{ .address = lease.gateway, .port = 22 }, 50001, 123, 0, 5000);
-    const link = &service.link.?;
+    const link = service.link.?;
     link.resolver.state = .resolved;
     link.resolver.resolved_mac = .{ 0x52, 0x54, 0, 0, 0, 2 };
     link.state = .active;

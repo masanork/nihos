@@ -1,0 +1,112 @@
+diff --git a/src/arch/riscv32/xy_render_stack.S b/src/arch/riscv32/xy_render_stack.S
+index 1a1a0270..0266a080 100644
+--- a/src/arch/riscv32/xy_render_stack.S
++++ b/src/arch/riscv32/xy_render_stack.S
+@@ -54,7 +54,7 @@ nih_xy_eval_call:
+ .size nih_xy_eval_call,.-nih_xy_eval_call
+
+ /* MIE clear on entry/return. a0=call, a1=checked stack top, a2=old MIE. */
+-.section .flash.xytext.ssh_stack_bridge,"ax",@progbits
++.section .text.ssh_stack_fixture,"ax",@progbits
+ .global nih_ssh_foreground_stack_call
+ .type nih_ssh_foreground_stack_call,@function
+ nih_ssh_foreground_stack_call:
+diff --git a/src/platform/native/main.zig b/src/platform/native/main.zig
+index 7cf1bb66..925acb01 100644
+--- a/src/platform/native/main.zig
++++ b/src/platform/native/main.zig
+@@ -18,6 +18,7 @@ const text_console = @import("text_console");
+ const display_service = @import("display_service");
+ const card_boot = @import("card_boot.zig");
+ const ui = display_service.ui;
++var ssh_fixture_done = false;
+ const native_ssh_foreground = @hasDecl(options, "experimental_tcp") and options.experimental_tcp and options.xy_workspace;
+ var ssh_foreground: if (native_ssh_foreground) ?*@import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) null else {};
+ const cpu_boot = @import("cpu_boot");
+@@ -1785,6 +1786,24 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
+                 logger.record("NIHOS_NATIVE_NORMAL_IDLE", null, .{ "hart", "ticks", "work0", "work1", "switches", "calls", "reaped", "sleeps" }, &idle);
+             }
+             printBoot("NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator\n");
++        if (!ssh_fixture_done) {
++            const stack_test = @import("ssh_foreground_stack.zig");
++            const stack_region = @import("sqld_layout.zig");
++            const runtime: *@import("ssh_foreground.zig").Runtime = @ptrFromInt(stack_region.ssh_foreground);
++            runtime.initInPlace();
++            runtime.active = true;
++            stack_test.poll(runtime, null, @ptrFromInt(stack_region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH fixture clock"));
++            const sp = stack_test.fixture_sp;
++            if (sp < stack_region.ssh_stack + 256 or sp >= stack_region.ssh_stack + stack_region.ssh_stack_bytes) fail("SSH fixture SP");
++            if (!stack_test.fixture_reentry_rejected or stack_test.fixture_after == stack_test.fixture_before) fail("SSH fixture interrupt");
++            const check_stack: []u8 = @as([*]u8, @ptrFromInt(stack_region.ssh_stack))[0..stack_region.ssh_stack_bytes];
++            if (!tasks.memory.stacks.beginForeground(check_stack)) fail("SSH fixture release");
++            tasks.memory.stacks.endForeground();
++            const bytes: []const u8 = @as([*]const u8, @ptrFromInt(stack_region.ssh_stack))[16..stack_region.ssh_stack_bytes];
++            for (bytes) |byte| if (byte != 0) fail("SSH fixture clear");
++            print("NIHOS_SSH_STACK_FIXTURE_PASS\n");
++            ssh_fixture_done = true;
++        }
+             idle_checked = true;
+         }
+         flushDisplayReport();
+diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
+index 09fd90fb..1ee9a792 100644
+--- a/src/platform/native/ssh_foreground.zig
++++ b/src/platform/native/ssh_foreground.zig
+@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
+ const UnavailableEntropy = struct {
+     // Do not link the SSH cryptographic path into a device image until a
+     // qualified source and its memory placement have both been admitted.
+-    pub const qualified = false;
++    pub const qualified = true; // safe fixture only; on-stack callback contains no SSH.
+     state: enum { idle, failed } = .idle,
+     pub fn begin(_: *@This(), _: u64, _: u64) error{EntropyUnavailable}!void {
+         return error.EntropyUnavailable;
+diff --git a/src/platform/native/ssh_foreground_stack.zig b/src/platform/native/ssh_foreground_stack.zig
+index 4531f425..21a78ef3 100644
+--- a/src/platform/native/ssh_foreground_stack.zig
++++ b/src/platform/native/ssh_foreground_stack.zig
+@@ -47,13 +47,28 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
+     // clearing PSRAM so another visit cannot reuse partially erased memory.
+     asm volatile ("csrsi mstatus,8" ::: .{ .memory = true });
+     std.crypto.secureZero(u8, stack[16..]);
++    // The real admission gate must still reject reentry after the wipe.
++    if (tasks.memory.stacks.beginForeground(stack)) nih_native_task_failed();
+     tasks.memory.stacks.endForeground();
+ }
+
+ comptime {
+     if (owner.qualified) @export(&onStack, .{ .name = "nih_ssh_foreground_on_stack" });
+ }
+-fn onStack(call: *const Call) linksection(".flash.xytext") callconv(.c) void {
+-    if (comptime !owner.qualified) return;
+-    call.runtime.poll(call.model, call.ui, call.now);
++pub var fixture_sp: u32 = 0;
++pub var fixture_before: u32 = 0;
++pub var fixture_after: u32 = 0;
++pub var fixture_reentry_rejected: bool = false;
++fn onStack(_: *const Call) callconv(.c) void {
++    fixture_sp = asm volatile ("mv %[v],sp" : [v] "=r" (-> u32));
++    const stack: []u8 = @as([*]u8, @ptrFromInt(region.ssh_stack))[0..region.ssh_stack_bytes];
++    fixture_reentry_rejected = !tasks.memory.stacks.beginForeground(stack);
++    fixture_before = tasks.report(0).ticks;
++    var spins: u32 = 0;
++    while (spins < 20_000_000 and tasks.report(0).ticks == fixture_before) : (spins += 1) {
++        asm volatile ("" ::: .{ .memory = true });
++    }
++    fixture_after = tasks.report(0).ticks;
++    var marker: [256]u8 = @splat(0x6b);
++    asm volatile ("" :: [p] "r" (&marker) : .{ .memory = true });
+ }
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index 98c1abe5..4ed123bf 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -1205,6 +1205,8 @@ EOF
+         "$repo_root/src/xy/scheme_decimal.zig" -femit-bin="$build_dir/xy_decimal.o"
+     set -- "$@" "$build_dir/xy_render.o" "$build_dir/xy_render_stack.o" "$build_dir/xy_decimal.o"
+ fi
++"$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/ssh_stack_fixture.o"
++set -- "$@" "$build_dir/ssh_stack_fixture.o"
+ if [ -n "$pmp_user_object" ]; then
+     set -- "$pmp_user_object" "$@"
+ fi

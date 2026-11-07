@@ -1,0 +1,17 @@
+{
+  "profile": "headless ESP-EMU 0.50.0; non-secret stub; no SSH",
+  "source_head": "237f5b51f0b220d2fc053f4bb87a59fa1023669a",
+  "emulator_sha256": "a4c3468a4abf3f2e55ca0912fa7cdfbe5e101ecb6ab74a9ec35182d70ba6a771",
+  "fixture_patch_sha256": "4d018c238078cd8efd0143653f180d24a4b795f4ca9ba4b6047c8c0ab92e320b",
+  "elf_sha256": "f532d39cdc3dac34022b5e2e10f5db9c80435e768e7103227b72ad2888ea64b7",
+  "image_sha256": "0fc6eaee7ed173892b9fa6201e339db6c0dba3f2221c32e5d22c26ab27080ee2",
+  "heap_bytes": 120832,
+  "emulator_log_sha256": "731337c3ec30a8ccbc168f9b16a785fb31e172b05f3a0844dce57931da3f5e69",
+  "checks": [
+    "PSRAM stack pointer",
+    "timer interrupt while switched",
+    "nested admission rejected",
+    "stack admission released",
+    "transient stack cleared"
+  ]
+}

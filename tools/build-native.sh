@@ -148,7 +148,9 @@ if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/grap
 if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
 if [ "${NIHOS_NATIVE_NORMAL_STORAGE:-0}" = 1 ]; then set -- "$@" --normal-fs "$build_dir/normal-fs-manifest.json"; fi
 if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then set -- "$@" --sqld "$build_dir/sqld-manifest.json"; fi
-"$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
+auditor="$repo_root/tools/check-native-image.py"
+if [ "${NIHOS_NATIVE_PQC_TASK:-0}" = 1 ]; then auditor="$repo_root/probes/pqc-ssh/audit_emulator_ssh.py"; fi
+"$python" "$auditor" "$build_dir/nihos-native.elf" \
     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"
 if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then
