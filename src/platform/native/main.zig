@@ -758,7 +758,7 @@ fn interruptStackValid(hart: u32, frame: *const tasks.context.IntegerContext, in
     const top = if (hart == 0) @intFromPtr(&__irq_stack0_top) else @intFromPtr(&__irq_stack1_top);
     if (status & (8 | 0x6000) != 0 or sp < @intFromPtr(guard) + 16 or sp >= top) return false;
     if (tasks.pmp.acceptsDispatcherFrame(hart, interrupted, @as(u32, @intCast(@intFromPtr(frame))), frame.sp)) return true;
-    if (options.wasm_task and tasks.acceptsWasmFrame(hart, interrupted, @intCast(@intFromPtr(frame)), frame.sp)) return true;
+    if ((options.wasm_task or (@hasDecl(options, "pqc_task") and options.pqc_task)) and tasks.acceptsWasmFrame(hart, interrupted, @intCast(@intFromPtr(frame)), frame.sp)) return true;
     return tasks.memory.stacks.capture(hart, @intFromPtr(frame), frame.sp, sp);
 }
 
@@ -1709,6 +1709,7 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         fail("alignment negative did not trap");
     }
     if (options.wasm_task and !options.wasm_session_test and !@import("wamr_task.zig").start()) fail("Wasm task start");
+    if (@hasDecl(options, "pqc_task") and options.pqc_task) @import("pqc_task.zig").start(&logger);
     if (options.wasm_interactive) {
         if (!@import("wasm_session_fixture.zig").interactiveBegin(&logger)) fail("Wasm interactive init");
         print("NIHOS_WASM_INTERACTIVE_READY\n");
@@ -1734,6 +1735,10 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
     if (native_udp_smoke) print("NIHOS_NATIVE_UDP_SMOKE_STORAGE_DISABLED\n");
     var idle_checked = false;
     while (true) {
+        if (@hasDecl(options, "pqc_task") and options.pqc_task and !@import("pqc_task.zig").service(&logger)) {
+            print("NIHOS_PQC_TASK_DONE\n");
+            while (true) tasks.idleOnce(0);
+        }
         if (options.wasm_interactive and !options.wasm_interactive_repeat) {
             switch (@import("wasm_session_fixture.zig").interactiveService(&logger)) {
                 0 => {},

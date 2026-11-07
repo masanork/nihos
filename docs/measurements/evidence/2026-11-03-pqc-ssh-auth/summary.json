@@ -1,0 +1,39 @@
+{
+  "base": "594cb09f",
+  "profile": "headless emulator integer PQC_TASK=1; experimental SSH verification Flash audit",
+  "elf_sha256": "01c4b4d527c739b841779cf4d6f3fe4c101ab396b34373f30301550002bda7a5",
+  "image_sha256": "3ffec3a2238f97c6cdfedf3b7ef0b5cf3a3c5c53fffc89add44e3dbe7110c630",
+  "heap": {
+    "start": "0x4ff3a0c0",
+    "end": "0x4ff48000",
+    "bytes": 57152,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "primary_static_bytes": 106688,
+  "rtos_linked": false,
+  "logs": {
+    "4m.log": "74451d9aa8435367c3675e1682c18f099a48d153b780934b672e6d49354f2818",
+    "no-psram.log": "10aec8d7b0b274bb71e039ee82544f9aba822fcf0f2ba1e1230886ac8d24543d"
+  },
+  "source_sha256": {
+    "src/arch/riscv32/native_tasks.zig": "79ba02906367883f477bf415212ab3b69d9ea89d63061eaca92b66e824d1b7ac",
+    "src/platform/native/main.zig": "0d1e5c2c47784299f9125eb1e966cd1fff7b70d7ae4ffbb78329297c63d90718",
+    "src/platform/native/pqc_task.zig": "9bcff10f2f4bd21514b350dba09c03b3c2acecf2cacc6216f42deb5adde72a1f",
+    "src/platform/native/esp32p4.ld": "b7c461c9fd1c0178640f10b2eea8c49c4b4b612b8c65be43871bbb780ab795d7",
+    "tools/build-native.sh": "5cb8122dcfa224739b17a4504312c2b3d3bd67e34b418ce54c87edd7139551d3",
+    "tools/build-native-elf.sh": "bcf9c860c5dd4c18ef747e657d1b28834dd67bd6140e81f8b86517834d5ecbbe",
+    "probes/pqc-ssh/task_fixture.c": "bc9ec99140e7e04bf9f894fbc947f73106ef4880914f689dd6715686d605ccb8",
+    "probes/pqc-ssh/kem_job.c": "325ee1437394cccfebc43ec347b682b8d2d711e1a974615f6e04b96a199d319e",
+    "probes/pqc-ssh/kem_job.h": "24f87082c40f3484f50570225f93dce16310dbd4cbdf56d7d2f0198d52782662",
+    "src/net/ssh_hybrid_fixture.zig": "294497bd66fd26bd8b75bb82868899c7f1a789815d6d0e163b4d634219242359",
+    "src/net/ssh_hybrid_public_vector.bin": "e25db9b11a3fc86e69e70f4a16a1951d7560f29856273efa15393651e91dd7c9",
+    "src/net/ssh_hybrid_vector.zig": "51ac74cedbe1a581530fcd0d27d0cf8ccb30a30262bdac30032c2c9496c8102d",
+    "src/net/ssh_hybrid_transcript.zig": "0bbce79c7ccc41ebbb376f33cd4d947ea3db83528cf52beea59b8b0aa06d9cc0",
+    "src/net/ssh_host_key.zig": "8da903c050bda4c27299afe2e78288587a774e70fb496fa80e54846e1b19034b",
+    "probes/pqc-ssh/audit_emulator_ssh.py": "46fdaa6e2dd1ba5ae314753ccdf4fd8485bef1aedaf8b18fb9552538879444aa"
+  },
+  "upstream_revision": "e0e0ae95765f4c48585dc8cdaa0656d4eda46a06",
+  "note": "public synthetic SSH transcript; not an SSH state machine, TCP, production entropy, cache-off or physical hardware proof"
+}

@@ -1,0 +1,54 @@
+{
+  "base": "0dde3eaf",
+  "note": "Fixed payload decoded by InitialDecoder is copied into a synthetic transport receive slot; P4 uses real driver dispatchReply and complete on worker, but no live TCP or full driver.step negotiation. No device or cache-off proof.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "aeb366bc04773159d0aaed48152731f046450a33001522200337cd33c830c4c7",
+      "image_sha256": "a741aa49b8d95dadcec8c8ad008f32ae0ea8851360fb50ed1642e75409936745",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    },
+    "bad-ct": {
+      "elf_sha256": "86e858d8b0f7304837123b04799723365b417407daf910762c709dda8d3fbecf",
+      "image_sha256": "5adbcd145b4924092bf6bf4f11abe88f70be7faebe4f87b8f9784f0c924707c8",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    },
+    "bad-pin": {
+      "elf_sha256": "53af961d0926d7b49591663fc4a5398eb23c83e2831430b3e682caf0d0d5f586",
+      "image_sha256": "c5646bdd610143fcdc27cc72ab60f6016175abc5d889eb24ead330bea18720d1",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    },
+    "timeout": {
+      "elf_sha256": "bc4b0020473c58057da0808699f3a5d50fc69946762a725c45a2ca672f28fc93",
+      "image_sha256": "0a390592875fe87c209e7839b78801bd1f98544fd9f494c3fae9a34f722216c6",
+      "primary_static_bytes": 95616,
+      "heap_bytes": 68224
+    },
+    "bad-signature": {
+      "elf_sha256": "7f68ed01a4bedbdd89d1923d230c659e7dec26142a660413da58463b2ea79b78",
+      "image_sha256": "ded8109ed9955a17138b7e8e02fda8808d6429dc7136186e0e877d652febd250",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    }
+  },
+  "logs": {
+    "bad-ct.log": "0b81f9f4a32ed716de1214d205d74d8d3b3d11bc11a74b25805355c2b4498765",
+    "bad-pin.log": "ebd6cdc37eb8e77f9757f48ded3c799205548c56e0f1077591064d87eba7956b",
+    "bad-signature.log": "9e0467282adbd22f3c4477edcfc7ea6a06c198ee582ea72e1a2b6693360ee6e0",
+    "good.log": "4d8b0e4554cdd5799b3b8879ef37b26542a6c4cb96022ab20925d9c7678e8e6b",
+    "no-psram.log": "c99b4e6a5d1555e580d594d4a7631585c6e089b31d4085668a78d7720056f49d",
+    "timeout.log": "3c4be3ab54ec58441d361329855584b4a4d08cc598c78b137e12b3f0a2029312"
+  },
+  "source_sha256": {
+    "src/net/ssh_hybrid_driver.zig": "c31b36f555a60bc54e26462d18bcaa6a8ad0207b2251164ff2d161c7f2a5b06a",
+    "src/net/ssh_hybrid_fixture.zig": "795e3e7fe76c1f163ddb744e687f61a03b0f74ecc3dad456d46560eb8ced6f36",
+    "src/net/ssh_hybrid_handshake.zig": "4fd4c1472aafd4cc651d386e65a6234c4b62cc4d40649baa4471b445b84953cc",
+    "src/platform/native/pqc_task.zig": "f007c68640310ddf3c3f85240d2eb4ce8d846fc676a091734566ace8da54c112",
+    "src/platform/native/esp32p4.ld": "7375c716cc83fbb579b5aeab9da053e156cb160338cf467ecc37bdefc4a93cef",
+    "probes/pqc-ssh/audit_emulator_ssh.py": "807679b5ce9a2a1036c1e64c659662c9388db59b751df08582594134bc17485a",
+    "probes/pqc-ssh/audit_emulator_ssh_test.py": "48d106f594476532376c3ac127bf2b4f76eb6e7cfdee9c9c227604012e66bf28",
+    "probes/pqc-ssh/check_task_log.py": "81ddab025050790ddbf7d30f833a651d44a3a9747df336829383e7d70234f501"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "base": "cbdc2101",
+  "note": "Host interop only; deferred KEM call executes on host, not concurrently and not on the P4 scheduler. No Tab5 or C6 device proof.",
+  "openssh_client_version": "OpenSSH_10.5p1, LibreSSL 3.3.6",
+  "libslirp": "4.8.0",
+  "libslirp_archive_sha256": "2a98852e65666db313481943e7a1997abff0183bd9bea80caec1b5da89fda28c",
+  "mlkem_native_archive_sha256": "b9f225b455ef268d2469aee26bdd6f6e47e7b24762849bf180074b79ed2db1c4",
+  "source_sha256": {
+    "src/net/ssh_hybrid_driver.zig": "8fb2b136a1ee6b2eeb6feb58fc23b675f507ac158349b73a3ff425233abde3ba",
+    "src/net/ssh_hybrid_handshake.zig": "b9a5d14475740598233407992eede0b314d8fb9cd1614cea407828261aafe328",
+    "src/net/ssh_hybrid_host_probe.zig": "35f615189c8a236e0f5161f707bfc3bc22cd6327d9ad4cdd5c7826c555735400",
+    "src/net/ssh_kex_host_probe.zig": "7ea47b8a6a97487d87ee2225e31a5ddfb4477204c06fc6d802976efdb45c878b",
+    "src/net/ssh_hybrid_exchange.zig": "fcd710f8a8d76f8c8fcd3a1528258f280778ba1c3ceb5b60ae6afd2fe51e4748",
+    "src/net/ssh_kem_handoff.zig": "920b542eaf2c9f02f92610f3f514db6408beba29d8e900b31634090f83b6773f",
+    "src/net/ssh_transport.zig": "729335fe56c79b13f371eaf1228aac511e8aad803279d13ae0d3e86dc5df76b0",
+    "tools/ssh_openssh_probe.py": "7ae2ce9931201ff9e083364c01984d6374539ecfbee1cea5edd2d72f681755ea"
+  },
+  "logs": {
+    "bad-pin.log": "9d9b75ee449ea168102d279d950a29bb32700b2ac6cb9a65ad034c4b1f06cc1c",
+    "good.log": "c31ec5e0ef890cdb5b513752478c6827717732ad7d0553e850dd5e6283fab076"
+  }
+}
