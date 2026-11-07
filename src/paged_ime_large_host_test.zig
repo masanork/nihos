@@ -228,5 +228,39 @@ test "large paged dictionary drives IME after remount" {
     }
     try worker_page.detach();
     std.debug.print("ASYNC_CONVERSION waits={d} page_requests={d} adapter_bytes={d}\n", .{ async_waits, async_pages, @sizeOf(@import("xy/async_conversion.zig").Adapter) });
+    var workspace: @import("xy/scratch.zig").Model = undefined;
+    workspace.initInPlace();
+    workspace.ime.mode = .hiragana;
+    for ("kanji") |c| workspace.handle(.{ .text = c });
+    var workspace_page: @import("storage/async_page.zig").Coordinator = .{};
+    try workspace_page.attach(4, size);
+    var workspace_adapter = @import("xy/async_conversion.zig").Adapter{ .coordinator = &workspace_page };
+    var workspace_session: @import("xy/async_ime_session.zig").Session = .{};
+    try workspace_session.start(&workspace.standard_input, &workspace.doc, &workspace_adapter);
+    var workspace_requests: usize = 0;
+    var workspace_steps: usize = 0;
+    while (true) {
+        workspace_steps += 1;
+        try std.testing.expect(workspace_steps < 100000);
+        switch (try workspace_session.step(&workspace.standard_input, &workspace.doc, &workspace_adapter, 128)) {
+            .pending => try std.testing.expectEqualStrings("かんじ", workspace.doc.preedit.slice()),
+            .need_page => {
+                const req = workspace_session.request(&workspace_adapter).?;
+                var page_bytes: [4096]u8 = undefined;
+                try std.testing.expectEqual(req.length, try source.read(req.offset, page_bytes[0..req.length]));
+                try workspace_session.supply(&workspace_adapter, req, page_bytes[0..req.length]);
+                workspace_requests += 1;
+            },
+            .complete => break,
+            else => return error.TestUnexpectedResult,
+        }
+    }
+    try std.testing.expectEqualStrings("漢字", workspace.doc.preedit.slice());
+    workspace.handle(.{ .text = ' ' });
+    try std.testing.expectEqualStrings("幹事", workspace.doc.preedit.slice());
+    workspace.handle(.enter);
+    try std.testing.expectEqualStrings("幹事", workspace.doc.slice());
+    try workspace_page.detach();
+    std.debug.print("WORKSPACE_ASYNC pages={d} steps={d}\n", .{ workspace_requests, workspace_steps });
     std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} data_cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
