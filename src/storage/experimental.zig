@@ -37,7 +37,10 @@ test {
     _ = @import("resize_test.zig");
     _ = @import("batch_test.zig");
     _ = @import("scatter_test.zig");
+    _ = @import("fragmented_import_test.zig");
     _ = @import("reservation_test.zig");
+    _ = @import("write_budget_test.zig");
+    _ = @import("owner_budget_test.zig");
     _ = @import("dispatch_gate_test.zig");
     _ = @import("lifetime_budget_test.zig");
     _ = @import("lifetime_usage_test.zig");
