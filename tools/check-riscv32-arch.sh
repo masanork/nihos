@@ -184,12 +184,13 @@ echo "P4 RNG noise setup RV32 codegen: ok (not target execution)"
 
 # Fixed ownership stubs do not qualify or enable hardware entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend --dep p4_entropy_lease \
+    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend --dep p4_entropy_lease --dep p4_entropy_hardware \
     "-Mroot=$repo_root/tools/probes/ssh-p4-backend.zig" \
     --dep rng_noise "-Mssh_p4_backend=$repo_root/src/xy/ssh_p4_backend.zig" \
     "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig" \
     --dep p4_rng_gate "-Mp4_entropy_lease=$repo_root/src/platform/native/p4_entropy_lease.zig" \
-    "-Mp4_rng_gate=$repo_root/src/platform/native/p4_rng_gate.zig"
+    "-Mp4_rng_gate=$repo_root/src/platform/native/p4_rng_gate.zig" \
+    "-Mp4_entropy_hardware=$repo_root/src/platform/native/p4_entropy_hardware.zig"
 echo "SSH P4 entropy pipeline RV32 codegen: ok (not target execution)"
 
 # This fixed-source probe is code generation only; no entropy is qualified.

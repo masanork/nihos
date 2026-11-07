@@ -210,6 +210,9 @@ const Fake = struct {
     }
     pub fn read(self: *@This(), addr: usize) u32 {
         return switch (addr) {
+            0x501101a4 => self.readRng(),
+            0x50112010 => 0,
+            0x50112014 => self.lowTimerByte(),
             0x50124000 => self.control | (if (self.stuck) @as(u32, 1 << 25) else 0),
             0x50124004 => 0,
             0x5012401c => self.conf1,
@@ -220,6 +223,7 @@ const Fake = struct {
     }
     pub fn write(self: *@This(), addr: usize, value: u32) void {
         switch (addr) {
+            0x50112010 => {},
             0x50124000 => {
                 const reg: usize = (value >> 8) & 255;
                 if (value & (1 << 24) != 0) self.sar[reg] = @truncate(value >> 16);
@@ -533,6 +537,7 @@ test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
 
 test "composed reservation and P4 backend restore before seed becomes available" {
     const lease_mod = @import("p4_entropy_lease");
+    const hw_mod = @import("p4_entropy_hardware");
     const sessions = @import("ssh_entropy_session.zig");
     const Gate = @import("p4_rng_gate").Gate;
     const Resources = struct {
@@ -565,8 +570,25 @@ test "composed reservation and P4 backend restore before seed becomes available"
     var io: Fake = .{};
     var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
     var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
-    const Platform = lease_mod.Platform(@TypeOf(reservation), Fake);
-    var platform = Platform{ .reservation = &reservation, .hardware = &io };
+    const Clock = struct {
+        io: *Fake,
+        pub fn ready(self: *@This()) bool {
+            return self.io.clockReady();
+        }
+        pub fn cpuHz(self: *@This()) u32 {
+            return self.io.cpuHz();
+        }
+        pub fn apbHz(self: *@This()) u32 {
+            return self.io.apbHz();
+        }
+        pub fn nowMicros(self: *@This()) u64 {
+            return self.io.nowMicros();
+        }
+    };
+    var clock = Clock{ .io = &io };
+    var hardware = hw_mod.Hardware(Fake, Clock){ .access = &io, .clock = &clock };
+    const Platform = lease_mod.Platform(@TypeOf(reservation), @TypeOf(hardware));
+    var platform = Platform{ .reservation = &reservation, .hardware = &hardware };
     var backend = Backend(Platform).init(&platform, 20_000, 1_000, 160);
     var generations: collector_mod.Generations = .{};
     var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);

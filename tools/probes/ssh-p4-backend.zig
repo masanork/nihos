@@ -72,7 +72,23 @@ const Resources = struct {
     }
 };
 const Reservation = leases.Lease(leases.NativeRngGate, Resources);
-const Platform = leases.Platform(Reservation, IO);
+const hw_mod = @import("p4_entropy_hardware");
+const Clock = struct {
+    pub fn ready(_: *@This()) bool {
+        return true;
+    }
+    pub fn cpuHz(_: *@This()) u32 {
+        return 360_000_000;
+    }
+    pub fn apbHz(_: *@This()) u32 {
+        return 90_000_000;
+    }
+    pub fn nowMicros(_: *@This()) u64 {
+        return 0;
+    }
+};
+const Hardware = hw_mod.Hardware(hw_mod.NativeAccess, Clock);
+const Platform = leases.Platform(Reservation, Hardware);
 const ComposedBackend = backend_mod.Backend(Platform);
 export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platform) u32 {
     backend.* = ComposedBackend.init(platform, 10_000, 1_000, 160);
