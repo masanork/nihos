@@ -50,3 +50,33 @@ export fn nih_ssh_p4_backend_probe(backend: *B, io: *IO) u32 {
     _ = backend.sample() catch return 0;
     return @intFromBool(backend.release());
 }
+
+// Compile-only wiring. This reservation is deliberately not a hardware owner.
+const leases = @import("p4_entropy_lease");
+const Resources = struct {
+    held: bool = false,
+    pub fn tryReserve(self: *@This()) bool {
+        if (self.held) return false;
+        self.held = true;
+        return true;
+    }
+    pub fn owned(self: *@This()) bool {
+        return self.held;
+    }
+    pub fn releaseUnused(self: *@This()) void {
+        self.held = false;
+    }
+    pub fn releaseRestored(self: *@This()) bool {
+        self.held = false;
+        return true;
+    }
+};
+const Reservation = leases.Lease(leases.NativeRngGate, Resources);
+const Platform = leases.Platform(Reservation, IO);
+const ComposedBackend = backend_mod.Backend(Platform);
+export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platform) u32 {
+    backend.* = ComposedBackend.init(platform, 10_000, 1_000, 160);
+    backend.begin() catch return 0;
+    _ = backend.sample() catch return 0;
+    return @intFromBool(backend.release());
+}
