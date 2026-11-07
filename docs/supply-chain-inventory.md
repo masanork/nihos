@@ -3,7 +3,9 @@
 The native CI workflow generates CycloneDX 1.6 inventories
 for the normal Tab5 device build, retaining them with the image evidence:
 
-* `audited-inputs.cdx.json` identifies FatFs and SQLite when the image audit
+* `audited-inputs.cdx.json` records the SHA-256 of the bootloader, partition
+  table and application binaries after matching their flash-image slices. It
+  also identifies FatFs and SQLite when the image audit
   contains the corresponding normal FS and sqld identities. The generator checks
   those identity digests, the FatFs source pin and the current SQLite source
   hash. It is a partial inventory, not a complete firmware SBOM.
@@ -25,12 +27,14 @@ consistency with them, not their authenticity. It does not rerun the native
 image auditor.
 
 Each document identifies the supplied flash image by SHA-256. The generator
-checks that the image audit matches the ELF and application image and that the
-flash image contains the audited application at offset `0x10000`. This is an
-integrity check, not proof that the current source produced the image. The
-source inventory and image must come from the same clean build for the results
-to be meaningful. The bootloader and partition table are not independently
-verified by this check. No secret values are collected.
+checks the audit hashes of the application ELF, application binary, loader ELF
+and loader configuration. It checks the bootloader at `0x2000`, partition table
+at `0x8000` and application at `0x10000` against their binary files, requires
+non-overlapping nonempty regions and erased (`0xff`) padding, and rejects
+trailing data. These checks establish byte consistency, not that the current
+source produced the image or that the loader ELF produced the bootloader
+binary. The source inventory and image must come from the same clean build for
+the results to be meaningful. No secret values are collected.
 
 For a fresh ordinary build (Python 3.11+):
 
