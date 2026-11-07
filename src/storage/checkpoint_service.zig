@@ -75,7 +75,7 @@ pub fn Owner(comptime Store: type) type {
             if (client == 0) return error.InvalidArgument;
             if (!store.ready) return error.NotReady;
             if (store.faulted) return error.Faulted;
-            if (store.in_transaction) return error.Busy;
+            if (store.in_transaction or store.budget != null) return error.Busy;
             return .{ .store = store, .client = client, .last_durable_generation = store.generation() };
         }
         /// Trusted owner grants keys; no request supplies a principal or key.
@@ -101,6 +101,29 @@ pub fn Owner(comptime Store: type) type {
         }
         fn begin(self: *Self) model.Error!void {
             if (!self.store.in_transaction) try self.store.begin();
+        }
+        /// Trusted scheduler hooks, not client RPCs. All accepted requests and
+        /// replies must be drained before admission or release. These calls
+        /// perform a synchronous full free-space scan; native scheduling and
+        /// asynchronous device-drain guarantees are not provided here.
+        pub fn beginBudgeted(self: *Self, client: u64, queues: anytype, budget: model.WriteBudget) model.Error!void {
+            if (self.recovery_required or self.store.faulted) return error.Faulted;
+            if (!self.alive or client == 0 or client != self.client) return error.InvalidArgument;
+            if (self.next_sequence == 0) return error.InvalidArgument;
+            if (self.pending or queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return error.Busy;
+            self.store.beginBudgeted(budget) catch |err| {
+                if (self.store.faulted) self.recovery_required = true;
+                return err;
+            };
+        }
+        pub fn releaseBudget(self: *Self, client: u64, queues: anytype) model.Error!void {
+            if (self.recovery_required or self.store.faulted) return error.Faulted;
+            if (!self.alive or client == 0 or client != self.client) return error.InvalidArgument;
+            if (self.pending or queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return error.Busy;
+            self.store.releaseBudget() catch |err| {
+                if (self.store.faulted) self.recovery_required = true;
+                return err;
+            };
         }
         fn status(self: *Self, err: model.Error) Status {
             return switch (err) {
@@ -354,6 +377,9 @@ pub fn Owner(comptime Store: type) type {
             if (had_staging and !self.recovery_required) self.store.rollback() catch {
                 self.recovery_required = true;
             };
+            // A published, unreleased hold may have an undelivered commit
+            // response. Never transfer it to a new client or drop it here.
+            if (self.store.budget != null) self.recovery_required = true;
             if (self.pending) self.discarded_pending += 1;
             self.pending = false;
             self.request = .{};
@@ -365,7 +391,7 @@ pub fn Owner(comptime Store: type) type {
             return if (self.recovery_required) .recovery_required else if (had_staging) .cancelled_staging else .clean;
         }
         pub fn rebind(self: *Self, client: u64, queues: anytype) bool {
-            if (self.alive or self.recovery_required or client == 0 or client == self.client or self.epoch == std.math.maxInt(u64) or self.store.in_transaction or
+            if (self.alive or self.recovery_required or client == 0 or client == self.client or self.epoch == std.math.maxInt(u64) or self.store.in_transaction or self.store.budget != null or
                 queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return false;
             self.client = client;
             self.epoch += 1;
@@ -382,7 +408,7 @@ pub fn Owner(comptime Store: type) type {
         /// Reader pins are retained; this only retires the older disk root.
         pub fn retirePrevious(self: *Self, queues: anytype) model.Error!model.IndexSpace {
             if (self.recovery_required or self.store.faulted) return error.Faulted;
-            if (self.alive or self.pending or self.store.in_transaction or
+            if (self.alive or self.pending or self.store.in_transaction or self.store.budget != null or
                 queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return error.Busy;
             self.store.collectPayload() catch |err| {
                 self.recovery_required = true;
