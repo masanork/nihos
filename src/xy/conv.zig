@@ -593,6 +593,11 @@ pub const SlicedConversion = struct {
         self.phase = if (len == 0) .complete else .scan;
     }
 
+    /// Retire a stale cursor without changing an engine already reused by the caller.
+    pub fn abandon(self: *SlicedConversion) void {
+        self.phase = .cancelled;
+    }
+
     pub fn cancel(self: *SlicedConversion, engine: *Engine) void {
         engine.segment_count = 0;
         engine.cand_pool_len = 0;

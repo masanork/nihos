@@ -17,7 +17,9 @@ receives 幹事. In this run the preceding lookups plus the conversion incurred
 ```sh
 NIHOS_NFST_PATH=/path/to/jisyo-l.nfst \
   .tools/zig-0.17.0/zig test -O ReleaseSafe -lc \
-  src/paged_ime_large_host_test.zig --test-filter 'large paged dictionary drives IME'
+  --dep view_config --dep surface --dep canvas -Mroot=src/paged_ime_large_host_test.zig \
+  -Mview_config=src/xy/view_config.zig -Msurface=src/graphics/surface.zig \
+  --dep surface -Mcanvas=src/graphics/canvas.zig --test-filter 'large paged dictionary drives IME'
 ```
 
 The test does not redistribute the external dictionary. The bridge is

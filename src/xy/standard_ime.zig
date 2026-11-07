@@ -45,6 +45,27 @@ pub const State = struct {
             self.length += pending.len;
         }
     }
+    /// Prepare an immutable reading for an externally scheduled conversion.
+    pub fn prepareAsync(self: *State, doc: anytype) linksection(code_section) !bool {
+        if (!self.active or self.converting) return false;
+        try self.flush();
+        try self.overlay(doc);
+        return self.length != 0;
+    }
+    /// Called only after a scheduler has validated the original composition.
+    pub fn publishAsync(self: *State, doc: anytype) linksection(code_section) !void {
+        if (!self.active or self.converting or self.engine.segment_count == 0) return error.PreeditFull;
+        for (self.engine.segments[0..self.engine.segment_count]) |segment| {
+            if (segment.cand_count == 0) return error.PreeditFull;
+        }
+        self.converting = true;
+        self.focus = 0;
+        self.overlay(doc) catch |err| {
+            self.converting = false;
+            try self.overlay(doc);
+            return err;
+        };
+    }
     pub fn cancel(self: *State, doc: anytype) linksection(code_section) !void {
         if (self.converting) {
             self.converting = false;

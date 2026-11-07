@@ -256,4 +256,5 @@ test {
     _ = @import("xy/scratch.zig");
     _ = @import("xy/paged_conversion.zig");
     _ = @import("xy/async_conversion.zig");
+    _ = @import("xy/async_ime_session.zig");
 }
