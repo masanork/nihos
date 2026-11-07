@@ -425,8 +425,8 @@ pub fn Document(
 
         /// Commit the active SKK preedit by clearing the overlay and inserting `committed` as one undoable edit.
         pub fn commitPreedit(self: *Self, committed: []const u8) Error!void {
-            self.preedit.clear();
             try self.insertUtf8(committed);
+            self.preedit.clear();
         }
 
         /// Attach a ruby reading to a grapheme-aligned base range `[base_start, base_end)`.

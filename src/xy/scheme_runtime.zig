@@ -57,6 +57,7 @@ inline fn continuationPrimitiveAllowed(op: Op) bool {
         .memq_proc,
         .memv_proc,
         .append_proc,
+        .length_proc,
         .cadr_proc,
         .caar_proc,
         .cdar_proc,
@@ -5515,7 +5516,7 @@ const ContinuationState = struct {
     // while control is yielded to the caller.
     const capacity = 95;
     const Frame = struct {
-        kind: enum { branch, call, sequence, cond_test, let_init, member_scan, append_copy },
+        kind: enum { branch, call, sequence, cond_test, let_init, member_scan, append_copy, length_scan },
         expression: Ref,
         environment: Ref,
         cursor: Ref = 0,
@@ -5695,6 +5696,20 @@ const ContinuationState = struct {
                 return true;
             }
             const frame = &self.frames[self.count - 1];
+            if (frame.kind == .length_scan) {
+                const cursor = frame.values[0];
+                if (cursor == 0) {
+                    self.value = try vm.number(@intCast(frame.cursor));
+                    self.environment = frame.environment;
+                    self.count -= 1;
+                    continue;
+                }
+                if (vm.tagOf(cursor) != .pair) return error.Type;
+                if (frame.cursor >= cells) return error.Depth;
+                frame.values[0] = vm.heap[cursor].b;
+                frame.cursor += 1;
+                continue;
+            }
             if (frame.kind == .append_copy) {
                 if (frame.count == 1) {
                     if (frame.procedure == 0) self.value = frame.values[0] else {
@@ -5830,6 +5845,12 @@ const ContinuationState = struct {
             if (!isImmediateOp(procedure)) return error.Type;
             const op = toImmediateOp(procedure);
             if (!continuationPrimitiveAllowed(op)) return error.CannotCompile;
+            if (op == .length_proc) {
+                if (frame.count != 1) return error.Arity;
+                frame.kind = .length_scan;
+                frame.cursor = 0;
+                continue;
+            }
             if (op == .append_proc) {
                 if (frame.count == 0) {
                     self.value = 0;
@@ -6381,6 +6402,75 @@ test "continuation admits bounded pair selectors and equivalence safely" {
     var unbounded = SlicedContinuation{};
     try std.testing.expect(!try unbounded.begin(&vm, "(reverse '(1 2))"));
     try std.testing.expect(!try unbounded.begin(&vm, "(member 'a '(a))"));
+}
+
+test "sliced length yields and preserves the remaining list" {
+    var vm: Runtime = undefined;
+    vm.initInPlace();
+    var host = TestHost{};
+    var out: [128]u8 = undefined;
+    const examples = [_]struct { source: []const u8, expected: []const u8 }{
+        .{ .source = "(length '())", .expected = "0" },
+        .{ .source = "(length '(a b c))", .expected = "3" },
+        .{ .source = "(length (append '(a b) '(c d)))", .expected = "4" },
+        .{ .source = "(length (cons 1 (cons 2 '())))", .expected = "2" },
+    };
+    for (examples) |example| {
+        try std.testing.expectEqualStrings(example.expected, try vm.evaluate(example.source, &host, &out));
+        var lease = SlicedContinuation{};
+        try std.testing.expect(try lease.begin(&vm, example.source));
+        while (true) {
+            if (try lease.poll(&host, 1, 17, &out)) |actual| {
+                try std.testing.expectEqualStrings(example.expected, actual);
+                break;
+            }
+            vm.collect();
+        }
+        try std.testing.expectEqual(@as(u8, 0), vm.ast_root_frame_count);
+    }
+    const source = "(length '(" ++ repeat("x ", 80) ++ "))";
+    var long = SlicedContinuation{};
+    try std.testing.expect(try long.begin(&vm, source));
+    var scan_yields: usize = 0;
+    while (true) {
+        if (try long.poll(&host, 1, 17, &out)) |actual| {
+            try std.testing.expectEqualStrings("80", actual);
+            break;
+        }
+        if (long.lease.state.count > 0 and long.lease.state.frames[long.lease.state.count - 1].kind == .length_scan) scan_yields += 1;
+        vm.collect();
+    }
+    try std.testing.expect(scan_yields >= 80);
+    for ([_]struct { source: []const u8, err: Error }{
+        .{ .source = "(length '(a . b))", .err = error.Type },
+        .{ .source = "(length)", .err = error.Arity },
+        .{ .source = "(length '() '())", .err = error.Arity },
+    }) |bad| {
+        var lease = SlicedContinuation{};
+        try std.testing.expect(try lease.begin(&vm, bad.source));
+        while (true) {
+            const result = lease.poll(&host, 1, 17, &out) catch |err| {
+                try std.testing.expectEqual(bad.err, err);
+                break;
+            };
+            if (result != null) return error.TestUnexpectedResult;
+            vm.collect();
+        }
+        try std.testing.expect(!vm.running);
+    }
+    _ = try vm.evaluate("(define cycle (cons 'x '())) (set-cdr! cycle cycle)", &host, &out);
+    var cycle = SlicedContinuation{};
+    try std.testing.expect(try cycle.begin(&vm, "(length cycle)"));
+    while (true) {
+        const result = cycle.poll(&host, 64, 17, &out) catch |err| {
+            try std.testing.expectEqual(error.Depth, err);
+            break;
+        };
+        if (result != null) return error.TestUnexpectedResult;
+    }
+    try std.testing.expectEqualStrings("42", try vm.evaluate("(+ 20 22)", &host, &out));
+    var shadow = SlicedContinuation{};
+    try std.testing.expect(!try shadow.begin(&vm, "(let ((length (lambda (x) 42))) (length 1))"));
 }
 
 test "sliced append preserves partial copies across collection" {

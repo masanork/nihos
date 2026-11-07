@@ -71,6 +71,32 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
     }
     const annotated = model.mode != .help and model.mode != .system;
     var request = protocol.Request{ .learning = model.learning, .navigation = if (model.nav.screen != .document) &model.nav else null, .workspace = bytes.ptr, .frame = completed.ptr, .frame_length = completed.len, .config = &model.vm.view, .text = text.ptr, .text_length = text.len, .cursor = if (model.mode == .help or model.mode == .system) 0 else model.doc.cursor, .status = &status, .status_length = length, .show_cursor = if (model.mode == .edit or model.mode == .command) 1 else 0, .reserved_bottom_px = if (model.softKeyboardVisible()) @intCast(console.scratch.soft_keyboard.geometry(model.touchOrientation()).keyboardHeight()) else 0, .portrait = @intFromBool(model.portrait_touch), .keyboard = if (!model.softKeyboardVisible()) 0 else if (model.soft_keyboard_state.symbols) (if (model.soft_keyboard_state.shift) 4 else 3) else if (model.soft_keyboard_state.shift) 2 else 1, .ruby_text = &model.doc.ruby_arena, .ruby_text_length = if (annotated) model.doc.ruby_bytes_used else 0, .ruby_spans = &model.doc.ruby_spans, .ruby_count = if (annotated) model.doc.ruby_count else 0 };
+    var candidates: [8]protocol.ImeCandidate = undefined;
+    if (!terminal_mode and model.mode == .edit and model.doc.preedit.len != 0) {
+        const preedit = model.doc.preedit.slice();
+        request.preedit = preedit.ptr;
+        request.preedit_length = preedit.len;
+        if (!model.skk_input and model.standard_input.converting) {
+            const state = &model.standard_input;
+            const segment = &state.engine.segments[state.focus];
+            const first = (@as(usize, segment.selected) / 8) * 8;
+            const count = @min(@as(usize, segment.cand_count) - first, candidates.len);
+            for (0..count) |i| {
+                const candidate = state.engine.candidateText(state.focus, first + i);
+                candidates[i] = .{ .text = candidate.ptr, .length = candidate.len };
+            }
+            request.candidates = &candidates;
+            request.candidate_count = @intCast(count);
+            request.candidate_selected = @intCast(@as(usize, segment.selected) - first);
+        } else if (model.skk_input and model.ime.phase == .selecting) {
+            for (model.ime.candidates.items[0..model.ime.candidates.count], 0..) |candidate, i| {
+                candidates[i] = .{ .text = candidate.insert_text.ptr, .length = candidate.insert_text.len };
+            }
+            request.candidates = &candidates;
+            request.candidate_count = model.ime.candidates.count;
+            request.candidate_selected = model.ime.selected_index;
+        }
+    }
     // The snapshot only borrows public text and a secret length, never seed bytes.
     // SAFETY: the producer remains stable for this foreground draw.
     var private_view: protocol.PrivateInputView = undefined;
