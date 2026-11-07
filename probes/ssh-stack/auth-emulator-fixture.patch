@@ -107,16 +107,19 @@ index d7b8f9fe..7ca4da3b 100644
 @@ -65 +65 @@ if [ "$devices" = true ] && { [ "$audio" = true ] || [ "$microphone" = true ] ||
 -root_opt=safe
 +root_opt=small # Fixture-only code-size experiment.
-@@ -1200,0 +1201,2 @@ fi
+@@ -1207,2 +1207,4 @@
+ fi
 +"$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/ssh_stack_fixture.o"
 +set -- "$@" "$build_dir/ssh_stack_fixture.o"
+ if [ -n "$pmp_user_object" ]; then
 diff --git a/tools/build-native.sh b/tools/build-native.sh
 index bf6906de..dfa67a8d 100644
 --- a/tools/build-native.sh
 +++ b/tools/build-native.sh
-@@ -151 +151 @@ if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then set -- "$@" --sqld "$build_dir/sqld-m
--"$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
-+"$python" "$repo_root/tools/check-ssh-auth-fixture.py" "$build_dir/nihos-native.elf" \
+@@ -151,2 +151,2 @@
+-auditor="$repo_root/tools/check-native-image.py"
++auditor="$repo_root/tools/check-ssh-auth-fixture.py"
+ if [ "${NIHOS_NATIVE_PQC_TASK:-0}" = 1 ]; then auditor="$repo_root/probes/pqc-ssh/audit_emulator_ssh.py"; fi
 diff --git a/tools/check-ssh-auth-fixture.py b/tools/check-ssh-auth-fixture.py
 new file mode 100644
 index 00000000..de3dd8fd
