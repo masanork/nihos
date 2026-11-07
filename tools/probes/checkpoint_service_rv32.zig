@@ -80,6 +80,15 @@ comptime {
 }
 pub export const service_store_bytes: u32 = @sizeOf(Store);
 pub export const service_owner_bytes: u32 = @sizeOf(Owner);
+/// Compile-only; these synchronous calls do not establish a native I/O lease.
+pub export fn service_write_budget_begin(client: u64, payload: u64, writes: u32, peak: u32, margin: u64, index_margin: u32) c_int {
+    owner.beginBudgeted(client, &queues, .{ .payload_writes = payload, .index_writes = writes, .index_peak = peak, .payload_margin = margin, .index_margin = index_margin }) catch return -1;
+    return 0;
+}
+pub export fn service_write_budget_release(client: u64) c_int {
+    owner.releaseBudget(client, &queues) catch return -1;
+    return 0;
+}
 pub export const service_queues_bytes: u32 = @sizeOf(Queues);
 pub export const service_request_bytes: u32 = @sizeOf(api.Request);
 pub export const service_response_bytes: u32 = @sizeOf(api.Response);
