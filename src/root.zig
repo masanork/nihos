@@ -257,4 +257,5 @@ test {
     _ = @import("xy/paged_conversion.zig");
     _ = @import("xy/async_conversion.zig");
     _ = @import("xy/async_ime_session.zig");
+    _ = @import("xy/ime_page_queue.zig");
 }

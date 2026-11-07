@@ -234,6 +234,11 @@ test "large paged dictionary drives IME after remount" {
     for ("kanji") |c| workspace.handle(.{ .text = c });
     var workspace_page: @import("storage/async_page.zig").Coordinator = .{};
     try workspace_page.attach(4, size);
+    const queue_bridge = @import("xy/ime_page_queue.zig");
+    var queues: queue_bridge.Queues = .{};
+    var page_owner = try queue_bridge.Owner(fixture.Store).init(&recovered, 1, workspace_page.generation);
+    try std.testing.expectEqual(size, page_owner.length);
+    var client: queue_bridge.Client = .{};
     var workspace_adapter = @import("xy/async_conversion.zig").Adapter{ .coordinator = &workspace_page };
     var runtime = @import("xy/async_ime_session.zig").Runtime{ .adapter = &workspace_adapter };
     const port = runtime.port();
@@ -245,20 +250,43 @@ test "large paged dictionary drives IME after remount" {
         workspace_steps += 1;
         try std.testing.expect(workspace_steps < 100000);
         workspace.pollAsyncIme(128);
-        if (runtime.request()) |req| {
-            var page_bytes: [4096]u8 = undefined;
-            try std.testing.expectEqual(req.length, try source.read(req.offset, page_bytes[0..req.length]));
-            try runtime.supply(req, page_bytes[0..req.length]);
+        if (client.submit(&runtime, &queues)) {
             workspace_requests += 1;
+            if (workspace_requests == 1) {
+                var stale = queue_bridge.Response{ .request = client.inflight.? };
+                stale.request.serial += 1;
+                try std.testing.expect(queues.responses.tryPushFrom(&stale));
+                try std.testing.expect(try client.poll(&runtime, &queues));
+                try std.testing.expectEqual(@as(usize, 1), client.discarded);
+                try std.testing.expect(!client.drained());
+            }
         }
+        if (workspace_steps % 3 == 0) _ = page_owner.step(&queues);
+        _ = try client.poll(&runtime, &queues);
     }
     try std.testing.expectEqualStrings("漢字", workspace.doc.preedit.slice());
     workspace.handle(.{ .text = ' ' });
     try std.testing.expectEqualStrings("幹事", workspace.doc.preedit.slice());
     workspace.handle(.enter);
     try std.testing.expectEqualStrings("幹事", workspace.doc.slice());
+    for ("nihon") |c| workspace.handle(.{ .text = c });
+    workspace.handle(.{ .text = ' ' });
+    for (0..10000) |_| {
+        workspace.pollAsyncIme(128);
+        if (client.submit(&runtime, &queues)) break;
+    }
+    try std.testing.expect(!client.drained());
+    try std.testing.expect(page_owner.step(&queues));
+    workspace.handle(.{ .text = 'a' });
+    try std.testing.expectEqualStrings("にほんあ", workspace.doc.preedit.slice());
+    try std.testing.expect(!workspace.detachAsyncIme());
+    try std.testing.expectError(error.Busy, page_owner.close(&queues, true));
+    try std.testing.expect(try client.poll(&runtime, &queues));
+    try std.testing.expect(client.drained());
     try std.testing.expect(workspace.detachAsyncIme());
     try workspace_page.detach();
+    try page_owner.close(&queues, true);
+    try std.testing.expectEqualStrings("にほんあ", workspace.doc.preedit.slice());
     std.debug.print("WORKSPACE_DISPATCH pages={d} steps={d}\n", .{ workspace_requests, workspace_steps });
     std.debug.print("LARGE_NFST bytes={d} cumulative_cache_misses={d} data_cache_bytes={d}\n", .{ size, dict.cache_misses, nfst.page_bytes });
 }
