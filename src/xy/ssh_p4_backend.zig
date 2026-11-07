@@ -145,6 +145,7 @@ const Fake = struct {
     cycle: u32 = 0,
     random: u32 = 0,
     cpu: u32 = 160_000_000,
+    apb: u32 = 80_000_000,
     timer: u8 = 0,
     control: u32 = 0,
     conf1: u32 = 0x2345,
@@ -177,8 +178,8 @@ const Fake = struct {
     pub fn cpuHz(self: *@This()) u32 {
         return self.cpu;
     }
-    pub fn apbHz(_: *@This()) u32 {
-        return 80_000_000;
+    pub fn apbHz(self: *@This()) u32 {
+        return self.apb;
     }
     pub fn cycles(self: *@This()) u32 {
         return self.cycle;
@@ -237,7 +238,7 @@ const Fake = struct {
     }
     fn tick(self: *@This()) void {
         self.now += 28;
-        self.cycle +%= 4480;
+        self.cycle +%= self.cpu / 1_000_000 * 28;
     }
 };
 
@@ -538,6 +539,7 @@ test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
 test "composed reservation and P4 backend restore before seed becomes available" {
     const lease_mod = @import("p4_entropy_lease");
     const hw_mod = @import("p4_entropy_hardware");
+    const clock_mod = @import("p4_entropy_clock");
     const sessions = @import("ssh_entropy_session.zig");
     const Gate = @import("p4_rng_gate").Gate;
     const Resources = struct {
@@ -570,26 +572,34 @@ test "composed reservation and P4 backend restore before seed becomes available"
     var io: Fake = .{};
     var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
     var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
-    const Clock = struct {
+    const ClockIO = struct {
         io: *Fake,
-        pub fn ready(self: *@This()) bool {
-            return self.io.clockReady();
+        reservation: *@TypeOf(reservation),
+        pub fn owned(self: *@This()) bool {
+            return self.reservation.owned();
         }
-        pub fn cpuHz(self: *@This()) u32 {
-            return self.io.cpuHz();
-        }
-        pub fn apbHz(self: *@This()) u32 {
-            return self.io.apbHz();
-        }
-        pub fn nowMicros(self: *@This()) u64 {
+        pub fn counter(self: *@This()) ?u64 {
             return self.io.nowMicros();
         }
+        pub fn read(_: *@This(), address: usize) u32 {
+            return switch (address) {
+                clock_mod.root => 0,
+                clock_mod.mem_sys => 1,
+                clock_mod.apb => 1 << 16,
+                clock_mod.source => 1,
+                else => unreachable,
+            };
+        }
     };
-    var clock = Clock{ .io = &io };
+    var clock_io = ClockIO{ .io = &io, .reservation = &reservation };
+    const Clock = clock_mod.Guard(ClockIO);
+    var clock = Clock.init(&clock_io, .{ .root = 0, .mem_sys = 1, .apb = 1 << 16, .source = 1, .cpu_hz = 360_000_000, .apb_hz = 90_000_000 });
+    io.cpu = 360_000_000;
+    io.apb = 90_000_000;
     var hardware = hw_mod.Hardware(Fake, Clock){ .access = &io, .clock = &clock };
     const Platform = lease_mod.Platform(@TypeOf(reservation), @TypeOf(hardware));
     var platform = Platform{ .reservation = &reservation, .hardware = &hardware };
-    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 160);
+    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 360);
     var generations: collector_mod.Generations = .{};
     var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);
 

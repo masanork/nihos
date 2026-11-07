@@ -73,20 +73,21 @@ const Resources = struct {
 };
 const Reservation = leases.Lease(leases.NativeRngGate, Resources);
 const hw_mod = @import("p4_entropy_hardware");
-const Clock = struct {
-    pub fn ready(_: *@This()) bool {
-        return true;
+const clock_mod = @import("p4_entropy_clock");
+const ClockIO = struct {
+    reservation: *Reservation,
+    access: *hw_mod.NativeAccess,
+    pub fn owned(self: *@This()) bool {
+        return self.reservation.owned();
     }
-    pub fn cpuHz(_: *@This()) u32 {
-        return 360_000_000;
+    pub fn read(self: *@This(), address: usize) u32 {
+        return self.access.read(address);
     }
-    pub fn apbHz(_: *@This()) u32 {
-        return 90_000_000;
-    }
-    pub fn nowMicros(_: *@This()) u64 {
+    pub fn counter(_: *@This()) ?u64 {
         return 0;
     }
 };
+const Clock = clock_mod.Guard(ClockIO);
 const Hardware = hw_mod.Hardware(hw_mod.NativeAccess, Clock);
 const Platform = leases.Platform(Reservation, Hardware);
 const ComposedBackend = backend_mod.Backend(Platform);
