@@ -254,4 +254,8 @@ test {
     _ = @import("card/license_trust.zig");
     _ = @import("card/license_session_test.zig");
     _ = @import("xy/scratch.zig");
+    _ = @import("xy/paged_conversion.zig");
+    _ = @import("xy/async_conversion.zig");
+    _ = @import("xy/async_ime_session.zig");
+    _ = @import("xy/ime_page_queue.zig");
 }

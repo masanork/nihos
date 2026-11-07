@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
           python3 tools/verify_native_provenance.py "$dir" \
-            --source-sha "$GITHUB_SHA" --source-ref "$GITHUB_REF"
+            --source-sha "$GITHUB_SHA" --source-ref "$GITHUB_REF" --require-image-layout
           cp "$dir/nihos-native-flash.bin" "$RUNNER_TEMP/modified.bin"
           printf x >> "$RUNNER_TEMP/modified.bin"
           if gh attestation verify "$RUNNER_TEMP/modified.bin" --repo "$GITHUB_REPOSITORY" \

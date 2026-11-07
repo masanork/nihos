@@ -108,6 +108,7 @@ class BomTest(unittest.TestCase):
             for component, payload, offset in zip(data['components'][:3], (b'boot', b'partition', b'app'), ('0x2000', '0x8000', '0x10000')):
                 self.assertEqual(component['hashes'][0]['content'], hashlib.sha256(payload).hexdigest())
                 self.assertIn({'name': 'nihos:flash-offset', 'value': offset}, component['properties'])
+                self.assertIn({'name': 'nihos:flash-size-bytes', 'value': str(len(payload))}, component['properties'])
             (root / 'sqlite' / 'sqlite3.c').write_bytes(b'tampered')
             with self.assertRaises(ValueError):
                 bom.generate(root, image, out)
