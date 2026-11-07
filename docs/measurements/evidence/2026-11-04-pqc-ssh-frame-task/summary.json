@@ -1,0 +1,57 @@
+{
+  "base": "1664df89",
+  "note": "Synthetic plaintext frame fragmented at 13-byte boundaries in P4 emulator, public vector and pinned worker verification. No TCP, live negotiation, post-NEWKEYS decoder transition, parent verifier, physical erasure or device proof.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "0f85977965351f6da888ca7c01784a5631140bfb70ad6f53d77596a6fb5842ab",
+      "image_sha256": "ffa3b55f38e812e29d09c46045c8451bf5ec9785c5092b7623fb4314404ae9f6",
+      "primary_static_bytes": 113536,
+      "heap_bytes": 50304
+    },
+    "bad-ct": {
+      "elf_sha256": "3628400975f97671be046577b862f755b35ca6c6312f86d69b61b93b746d6ad2",
+      "image_sha256": "a1ccfa250d8b7ed78c66d30a0b7ba6ddbb6614b2a008c622ab80c55a60b6630e",
+      "primary_static_bytes": 113536,
+      "heap_bytes": 50304
+    },
+    "bad-pin": {
+      "elf_sha256": "c99b84b03b6357e8165aabb1c0e638e0bf3e459f571c423caf61c02cc71ce44b",
+      "image_sha256": "c353cc6f343d29b447f784dc1eea625230254b63938c29a9b96fd5a32f119020",
+      "primary_static_bytes": 113536,
+      "heap_bytes": 50304
+    },
+    "timeout": {
+      "elf_sha256": "98150438a64aacce0d7d637f4be670f3b45d5a21471797ddd56eae141b74316f",
+      "image_sha256": "a7e1e5b5cb45d2457dba8446c4007b0d1c1b51092f0f8cbdd6cce36b403beaa9",
+      "primary_static_bytes": 110208,
+      "heap_bytes": 53632
+    },
+    "bad-signature": {
+      "elf_sha256": "ac55f19bd9ea244575e6ad3f8593d27ba859b850a787d0265138709bf22627fb",
+      "image_sha256": "b2f7ffa8c6c7ca96f1da150158243049dac663e1f02ab2516be68e0a28fee6c7",
+      "primary_static_bytes": 113536,
+      "heap_bytes": 50304
+    }
+  },
+  "logs": {
+    "bad-ct.log": "56ca68f7685ecefdff485e2bba1cc5874889bdad4f13bc60eed4ba646adb80eb",
+    "bad-pin.log": "9fd0e3b8d5c9276308611eb9627a0c3b0e608f94eb77512a33c56c46727a47ed",
+    "bad-signature.log": "1d98bebb40fd84e2189ad350269306b3ebcfb50f04877777d1b96246868e91a7",
+    "good.log": "b4afe90f589554d44ee74cb4ce32fb86b1780233370ec7a993cf633ab5db412e",
+    "no-psram.log": "6339755a8c4d71ccdce3fe94f6b6794c0b029a9087b77abf8ecb2a6e813aa58a",
+    "timeout.log": "e0209496dfa4a1b060d8d760593927fbe5a58429308a8892c950560b4a7e3b3e"
+  },
+  "source_sha256": {
+    "src/platform/native/pqc_task.zig": "a0ab16b1660f7e14f4fd6f8db21f7477deeb362b60cbcd57123de6b7481c0d02",
+    "src/net/hosted_station.zig": "f9ab9cbaa18d1675afbad06c453738ae1c68441824743b61bb99275d339d25a1",
+    "src/net/ssh_hybrid_fixture.zig": "b3f5f4533654ac0e0a780bf036de18fb6fadc5ef1c75d0bd1785b81a12835b05",
+    "src/net/ssh_hybrid_reply.zig": "fb80c3797a3454a8881b5eec335cdd60245d568c58b8b5c4bc07b953b02cc3b9",
+    "src/net/ssh_stream.zig": "6d0ae482c02079c8210e41b704f273f98c6f5ae42daad40a8ef9ce801dd24637",
+    "src/net/ssh.zig": "b3bb34a98b465a5372dbf3ebd50575205cc9365c1985fbb8eb839d810371ff26",
+    "src/net/ssh_kem_handoff.zig": "920b542eaf2c9f02f92610f3f514db6408beba29d8e900b31634090f83b6773f",
+    "probes/pqc-ssh/check_task_log.py": "c69b11c23c31e7536d887200081008bf9d1876fa16b0c6069c5f3c0091d6b5fc",
+    "probes/pqc-ssh/check_task_log_test.py": "c7b2fefe05cda41a3794ccc4344911894d3d03fd131db2110cc1c25ba99fd306",
+    "probes/pqc-ssh/run-exchange-negative.sh": "d98780fc94ed4e615d2cc92ed15ec5d1032bfe2b2afba3d6e0ba94048fe409d5",
+    "tools/build-native-elf.sh": "159f44e13b8e6868e0f6090378918057d685a8e8bac392ef7244dd6b8ce125e8"
+  }
+}

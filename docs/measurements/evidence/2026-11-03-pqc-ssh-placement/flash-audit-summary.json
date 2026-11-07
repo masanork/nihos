@@ -1,0 +1,29 @@
+{
+  "note": "Experimental fixture audit, not normal audit, execution or production qualification",
+  "elf_sha256": "6f04e0605de8782d8f1a78ae33afe478e302e9d8244a707d54bdbe45099cb5ba",
+  "image_sha256": "bc292e585542e9706e6ec5640a25262fc823c7612d218f943ea80c25397ec10d",
+  "heap": {
+    "start": "0x4ff1b0c0",
+    "end": "0x4ff28000",
+    "bytes": 53056,
+    "owner_count": 2,
+    "granule_bytes": 64,
+    "external_bytes": 0
+  },
+  "primary_static_bytes": 110784,
+  "xy_scheme": {
+    "start": "0x40060000",
+    "end": "0x403bf2dc",
+    "code_bytes": 228288,
+    "rodata_bytes": 3307292
+  },
+  "fixture_functions": 28,
+  "fixture_constants": [
+    "mlk_zetas",
+    "mlk_KeccakF_RoundConstants"
+  ],
+  "negative_controls": [
+    "missing root rejected",
+    "byte-identical SRAM constant copy rejected"
+  ]
+}

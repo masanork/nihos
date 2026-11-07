@@ -1,0 +1,60 @@
+{
+  "base": "99e6813d",
+  "note": "P4 emulator fixture manually stages a fixed SSH reply and calls driver.complete on a scheduler task; driver.step, live P4 network, physical device, cache-off and actual secret entropy are not tested. Host libslirp uses a separate host thread, not a P4 task.",
+  "candidates": {
+    "good": {
+      "elf_sha256": "5c8e983421a66517cde93d0b13e402875f9b7b68492a1fc2e010a0cb6c7020dc",
+      "image_sha256": "3361895fa4194436eb604595705259922d966352533021ab21ecd5a955d05675",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    },
+    "bad-ct": {
+      "elf_sha256": "69f11992298b37bdd9ee985c473c86b3ca6f2e7e8bae14dc0c5fb5c265e016a4",
+      "image_sha256": "3bd0454ca5916010612b626aaef63575809da73b2b52aba1162ae25a7d5d3140",
+      "primary_static_bytes": 98944,
+      "heap_bytes": 64896
+    },
+    "bad-pin": {
+      "elf_sha256": "9b753da621e5b321f8845a395b88e8d668b21d773915fbef580a8efd6e0f9325",
+      "image_sha256": "27ac0d8018ac99c2a3a966387e5c221c4e57f41f984146eb0ca21106dd4e8a39",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    },
+    "timeout": {
+      "elf_sha256": "397689120e75ca042d42d18e7cd1379d289de977a885c9fc327c06657dcd2316",
+      "image_sha256": "a99541e115e587326c868b813f0b6c47c776357c7c852a67fc5261ad91ab7cc3",
+      "primary_static_bytes": 95616,
+      "heap_bytes": 68224
+    },
+    "bad-signature": {
+      "elf_sha256": "ebc7361f740acfe9dc969ed07b370c854f2682553baf92f0925928c9516a97d0",
+      "image_sha256": "a6ac0ac2c0b8d1bf6e79069d593fbb2bae5289f054fa474284d6dae170f3b08a",
+      "primary_static_bytes": 99072,
+      "heap_bytes": 64768
+    }
+  },
+  "logs": {
+    "emulator-bad-ct.log": "edee9c62fe51826fe3e42785c047d55c135d854803bb1adea0ce5fde3fa74126",
+    "emulator-bad-pin.log": "08d921a94b19e78d5e9fd85f994388d919bcf5834bf36982a37ca5c3679aa404",
+    "emulator-bad-signature.log": "2a19df6ced7a5b1538ae8d3d9022c4b223c049d86ff87a95838b2194c796170b",
+    "emulator-good.log": "76a3050d6262416764665ec23446a58e44b33d8b92784891ae8966fbfdc627b3",
+    "emulator-no-psram.log": "e4fabaa4c97b100098952d5dbbd0e0889d3f70c000293d620f68d97069f75c42",
+    "emulator-timeout.log": "dc5c2384b3ab6b3afbbcc5a78e292906da568e273548e5f7c7c08a4aff7d61ec",
+    "host-bad-pin.log": "9d9b75ee449ea168102d279d950a29bb32700b2ac6cb9a65ad034c4b1f06cc1c",
+    "host-good.log": "85dba669bb3d02493efda1bacee52ef993022c79759acf7ab5b8f3b35dfcd06a"
+  },
+  "source_sha256": {
+    "src/net/ssh_hybrid_driver.zig": "ad89ea11ba7bb276b9909c542d8d6b492668630cffc4b4929273d475232e3a71",
+    "src/net/ssh_hybrid_handshake.zig": "4fd4c1472aafd4cc651d386e65a6234c4b62cc4d40649baa4471b445b84953cc",
+    "src/net/ssh_hybrid_fixture.zig": "8f5542a559c1e3a591953d8dcca1c96526c3bacf3ee8ffc417a199494f7871fe",
+    "src/net/ssh_kex_host_probe.zig": "7ea47b8a6a97487d87ee2225e31a5ddfb4477204c06fc6d802976efdb45c878b",
+    "src/platform/native/pqc_task.zig": "f007c68640310ddf3c3f85240d2eb4ce8d846fc676a091734566ace8da54c112",
+    "src/platform/native/esp32p4.ld": "7375c716cc83fbb579b5aeab9da053e156cb160338cf467ecc37bdefc4a93cef",
+    "probes/pqc-ssh/audit_emulator_ssh.py": "807679b5ce9a2a1036c1e64c659662c9388db59b751df08582594134bc17485a",
+    "probes/pqc-ssh/audit_emulator_ssh_test.py": "48d106f594476532376c3ac127bf2b4f76eb6e7cfdee9c9c227604012e66bf28",
+    "probes/pqc-ssh/check_task_log.py": "81ddab025050790ddbf7d30f833a651d44a3a9747df336829383e7d70234f501",
+    "probes/pqc-ssh/check_task_log_test.py": "739ec73a1f645a3ee2ef19f0fde9b51ff5cb0e652d2e6fed6c7555102fc2d329",
+    "tools/ssh_openssh_probe.py": "41e1ceda201d822e95e1a1c9b4c5865474bf843b766a02b3ce37933ce0ed22cd"
+  },
+  "libslirp_archive_sha256": "2a98852e65666db313481943e7a1997abff0183bd9bea80caec1b5da89fda28c"
+}

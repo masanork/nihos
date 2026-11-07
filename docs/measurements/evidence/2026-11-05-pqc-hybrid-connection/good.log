@@ -1,0 +1,2 @@
+mlkem-native host arena cursor peak: 19232 bytes
+OpenSSH mlkem768x25519-sha256, hybrid connection and separate host worker thread (mlkem-native arena), public-key authentication and interactive PTY: OK (nihos TCP via libslirp, TCP FIN confirmed)
