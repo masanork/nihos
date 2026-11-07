@@ -54,6 +54,54 @@ pub fn Lease(comptime Gate: type, comptime Resources: type) type {
     };
 }
 
+/// Adapts a reservation and hardware callbacks to the SSH P4 backend.
+/// Hardware callbacks must be bounded and safe only while the lease is held.
+/// This adapter is not itself a hardware owner or an entropy qualification.
+pub fn Platform(comptime Reservation: type, comptime Hardware: type) type {
+    return struct {
+        const Self = @This();
+        reservation: *Reservation,
+        hardware: *Hardware,
+
+        pub fn acquire(self: *Self) bool {
+            return self.reservation.acquire();
+        }
+        pub fn owned(self: *Self) bool {
+            return self.reservation.owned();
+        }
+        pub fn release(self: *Self) bool {
+            return self.reservation.release();
+        }
+        pub fn clockReady(self: *Self) bool {
+            return self.hardware.clockReady();
+        }
+        pub fn cpuHz(self: *Self) u32 {
+            return self.hardware.cpuHz();
+        }
+        pub fn apbHz(self: *Self) u32 {
+            return self.hardware.apbHz();
+        }
+        pub fn cycles(self: *Self) u32 {
+            return self.hardware.cycles();
+        }
+        pub fn nowMicros(self: *Self) u64 {
+            return self.hardware.nowMicros();
+        }
+        pub fn readRng(self: *Self) u32 {
+            return self.hardware.readRng();
+        }
+        pub fn lowTimerByte(self: *Self) u8 {
+            return self.hardware.lowTimerByte();
+        }
+        pub fn read(self: *Self, address: usize) u32 {
+            return self.hardware.read(address);
+        }
+        pub fn write(self: *Self, address: usize, value: u32) void {
+            self.hardware.write(address, value);
+        }
+    };
+}
+
 /// Accesses the single gate owned by the native SQLite runtime. This adapter
 /// is only linkable in configurations which include that runtime.
 pub const NativeRngGate = struct {
@@ -73,7 +121,7 @@ pub const NativeRngGate = struct {
 };
 
 const std = @import("std");
-const TestGate = @import("p4_rng_gate.zig").Gate;
+const TestGate = @import("p4_rng_gate").Gate;
 const FakeResources = struct {
     reserved: bool = false,
     recovery_ready: bool = true,

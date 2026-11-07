@@ -191,10 +191,11 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_lifecycle_module })).step);
     const sar_regi2c_module = b.createModule(.{ .root_source_file = b.path("src/soc/esp32p4/sar_regi2c.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = sar_regi2c_module })).step);
-    const p4_entropy_lease_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/p4_entropy_lease.zig"), .target = target, .optimize = optimize });
-    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_entropy_lease_module })).step);
     const p4_rng_gate_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/p4_rng_gate.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_rng_gate_module })).step);
+    const p4_entropy_lease_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/p4_entropy_lease.zig"), .target = target, .optimize = optimize });
+    p4_entropy_lease_module.addImport("p4_rng_gate", p4_rng_gate_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_entropy_lease_module })).step);
     const ssh_entropy_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_entropy.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_entropy_module })).step);
     const ssh_seed_collector_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_seed_collector.zig"), .target = target, .optimize = optimize });
@@ -208,6 +209,7 @@ pub fn build(b: *std.Build) void {
     const p4_ssh_backend_module = b.createModule(.{ .root_source_file = b.path("src/xy/ssh_p4_backend.zig"), .target = target, .optimize = optimize });
     p4_ssh_backend_module.addImport("rng_noise", p4_rng_noise_module);
     p4_ssh_backend_module.addImport("p4_rng_gate", p4_rng_gate_module);
+    p4_ssh_backend_module.addImport("p4_entropy_lease", p4_entropy_lease_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_ssh_backend_module })).step);
     const ssh_reservation_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_reservation.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_reservation_module })).step);

@@ -530,3 +530,67 @@ test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
     _ = foreground.poll(false, io.now);
     try std.testing.expect(model.private_input == null and !session.available());
 }
+
+test "composed reservation and P4 backend restore before seed becomes available" {
+    const lease_mod = @import("p4_entropy_lease");
+    const sessions = @import("ssh_entropy_session.zig");
+    const Gate = @import("p4_rng_gate").Gate;
+    const Resources = struct {
+        io: *Fake,
+        original_sar: [10]u8,
+        original_adc: [9]u32,
+        reserved: bool = false,
+        release_allowed: bool = false,
+        saw_restored: bool = false,
+        pub fn tryReserve(self: *@This()) bool {
+            if (self.reserved) return false;
+            self.reserved = true;
+            return true;
+        }
+        pub fn owned(self: *@This()) bool {
+            return self.reserved;
+        }
+        pub fn releaseUnused(self: *@This()) void {
+            self.reserved = false;
+        }
+        pub fn releaseRestored(self: *@This()) bool {
+            self.saw_restored = std.mem.eql(u8, &self.io.sar, &self.original_sar) and
+                std.mem.eql(u32, &self.io.adc, &self.original_adc);
+            if (!self.release_allowed or !self.saw_restored) return false;
+            self.reserved = false;
+            return true;
+        }
+    };
+    var gate: Gate = .{};
+    var io: Fake = .{};
+    var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
+    var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
+    const Platform = lease_mod.Platform(@TypeOf(reservation), Fake);
+    var platform = Platform{ .reservation = &reservation, .hardware = &io };
+    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);
+
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectError(error.Unavailable, session.begin(0, 100_000));
+    try std.testing.expect(!resources.reserved);
+    try std.testing.expect(gate.releaseSqlite());
+    try session.begin(0, 100_000);
+    for (0..800) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (resources.saw_restored) break;
+    }
+    try std.testing.expect(resources.saw_restored and resources.reserved);
+    try std.testing.expectEqual(.restoring, session.state);
+    try std.testing.expect(!session.available() and !gate.trySqlite());
+    resources.release_allowed = true;
+    io.tick();
+    session.poll(io.now);
+    try std.testing.expect(session.available() and !resources.reserved);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    session.cancel();
+    session.poll(io.now);
+    try std.testing.expectEqual(.idle, session.state);
+}
