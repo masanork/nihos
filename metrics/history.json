@@ -13258,24 +13258,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-07",
-    "measuredAt": "2026-11-07T01:19:08.308359+00:00",
+    "measuredAt": "2026-11-07T02:33:02.878701+00:00",
     "project": "nihos",
-    "commit": "ab2a97f2187f9344c3488b7737376d8600911a59",
+    "commit": "8d99f969ba6c7b376ee2bd37b1bfb5ca81ef0cc3",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "25e41d3b6595e3b727d40a418a913c1b5eeb0d31c4ca7707c930b69f3e9f0ae3",
+    "sourceTreeSha256": "3b44d066893c4a65c4dd8d96a773bff2b75f9591bf1a7ca115d1416fd07dbab4",
     "code": {
-      "implementation": 86024,
-      "tests": 46178,
-      "tooling": 31255,
+      "implementation": 86296,
+      "tests": 47153,
+      "tooling": 31264,
       "probes": 17388,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 78309,
-        "tests": 35024,
-        "tooling": 1821,
+        "implementation": 78581,
+        "tests": 35999,
+        "tooling": 1830,
         "probes": 5642,
         "vendored": 0,
         "generated": 0
@@ -13371,8 +13371,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 84087,
-        "tests": 35150,
+        "implementation": 84359,
+        "tests": 36125,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -13389,7 +13389,7 @@
       "tools": {
         "implementation": 0,
         "tests": 11028,
-        "tooling": 30934,
+        "tooling": 30943,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -13863,9 +13863,9 @@
         "src/soc/esp32p4/usb_host.zig": "d473cd3991e2c8cffbde9d75aaada08006fe003026dfbb0308e15f3c8d040814",
         "src/storage/batch_test.zig": "12dfe798f20baa3fff6091b981a46ff2f7a617b2a67a00862157aa4ed1b798c5",
         "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
-        "src/storage/checkpoint_model.zig": "4c81c4e7afb0a0fc92af7112826a869bdfa651be12ebc24d83f89dedddb4b7a3",
+        "src/storage/checkpoint_model.zig": "1baa564c5621c4a4a5001ce573011b45c83055b6444448e7e87f468f132ffb8d",
         "src/storage/checkpoint_model_test.zig": "d854984221edf6fd6c95644103a2dae11e451c47a2108ecb87951236ad6fac9d",
-        "src/storage/checkpoint_service.zig": "e7958c3cc34ee08b141c4d73ae70fb30ab91c58fbf69c7290e69cf7390566d9c",
+        "src/storage/checkpoint_service.zig": "fbc54941a7681e1c7a1e90a247fac18c06e89f01887901ac1176808be8f74dd2",
         "src/storage/checkpoint_service_test.zig": "0d1c51a8e2de3f74cb0210ec4896b7e72c5f79b290acd8b4109473ae68a2a5da",
         "src/storage/control.zig": "9fd21b9fcc079a6e5bdb4eaf7c2b46c3241a382640bcccae9d04c7841a7da565",
         "src/storage/cow_model.zig": "5acc505ee1755af8813a2e958941468295d5b903c4b43c2038651345f050745d",
@@ -13875,7 +13875,7 @@
         "src/storage/dispatch_gate_test.zig": "140926dea71f6476e6c0c7d6d7c9d9a4fcecad6221a42520e6d7383f8cc658d1",
         "src/storage/editor_document_test.zig": "3ef3a8a759550c591f2a7557669e219f2f2b24890f87c6205e1166dc66e473a8",
         "src/storage/editor_sd_path_test.zig": "2e881db7863f5589d9786b3ff26d22c92c77bbe736477a5bdd3781fa9f886f7d",
-        "src/storage/experimental.zig": "d6439ad6995b7e2be9852e991c15eb2f39b31de6e298d626b1b673b887b28b6f",
+        "src/storage/experimental.zig": "e96b10d279732eae44df10baed1b7150506f276368906032929831a24f648d7a",
         "src/storage/extent_map.zig": "1dd41ff3cf628c7a173375efbd3ef49fcdadc7aa400a2164a8e7da4288d1b3fd",
         "src/storage/extent_map_test.zig": "9e829c240b2d6a0d8f3b8e5902b3e5b261faa9681dbe7f71e074a939b16737e2",
         "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
@@ -13883,12 +13883,18 @@
         "src/storage/fatfs_volume.c": "c40b79ebca7a7cdc72e75ba05d4c038d7f6090918fc513fbddc9823ff3cef677",
         "src/storage/file_media.zig": "0e74ef22381a9b7ce14273f90e652634d31a745fe16fe614708eb91f14114d1c",
         "src/storage/file_media_test.zig": "da5051f978d2605b92c1649f2a690066db057aab7b898afa848f656e48191418",
+        "src/storage/fragmented_import_test.zig": "a7071626e787c9ffc72f41372e73f4364a706f3e8cb3593dfda14bb44798b131",
+        "src/storage/fragmented_large_host_test.zig": "d5ab52c9f3ffb7accc8e4f9036210a2626b54395aab5494775e48ab85a4b6902",
         "src/storage/index_gc_test.zig": "875e04956577ce5c900ef2a1594018f4ab7d55d70b072c26de4c4255f5d8b06f",
         "src/storage/lifetime_budget.zig": "be1073865a2d09b6e8f7b09d3abc79deba71ac2efa60d20b3e7bb2182ee84474",
         "src/storage/lifetime_budget_test.zig": "e1e4e5c0fe2fbebdf635cb67674ec040e6f09b01b3af0ea7ec96107a3e2bb428",
         "src/storage/lifetime_usage_test.zig": "638f3b346b9c97d645376067f97cb951efd738feb976a06db98667ec9bf00320",
         "src/storage/model_media.zig": "eedede2dc776114b2699ac08a82a0febce2648ae739418aefe1cd124d981b67d",
+        "src/storage/nfst_large_host_test.zig": "214b57d9ee062dc0380a985ab739fc68b7315f0b09bc9bebcadfeb86b40211b9",
+        "src/storage/nfst_reader.zig": "a4dca879cebb7371d03713f975688a59bc9f5d017cbad0e4df9e598cb6224b9f",
+        "src/storage/nfst_reader_test.zig": "ca75bca136205e439e925c2281885971da9ff8ea951f2af1b9c9badc422e06b6",
         "src/storage/object_pin_test.zig": "f66fb361e228a15994035fa230a63f9436ce22cfce8ac298bb34d89fa693b299",
+        "src/storage/owner_budget_test.zig": "b294ae2e14994053bf3c0fdcf8901178b77af572d34f6355b0b7bfee409a0ad5",
         "src/storage/payload_gc_test.zig": "74eb2beec2fbd02e23037ae0eb565727f06bc87630a62cf5bf8ac89c7529e38a",
         "src/storage/range_checksum_test.zig": "312329956b5d80684ba7715e514c516b24b1f89aa04a48bbeadc24a12644dff5",
         "src/storage/reader_drain.zig": "8a5e3a3519dddd2258a3fb2806e850fea705d15081fbdf60307b881396de2510",
@@ -13901,6 +13907,7 @@
         "src/storage/sector_media_test.zig": "54f2b0acf2a0ce3cd05039ec5424e6eaf26464705507a1ae8f50483bd0cd1b73",
         "src/storage/store_abi.zig": "b712cd66a7e94c6c2137b79511c4bce48d38e9227a41d6c66387da2ac0f86ef5",
         "src/storage/stream_test.zig": "b0735be992d290497708e1ae965f22726673c255dc0b23275cf2c76a7e20e87a",
+        "src/storage/write_budget_test.zig": "6ec758f7332cfa1f2992c182986b25152dcda9c18a475415529a411d69bb1359",
         "src/storage_vfs.zig": "c63e12c5cd5ac6b0b3e1a131d019875e952f0bb81d2606712e1f5c87d9808703",
         "src/touch_sim.zig": "3b104408b9ddd63aa70609bc3a58672f1abd51cd49fa10657057fdbcd10b9f14",
         "src/usb/ccid.zig": "f4cd8986d6429e7e77c007551ffe91da48f43e30d6bcdb6e7421ba651e322dd2",
@@ -13947,9 +13954,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 17232,
-        "count": 18325,
-        "percent": 94.03547066848567
+        "covered": 17403,
+        "count": 18497,
+        "percent": 94.08552738281884
       },
       "files": {
         "src/app/animation.zig": {
@@ -14505,12 +14512,12 @@
           "count": 14
         },
         "src/storage/checkpoint_model.zig": {
-          "covered": 1144,
-          "count": 1148
+          "covered": 1192,
+          "count": 1197
         },
         "src/storage/checkpoint_service.zig": {
-          "covered": 207,
-          "count": 237
+          "covered": 223,
+          "count": 253
         },
         "src/storage/control.zig": {
           "covered": 24,
@@ -14543,6 +14550,10 @@
         "src/storage/model_media.zig": {
           "covered": 48,
           "count": 48
+        },
+        "src/storage/nfst_reader.zig": {
+          "covered": 107,
+          "count": 107
         },
         "src/storage/reader_drain.zig": {
           "covered": 59,
@@ -14980,10 +14991,15 @@
         "src/storage/fatfs_disk.c",
         "src/storage/fatfs_volume.c",
         "src/storage/file_media_test.zig",
+        "src/storage/fragmented_import_test.zig",
+        "src/storage/fragmented_large_host_test.zig",
         "src/storage/index_gc_test.zig",
         "src/storage/lifetime_budget_test.zig",
         "src/storage/lifetime_usage_test.zig",
+        "src/storage/nfst_large_host_test.zig",
+        "src/storage/nfst_reader_test.zig",
         "src/storage/object_pin_test.zig",
+        "src/storage/owner_budget_test.zig",
         "src/storage/payload_gc_test.zig",
         "src/storage/range_checksum_test.zig",
         "src/storage/reservation_test.zig",
@@ -14993,6 +15009,7 @@
         "src/storage/sector_media_test.zig",
         "src/storage/store_abi.zig",
         "src/storage/stream_test.zig",
+        "src/storage/write_budget_test.zig",
         "src/storage_vfs.zig",
         "src/touch_sim.zig",
         "src/xy/c_abi_host.zig",
