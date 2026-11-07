@@ -7,12 +7,15 @@ pub const scheme = @import("scheme_runtime.zig");
 pub const document = @import("document.zig");
 // Immutable presentation text follows the existing diagnostic font placement;
 // host targets retain their ordinary read-only segment.
-pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nJapanese input: ime toggles SKK (in SKK: l=ASCII, q=katakana)\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
+pub const help_text linksection(if (@import("builtin").os.tag == .freestanding) ".flash.rodata.display" else if (@import("builtin").object_format == .macho) "__TEXT,__const" else ".rodata") = "Type directly into *scratch*.\n\nArrows: move   Backspace: delete before\nCtrl-D: delete after   Ctrl-Z: undo\nEsc: minibuffer   Ctrl-C: cancel\n\nMinibuffer: Scheme expression or command\nCommands: log, mem, tasks, undo, forget-undo\nJapanese input: ime toggles romaji input; Space converts\nEval source: eval-buffer   Reset VM: reset-scheme\n\nSave: (buffer/save! \"name\")\nLoad: (buffer/load! \"name\")\nStorage must be available.\n\nEnter or Esc: return to *scratch*".*;
 pub const Doc = document.Document(4096, 256, 2048, 1, 64);
 pub const camera = @import("camera.zig");
 pub const card = @import("card.zig");
 pub const soft_keyboard = @import("soft_keyboard.zig");
 pub const ime_omni = @import("ime_omni.zig");
+pub const standard_ime = @import("standard_ime.zig");
+const ime_dict = @import("dict.zig");
+const default_ime_bytes linksection(scheme.data_section) = @embedFile("fixtures/jisyo_s_nfst.bin").*;
 pub const system = @import("system_buffer.zig");
 pub const navigation = @import("navigation.zig");
 pub const Mode = enum { edit, command, help, system };
@@ -113,12 +116,13 @@ pub const Model = struct {
     touch_start_y: u32,
     touch_tracking: bool,
     touch_moved: bool,
-    /// SKK composition state for the document screen. Starts in direct
+    /// Composition state for the document screen. Starts in direct
     /// (ASCII) mode so existing editing is unchanged; the minibuffer
     /// command `ime` toggles Japanese input.
     ime: ime_omni.OmniIme,
-    /// Candidate backend for the IME. Hosts may replace it (the sqld
-    /// dictionary provider is a follow-up); null means no candidates.
+    standard_input: standard_ime.State,
+    skk_input: bool,
+    /// Optional provider for the legacy SKK composition core.
     ime_provider: ?ime_omni.OmniProvider,
 
     pub fn initInPlace(self: *Model) linksection(scheme.code_section) void {
@@ -272,11 +276,17 @@ pub const Model = struct {
         self.doc.insertUtf8(text) catch |err| self.failed(err);
         self.changed();
     }
-    fn emptyImeQuery(_: *anyopaque, _: ime_omni.PrefixKind, _: u8, _: []const u8, _: *ime_omni.CandidateList) linksection(scheme.code_section) void {}
+    fn defaultImeQuery(_: *anyopaque, kind: ime_omni.PrefixKind, _: u8, key: []const u8, out: *ime_omni.CandidateList) linksection(scheme.code_section) void {
+        if (kind != .kanji) return;
+        const dict = ime_dict.NfstDict.init(&default_ime_bytes) catch return;
+        var candidates: [16][]const u8 = undefined;
+        const count = dict.lookup(key, &candidates);
+        for (candidates[0..count]) |candidate| _ = out.append(candidate, "");
+    }
 
     fn imeProvider(self: *Model) linksection(scheme.code_section) ime_omni.OmniProvider {
         if (self.ime_provider) |provider| return provider;
-        return .{ .ctx = self, .queryFn = emptyImeQuery };
+        return .{ .ctx = self, .queryFn = defaultImeQuery };
     }
 
     fn imeKey(self: *Model, byte: u8) linksection(scheme.code_section) void {
@@ -293,6 +303,50 @@ pub const Model = struct {
     /// composition, then fall through to their normal handling.
     fn imeRoute(self: *Model, key: input.Key) linksection(scheme.code_section) bool {
         if (self.mode != .edit) return false;
+        if (!self.skk_input and self.ime.mode != .direct) {
+            const dict = ime_dict.NfstDict.init(&default_ime_bytes) catch return false;
+            const active = self.standard_input.active;
+            switch (key) {
+                .text => |byte| self.standard_input.key(&self.doc, &dict, byte) catch {
+                    self.status = .buffer_full;
+                },
+                .backspace => self.standard_input.key(&self.doc, &dict, 0x7f) catch {
+                    self.status = .buffer_full;
+                },
+                .enter => {
+                    if (!active) return false;
+                    self.standard_input.commit(&self.doc) catch {
+                        self.status = .buffer_full;
+                    };
+                },
+                .escape, .cancel => {
+                    if (!active) return false;
+                    self.standard_input.cancel(&self.doc) catch {
+                        self.status = .invalid_input;
+                    };
+                },
+                .left, .right, .up, .down => {
+                    if (!self.standard_input.converting) {
+                        if (active) self.standard_input.commit(&self.doc) catch {
+                            self.status = .buffer_full;
+                            return true;
+                        };
+                        return false;
+                    }
+                    self.standard_input.move(&self.doc, if (key == .left or key == .up) -1 else 1, key == .up or key == .down) catch {
+                        self.status = .buffer_full;
+                    };
+                },
+                else => {
+                    if (active) self.standard_input.commit(&self.doc) catch {
+                        self.status = .buffer_full;
+                        return true;
+                    };
+                    return false;
+                },
+            }
+            return true;
+        }
         const composing = self.ime.phase != .idle;
         switch (key) {
             .text => |byte| self.imeKey(byte),
@@ -1784,6 +1838,7 @@ fn runMinibuffer(model: *Model, command_text: []const u8) void {
 test "IME defaults to direct ASCII and the ime command toggles SKK kana input" {
     var model: Model = undefined;
     model.initInPlace();
+    model.skk_input = true;
     try std.testing.expectEqual(ime_omni.InputMode.direct, model.ime.mode);
     typeKeys(&model, "abc");
     try std.testing.expectEqualStrings("abc", model.doc.slice());
@@ -1799,9 +1854,51 @@ test "IME defaults to direct ASCII and the ime command toggles SKK kana input" {
     try std.testing.expectEqualStrings("abcかんじz", model.doc.slice());
 }
 
+test "ordinary IME composes lowercase, converts, cycles and commits" {
+    var model: Model = undefined;
+    model.initInPlace();
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "kanji");
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqualStrings("かんじ", model.doc.preedit.slice());
+    typeKeys(&model, " ");
+    try std.testing.expectEqualStrings("漢字", model.doc.preedit.slice());
+    typeKeys(&model, " ");
+    try std.testing.expectEqualStrings("幹事", model.doc.preedit.slice());
+    model.handle(.up);
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字", model.doc.slice());
+    typeKeys(&model, "iku ");
+    var tries: usize = 0;
+    while (!std.mem.eql(u8, model.doc.preedit.slice(), "行く") and tries < 32) : (tries += 1) typeKeys(&model, " ");
+    try std.testing.expectEqualStrings("行く", model.doc.preedit.slice());
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字行く", model.doc.slice());
+}
+
+test "ordinary IME converts a sentence and cancels safely" {
+    var model: Model = undefined;
+    model.initInPlace();
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "kyouhaiitenkidesune ");
+    try std.testing.expectEqualStrings("今日はいい天気ですね", model.doc.preedit.slice());
+    try std.testing.expect(model.standard_input.engine.segment_count >= 2);
+    model.handle(.right);
+    try std.testing.expectEqual(@as(u8, 1), model.standard_input.focus);
+    model.handle(.escape);
+    try std.testing.expectEqualStrings("きょうはいいてんきですね", model.doc.preedit.slice());
+    model.handle(.escape);
+    try std.testing.expectEqualStrings("", model.doc.slice());
+    try std.testing.expectEqualStrings("", model.doc.preedit.slice());
+    typeKeys(&model, "nk");
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("んk", model.doc.slice());
+}
+
 test "SKK conversion runs through the workspace provider and learns the commit" {
     var model: Model = undefined;
     model.initInPlace();
+    model.skk_input = true;
     var mock = ImeMock{};
     model.ime_provider = .{ .ctx = &mock, .queryFn = ImeMock.query, .learnFn = ImeMock.learn };
     runMinibuffer(&model, "ime");
@@ -1816,9 +1913,28 @@ test "SKK conversion runs through the workspace provider and learns the commit" 
     try std.testing.expect(mock.learned);
 }
 
+test "built-in dictionary converts and cycles candidates in the workspace" {
+    var model: Model = undefined;
+    model.initInPlace();
+    model.skk_input = true;
+    runMinibuffer(&model, "ime");
+    typeKeys(&model, "Kanji ");
+    try std.testing.expectEqualStrings("▼漢字", model.doc.preedit.slice());
+    typeKeys(&model, " ");
+    try std.testing.expectEqualStrings("▼幹事", model.doc.preedit.slice());
+    typeKeys(&model, "x");
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字", model.doc.slice());
+    typeKeys(&model, "IKu");
+    try std.testing.expectEqualStrings("▼行く", model.doc.preedit.slice());
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("漢字行く", model.doc.slice());
+}
+
 test "Escape cancels a composition instead of opening the minibuffer" {
     var model: Model = undefined;
     model.initInPlace();
+    model.skk_input = true;
     runMinibuffer(&model, "ime");
     typeKeys(&model, "Ka");
     try std.testing.expectEqual(ime_omni.OmniPhase.reading, model.ime.phase);
@@ -1838,6 +1954,7 @@ test "SKK conversion powered by NfstDict seamlessly converts and commits" {
 
     var model: Model = undefined;
     model.initInPlace();
+    model.skk_input = true;
     model.ime_provider = nfst.omniProvider();
 
     runMinibuffer(&model, "ime");
@@ -1853,6 +1970,7 @@ test "SKK conversion powered by NfstDict seamlessly converts and commits" {
 test "soft keyboard drives SKK composition and commits a candidate" {
     var model: Model = undefined;
     model.initInPlace();
+    model.skk_input = true;
     model.nav.screen = .document;
     var mock = ImeMock{};
     model.ime_provider = .{ .ctx = &mock, .queryFn = ImeMock.query, .learnFn = ImeMock.learn };

@@ -17,6 +17,8 @@ pub fn SizedSession(comptime page_capacity: usize) type {
         scratch: [32768]u8,
         placed: [page_capacity]layout.PlacedGlyph,
         status_placed: [128]layout.PlacedGlyph,
+        composed_text: [4224]u8,
+        composed_spans: [64]protocol.RubySpan,
         // Hosts can supply paged complete fonts; embedded targets use ROM faces.
         external_mincho: ?layout.ttf.Family,
         external_gothic: ?layout.ttf.Family,
@@ -231,12 +233,39 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             }
             if (request.code_count > 64) return error.Capacity;
             const code_spans = if (request.code_spans) |p| p[0..request.code_count] else if (request.code_count == 0) &.{} else return error.Range;
-            const text = request.text[0..request.text_length];
-            if (text.len > 4096) return error.Capacity;
-            if (!std.unicode.utf8ValidateSlice(text) or request.cursor > text.len or !document.isClusterBoundary(text, request.cursor)) return error.InvalidUtf8;
+            const source = request.text[0..request.text_length];
+            if (source.len > 4096 or request.preedit_length > 128) return error.Capacity;
+            if (!std.unicode.utf8ValidateSlice(source) or request.cursor > source.len or !document.isClusterBoundary(source, request.cursor)) return error.InvalidUtf8;
             if (request.ruby_text_length > (if (request.page_mode != 0) @as(usize, 2048) else 1024) or request.ruby_count > (if (request.page_mode != 0) @as(usize, 128) else 64)) return error.Capacity;
             const readings = request.ruby_text[0..request.ruby_text_length];
-            const spans = if (request.ruby_spans) |ptr| ptr[0..request.ruby_count] else if (request.ruby_count == 0) &.{} else return error.Range;
+            const source_spans = if (request.ruby_spans) |ptr| ptr[0..request.ruby_count] else if (request.ruby_count == 0) &.{} else return error.Range;
+            var text = source;
+            var spans = source_spans;
+            var render_cursor = request.cursor;
+            const preedit_len = if (request.page_mode == 0) request.preedit_length else 0;
+            if (preedit_len != 0) {
+                const preedit = request.preedit[0..preedit_len];
+                if (!std.unicode.utf8ValidateSlice(preedit)) return error.InvalidUtf8;
+                @memcpy(self.composed_text[0..request.cursor], source[0..request.cursor]);
+                @memcpy(self.composed_text[request.cursor..][0..preedit_len], preedit);
+                @memcpy(self.composed_text[request.cursor + preedit_len ..][0 .. source.len - request.cursor], source[request.cursor..]);
+                text = self.composed_text[0 .. source.len + preedit_len];
+                render_cursor += preedit_len;
+                var count: usize = 0;
+                for (source_spans) |span| {
+                    // Hide a ruby annotation intersected by the insertion point
+                    // while composing; never mutate the document annotation.
+                    if (span.base_start < request.cursor and span.base_end > request.cursor) continue;
+                    var adjusted = span;
+                    if (span.base_start >= request.cursor) {
+                        adjusted.base_start += @intCast(preedit_len);
+                        adjusted.base_end += @intCast(preedit_len);
+                    }
+                    self.composed_spans[count] = adjusted;
+                    count += 1;
+                }
+                spans = self.composed_spans[0..count];
+            }
             for (spans) |span| {
                 if (span.base_start >= span.base_end or span.base_end > text.len or span.ruby_start >= span.ruby_end or span.ruby_end > readings.len) return error.Range;
                 if (!document.isClusterBoundary(text, span.base_start) or !document.isClusterBoundary(text, span.base_end)) return error.InvalidUtf8;
@@ -257,7 +286,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             var boundaries: [241]u16 = @splat(0);
             var scanned: usize = 0;
             var total: usize = 0;
-            while (scanned < request.cursor) {
+            while (scanned < render_cursor) {
                 scanned = try document.nextClusterEnd(text, scanned);
                 total += 1;
                 boundaries[total % boundaries.len] = @intCast(scanned);
@@ -273,13 +302,13 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             } else while (true) {
                 const used_before: usize = @min(before, total);
                 var start: usize = boundaries[(total - used_before) % boundaries.len];
-                var end = request.cursor;
+                var end = render_cursor;
                 var used_after: usize = 0;
                 while (end != text.len and used_after < after + before - used_before) : (used_after += 1) end = try document.nextClusterEnd(text, end);
                 const remaining = before + after - used_before - used_after;
                 const take_before: usize = @min(total, used_before + remaining);
                 start = boundaries[(total - take_before) % boundaries.len];
-                cursor = @intCast(request.cursor - start);
+                cursor = @intCast(render_cursor - start);
                 if (start == end) {
                     if (text.len != 0) return error.Capacity;
                     break;
@@ -300,7 +329,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                         }
                     }
                 }
-                cursor = @intCast(request.cursor - start);
+                cursor = @intCast(render_cursor - start);
                 var reading_bytes: usize = 0;
                 var annotation_count: usize = 0;
                 for (spans) |span| {
@@ -315,7 +344,7 @@ pub fn SizedSession(comptime page_capacity: usize) type {
                     annotation_count += 1;
                     reading_bytes += reading.len;
                 }
-                list = layout.layoutParagraph(256, 4096, 1024, Cache, &self.cache, family, style, text[start..end], visible_readings[0..reading_bytes], annotations[0..annotation_count], &self.scratch, &self.placed) catch |err| switch (err) {
+                list = layout.layoutParagraph(256, 4224, 1024, Cache, &self.cache, family, style, text[start..end], visible_readings[0..reading_bytes], annotations[0..annotation_count], &self.scratch, &self.placed) catch |err| switch (err) {
                     error.BlockFull, error.Capacity => {
                         before /= 2;
                         after /= 2;
@@ -340,6 +369,46 @@ pub fn SizedSession(comptime page_capacity: usize) type {
             self.placed_count = @intCast(list.len);
             const stats = try adapter.paintSurfaceRgb565(Cache, target, &self.cache, family, style, theme, list, if (request.show_cursor != 0) cursor else null, config.appearance.linear_blend, &self.scratch);
             self.glyphs = @intCast(stats.glyphs_blitted);
+            if (preedit_len != 0 and request.candidate_count != 0) {
+                if (request.candidate_count > 8 or request.candidate_selected >= request.candidate_count) return error.Range;
+                const candidates = if (request.candidates) |p| p[0..request.candidate_count] else return error.Range;
+                const row_height: i32 = 26;
+                const popup_width: i32 = @min(@as(i32, screen_width), 248);
+                const popup_height: i32 = row_height * @as(i32, request.candidate_count);
+                const available_height: i32 = style.viewport_height_px;
+                if (popup_height <= available_height and popup_width >= 32) {
+                    const caret_x = caret.x_px + dx;
+                    const caret_y = caret.y_px + dy;
+                    const px = std.math.clamp(caret_x, 0, @as(i32, screen_width) - popup_width);
+                    const below = caret_y + @as(i32, style.body_px) + 2;
+                    const py = if (below + popup_height <= available_height) below else @max(0, caret_y - popup_height);
+                    _ = target.fillRect(px, py, @intCast(popup_width), @intCast(popup_height), theme.minibuf_bg_rgb565);
+                    var popup_style = style;
+                    popup_style.axis = 0;
+                    popup_style.body_px = 20;
+                    popup_style.ruby_px = 0;
+                    popup_style.line_gap_px = 0;
+                    popup_style.margin_x_px = 4;
+                    popup_style.margin_y_px = 2;
+                    popup_style.viewport_width_px = @intCast(popup_width);
+                    popup_style.viewport_height_px = @intCast(row_height);
+                    for (candidates, 0..) |candidate, index| {
+                        const y = py + @as(i32, @intCast(index)) * row_height;
+                        if (index == request.candidate_selected) _ = target.fillRect(px, y, 4, @intCast(row_height), theme.cursor_rgb565);
+                        const raw = candidate.text[0..candidate.length];
+                        var end: usize = 0;
+                        var clusters: usize = 0;
+                        while (end < raw.len and clusters < 10) : (clusters += 1) end = try document.nextClusterEnd(raw, end);
+                        const row = try layout.layoutParagraph(128, 512, 1, Cache, &self.cache, family, popup_style, raw[0..end], "", &.{}, &self.scratch, &self.status_placed);
+                        for (row) |g| {
+                            if (g.cell_y_px > popup_style.margin_y_px) break;
+                            const glyph = try self.cache.getOrRender(family, @intCast(g.style_id), @intCast(g.base_cp), @intCast(g.ivs_cp), g.px_size, false, &self.scratch);
+                            const mask = adapter.surface.Mask{ .bytes = glyph.alpha, .width = glyph.metrics.width, .height = glyph.metrics.height, .stride = glyph.metrics.width };
+                            _ = target.blit(mask, px + g.bitmap_x_px, y + g.bitmap_y_px, theme.minibuf_fg_rgb565);
+                        }
+                    }
+                }
+            }
             _ = target.fillRect(0, screen_height - status_height, screen_width, status_height, theme.minibuf_bg_rgb565);
             // Use the same TrueType shaper for the command/result line.
             var status_style = style;
