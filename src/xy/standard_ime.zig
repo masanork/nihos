@@ -45,6 +45,27 @@ pub const State = struct {
             self.length += pending.len;
         }
     }
+    /// Prepare an immutable reading for an externally scheduled conversion.
+    pub fn prepareAsync(self: *State, doc: anytype) linksection(code_section) !bool {
+        if (!self.active or self.converting) return false;
+        try self.flush();
+        try self.overlay(doc);
+        return self.length != 0;
+    }
+    /// Called only after a scheduler has validated the original composition.
+    pub fn publishAsync(self: *State, doc: anytype) linksection(code_section) !void {
+        if (!self.active or self.converting or self.engine.segment_count == 0) return error.PreeditFull;
+        for (self.engine.segments[0..self.engine.segment_count]) |segment| {
+            if (segment.cand_count == 0) return error.PreeditFull;
+        }
+        self.converting = true;
+        self.focus = 0;
+        self.overlay(doc) catch |err| {
+            self.converting = false;
+            try self.overlay(doc);
+            return err;
+        };
+    }
     pub fn cancel(self: *State, doc: anytype) linksection(code_section) !void {
         if (self.converting) {
             self.converting = false;
@@ -77,7 +98,7 @@ pub const State = struct {
         self.length = 0;
         self.romaji.clear();
     }
-    pub fn key(self: *State, doc: anytype, dict: *const conv.NfstDict, key_byte: u8) linksection(code_section) !void {
+    pub fn key(self: *State, doc: anytype, dict: anytype, key_byte: u8) linksection(code_section) !void {
         if (key_byte == 0x07) return self.cancel(doc);
         if (key_byte == '\n') return self.commit(doc);
         if (key_byte == 0x7f) {
@@ -103,7 +124,13 @@ pub const State = struct {
                     self.active = false;
                     return self.overlay(doc);
                 }
+                if (@hasDecl(@TypeOf(dict.*), "beginConversion")) dict.beginConversion();
                 self.engine.convert(dict, self.reading[0..self.length]);
+                if (@hasDecl(@TypeOf(dict.*), "conversionError")) dict.conversionError() catch |err| {
+                    self.engine.segment_count = 0;
+                    try self.overlay(doc);
+                    return err;
+                };
                 if (self.engine.segment_count == 0) return error.PreeditFull;
                 for (self.engine.segments[0..self.engine.segment_count]) |segment| {
                     if (segment.cand_count == 0) return error.PreeditFull;
