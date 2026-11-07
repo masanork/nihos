@@ -179,7 +179,7 @@ export fn tcp_link_closed(now: u64) bool {
     const handle = owner.handle orelse return false;
     if (!(owner.closeComplete(&host_station, handle, now *| 1000) catch return false)) return false;
     if (link_time_wait == null) {
-        const link = if (owner.service.link) |*value| value else return false;
+        const link = owner.service.link orelse return false;
         const s = if (link.stream) |*value| value else return false;
         link_time_wait = wait.TimeWait.begin(s, now, 2000) catch return false;
     }

@@ -74,7 +74,7 @@ test "adapter maps partial writes, backpressure, buffered EOF and reset" {
     const handle = try owner.open(&client, .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, 50001, 123, 0, 5000);
     try std.testing.expectError(error.InvalidArgument, Adapter.init(&owner, &client, handle, 0, 0));
     try std.testing.expectError(error.WouldBlock, Adapter.init(&owner, &client, handle, 0, 5000));
-    const link = &owner.service.link.?;
+    const link = owner.service.link.?;
     link.state = .active;
     link.stream = @import("tcp_stream.zig").Stream.init(.{ .local = .{ .address = .{ 10, 0, 2, 15 }, .port = 50001 }, .remote = .{ .address = .{ 10, 0, 2, 2 }, .port = 22 }, .send_next = 1, .receive_next = 1, .remote_window = 4096, .remote_mss = 1460 });
     var adapter = try Adapter.init(&owner, &client, handle, 0, 5000);

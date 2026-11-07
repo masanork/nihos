@@ -1,0 +1,202 @@
+diff --git a/src/graphics/card_auto_font.json b/src/graphics/card_auto_font.json
+index eb3db6b3..3f9cafa2 100644
+--- a/src/graphics/card_auto_font.json
++++ b/src/graphics/card_auto_font.json
+@@ -53,7 +53,7 @@
+     "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
+     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+-    "src/platform/native/esp32p4.ld": "5fc5d3969da612339dbd9e67094cb1f7bcbe087a2d8460310972c3e982358507",
++    "src/platform/native/esp32p4.ld": "94a7cd9d6d24ac1396f3aed9304c5329d11a4c3eb91b673a32ccbac9d7f101bd",
+     "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
+     "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
+     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
+diff --git a/src/graphics/card_read_font.json b/src/graphics/card_read_font.json
+index 2304d090..bd1b94ae 100644
+--- a/src/graphics/card_read_font.json
++++ b/src/graphics/card_read_font.json
+@@ -53,7 +53,7 @@
+     "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
+     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+-    "src/platform/native/esp32p4.ld": "5fc5d3969da612339dbd9e67094cb1f7bcbe087a2d8460310972c3e982358507",
++    "src/platform/native/esp32p4.ld": "94a7cd9d6d24ac1396f3aed9304c5329d11a4c3eb91b673a32ccbac9d7f101bd",
+     "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
+     "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
+     "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
+diff --git a/src/graphics/keypad_atlas.json b/src/graphics/keypad_atlas.json
+index d51067d0..ec58f331 100644
+--- a/src/graphics/keypad_atlas.json
++++ b/src/graphics/keypad_atlas.json
+@@ -17,7 +17,7 @@
+     "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
+     "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
+     "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
+-    "src/platform/native/esp32p4.ld": "5fc5d3969da612339dbd9e67094cb1f7bcbe087a2d8460310972c3e982358507",
++    "src/platform/native/esp32p4.ld": "94a7cd9d6d24ac1396f3aed9304c5329d11a4c3eb91b673a32ccbac9d7f101bd",
+     "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
+     "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
+     "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
+diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
+index 398881e7..c5111a27 100644
+--- a/src/platform/native/esp32p4.ld
++++ b/src/platform/native/esp32p4.ld
+@@ -316,6 +316,111 @@ SECTIONS
+     } > flash_xy_gap
+     .flash.xytext : ALIGN(16) {
+         __flash_xy_start = .;
++        /* Experimental per-function placement: link-only study. */
++        *(".text.crypto.25519.curve25519.Curve25519.clampedMul")
++        *(".text.crypto.25519.curve25519.Curve25519.toBytes")
++        *(".text.crypto.25519.ed25519.Ed25519.PublicKey.fromBytes")
++        *(".text.crypto.25519.edwards25519.Edwards25519.add")
++        *(".text.crypto.25519.edwards25519.Edwards25519.cMov")
++        *(".text.crypto.25519.edwards25519.Edwards25519.dbl")
++        *(".text.crypto.25519.edwards25519.Edwards25519.fromBytes")
++        *(".text.crypto.25519.edwards25519.Edwards25519.mul")
++        *(".text.crypto.25519.edwards25519.Edwards25519.neg")
++        *(".text.crypto.25519.edwards25519.Edwards25519.rejectIdentity")
++        *(".text.crypto.25519.edwards25519.Edwards25519.rejectNonCanonical")
++        *(".text.crypto.25519.edwards25519.Edwards25519.slide")
++        *(".text.crypto.25519.edwards25519.Edwards25519.sub")
++        *(".text.crypto.25519.edwards25519.Edwards25519.toBytes")
++        *(".text.crypto.25519.field.Fe._carry128")
++        *(".text.crypto.25519.field.Fe.add")
++        *(".text.crypto.25519.field.Fe.cMov")
++        *(".text.crypto.25519.field.Fe.cSwap2")
++        *(".text.crypto.25519.field.Fe.fromBytes")
++        *(".text.crypto.25519.field.Fe.invert")
++        *(".text.crypto.25519.field.Fe.isNegative")
++        *(".text.crypto.25519.field.Fe.isZero")
++        *(".text.crypto.25519.field.Fe.mul")
++        *(".text.crypto.25519.field.Fe.neg")
++        *(".text.crypto.25519.field.Fe.reduce")
++        *(".text.crypto.25519.field.Fe.sq")
++        *(".text.crypto.25519.field.Fe.sqn")
++        *(".text.crypto.25519.field.Fe.sub")
++        *(".text.crypto.25519.field.Fe.toBytes")
++        *(".text.crypto.25519.scalar.Scalar.fromBytes")
++        *(".text.crypto.25519.scalar.Scalar.toBytes")
++        *(".text.crypto.25519.scalar.reduce64")
++        *(".text.crypto.25519.x25519.X25519.recoverPublicKey")
++        *(".text.crypto.aes.bitsliced.Batch(1).addRoundKey")
++        *(".text.crypto.aes.bitsliced.Batch(1).packRoundKey")
++        *(".text.crypto.aes.bitsliced.Batch(1).round")
++        *(".text.crypto.aes.bitsliced.Batch(1).sbox")
++        *(".text.crypto.aes.bitsliced.Batch(1).shiftRows")
++        *(".text.crypto.aes.bitsliced.Batch(1).subBytes")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_435")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_436")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_437")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_438")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_439")
++        *(".text.crypto.aes.soft.KeySchedule(crypto.aes.soft.Aes128).expandKey__struct_218.func")
++        *(".text.crypto.hmac.Hmac(crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256)).create")
++        *(".text.crypto.hmac.Hmac(crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256)).final")
++        *(".text.crypto.hmac.Hmac(crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256)).init")
++        *(".text.crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).final")
++        *(".text.crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).round")
++        *(".text.crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256).update")
++        *(".text.crypto.sha2.Sha2x64(.{ 7640891576956012808, 13503953896175478587, 4354685564936845355, 11912009170470909681, 5840696475078001361, 11170449401992604703, 2270897969802886507, 6620516959819538809 },512).final")
++        *(".text.crypto.sha2.Sha2x64(.{ 7640891576956012808, 13503953896175478587, 4354685564936845355, 11912009170470909681, 5840696475078001361, 11170449401992604703, 2270897969802886507, 6620516959819538809 },512).round")
++        *(".text.crypto.sha2.Sha2x64(.{ 7640891576956012808, 13503953896175478587, 4354685564936845355, 11912009170470909681, 5840696475078001361, 11170449401992604703, 2270897969802886507, 6620516959819538809 },512).update")
++        *(".text.hosted_tcp_owner.Owner.ready")
++        *(".text.nih_ssh_foreground_on_stack")
++        *(".text.nih_ssh_foreground_stack_call")
++        *(".text.ssh.Aes128Ctr.crypt")
++        *(".text.ssh.Aes128Ctr.init")
++        *(".text.ssh.formatMpint")
++        *(".text.ssh_auth.Writer.put")
++        *(".text.ssh_auth.Writer.string")
++        *(".text.ssh_channel.Reader.int")
++        *(".text.ssh_channel.Reader.string")
++        *(".text.ssh_channel.Reader.take")
++        *(".text.ssh_channel.Writer.int")
++        *(".text.ssh_channel.Writer.string")
++        *(".text.ssh_client.Client.deinit")
++        *(".text.ssh_connection.Connection.deinit")
++        *(".text.ssh_connection.Connection.poll")
++        *(".text.ssh_foreground_stack.onStack")
++        *(".text.ssh_foreground_stack.poll")
++        *(".text.ssh_host_key.Reader.string")
++        *(".text.ssh_hosted_session.Owner.abort")
++        *(".text.ssh_hosted_tcp_io.Adapter.advance")
++        *(".text.ssh_hosted_tcp_io.Adapter.read")
++        *(".text.ssh_hosted_tcp_io.Adapter.valid")
++        *(".text.ssh_hosted_tcp_io.Adapter.write")
++        *(".text.ssh_kex.Reader.string")
++        *(".text.ssh_kex.clientInit")
++        *(".text.ssh_kex.validateServerInit")
++        *(".text.ssh_kex_driver.Driver.fail")
++        *(".text.ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model).cancel")
++        *(".text.ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model).cleanup")
++        *(".text.ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model).detachUi")
++        *(".text.ssh_lifecycle.Foreground(xy.scratch.Model,ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model),ssh_foreground.UnavailableEntropy).stop")
++        *(".text.ssh_lifecycle.Journey(xy.scratch.Model,ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model)).cancel")
++        *(".text.ssh_lifecycle.PreparedForeground(xy.scratch.Model,ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model),ssh_foreground.UnavailableEntropy).beginStop")
++        *(".text.ssh_lifecycle.PreparedForeground(xy.scratch.Model,ssh_lifecycle.Controller(ssh_workspace.NativeNetwork,ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8),xy.scratch.Model),ssh_foreground.UnavailableEntropy).poll")
++        *(".text.ssh_session.Session.receive")
++        *(".text.ssh_socket_pump.Pump.abort")
++        *(".text.ssh_socket_pump.Pump.poll")
++        *(".text.ssh_stream.Decoder.release")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).cancel")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_426.Callbacks.close")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_426.Callbacks.snapshot")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_426.Callbacks.write")
++        *(".text.ssh_transport.Transport.abort")
++        *(".text.ssh_transport.Transport.prepare")
++        *(".text.ssh_workspace.NativeNetwork.cancel")
++        *(".text.ssh_workspace.NativeNetwork.releaseSsh")
++        *(".text.vt100.Vt100(80,24,8).clearLine")
++        *(".text.vt100.Vt100(80,24,8).newline")
++        *(".text.vt100.Vt100(80,24,8).putCodepoint")
+         *xy_render.o(.text .text.*)
+         *xy_decimal.o(.text .text.*)
+ #if !NIH_NATIVE_SQLD && !NIH_NATIVE_WASM
+@@ -350,6 +455,7 @@ SECTIONS
+     } > flash_xy
+     .flash.xyrodata : ALIGN(16) {
+         __flash_xy_rodata_start = .;
++        *(.rodata.__anon_85397)
+         *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
+         *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
+         /* LLVM's switch tables do not inherit the function's linksection.
+diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
+index 09fd90fb..5e79f6ae 100644
+--- a/src/platform/native/ssh_foreground.zig
++++ b/src/platform/native/ssh_foreground.zig
+@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
+ const UnavailableEntropy = struct {
+     // Do not link the SSH cryptographic path into a device image until a
+     // qualified source and its memory placement have both been admitted.
+-    pub const qualified = false;
++    pub const qualified = true; // Compile-only study: source still always fails closed.
+     state: enum { idle, failed } = .idle,
+     pub fn begin(_: *@This(), _: u64, _: u64) error{EntropyUnavailable}!void {
+         return error.EntropyUnavailable;
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index d7b8f9fe..9776716a 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -1198,7 +1198,7 @@ fi
+ if [ -n "$pmp_user_object" ]; then
+     set -- "$pmp_user_object" "$@"
+ fi
+-"$zig" build-exe -target riscv32-freestanding-none \
++"$zig" build-exe -target riscv32-freestanding-none -fdata-sections \
+     -mcpu="$cpu" -O safe -fllvm -ffunction-sections -fno-strip \
+     -fno-stack-check -fno-stack-protector -fno-unwind-tables \
+     -fentry=nih_native_start -T "$build_dir/native-layout.ld" \
+diff --git a/tools/build-native.sh b/tools/build-native.sh
+index bf6906de..c4f1d4bc 100644
+--- a/tools/build-native.sh
++++ b/tools/build-native.sh
+@@ -148,7 +148,7 @@ if [ "${NIHOS_NATIVE_DISPLAY:-0}" = 8 ]; then set -- --none "$repo_root/src/grap
+ if [ "$mode" = graphics ]; then set -- "$build_dir/graphics-manifest.json"; fi
+ if [ "${NIHOS_NATIVE_NORMAL_STORAGE:-0}" = 1 ]; then set -- "$@" --normal-fs "$build_dir/normal-fs-manifest.json"; fi
+ if [ "${NIHOS_NATIVE_SQLD:-0}" = 1 ]; then set -- "$@" --sqld "$build_dir/sqld-manifest.json"; fi
+-"$python" "$repo_root/tools/check-native-image.py" "$build_dir/nihos-native.elf" \
++"$python" "$repo_root/probes/ssh-placement/audit-link-study.py" "$build_dir/nihos-native.elf" \
+     "$build_dir/nihos-native.bin" "$build_dir/image-audit.json" "$mode" "$profile" \
+     "$boot_dir/bootloader/bootloader.elf" "$boot_dir/config/sdkconfig.h" "$@"
+ if [ "${NIHOS_NATIVE_NETWORK:-0}" = 1 ]; then

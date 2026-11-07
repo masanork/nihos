@@ -50,3 +50,50 @@ export fn nih_ssh_p4_backend_probe(backend: *B, io: *IO) u32 {
     _ = backend.sample() catch return 0;
     return @intFromBool(backend.release());
 }
+
+// Compile-only wiring. This reservation is deliberately not a hardware owner.
+const leases = @import("p4_entropy_lease");
+const Resources = struct {
+    held: bool = false,
+    pub fn tryReserve(self: *@This()) bool {
+        if (self.held) return false;
+        self.held = true;
+        return true;
+    }
+    pub fn owned(self: *@This()) bool {
+        return self.held;
+    }
+    pub fn releaseUnused(self: *@This()) void {
+        self.held = false;
+    }
+    pub fn releaseRestored(self: *@This()) bool {
+        self.held = false;
+        return true;
+    }
+};
+const Reservation = leases.Lease(leases.NativeRngGate, Resources);
+const hw_mod = @import("p4_entropy_hardware");
+const clock_mod = @import("p4_entropy_clock");
+const ClockIO = struct {
+    reservation: *Reservation,
+    access: *hw_mod.NativeAccess,
+    pub fn owned(self: *@This()) bool {
+        return self.reservation.owned();
+    }
+    pub fn read(self: *@This(), address: usize) u32 {
+        return self.access.read(address);
+    }
+    pub fn counter(_: *@This()) ?u64 {
+        return 0;
+    }
+};
+const Clock = clock_mod.Guard(ClockIO);
+const Hardware = hw_mod.Hardware(hw_mod.NativeAccess, Clock);
+const Platform = leases.Platform(Reservation, Hardware);
+const ComposedBackend = backend_mod.Backend(Platform);
+export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platform) u32 {
+    backend.* = ComposedBackend.init(platform, 10_000, 1_000, 160);
+    backend.begin() catch return 0;
+    _ = backend.sample() catch return 0;
+    return @intFromBool(backend.release());
+}

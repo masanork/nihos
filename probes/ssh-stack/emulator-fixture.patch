@@ -1,0 +1,73 @@
+diff --git a/src/arch/riscv32/xy_render_stack.S b/src/arch/riscv32/xy_render_stack.S
+index 1a1a0270..0266a080 100644
+--- a/src/arch/riscv32/xy_render_stack.S
++++ b/src/arch/riscv32/xy_render_stack.S
+@@ -57 +57 @@ nih_xy_eval_call:
+-.section .flash.xytext.ssh_stack_bridge,"ax",@progbits
++.section .text.ssh_stack_fixture,"ax",@progbits
+diff --git a/src/platform/native/main.zig b/src/platform/native/main.zig
+index cf4497ee..2c771077 100644
+--- a/src/platform/native/main.zig
++++ b/src/platform/native/main.zig
+@@ -20,0 +21 @@ const ui = display_service.ui;
++var ssh_fixture_done = false;
+@@ -1787,0 +1789,18 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
++        if (!ssh_fixture_done) {
++            const stack_test = @import("ssh_foreground_stack.zig");
++            const stack_region = @import("sqld_layout.zig");
++            const runtime: *@import("ssh_foreground.zig").Runtime = @ptrFromInt(stack_region.ssh_foreground);
++            runtime.initInPlace();
++            runtime.active = true;
++            stack_test.poll(runtime, null, @ptrFromInt(stack_region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH fixture clock"));
++            const sp = stack_test.fixture_sp;
++            if (sp < stack_region.ssh_stack + 256 or sp >= stack_region.ssh_stack + stack_region.ssh_stack_bytes) fail("SSH fixture SP");
++            if (!stack_test.fixture_reentry_rejected or stack_test.fixture_after == stack_test.fixture_before) fail("SSH fixture interrupt");
++            const check_stack: []u8 = @as([*]u8, @ptrFromInt(stack_region.ssh_stack))[0..stack_region.ssh_stack_bytes];
++            if (!tasks.memory.stacks.beginForeground(check_stack)) fail("SSH fixture release");
++            tasks.memory.stacks.endForeground();
++            const bytes: []const u8 = @as([*]const u8, @ptrFromInt(stack_region.ssh_stack))[16..stack_region.ssh_stack_bytes];
++            for (bytes) |byte| if (byte != 0) fail("SSH fixture clear");
++            print("NIHOS_SSH_STACK_FIXTURE_PASS\n");
++            ssh_fixture_done = true;
++        }
+diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
+index 09fd90fb..1ee9a792 100644
+--- a/src/platform/native/ssh_foreground.zig
++++ b/src/platform/native/ssh_foreground.zig
+@@ -8 +8 @@ const UnavailableEntropy = struct {
+-    pub const qualified = false;
++    pub const qualified = true; // safe fixture only; on-stack callback contains no SSH.
+diff --git a/src/platform/native/ssh_foreground_stack.zig b/src/platform/native/ssh_foreground_stack.zig
+index 4531f425..21a78ef3 100644
+--- a/src/platform/native/ssh_foreground_stack.zig
++++ b/src/platform/native/ssh_foreground_stack.zig
+@@ -49,0 +50,2 @@ pub noinline fn poll(runtime: *owner.Runtime, model: ?*ssh.Model, ui: *ssh.Ui, n
++    // The real admission gate must still reject reentry after the wipe.
++    if (tasks.memory.stacks.beginForeground(stack)) nih_native_task_failed();
+@@ -56,3 +58,16 @@ comptime {
+-fn onStack(call: *const Call) linksection(".flash.xytext") callconv(.c) void {
+-    if (comptime !owner.qualified) return;
+-    call.runtime.poll(call.model, call.ui, call.now);
++pub var fixture_sp: u32 = 0;
++pub var fixture_before: u32 = 0;
++pub var fixture_after: u32 = 0;
++pub var fixture_reentry_rejected: bool = false;
++fn onStack(_: *const Call) callconv(.c) void {
++    fixture_sp = asm volatile ("mv %[v],sp" : [v] "=r" (-> u32));
++    const stack: []u8 = @as([*]u8, @ptrFromInt(region.ssh_stack))[0..region.ssh_stack_bytes];
++    fixture_reentry_rejected = !tasks.memory.stacks.beginForeground(stack);
++    fixture_before = tasks.report(0).ticks;
++    var spins: u32 = 0;
++    while (spins < 20_000_000 and tasks.report(0).ticks == fixture_before) : (spins += 1) {
++        asm volatile ("" ::: .{ .memory = true });
++    }
++    fixture_after = tasks.report(0).ticks;
++    var marker: [256]u8 = @splat(0x6b);
++    asm volatile ("" :: [p] "r" (&marker) : .{ .memory = true });
+diff --git a/tools/build-native-elf.sh b/tools/build-native-elf.sh
+index d7b8f9fe..20f8d064 100644
+--- a/tools/build-native-elf.sh
++++ b/tools/build-native-elf.sh
+@@ -1200,0 +1201,2 @@ fi
++"$zig" cc -target riscv32-freestanding-none -mcpu="$cpu" -mabi="$abi" -c "$repo_root/src/arch/riscv32/xy_render_stack.S" -o "$build_dir/ssh_stack_fixture.o"
++set -- "$@" "$build_dir/ssh_stack_fixture.o"

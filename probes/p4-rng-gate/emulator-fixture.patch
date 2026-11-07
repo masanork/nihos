@@ -1,0 +1,23 @@
+diff --git a/src/platform/native/main.zig b/src/platform/native/main.zig
+index 94b61bc1..8da47a5c 100644
+--- a/src/platform/native/main.zig
++++ b/src/platform/native/main.zig
+@@ -1775,6 +1775,18 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
+         flushDisplayReport();
+         serviceNetwork();
+         serviceStorage();
++        {
++            var gate: @import("p4_rng_gate.zig").Gate = .{};
++            if (!gate.trySqlite() or gate.tryEntropy() != 0 or !gate.releaseSqlite()) fail("RNG fixture SQLite");
++            const first = gate.tryEntropy();
++            if (first == 0 or !gate.ownsEntropy(first) or gate.trySqlite()) fail("RNG fixture entropy");
++            if (!gate.releaseEntropy(first)) fail("RNG fixture release");
++            const second = gate.tryEntropy();
++            if (second == 0 or second == first or gate.releaseEntropy(first) or !gate.ownsEntropy(second)) fail("RNG fixture stale");
++            if (!gate.releaseEntropy(second) or !gate.trySqlite() or !gate.releaseSqlite()) fail("RNG fixture reacquire");
++            print("NIHOS_RNG_GATE_FIXTURE_PASS\n");
++            while (true) tasks.idleOnce(0);
++        }
+         if (comptime native_ssh_foreground) {
+             const region = @import("sqld_layout.zig");
+             const SshUi = @import("ssh_workspace").Ui;

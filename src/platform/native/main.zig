@@ -19,7 +19,7 @@ const display_service = @import("display_service");
 const card_boot = @import("card_boot.zig");
 const ui = display_service.ui;
 const native_ssh_foreground = @hasDecl(options, "experimental_tcp") and options.experimental_tcp and options.xy_workspace;
-var ssh_foreground: if (native_ssh_foreground) @import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) @import("ssh_foreground.zig").Runtime.init() else {};
+var ssh_foreground: if (native_ssh_foreground) ?*@import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) null else {};
 const cpu_boot = @import("cpu_boot");
 const network = @import("network_service");
 const network_config = @import("network_config");
@@ -1131,6 +1131,16 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                     if (region.ssh_experiment % @alignOf(network.ExperimentalSshSession) != 0) @compileError("experimental SSH state is misaligned");
                 }
                 network.bindExperimentalSshStorage(@ptrFromInt(region.ssh_experiment)) catch fail("experimental SSH storage binding");
+                if (comptime native_ssh_foreground) {
+                    const Foreground = @import("ssh_foreground.zig").Runtime;
+                    comptime {
+                        if (@sizeOf(Foreground) > region.ssh_foreground_bytes) @compileError("SSH foreground exceeds PSRAM reservation");
+                        if (region.ssh_foreground % @alignOf(Foreground) != 0) @compileError("SSH foreground reservation misaligned");
+                    }
+                    const foreground: *Foreground = @ptrFromInt(region.ssh_foreground);
+                    foreground.initInPlace();
+                    ssh_foreground = foreground;
+                }
             }
             break :blk @as(*align(64) [network.storage_bytes]u8, @ptrFromInt(region.network_experiment));
         } else ui.serviceBacking(network.storage_bytes);
@@ -1782,7 +1792,8 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
                 if (@sizeOf(SshUi) > region.ssh_ui_experiment_bytes) @compileError("SSH UI exceeds PSRAM reservation");
                 if (region.ssh_ui_experiment % @alignOf(SshUi) != 0) @compileError("SSH UI reservation misaligned");
             }
-            ssh_foreground.poll(ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
+            const foreground = ssh_foreground orelse fail("SSH foreground not bound");
+            @import("ssh_foreground_stack.zig").poll(foreground, ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
         }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
         if (native_sqld and !native_udp_smoke) serviceSqld();
