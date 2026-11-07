@@ -196,3 +196,119 @@ test "stale async work preserves a newer synchronous conversion" {
     try std.testing.expectEqualStrings("漢字", model.doc.slice());
     try page.detach();
 }
+
+/// Opt-in workspace port. The owner must call Model.pollAsyncIme and route
+/// page completions; this type never submits I/O or authenticates a pin.
+pub const Runtime = struct {
+    session: Session = .{},
+    adapter: *async_conversion.Adapter,
+
+    pub fn port(self: *Runtime) @import("scratch.zig").AsyncImePort {
+        return .{ .context = self, .busy = isBusy, .start = startPort, .cancel = cancelPort, .poll = pollPort };
+    }
+    fn from(ctx: *anyopaque) *Runtime {
+        return @ptrCast(@alignCast(ctx));
+    }
+    fn isBusy(ctx: *anyopaque) bool {
+        return from(ctx).session.phase != .idle;
+    }
+    fn startPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) bool {
+        const self = from(ctx);
+        self.session.start(&model.standard_input, &model.doc, self.adapter) catch return false;
+        return true;
+    }
+    fn cancelPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) void {
+        const self = from(ctx);
+        if (self.session.phase == .draining) return;
+        self.session.cancel(&model.standard_input, self.adapter) catch {
+            model.status = .invalid_input;
+        };
+    }
+    fn pollPort(ctx: *anyopaque, model: *@import("scratch.zig").Model, budget: usize) bool {
+        const self = from(ctx);
+        if (model.mode != .edit or model.nav.screen != .document or model.ime.mode == .direct or model.skk_input) {
+            cancelPort(ctx, model);
+            return false;
+        }
+        const progress = self.session.step(&model.standard_input, &model.doc, self.adapter, budget) catch {
+            model.status = .invalid_input;
+            return true;
+        };
+        return progress == .complete;
+    }
+    pub fn request(self: *const Runtime) ?pages.Request {
+        return self.session.request(self.adapter);
+    }
+    pub fn supply(self: *Runtime, req: pages.Request, data: ?[]const u8) !void {
+        try self.session.supply(self.adapter, req, data);
+    }
+};
+
+test "workspace dispatcher cancels and drains before detaching async port" {
+    const scratch = @import("scratch.zig");
+    const bytes = @embedFile("fixtures/jisyo_s_nfst.bin");
+    var model: scratch.Model = undefined;
+    model.initInPlace();
+    model.ime.mode = .hiragana;
+    var page: pages.Coordinator = .{};
+    try page.attach(1, bytes.len);
+    var adapter = async_conversion.Adapter{ .coordinator = &page };
+    var runtime = Runtime{ .adapter = &adapter };
+    const port = runtime.port();
+    try std.testing.expect(model.attachAsyncIme(&port));
+    for ("kanji") |c| model.handle(.{ .text = c });
+    model.handle(.{ .text = ' ' });
+    const revision = model.revision;
+    var req: ?pages.Request = null;
+    for (0..10000) |_| {
+        model.pollAsyncIme(128);
+        try std.testing.expectEqual(revision, model.revision);
+        if (runtime.request()) |r| {
+            req = r;
+            break;
+        }
+    }
+    const pending = req orelse return error.TestUnexpectedResult;
+    try std.testing.expect(!model.detachAsyncIme());
+    model.handle(.{ .text = 'a' });
+    try std.testing.expectEqualStrings("かんじあ", model.doc.preedit.slice());
+    try std.testing.expect(!model.detachAsyncIme());
+    model.handle(.{ .text = ' ' }); // Busy while the cancelled page drains.
+    try std.testing.expectEqualStrings("かんじあ", model.doc.preedit.slice());
+    try runtime.supply(pending, bytes[@intCast(pending.offset)..][0..pending.length]);
+    try std.testing.expect(model.detachAsyncIme());
+    try std.testing.expectEqualStrings("かんじあ", model.doc.preedit.slice());
+    try page.detach();
+}
+
+test "workspace dispatcher can commit reading while cancelled page drains" {
+    const scratch = @import("scratch.zig");
+    const bytes = @embedFile("fixtures/jisyo_s_nfst.bin");
+    var model: scratch.Model = undefined;
+    model.initInPlace();
+    model.ime.mode = .hiragana;
+    var page: pages.Coordinator = .{};
+    try page.attach(1, bytes.len);
+    var adapter = async_conversion.Adapter{ .coordinator = &page };
+    var runtime = Runtime{ .adapter = &adapter };
+    const port = runtime.port();
+    try std.testing.expect(model.attachAsyncIme(&port));
+    for ("kanji") |c| model.handle(.{ .text = c });
+    model.handle(.{ .text = ' ' });
+    var req: ?pages.Request = null;
+    for (0..10000) |_| {
+        model.pollAsyncIme(128);
+        if (runtime.request()) |r| {
+            req = r;
+            break;
+        }
+    }
+    const pending = req orelse return error.TestUnexpectedResult;
+    model.handle(.enter);
+    try std.testing.expectEqualStrings("かんじ", model.doc.slice());
+    try std.testing.expect(!model.detachAsyncIme());
+    try runtime.supply(pending, bytes[@intCast(pending.offset)..][0..pending.length]);
+    try std.testing.expectEqualStrings("かんじ", model.doc.slice());
+    try std.testing.expect(model.detachAsyncIme());
+    try page.detach();
+}
