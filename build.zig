@@ -219,6 +219,10 @@ pub fn build(b: *std.Build) void {
     p4_ssh_backend_module.addImport("p4_entropy_hardware", p4_entropy_hardware_module);
     p4_ssh_backend_module.addImport("p4_entropy_clock", p4_entropy_clock_module);
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = p4_ssh_backend_module })).step);
+    const hosted_long_storage_module = b.createModule(.{ .root_source_file = b.path("src/net/hosted_long_storage.zig"), .target = target, .optimize = optimize });
+    const native_long_storage_module = b.createModule(.{ .root_source_file = b.path("src/platform/native/hosted_long_storage.zig"), .target = target, .optimize = optimize });
+    native_long_storage_module.addImport("hosted_long_storage", hosted_long_storage_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = native_long_storage_module })).step);
     const ssh_reservation_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_reservation.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ssh_reservation_module })).step);
     const ssh_hosted_session_module = b.createModule(.{ .root_source_file = b.path("src/net/ssh_hosted_session.zig"), .target = target, .optimize = optimize });
