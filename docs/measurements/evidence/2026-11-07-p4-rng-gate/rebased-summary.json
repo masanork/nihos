@@ -1,0 +1,15 @@
+{
+  "profile": "headless ESP-EMU 0.50.0; single-core gate; no hardware entropy",
+  "source_head": "c6d0b1d92b3fac612d794aeb355dc6be4f9f43d6",
+  "emulator_sha256": "a4c3468a4abf3f2e55ca0912fa7cdfbe5e101ecb6ab74a9ec35182d70ba6a771",
+  "fixture_patch_sha256": "43d0787a94fd9c5eda06a84f938c881a2b4f4aada4ffc7e178cdb3a4982b3817",
+  "elf_sha256": "a5f84af749ba7d7bf5d4fae0e65ceed1a3435c09222aeda1347416a7bcf09607",
+  "image_sha256": "de2929d09504de0fdb56f4b150c99126b8a770faf0481e574a0b073c997e7050",
+  "heap_bytes": 122304,
+  "emulator_log_sha256": "794cfcf69021c32c236c5e6ffa47cb32eaf91c6a76ba6bca2865f526edff5f7b",
+  "checks": [
+    "SQLite and entropy gate exclusion",
+    "stale token rejection",
+    "release and reacquisition"
+  ]
+}

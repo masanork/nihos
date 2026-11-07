@@ -136,6 +136,8 @@ const std = @import("std");
 const collector_mod = @import("ssh_seed_collector.zig");
 const entropy_mod = @import("ssh_entropy.zig");
 const Fake = struct {
+    gate: ?*@import("p4_rng_gate").Gate = null,
+    token: u32 = 0,
     acquired: bool = false,
     clock: bool = true,
     stuck: bool = false,
@@ -151,15 +153,23 @@ const Fake = struct {
     adc: [9]u32 = .{ 0x40000000, 0x42, 0xab123456, 0, 0, 0, 0x1234, 0x12345678, 4 },
     pub fn acquire(self: *@This()) bool {
         if (self.acquired) return false;
+        if (self.gate) |gate| {
+            self.token = gate.tryEntropy();
+            if (self.token == 0) return false;
+        }
         self.acquired = true;
         return true;
     }
     pub fn release(self: *@This()) bool {
+        if (self.gate) |gate| {
+            if (!gate.releaseEntropy(self.token)) return false;
+            self.token = 0;
+        }
         self.acquired = false;
         return true;
     }
     pub fn owned(self: *@This()) bool {
-        return self.acquired;
+        return self.acquired and (if (self.gate) |gate| gate.ownsEntropy(self.token) else true);
     }
     pub fn clockReady(self: *@This()) bool {
         return self.clock;
@@ -258,7 +268,8 @@ test "ADC through seed collector to CSPRNG and complete cleanup with simulated h
 }
 
 test "busy analog bus retains reservation until cleanup is safe" {
-    var io: Fake = .{};
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
     const original_sar = io.sar;
     var backend = Backend(Fake).init(&io, 10_000, 100, 160);
     var generations: collector_mod.Generations = .{};
@@ -277,6 +288,7 @@ test "busy analog bus retains reservation until cleanup is safe" {
         collector.poll(io.now);
     }
     try std.testing.expect(io.acquired);
+    try std.testing.expect(!gate.trySqlite());
     io.stuck = false;
     for (0..100) |_| {
         io.tick();
@@ -285,6 +297,8 @@ test "busy analog bus retains reservation until cleanup is safe" {
     }
     try std.testing.expect(!io.acquired);
     try std.testing.expectEqualSlices(u8, &original_sar, &io.sar);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
 }
 
 test "clock change after collection revokes seed before admission and permits cleanup" {
@@ -332,4 +346,49 @@ test "unexpected ADC event after collection revokes seed without clearing the ev
     collector.poll(io.now);
     try std.testing.expect(io.acquired);
     try std.testing.expect(io.adc[Fake.idx(0x500de054)] & (1 << 30) != 0);
+}
+
+test "native RNG gate remains held through simulated entropy cleanup" {
+    var gate: @import("p4_rng_gate").Gate = .{};
+    var io: Fake = .{ .gate = &gate };
+    var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
+    var generations: collector_mod.Generations = .{};
+    var collector = collector_mod.Collector(Backend(Fake)).init(&backend, &generations);
+
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectError(error.Unavailable, collector.begin(0, 100_000));
+    try std.testing.expect(!io.acquired and io.token == 0);
+    try std.testing.expect(gate.releaseSqlite());
+    try collector.begin(0, 100_000);
+    const first = io.token;
+    for (0..400) |_| {
+        io.tick();
+        collector.poll(io.now);
+        try std.testing.expect(!gate.trySqlite());
+        if (collector.lease() != null) break;
+    }
+    try std.testing.expect(collector.lease() != null);
+    collector.cancel();
+    try std.testing.expect(!gate.trySqlite());
+    var cleaned = false;
+    for (0..400) |_| {
+        io.tick();
+        collector.poll(io.now);
+        if (!io.acquired) {
+            cleaned = true;
+            break;
+        }
+        try std.testing.expect(!gate.trySqlite());
+    }
+    try std.testing.expect(cleaned);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    try collector.begin(io.now, 100_000);
+    try std.testing.expect(io.token != first);
+    try std.testing.expect(!gate.releaseEntropy(first));
+    try std.testing.expect(!gate.trySqlite());
+    collector.cancel();
+    collector.poll(io.now);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
 }
