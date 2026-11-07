@@ -308,6 +308,41 @@ impl Workspace {
                 cx.stop_propagation();
                 return;
             }
+            if is_emulator_paste_shortcut(stroke) {
+                if !event.is_held {
+                    let text = cx.read_from_clipboard().and_then(|item| item.text());
+                    let result = text
+                        .as_deref()
+                        .ok_or("Clipboard has no text")
+                        .and_then(encode_emulator_paste);
+                    match result {
+                        Ok(bytes) => {
+                            if let Some(emu) = &self.emulator {
+                                emu.paste(bytes);
+                            }
+                            if self
+                                .emu_error
+                                .as_deref()
+                                .is_some_and(|error| error.starts_with("Paste: "))
+                            {
+                                self.emu_error = None;
+                            }
+                        }
+                        Err(error) => self.emu_error = Some(format!("Paste: {error}")),
+                    }
+                    cx.notify();
+                }
+                cx.stop_propagation();
+                return;
+            }
+            if self
+                .emu_error
+                .as_deref()
+                .is_some_and(|error| error.starts_with("Paste: "))
+            {
+                self.emu_error = None;
+                cx.notify();
+            }
             if let Some(emu) = &mut self.emulator {
                 if let Some(control) = emulator_control_key(stroke) {
                     emu.send_key(control);
@@ -410,6 +445,42 @@ fn emulator_control_key(stroke: &Keystroke) -> Option<u8> {
         [byte @ b'A'..=b'Z'] => Some(byte - b'A' + 1),
         _ => None,
     }
+}
+
+const EMULATOR_PASTE_MAX: usize = 4096;
+
+fn is_emulator_paste_shortcut(stroke: &Keystroke) -> bool {
+    stroke.key == "v"
+        && !stroke.modifiers.alt
+        && !stroke.modifiers.function
+        && ((stroke.modifiers.platform && !stroke.modifiers.control)
+            || (cfg!(target_os = "linux")
+                && stroke.modifiers.control
+                && stroke.modifiers.shift
+                && !stroke.modifiers.platform))
+}
+
+fn encode_emulator_paste(text: &str) -> Result<Vec<u8>, &'static str> {
+    if text.len() > EMULATOR_PASTE_MAX {
+        return Err("Text exceeds 4096 bytes");
+    }
+    let mut result = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\r' => {
+                if chars.peek() == Some(&'\n') {
+                    chars.next();
+                }
+                result.push('\r');
+            }
+            '\n' => result.push('\r'),
+            '\t' => result.push(ch),
+            _ if ch.is_control() => return Err("Text contains unsupported control characters"),
+            _ => result.push(ch),
+        }
+    }
+    Ok(result.into_bytes())
 }
 struct Labels {
     title: Arc<RenderImage>,
@@ -1226,6 +1297,35 @@ fn main() {
 #[cfg(test)]
 mod emulator_display_tests {
     use super::*;
+
+    #[::core::prelude::v1::test]
+    fn paste_normalizes_lines_and_rejects_unsafe_or_oversized_text() {
+        assert_eq!(
+            encode_emulator_paste("abc\r\ndef\nghi\r日本語\t").unwrap(),
+            "abc\rdef\rghi\r日本語\t".as_bytes()
+        );
+        assert!(encode_emulator_paste("prefix\x1b[Asuffix").is_err());
+        assert!(encode_emulator_paste("prefix\0suffix").is_err());
+        assert!(encode_emulator_paste(&"x".repeat(EMULATOR_PASTE_MAX)).is_ok());
+        assert!(encode_emulator_paste(&"x".repeat(EMULATOR_PASTE_MAX + 1)).is_err());
+    }
+
+    #[::core::prelude::v1::test]
+    fn paste_shortcut_does_not_steal_control_v() {
+        assert!(is_emulator_paste_shortcut(
+            &Keystroke::parse("cmd-v").unwrap()
+        ));
+        assert!(!is_emulator_paste_shortcut(
+            &Keystroke::parse("ctrl-v").unwrap()
+        ));
+        assert!(!is_emulator_paste_shortcut(
+            &Keystroke::parse("cmd-alt-v").unwrap()
+        ));
+        assert_eq!(
+            is_emulator_paste_shortcut(&Keystroke::parse("ctrl-shift-v").unwrap()),
+            cfg!(target_os = "linux")
+        );
+    }
 
     #[::core::prelude::v1::test]
     fn control_letters_encode_terminal_control_bytes() {
