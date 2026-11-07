@@ -261,7 +261,7 @@ XY_METHODS = {'quasiquote', 'quasiquoteKind', 'stringScalarCount', 'initInPlace'
               'numericCall', 'safeNumericExpr', 'safeArithmetic', 'safeArithmeticSequence', 'prepareNumeric', 'numericWrapper', 'emitBcByte', 'emitBcOp', 'emitBcU16', 'emitBcI16', 'emitBcJumpPlaceholder', 'patchBcJump', 'compileExpr', 'toBcOp',
               'runCommand', 'format', 'emit', 'print', 'viewKey', 'applyView', 'applyCard', 'cameraRead',
               'startBudget', 'applyApp', 'runFrame', 'clearFrame', 'applyStorage', 'nonnegative', 'storageText', 'sameText', 'parseDecimal', 'parseHex'}
-XY_HOST_METHODS = {'appendCommand', 'detachPrivateInput', 'saveDocument', 'insert', 'imeRoute', 'evaluationStackUnavailable', 'imeKey', 'schemeCall', 'imeProvider', 'statusText', 'touchMove', 'evaluate', 'terminalChanged', 'feedHid', 'touchMoveNow', 'attachPrivateInput', 'loadDocument', 'touchOrientation', 'showCardView', 'touchCancel', 'emptyImeQuery', 'cameraCapture', 'resetScheme', 'applyKeyboardPresence', 'touch', 'cameraRead', 'touchDownNow', 'evaluateOnStack', 'evaluateOnStackSync', 'expireSerial', 'cardRead', 'initInPlace', 'attachTerminal', 'softKeyboardVisible', 'schemeError', 'detachTerminal', 'touchNow', 'feedSerial', 'cardDismiss', 'deferTouch', 'setPhysicalKeyboard', 'privateInputSnapshot', 'openSystem', 'terminalSnapshot', 'documentText', 'cardInfo', 'cameraInfo', 'touchDown', 'storageCall', 'handle', 'replayInput'}
+XY_HOST_METHODS = {'appendCommand', 'detachPrivateInput', 'saveDocument', 'insert', 'imeRoute', 'evaluationStackUnavailable', 'imeKey', 'schemeCall', 'imeProvider', 'statusText', 'touchMove', 'evaluate', 'terminalChanged', 'feedHid', 'touchMoveNow', 'attachPrivateInput', 'loadDocument', 'touchOrientation', 'showCardView', 'touchCancel', 'defaultImeQuery', 'cameraCapture', 'resetScheme', 'applyKeyboardPresence', 'touch', 'cameraRead', 'touchDownNow', 'evaluateOnStack', 'evaluateOnStackSync', 'expireSerial', 'cardRead', 'initInPlace', 'attachTerminal', 'softKeyboardVisible', 'schemeError', 'detachTerminal', 'touchNow', 'feedSerial', 'cardDismiss', 'deferTouch', 'setPhysicalKeyboard', 'privateInputSnapshot', 'openSystem', 'terminalSnapshot', 'documentText', 'cardInfo', 'cameraInfo', 'touchDown', 'storageCall', 'handle', 'replayInput'}
 
 
 # Foreground object compiled with symbols retained. Keep this exact: IRQ or I/O
@@ -360,12 +360,14 @@ def xy_function(name):
     document_helper = re.fullmatch(r'xy\.document\.(?:nextClusterEnd|prevClusterStart)', name)
     ime = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:OmniIme|RomajiAutomaton|CandidateList)\.(\w+?)(?:__func_[0-9]+)?', name)
     ime_helper = re.fullmatch(r'(?:xy\.)?ime_omni\.(?:isBuiltinPrefixTrigger|isRawPrefixKind)(?:__func_[0-9]+)?', name)
+    standard_ime = re.fullmatch(r'(?:xy\.)?standard_ime\.State\.(?:key|flush|overlay|commit|cancel|move)(?:__func_[0-9]+)?', name)
+    conversion = re.fullmatch(r'(?:xy\.)?conv\.(?:Engine\.(?:init|convert|calcPhraseCost|populateCandidates|addCombinedCandidate|addRawCandidate|addKatakanaCandidate|selectCandidate|nextCandidate|prevCandidate|candidateText|render)|checkTail|checkConjugationTail|getOkuriKanaLen|getOkuriConsonant)(?:__func_[0-9]+)?', name)
     dict_match = re.fullmatch(r'(?:xy\.)?dict\.(?:NfstDict|MeosDict)\.(\w+)(?:__func_[0-9]+)?', name)
     keyboard_driver = re.fullmatch(r'board\.tab5\.keyboard\.KeyboardIn\(boot_i2c\.Master\(display_probe\.Pins\),"\.flash\.xytext"\[0\.\.13\]\)\.(?:read|begin|poll)(?:__func_[0-9]+)?', name)
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
     decimal_name = re.sub(r'__func_[0-9]+$', '', name)
-    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or standard_ime or conversion or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_udp_xy_functions(functions, span):
@@ -441,6 +443,20 @@ def audit_xy_romaji_table(symbols, sizes, ro_start, ro_data, resident_rodata, re
             'xy romaji table outside declared readonly Flash storage')
     table = ro_data[start - ro_start:start - ro_start + size]
     require(table not in resident_rodata, 'xy romaji table has an anonymous SRAM copy')
+    return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
+
+
+def audit_xy_default_dictionary(symbols, sizes, ro_start, ro_data, resident_rodata, required=False):
+    name = 'xy.scratch.default_ime_bytes'
+    if not required and name not in symbols:
+        return None
+    require(name in symbols, 'missing built-in IME dictionary')
+    start, size = symbols[name], sizes.get(name)
+    require(size == 96027 and ro_start <= start <= ro_start + len(ro_data) - size,
+            'built-in IME dictionary outside readonly Flash')
+    data = ro_data[start - ro_start:start - ro_start + size]
+    require(data.startswith(b'NFST') and data not in resident_rodata,
+            'invalid built-in IME dictionary or SRAM copy')
     return {'symbol': name, 'start': hex(start), 'bytes': size, 'readonly_flash': True, 'sram_copy': False}
 
 
@@ -1294,6 +1310,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
                                          any(name.endswith('Runtime.applyApp') for name in xy_functions))
         romaji_table = audit_xy_romaji_table(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
                                              any(name.endswith('RomajiAutomaton.feed') for name in xy_functions))
+        ime_dictionary = audit_xy_default_dictionary(symbols, symbol_sizes, xy_ro, xy_data, resident_rodata,
+                                                      'xy.scratch.Model.defaultImeQuery' in xy_functions)
         base = fs_payload if allow_fs else flash_tables + bytes((-len(flash_tables)) % 4)
         require(flash_start + len(base) <= xy_start, 'xy overlaps preceding Flash payload')
         xy_payload = base + bytes(xy_start - flash_start - len(base)) + xy_code + bytes(xy_ro - xy_span[1]) + xy_data
@@ -1303,6 +1321,8 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
             xy_report['plot_table'] = plot_table
         if romaji_table is not None:
             xy_report['romaji_table'] = romaji_table
+        if ime_dictionary is not None:
+            xy_report['ime_dictionary'] = ime_dictionary
     sqld_report = None
     require(symbols.get('__native_sqld', 0) == int(allow_sqld), 'sqld symbol/manifest mismatch')
     require(not allow_fs or normal_fs_manifest.get('sqld_enabled', False) == allow_sqld, 'SD write grant/sqld profile mismatch')

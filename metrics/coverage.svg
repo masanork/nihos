@@ -15,15 +15,16 @@
 <text x="55" y="82.0" text-anchor="end" font-size="11">100</text>
 <rect x="82.5" y="84.7413793103448" width="55" height="177.2586206896552" fill="#2563eb"><title>2026-10-25: coverage 96.3</title></rect>
 <text x="110.0" y="286" text-anchor="middle" font-size="11">2026-10-25</text>
-<rect x="162.5" y="83.22053959965186" width="55" height="178.77946040034814" fill="#2563eb"><title>2026-10-30: coverage 97.2</title></rect>
-<rect x="242.5" y="88.5392192630427" width="55" height="173.4607807369573" fill="#2563eb"><title>2026-10-31: coverage 94.3</title></rect>
-<rect x="322.5" y="90.24339025932954" width="55" height="171.75660974067046" fill="#2563eb"><title>2026-11-01: coverage 93.3</title></rect>
-<rect x="402.5" y="88.9951854998584" width="55" height="173.0048145001416" fill="#2563eb"><title>2026-11-02: coverage 94.0</title></rect>
-<rect x="482.5" y="88.9249677310736" width="55" height="173.0750322689264" fill="#2563eb"><title>2026-11-03: coverage 94.1</title></rect>
-<rect x="562.5" y="88.81326040852773" width="55" height="173.18673959147227" fill="#2563eb"><title>2026-11-04: coverage 94.1</title></rect>
-<rect x="642.5" y="88.81326040852773" width="55" height="173.18673959147227" fill="#2563eb"><title>2026-11-05: coverage 94.1</title></rect>
-<rect x="722.5" y="88.80301087259551" width="55" height="173.1969891274045" fill="#2563eb"><title>2026-11-06: coverage 94.1</title></rect>
-<text x="750.0" y="286" text-anchor="middle" font-size="11">2026-11-06</text>
+<rect x="153.61111111111111" y="83.22053959965186" width="55" height="178.77946040034814" fill="#2563eb"><title>2026-10-30: coverage 97.2</title></rect>
+<rect x="224.72222222222223" y="88.5392192630427" width="55" height="173.4607807369573" fill="#2563eb"><title>2026-10-31: coverage 94.3</title></rect>
+<rect x="295.83333333333337" y="90.24339025932954" width="55" height="171.75660974067046" fill="#2563eb"><title>2026-11-01: coverage 93.3</title></rect>
+<rect x="366.94444444444446" y="88.9951854998584" width="55" height="173.0048145001416" fill="#2563eb"><title>2026-11-02: coverage 94.0</title></rect>
+<rect x="438.05555555555554" y="88.9249677310736" width="55" height="173.0750322689264" fill="#2563eb"><title>2026-11-03: coverage 94.1</title></rect>
+<rect x="509.16666666666674" y="88.81326040852773" width="55" height="173.18673959147227" fill="#2563eb"><title>2026-11-04: coverage 94.1</title></rect>
+<rect x="580.2777777777778" y="88.81326040852773" width="55" height="173.18673959147227" fill="#2563eb"><title>2026-11-05: coverage 94.1</title></rect>
+<rect x="651.3888888888889" y="88.80301087259551" width="55" height="173.1969891274045" fill="#2563eb"><title>2026-11-06: coverage 94.1</title></rect>
+<rect x="722.5" y="88.97473396998635" width="55" height="173.02526603001365" fill="#2563eb"><title>2026-11-07: coverage 94.0</title></rect>
+<text x="750.0" y="286" text-anchor="middle" font-size="11">2026-11-07</text>
 <rect x="65" y="309" width="12" height="12" fill="#2563eb"/>
 <text x="83" y="320" font-size="12">coverage</text>
 </g></svg>

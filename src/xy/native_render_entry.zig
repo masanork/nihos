@@ -63,6 +63,46 @@ pub export fn nih_xy_render_terminal(request: *const protocol.Request, view: *co
     return true;
 }
 
+test "inline IME renders without mutating document in horizontal and vertical views" {
+    const std = @import("std");
+    const config_module = @import("view_config");
+    const instance = try std.testing.allocator.create(session.Session);
+    defer std.testing.allocator.destroy(instance);
+    try instance.init(ttf.SliceReader.fromSlice(&mincho), ttf.SliceReader.fromSlice(&gothic));
+    const pixels = try std.testing.allocator.alloc(u8, 720 * 1280 * 2);
+    defer std.testing.allocator.free(pixels);
+    var config = config_module.Config{};
+    const text = "日本語";
+    const preedit = "▼漢字";
+    const candidates = [_]protocol.ImeCandidate{
+        .{ .text = "漢字", .length = "漢字".len },
+        .{ .text = "幹事", .length = "幹事".len },
+    };
+    var request = protocol.Request{ .workspace = instance, .frame = pixels.ptr, .frame_length = pixels.len, .config = &config, .text = text.ptr, .text_length = text.len, .cursor = "日本".len, .status = "", .status_length = 0, .show_cursor = 1 };
+    for (0..2) |axis| {
+        config.style.axis = @intCast(axis);
+        request.preedit_length = 0;
+        request.candidate_count = 0;
+        try instance.render(&request);
+        const plain_hash = std.hash.Wyhash.hash(0, pixels);
+        request.preedit = preedit;
+        request.preedit_length = preedit.len;
+        try instance.render(&request);
+        const composed_hash = std.hash.Wyhash.hash(0, pixels);
+        try std.testing.expect(plain_hash != composed_hash);
+        request.candidates = &candidates;
+        request.candidate_count = candidates.len;
+        try instance.render(&request);
+        const first_hash = std.hash.Wyhash.hash(0, pixels);
+        try std.testing.expect(first_hash != composed_hash);
+        request.candidate_selected = 1;
+        try instance.render(&request);
+        try std.testing.expect(first_hash != std.hash.Wyhash.hash(0, pixels));
+        try std.testing.expectEqualStrings("日本語", text);
+        request.candidate_selected = 0;
+    }
+}
+
 test "boot faces render Japanese spaces missing glyphs and live view settings" {
     const std = @import("std");
     const config_module = @import("view_config");

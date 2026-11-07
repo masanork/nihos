@@ -43,10 +43,36 @@ def generate(root, image_dir, output):
     app = image_dir / 'nihos-native.bin'
     if audit.get('image_sha256') != digest(app):
         raise ValueError('image audit application digest does not match the supplied binary')
+    loader_elf = image_dir / 'loader/bootloader/bootloader.elf'
+    loader_config = image_dir / 'loader/config/sdkconfig.h'
+    if audit.get('loader', {}).get('elf_sha256') != digest(loader_elf):
+        raise ValueError('image audit loader ELF digest does not match')
+    config_hash = hashlib.sha256(loader_config.read_text().encode()).hexdigest()
+    if audit.get('loader_config', {}).get('config_sha256') != config_hash:
+        raise ValueError('image audit loader configuration digest does not match')
     flash = image.read_bytes()
-    app_bytes = app.read_bytes()
-    if flash[0x10000:0x10000 + len(app_bytes)] != app_bytes:
-        raise ValueError('flash image does not contain the audited application at 0x10000')
+    parts = [
+        ('bootloader.bin', image_dir / 'loader/bootloader/bootloader.bin', 0x2000, 0x8000),
+        ('partition-table.bin', image_dir / 'loader/partition_table/partition-table.bin', 0x8000, 0x10000),
+        ('nihos-native.bin', app, 0x10000, None),
+    ]
+    binary_components = []
+    cursor = 0
+    for name, path, offset, limit in parts:
+        data = path.read_bytes()
+        if not data or (limit is not None and offset + len(data) > limit):
+            raise ValueError(f'{name} is empty or exceeds its flash region')
+        if flash[cursor:offset] != b'\xff' * (offset - cursor):
+            raise ValueError(f'unexpected flash padding before {name}')
+        if flash[offset:offset + len(data)] != data:
+            raise ValueError(f'flash image does not contain {name} at {offset:#x}')
+        binary_components.append({'type': 'file', 'name': name,
+            'hashes': [{'alg': 'SHA-256', 'content': hashlib.sha256(data).hexdigest()}],
+            'properties': [prop('evidence', 'byte-identical flash slice'),
+                           prop('flash-offset', hex(offset))]})
+        cursor = offset + len(data)
+    if len(flash) != cursor:
+        raise ValueError('unexpected data after the application in flash image')
     image_hash = digest(image)
     subject = {'type': 'firmware', 'name': image.name,
                'hashes': [{'alg': 'SHA-256', 'content': image_hash}]}
@@ -89,7 +115,7 @@ def generate(root, image_dir, output):
                     [prop('source-location', location) for location in locations]})
     # The native image audit already verifies the manifest identities embedded in
     # the ELF. Recheck those identities before extracting the two known inputs.
-    audited = []
+    audited = binary_components
     if audit.get('normal_fs'):
         manifest = json.loads((image_dir / 'normal-fs-manifest.json').read_text())
         manifest_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -118,7 +144,12 @@ def generate(root, image_dir, output):
     base = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1, 'metadata': metadata}
     output.mkdir(parents=True, exist_ok=True)
     for name, entries in [('source-sbom.cdx.json', components), ('source-cbom.cdx.json', crypto), ('audited-inputs.cdx.json', audited)]:
-        (output / name).write_text(json.dumps({**base, 'components': entries}, indent=2) + '\n')
+        document = {**base, 'components': entries}
+        if name == 'audited-inputs.cdx.json':
+            document['metadata'] = {**metadata, 'properties': [
+                prop('inventory-scope', 'partial audited inputs and matched image binaries; completeness unverified'),
+                *metadata['properties'][1:]]}
+        (output / name).write_text(json.dumps(document, indent=2) + '\n')
 
 
 def main():

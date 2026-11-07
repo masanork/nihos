@@ -6,6 +6,8 @@
 const std = @import("std");
 const dict_mod = @import("dict.zig");
 pub const NfstDict = dict_mod.NfstDict;
+pub const code_section = @import("ime_omni.zig").code_section;
+pub const data_section = if (@import("builtin").os.tag == .freestanding) ".flash.xyrodata" else if (@import("builtin").object_format == .macho) "__DATA_CONST,__const" else ".rodata";
 
 pub const max_reading = 128;
 pub const max_segments = 32;
@@ -38,7 +40,7 @@ pub const TailDef = struct {
     class: u16,
 };
 
-pub const TAILS = [_]TailDef{
+pub const TAILS linksection(data_section) = [_]TailDef{
     // Particles (Plain / Any)
     .{ .str = "を", .mask = TailMask.any, .class = ConjClass.u },
     .{ .str = "に", .mask = TailMask.any, .class = ConjClass.u | ConjClass.i },
@@ -135,12 +137,12 @@ pub const Engine = struct {
     dp_dict_end: [max_reading + 1]u8 = @splat(0),
     dp_is_ari: [max_reading + 1]bool = @splat(false),
 
-    pub fn init() Engine {
+    pub fn init() linksection(code_section) Engine {
         return .{};
     }
 
     /// Convert reading (hiragana UTF-8 string) into bunsetsu segments using Viterbi DP.
-    pub fn convert(self: *Engine, dict: *const NfstDict, reading: []const u8) void {
+    pub fn convert(self: *Engine, dict: *const NfstDict, reading: []const u8) linksection(code_section) void {
         const len = @min(reading.len, max_reading);
         @memcpy(self.reading_buf[0..len], reading[0..len]);
         self.reading_len = len;
@@ -211,7 +213,7 @@ pub const Engine = struct {
     }
 
     /// Calculate cost for reading phrase [i..j)
-    fn calcPhraseCost(self: *Engine, dict: *const NfstDict, phrase: []const u8, start_offset: u8, best_k: *u8, is_ari: *bool) i32 {
+    fn calcPhraseCost(self: *Engine, dict: *const NfstDict, phrase: []const u8, start_offset: u8, best_k: *u8, is_ari: *bool) linksection(code_section) i32 {
         _ = self;
         var min_cost = inf_cost;
         var bk = start_offset;
@@ -260,7 +262,7 @@ pub const Engine = struct {
                             const rem_tail = phrase[k_len + okuri_info.kana_len ..];
                             if (checkConjugationTail(rem_tail, okuri_info.class)) {
                                 const char_count: i32 = @intCast(std.unicode.utf8CountCodepoints(stem) catch 1);
-                                var cost = seg_base - @min(char_count + 1, 6) * word_bonus - 30; // conj bonus
+                                var cost = seg_base - @min(char_count + 1, 6) * word_bonus + 150; // Prefer an exact dictionary word over a coincidental inflection.
                                 if (rem_tail.len > 0) cost -= tail_bonus;
                                 if (cost < min_cost) {
                                     min_cost = cost;
@@ -294,7 +296,7 @@ pub const Engine = struct {
         return min_cost;
     }
 
-    fn populateCandidates(self: *Engine, dict: *const NfstDict, seg: *Segment) void {
+    fn populateCandidates(self: *Engine, dict: *const NfstDict, seg: *Segment) linksection(code_section) void {
         const phrase = self.reading_buf[seg.start..seg.end];
         const dict_part = self.reading_buf[seg.start..seg.dict_end];
         const tail_part = self.reading_buf[seg.dict_end..seg.end];
@@ -327,12 +329,33 @@ pub const Engine = struct {
             }
         }
 
+        // A plain spelling and an inflected verb can have the same reading
+        // (いく: 郁 / 行く). Keep both kinds in the candidate list.
+        if (!seg.is_ari) {
+            var split: usize = 1;
+            while (split < phrase.len) : (split += 1) {
+                if (phrase[split] & 0xc0 == 0x80) continue;
+                const okuri = getOkuriConsonant(phrase[split..]) orelse continue;
+                if (!checkConjugationTail(phrase[split + okuri.kana_len ..], okuri.class)) continue;
+                var key: [64]u8 = undefined;
+                if (split + 1 > key.len) continue;
+                @memcpy(key[0..split], phrase[0..split]);
+                key[split] = okuri.consonant;
+                var found: [max_candidates][]const u8 = undefined;
+                const count = dict.lookup(key[0 .. split + 1], &found);
+                for (found[0..count]) |cand| {
+                    self.addCombinedCandidate(seg, cand, phrase[split..]);
+                    if (seg.cand_count >= max_candidates - 2) break;
+                }
+            }
+        }
+
         // Always append raw hiragana and katakana as candidates
         self.addRawCandidate(seg, phrase);
         self.addKatakanaCandidate(seg, phrase);
     }
 
-    fn addCombinedCandidate(self: *Engine, seg: *Segment, prefix: []const u8, suffix: []const u8) void {
+    fn addCombinedCandidate(self: *Engine, seg: *Segment, prefix: []const u8, suffix: []const u8) linksection(code_section) void {
         const total_len = prefix.len + suffix.len;
         if (self.cand_pool_len + total_len + 1 > max_cand_pool or seg.cand_count >= max_candidates) return;
 
@@ -346,7 +369,7 @@ pub const Engine = struct {
         seg.cand_count += 1;
     }
 
-    fn addRawCandidate(self: *Engine, seg: *Segment, text: []const u8) void {
+    fn addRawCandidate(self: *Engine, seg: *Segment, text: []const u8) linksection(code_section) void {
         if (self.cand_pool_len + text.len + 1 > max_cand_pool or seg.cand_count >= max_candidates) return;
         const off: u16 = @intCast(self.cand_pool_len);
         @memcpy(self.cand_pool[off..][0..text.len], text);
@@ -357,7 +380,7 @@ pub const Engine = struct {
         seg.cand_count += 1;
     }
 
-    fn addKatakanaCandidate(self: *Engine, seg: *Segment, hira: []const u8) void {
+    fn addKatakanaCandidate(self: *Engine, seg: *Segment, hira: []const u8) linksection(code_section) void {
         var kata_buf: [128]u8 = undefined;
         var kata_len: usize = 0;
 
@@ -375,14 +398,14 @@ pub const Engine = struct {
     }
 
     /// Select candidate for a segment
-    pub fn selectCandidate(self: *Engine, seg_idx: usize, cand_idx: usize) void {
+    pub fn selectCandidate(self: *Engine, seg_idx: usize, cand_idx: usize) linksection(code_section) void {
         if (seg_idx < self.segment_count and cand_idx < self.segments[seg_idx].cand_count) {
             self.segments[seg_idx].selected = @intCast(cand_idx);
         }
     }
 
     /// Next candidate (Space key)
-    pub fn nextCandidate(self: *Engine, seg_idx: usize) void {
+    pub fn nextCandidate(self: *Engine, seg_idx: usize) linksection(code_section) void {
         if (seg_idx < self.segment_count) {
             const seg = &self.segments[seg_idx];
             if (seg.cand_count > 0) {
@@ -392,7 +415,7 @@ pub const Engine = struct {
     }
 
     /// Previous candidate
-    pub fn prevCandidate(self: *Engine, seg_idx: usize) void {
+    pub fn prevCandidate(self: *Engine, seg_idx: usize) linksection(code_section) void {
         if (seg_idx < self.segment_count) {
             const seg = &self.segments[seg_idx];
             if (seg.cand_count > 0) {
@@ -402,7 +425,7 @@ pub const Engine = struct {
     }
 
     /// Get string of candidate at index
-    pub fn candidateText(self: *const Engine, seg_idx: usize, cand_idx: usize) []const u8 {
+    pub fn candidateText(self: *const Engine, seg_idx: usize, cand_idx: usize) linksection(code_section) []const u8 {
         if (seg_idx >= self.segment_count or cand_idx >= self.segments[seg_idx].cand_count) return "";
         const off = self.segments[seg_idx].cands[cand_idx];
         const span = self.cand_pool[off..];
@@ -411,7 +434,7 @@ pub const Engine = struct {
     }
 
     /// Render entire converted sentence into out_buf
-    pub fn render(self: *const Engine, out_buf: []u8) []const u8 {
+    pub fn render(self: *const Engine, out_buf: []u8) linksection(code_section) []const u8 {
         var pos: usize = 0;
         for (0..self.segment_count) |i| {
             const seg = &self.segments[i];
@@ -424,9 +447,9 @@ pub const Engine = struct {
     }
 };
 
-fn checkTail(str: []const u8, mask: u8) bool {
+fn checkTail(str: []const u8, mask: u8) linksection(code_section) bool {
     if (str.len == 0) return true;
-    for (TAILS) |tail| {
+    for (&TAILS) |tail| {
         if ((tail.mask & mask) != 0 and std.mem.startsWith(u8, str, tail.str)) {
             const rem = str[tail.str.len..];
             if (rem.len == 0 or checkTail(rem, TailMask.any)) return true;
@@ -435,9 +458,9 @@ fn checkTail(str: []const u8, mask: u8) bool {
     return false;
 }
 
-fn checkConjugationTail(str: []const u8, class: u16) bool {
+fn checkConjugationTail(str: []const u8, class: u16) linksection(code_section) bool {
     if (str.len == 0) return true;
-    for (TAILS) |tail| {
+    for (&TAILS) |tail| {
         if ((tail.class & class) != 0 and std.mem.startsWith(u8, str, tail.str)) {
             const rem = str[tail.str.len..];
             if (rem.len == 0 or checkTail(rem, TailMask.any)) return true;
@@ -452,12 +475,12 @@ const OkuriInfo = struct {
     kana_len: usize,
 };
 
-fn getOkuriKanaLen(phrase: []const u8) ?usize {
+fn getOkuriKanaLen(phrase: []const u8) linksection(code_section) ?usize {
     if (phrase.len == 0) return null;
     return std.unicode.utf8ByteSequenceLength(phrase[0]) catch null;
 }
 
-fn getOkuriConsonant(str: []const u8) ?OkuriInfo {
+fn getOkuriConsonant(str: []const u8) linksection(code_section) ?OkuriInfo {
     var it = (std.unicode.Utf8View.init(str) catch return null).iterator();
     const cp = it.nextCodepoint() orelse return null;
     const len = std.unicode.utf8CodepointSequenceLength(cp) catch 3;

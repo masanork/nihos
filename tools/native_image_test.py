@@ -23,6 +23,16 @@ class NativeInstructionTests(unittest.TestCase):
             with self.subTest(symbols=symbols, sizes=sizes), self.assertRaises(ValueError):
                 MODULE.audit_boot_sprite_tables(symbols, sizes, start, table, resident)
 
+    def test_ime_dictionary_requires_flash_and_rejects_sram_copy(self):
+        name, start = 'xy.scratch.default_ime_bytes', 0x40100000
+        data = b'NFST' + bytes(96023)
+        self.assertTrue(MODULE.audit_xy_default_dictionary({name: start}, {name: len(data)}, start, data, b'', True)['readonly_flash'])
+        for symbols, sizes, flash, resident in [({}, {}, data, b''), ({name: 0x4ff10000}, {name: len(data)}, data, b''),
+                                                 ({name: start}, {name: len(data)}, data, data),
+                                                 ({name: start}, {name: len(data)}, bytes(len(data)), b'')]:
+            with self.subTest(symbols=symbols), self.assertRaises(ValueError):
+                MODULE.audit_xy_default_dictionary(symbols, sizes, start, flash, resident, True)
+
     def test_romaji_table_must_be_in_flash_without_sram_copy(self):
         name, start = 'xy.ime_omni.romaji_table', 0x40070000
         table = bytes(range(256)) * 12 + bytes(range(216))
