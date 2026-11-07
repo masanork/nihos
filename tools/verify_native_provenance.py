@@ -63,7 +63,54 @@ def check_statement(statement, hashes, source_sha, source_ref):
         raise ValueError('missing source dependency')
 
 
-def verify(directory, source_sha, source_ref, bundle=None):
+def check_image_layout(flash, bom, required=False):
+    """Validate signed binary inventory against the complete flash byte layout."""
+    expected = [('bootloader.bin', 0x2000, 0x8000),
+                ('partition-table.bin', 0x8000, 0x10000),
+                ('nihos-native.bin', 0x10000, None)]
+    components = bom.get('components', [])
+    if not isinstance(components, list):
+        raise ValueError('invalid audited inventory components')
+    binaries = [c for c in components if isinstance(c, dict) and c.get('name') in {x[0] for x in expected}]
+    for component in binaries:
+        if not isinstance(component.get('properties', []), list):
+            raise ValueError('invalid binary properties')
+    has_sizes = any(any(p.get('name') == 'nihos:flash-size-bytes' for p in c.get('properties', []) if isinstance(p, dict)) for c in binaries)
+    if not has_sizes and not required:
+        return False  # Older signed inventories did not contain lengths.
+    cursor = 0
+    for name, offset, limit in expected:
+        matches = [c for c in binaries if c.get('name') == name]
+        if len(matches) != 1 or matches[0].get('type') != 'file':
+            raise ValueError(f'missing or duplicate image binary {name}')
+        component = matches[0]
+        properties = component.get('properties', [])
+        if not isinstance(properties, list):
+            raise ValueError('invalid binary properties')
+        def one(key):
+            values = [p.get('value') for p in properties if isinstance(p, dict) and p.get('name') == key]
+            if len(values) != 1 or not isinstance(values[0], str):
+                raise ValueError(f'missing or duplicate {key}')
+            return values[0]
+        size_text = one('nihos:flash-size-bytes')
+        if one('nihos:flash-offset') != hex(offset) or not re.fullmatch(r'[1-9][0-9]*', size_text):
+            raise ValueError(f'invalid image layout for {name}')
+        size = int(size_text)
+        end = offset + size
+        if end > len(flash) or (limit is not None and end > limit):
+            raise ValueError(f'image binary {name} exceeds its flash region')
+        if flash[cursor:offset] != b'\xff' * (offset - cursor):
+            raise ValueError(f'unexpected padding before {name}')
+        expected_hash = hashlib.sha256(flash[offset:end]).hexdigest()
+        if component.get('hashes') != [{'alg': 'SHA-256', 'content': expected_hash}]:
+            raise ValueError(f'image binary digest differs for {name}')
+        cursor = end
+    if cursor != len(flash):
+        raise ValueError('unexpected data after the application')
+    return True
+
+
+def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=False):
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA must be 40 lowercase hexadecimal characters')
     if not re.fullmatch(r'refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*', source_ref):
@@ -76,6 +123,8 @@ def verify(directory, source_sha, source_ref, bundle=None):
         component = bom.get('metadata', {}).get('component', {})
         if {'alg': 'SHA-256', 'content': hashes[SUBJECTS[0]]} not in component.get('hashes', []):
             raise ValueError('inventory image digest differs')
+    check_image_layout(files[SUBJECTS[0]].read_bytes(),
+                       json.loads(files[SUBJECTS[1]].read_text()), require_image_layout)
     command = ['gh', 'attestation', 'verify', str(files[SUBJECTS[0]]), '--repo', REPO,
                '--signer-workflow', f'{REPO}/{SIGNER}', '--source-ref', source_ref,
                '--source-digest', source_sha, '--signer-digest', source_sha,
@@ -101,14 +150,16 @@ def main():
     parser.add_argument('--source-sha', required=True, help='independently trusted source and signer commit')
     parser.add_argument('--source-ref', default='refs/heads/main', help='independently trusted branch ref')
     parser.add_argument('--bundle', type=Path, help='optional downloaded Sigstore bundle')
+    parser.add_argument('--require-image-layout', action='store_true',
+                        help='require and verify binary offsets, lengths and digests')
     args = parser.parse_args()
     try:
-        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle)
+        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle, args.require_image_layout)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as exc:
         print(f'native provenance verification failed: {exc}', file=sys.stderr)
         return 1
     print(json.dumps({'policy': 'experimental-native-main-v1', 'source_sha': args.source_sha,
-                      'source_ref': args.source_ref, 'subjects': hashes}, indent=2))
+                      'source_ref': args.source_ref, 'image_layout_required': args.require_image_layout, 'subjects': hashes}, indent=2))
     return 0
 
 
