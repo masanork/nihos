@@ -40,8 +40,18 @@ pub const max_mapped_allocation_pages = max_mapped_batch_pages * (extent_map.max
 pub const MappedPatch = struct { offset: u64, bytes: []const u8 };
 pub const PatchProgress = struct { consumed: usize = 0, done: bool = false, need_input: bool = false };
 pub const IndexSpace = struct { capacity_pages: u32, protected_pages: u32, available_pages: u32 };
+/// Conservative page-write budget plus free-space margin. This is volatile,
+/// single-owner admission for the experimental model, not a WAL guarantee.
+pub const WriteBudget = struct {
+    payload_writes: u64,
+    index_writes: u32,
+    // Simultaneously occupied index pages, including a transient replacement.
+    index_peak: u32,
+    payload_margin: u64,
+    index_margin: u32,
+};
 pub const PayloadSpace = struct { usable_pages: u64, reserved_pages: u32, free_pages: u64, largest_run: u64 };
-pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired, InvalidStream, IncompleteStream, NotMapped };
+pub const Error = error{ Io, Corrupt, Unformatted, Faulted, NotReady, Busy, NoTransaction, NoSpace, ReservationExceeded, NotFound, InvalidArgument, GenerationExhausted, ReaderLimit, InvalidReader, InvalidSearch, SearchRequired, InvalidStream, IncompleteStream, NotMapped };
 
 pub fn Store(comptime Device: type, comptime config: Config) type {
     const data_start = config.payload_start_page orelse (2 + @as(u64, config.index_pages));
@@ -145,12 +155,43 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         ready: bool = false,
         faulted: bool = false,
         in_transaction: bool = false,
+        budget: ?WriteBudget = null,
+        budget_payload_used: u64 = 0,
+        budget_index_used: u32 = 0,
+        budget_index_floor: u32 = 0,
+        budget_poisoned: bool = false,
+        budget_published: bool = false,
         mount_bytes: usize = 0,
 
         fn readPage(self: *Self, page: u64, bytes: *[page_bytes]u8) Error!void {
             self.device.read(page * page_bytes, bytes) catch return self.ioFailure();
         }
         fn writePage(self: *Self, page: u64, bytes: *const [page_bytes]u8) Error!void {
+            if (self.budget) |budget| {
+                if (self.budget_poisoned) return error.ReservationExceeded;
+                if (page >= data_start and page < data_end) {
+                    if (self.budget_payload_used >= budget.payload_writes) {
+                        self.budget_poisoned = true;
+                        return error.ReservationExceeded;
+                    }
+                    self.budget_payload_used += 1;
+                } else if (page >= 2 and page < 2 + @as(u64, config.index_pages)) {
+                    if (self.budget_index_used >= budget.index_writes) {
+                        self.budget_poisoned = true;
+                        return error.ReservationExceeded;
+                    }
+                    // Count distinct live index pages at the point of write;
+                    // a staged leaf replaced afterwards can be reused later.
+                    self.requireIndexHeadroom(self.budget_index_floor) catch {
+                        self.budget_poisoned = true;
+                        return error.ReservationExceeded;
+                    };
+                    self.budget_index_used += 1;
+                } else if (page >= 2) {
+                    self.budget_poisoned = true;
+                    return error.ReservationExceeded;
+                }
+            }
             if (self.map_cache.ref.page == page) self.map_cache.valid = false;
             // Physical pages can be recycled for another logical leaf. Drop
             // every matching cached page before attempting any write to it.
@@ -236,18 +277,50 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
         pub fn begin(self: *Self) Error!void {
             try self.usable();
-            if (self.in_transaction) return error.Busy;
+            if (self.in_transaction or self.budget != null) return error.Busy;
             if (self.current.generation == std.math.maxInt(u64)) return error.GenerationExhausted;
             self.invalidateSearch();
             self.staged = self.current;
             self.staged.generation += 1;
             self.in_transaction = true;
         }
+        /// Synchronous admission over the current, retained, and pinned roots.
+        /// A caller must serialize this store against every other writer. Total
+        /// physical writes are charged conservatively, even if a page is reused.
+        pub fn beginBudgeted(self: *Self, budget: WriteBudget) Error!void {
+            try self.usable();
+            if (self.in_transaction or self.budget != null) return error.Busy;
+            const payload_need = std.math.add(u64, budget.payload_writes, budget.payload_margin) catch return error.NoSpace;
+            if (budget.index_writes != 0 and budget.index_peak == 0) return error.InvalidArgument;
+            const index_need = std.math.add(u32, budget.index_peak, budget.index_margin) catch return error.NoSpace;
+            const available_index = (try self.indexSpace()).available_pages;
+            if (payload_need > (try self.payloadSpace()).free_pages or index_need > available_index) return error.NoSpace;
+            try self.begin();
+            self.budget = budget;
+            self.budget_payload_used = 0;
+            self.budget_index_used = 0;
+            self.budget_index_floor = available_index - budget.index_peak;
+            self.budget_poisoned = false;
+            self.budget_published = false;
+        }
+        /// Release only after publication and a fresh full free-space check.
+        /// The margin is not proof of WAL checkpoint or GC completion.
+        pub fn releaseBudget(self: *Self) Error!void {
+            try self.usable();
+            const budget = self.budget orelse return error.InvalidArgument;
+            if (self.in_transaction or !self.budget_published or self.budget_poisoned) return error.Busy;
+            if ((try self.payloadSpace()).free_pages < budget.payload_margin or (try self.indexSpace()).available_pages < budget.index_margin) return error.NoSpace;
+            self.budget = null;
+            self.budget_published = false;
+        }
         pub fn rollback(self: *Self) Error!void {
             try self.transaction();
             self.invalidateSearch();
             self.writer.token = 0;
             self.in_transaction = false;
+            self.budget = null;
+            self.budget_poisoned = false;
+            self.budget_published = false;
         }
 
         /// Publish a pinned volume as a NEW generation. Pins remain live and
@@ -343,12 +416,16 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         /// Stops once enough free pages are found; never performs device I/O.
         pub fn requireIndexHeadroom(self: *Self, pages: u32) Error!void {
             try self.usable();
-            if (pages >= config.index_pages) return error.NoSpace;
+            if (pages >= config.index_pages) return self.reservationNoSpace();
             var free: u32 = 0;
             for (0..config.index_pages) |i| if (!self.protectedIndex(2 + @as(u64, i))) {
                 free += 1;
                 if (free > pages) return;
             };
+            return self.reservationNoSpace();
+        }
+        fn reservationNoSpace(self: *Self) Error {
+            if (self.budget != null and self.in_transaction) self.budget_poisoned = true;
             return error.NoSpace;
         }
         /// A root-only checkpoint retires the previous disk root without
@@ -608,7 +685,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.step_bitmap_pages = 0;
             while (true) switch (self.search.phase) {
                 .idle => unreachable,
-                .done => return self.search.result,
+                .done => {
+                    if (self.search.result == .no_space and self.budget != null and self.in_transaction) self.budget_poisoned = true;
+                    return self.search.result;
+                },
                 .mark => {
                     if (self.search.root == 3 + @as(u16, config.reader_slots)) {
                         self.search.phase = .scan;
@@ -778,10 +858,10 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
 
         fn preflight(self: *Self) Error!void {
-            if (self.availableIndex() == null) return error.NoSpace;
+            if (self.availableIndex() == null) return self.reservationNoSpace();
         }
         fn replace(self: *Self, key: u32, value: ?Value, existed: bool) Error!void {
-            const page = self.availableIndex() orelse return error.NoSpace;
+            const page = self.availableIndex() orelse return self.reservationNoSpace();
             const offset = entryOffset(key);
             @memset(self.cache[offset..][0..32], 0);
             if (value) |item| {
@@ -1438,6 +1518,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
         }
         pub fn commit(self: *Self) Error!void {
             try self.transaction();
+            if (self.budget_poisoned) return error.ReservationExceeded;
             if (self.writer.token != 0) return error.Busy;
             self.invalidateSearch();
             self.device.sync() catch return self.ioFailure();
@@ -1445,6 +1526,7 @@ pub fn Store(comptime Device: type, comptime config: Config) type {
             self.retained = self.current;
             self.current = self.staged;
             self.in_transaction = false;
+            if (self.budget != null) self.budget_published = true;
         }
 
         /// Exclusive-owner view of unpublished mutations; not a public reader
