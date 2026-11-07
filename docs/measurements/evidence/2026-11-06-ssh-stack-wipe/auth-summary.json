@@ -1,0 +1,20 @@
+{
+  "profile": "headless ESP-EMU 0.50.0; fixed-key SSH auth packet; no network",
+  "source_head": "f6a372466424abac85885705aea55e8cb4083f89",
+  "emulator_sha256": "a4c3468a4abf3f2e55ca0912fa7cdfbe5e101ecb6ab74a9ec35182d70ba6a771",
+  "fixture_patch_sha256": "d6514a87175f2e728107011c6bccf61196f57e45965aebdbef9328cfa4620c74",
+  "elf_sha256": "840108b6130b11f88a2bd366b8ba5615aeb35361f31e3c98fce5800dcdd563e3",
+  "image_sha256": "0b4328545a432b3c8dd412c093c60bc30e96190b1969bc817cd07eb496eca8be",
+  "heap_bytes": 49408,
+  "stack_used_bytes": 8560,
+  "emulator_log_sha256": "4509ec83ae23f9eb2052b612b63ec16341d4ebcf6aaafae94bfe9fc3a71e02cc",
+  "checks": [
+    "PSRAM stack pointer",
+    "timer interrupt while switched",
+    "nested admission rejected",
+    "stack admission released",
+    "stack reservation retained through wipe",
+    "transient stack cleared",
+    "fixed-key Ed25519 SSH authentication packet matches independent reference"
+  ]
+}

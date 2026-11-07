@@ -175,7 +175,7 @@ fn paintTo(comptime Target: type, comptime section: ?[]const u8, framebuffer: []
         // Status masks share an origin/height. Every pixel inside the new
         // mask was written directly, including transparent background runs.
         // Erase only columns outside it, where the final image is background.
-        for (assets.sprites) |sprite| {
+        for (&AssetStore.sprites) |sprite| {
             if (sprite.layout != layout or sprite.status != @backingInt(status)) continue;
             const label = if (layout == .landscape) comptime statusBounds(.landscape) else comptime statusBounds(.portrait);
             const tail = label.width - sprite.width;

@@ -1,0 +1,37 @@
+{
+  "profile": "link-only; entropy unavailable; do not flash or execute",
+  "source_head": "1abef89391225fce695d564bdb346fbe034fd39b",
+  "fixture_patch_sha256": "2460524bd58d289593af38c26a6fbf87bd2b8d1544cdabb4d5f7e8547008808e",
+  "elf_sha256": "be793eee0a85d7eac8b3917ec020d8c1f0ec2e8ec7f6a182d0697f7718b0222a",
+  "heap_bytes": 54080,
+  "normal_audit": "rejected unapproved xy Flash functions",
+  "study_audit": "exact function names and structural image checks passed; not cache-off qualification",
+  "negative_controls": "misplaced function and full SRAM code copy rejected",
+  "table_audit": {
+    "table_sha256": "97dfc18d19f9cf8952f9409cffe06bba8804cfdc21a731ff9705dc887e49f75b",
+    "table_bytes": 2688,
+    "symbols": [
+      {
+        "symbol": "__anon_84718",
+        "address": "0x400b23b0"
+      }
+    ],
+    "copies": [
+      {
+        "address": "0x400b23b0",
+        "writable": false,
+        "region": "mapped_flash"
+      }
+    ]
+  },
+  "irq_graph": {
+    "directly_reachable_functions": 429,
+    "directly_reachable_ssh_crypto_names": [],
+    "directly_reachable_placed_functions": [],
+    "unresolved_indirect_count": 113,
+    "possible_jump_table_hints": 37,
+    "resolved_internal_jump_table_count": 6,
+    "limitations": "Named direct, adjacent AUIPC/JALR or AUIPC/JR edges and guarded same-function tables only; remaining jump-table hints are unverified; other indirect calls, jumps, interrupt variants and cache-off reachability are not proven."
+  },
+  "irq_graph_sha256": "3d62656bb9004683eb906a408a7aa8356586ae77536a87fe55be6d29affd80bc"
+}
