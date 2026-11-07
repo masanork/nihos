@@ -69,7 +69,8 @@ def generate(root, image_dir, output):
         binary_components.append({'type': 'file', 'name': name,
             'hashes': [{'alg': 'SHA-256', 'content': hashlib.sha256(data).hexdigest()}],
             'properties': [prop('evidence', 'byte-identical flash slice'),
-                           prop('flash-offset', hex(offset))]})
+                           prop('flash-offset', hex(offset)),
+                           prop('flash-size-bytes', len(data))]})
         cursor = offset + len(data)
     if len(flash) != cursor:
         raise ValueError('unexpected data after the application in flash image')
