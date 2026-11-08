@@ -106,6 +106,14 @@ const StubTimer = struct {
     }
 };
 const Prepared = backend_mod.Prepared(leases.NativeRngGate, Resources, hw_mod.NativeAccess, StubTimer);
+const layout = @import("sqld_layout");
+comptime {
+    if (@sizeOf(Prepared) > layout.ssh_entropy_state_bytes) @compileError("P4 entropy state exceeds its PSRAM partition");
+    if (layout.ssh_entropy % @alignOf(Prepared) != 0) @compileError("P4 entropy PSRAM partition is misaligned");
+    if (@sizeOf(backend_mod.Generations) > layout.ssh_entropy_generations_bytes or
+        layout.ssh_entropy_generations % @alignOf(backend_mod.Generations) != 0)
+        @compileError("P4 entropy generation counter does not fit its PSRAM partition");
+}
 export fn nih_ssh_p4_prepared_probe(prepared: *Prepared, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, timer: *StubTimer, generations: *backend_mod.Generations, receipt: *const clock_mod.Receipt) u32 {
     prepared.initInPlace(gate, resources, access, timer, generations, receipt.*) catch return 0;
     prepared.session.begin(0, 100_000) catch return 0;

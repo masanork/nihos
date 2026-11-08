@@ -1141,7 +1141,7 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                 if (comptime native_ssh_foreground) {
                     const Foreground = @import("ssh_foreground.zig").Runtime;
                     comptime {
-                        if (@sizeOf(Foreground) > region.ssh_foreground_bytes) @compileError("SSH foreground exceeds PSRAM reservation");
+                        if (@sizeOf(Foreground) > region.ssh_foreground_runtime_bytes) @compileError("SSH foreground exceeds its PSRAM partition");
                         if (region.ssh_foreground % @alignOf(Foreground) != 0) @compileError("SSH foreground reservation misaligned");
                     }
                     const foreground: *Foreground = @ptrFromInt(region.ssh_foreground);

@@ -27,6 +27,14 @@ pub const ssh_ui_experiment: u32 = ssh_experiment + ssh_owner_bytes;
 pub const ssh_ui_experiment_bytes: u32 = ssh_experiment_bytes - ssh_owner_bytes;
 pub const ssh_foreground: u32 = ssh_experiment + ssh_experiment_bytes;
 pub const ssh_foreground_bytes: u32 = 0x1000;
+// Separately bounded objects; the remaining half is reserved for future use.
+pub const ssh_foreground_runtime_bytes: u32 = 0x400;
+pub const ssh_entropy: u32 = ssh_foreground + ssh_foreground_runtime_bytes;
+pub const ssh_entropy_bytes: u32 = 0x400;
+// The counter is initialized once per boot, never per visit. It is not yet wired.
+pub const ssh_entropy_state_bytes: u32 = 0x3f0;
+pub const ssh_entropy_generations: u32 = ssh_entropy + ssh_entropy_state_bytes;
+pub const ssh_entropy_generations_bytes: u32 = 8;
 // Exclusive CPU0 SSH stack, distinct from the Scheme and render stacks.
 pub const ssh_stack: u32 = ssh_foreground + ssh_foreground_bytes;
 pub const ssh_stack_bytes: u32 = 0xf000;
@@ -54,6 +62,12 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(stack_top <= ssh_experiment);
     try std.testing.expect(ssh_experiment + ssh_owner_bytes <= ssh_ui_experiment);
     try std.testing.expect(ssh_ui_experiment + ssh_ui_experiment_bytes <= ssh_foreground);
+    try std.testing.expect(ssh_foreground + ssh_foreground_runtime_bytes <= ssh_entropy);
+    try std.testing.expect(ssh_entropy + ssh_entropy_bytes <= ssh_foreground + ssh_foreground_bytes);
+    try std.testing.expect(ssh_entropy + ssh_entropy_state_bytes <= ssh_entropy_generations);
+    try std.testing.expect(ssh_entropy_generations + ssh_entropy_generations_bytes <= ssh_entropy + ssh_entropy_bytes);
+    try std.testing.expect(ssh_entropy_generations % 8 == 0);
+    try std.testing.expect(ssh_foreground % 16 == 0 and ssh_entropy % 16 == 0);
     try std.testing.expect(ssh_foreground + ssh_foreground_bytes <= ssh_stack);
     try std.testing.expect(ssh_stack + ssh_stack_bytes <= base + bytes);
 }
