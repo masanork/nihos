@@ -78,6 +78,8 @@ void nih_fs_test_write(uint32_t offset,uint32_t value) {
     regs[0x30/4]=0;
     if(!present && !(value&(1u<<16)) && command!=0) { regs[0x44/4]=1u<<8;return; }
     switch(command) {
+        case 2:regs[0x30/4]=0x12345678;regs[0x34/4]=0x9abcdef0;
+               regs[0x38/4]=0x10203040;regs[0x3c/4]=0x50607080;break;
         case 3:regs[0x30/4]=1u<<16;break;
         case 5:regs[0x30/4]=0x90ff8000;break;
         case 8:regs[0x30/4]=0x1aa;break;
@@ -209,6 +211,11 @@ static void raw_capability_test(void) {
     CHECK(!nih_normal_sqld_grant(0x10000,0x10002));
     CHECK(nih_normal_sqld_io(0,0,buffer)==-13);
     actor=0x10002;CHECK(!nih_normal_sqld_io(0,0,buffer));
+    uint32_t observed[8];memcpy(observed,buffer,sizeof(observed));
+    CHECK(observed[0]==sectors && observed[2]==1 && observed[3]==nih_shared_sdmmc_generation());
+    CHECK(observed[4]==0x12345678 && observed[5]==0x9abcdef0 &&
+          observed[6]==0x10203040 && observed[7]==0x50607080);
+    for(unsigned i=32;i<512;++i)CHECK(!buffer[i]);
     uint32_t cid;memcpy(&cid,buffer+4,4);
     CHECK(nih_normal_sqld_io(5,cid,buffer)==-13);
     CHECK(nih_normal_sqld_io(2,2048,buffer)==-13 && !write_count);
@@ -222,6 +229,11 @@ static void raw_capability_test(void) {
     CHECK(!nih_normal_sqld_io(2,2048,buffer));CHECK(write_count==1);
     for(unsigned i=0;i<512;++i)CHECK(written[i]==(uint8_t)i && buffer[i]==0x55);
     CHECK(!nih_normal_sqld_io(3,0,buffer));CHECK(raw_wakes&2);
+    host_lease lease={0};CHECK(!nih_shared_sdmmc_acquire(1,&lease));
+    nih_shared_sdmmc_write(&lease,0,7);CHECK(nih_shared_sdmmc_release(&lease)==1);
+    memset(buffer,0xa5,sizeof(buffer));
+    CHECK(nih_normal_sqld_io(0,0,buffer)==-19);
+    for(unsigned i=0;i<512;++i)CHECK(buffer[i]==0xa5);
     actor=0x10000;CHECK(!nih_normal_fs_submit(0x10000,"",0));check_display();
     CHECK(!close(image));puts("{\"passed\":true,\"mode\":\"raw-capability\",\"copied_write\":true,\"bounds_and_authority\":true}");
 }
