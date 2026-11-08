@@ -549,6 +549,104 @@ pub fn TimedPreparedForeground(comptime Model: type, comptime ControllerType: ty
     };
 }
 
+/// CPU0 foreground owner. All referenced state must remain in stable storage;
+/// the supplied workspace and visit are responsible for their own cleanup.
+pub fn PreparedRuntime(comptime Model: type, comptime Ui: type, comptime Workspace: type, comptime TimedVisit: type, comptime EntropySession: type, comptime Timer: type) type {
+    return struct {
+        const Self = @This();
+        workspace: Workspace,
+        visit: TimedVisit,
+        entropy: *EntropySession,
+        timer: *Timer,
+        model: ?*Model = null,
+        active: bool = false,
+
+        /// Boot-only, before the first visit; never reinitialize a live owner.
+        pub fn initInPlace(self: *Self, entropy: *EntropySession, timer: *Timer) void {
+            self.entropy = entropy;
+            self.timer = timer;
+            self.model = null;
+            self.active = false;
+        }
+
+        /// Service after the network and UI with the owner's monotonic tick.
+        /// Preserve a departing model until its visit has finished cleanup.
+        pub fn poll(self: *Self, model: ?*Model, ui: *Ui, now: u64) void {
+            const visible = if (model) |m| m.nav.screen == .ssh else false;
+            if (self.active and (!visible or self.model != model)) {
+                if (self.visit.poll(false, now) != .idle) return;
+                self.active = false;
+                self.model = null;
+            }
+            if (!visible) return;
+            const current = model orelse return;
+            if (!self.active) {
+                self.workspace.initInPlace(current, ui) catch return;
+                self.visit.initInPlace(current, &self.workspace.controller, self.entropy, self.timer, 20_000_000, 20_000_000, 5_000_000) catch return;
+                self.model = current;
+                self.active = true;
+            }
+            _ = self.visit.poll(true, now);
+        }
+    };
+}
+
+test "prepared runtime keeps the old screen until its cleanup finishes" {
+    const Model = struct { nav: struct { screen: enum { ssh, home } = .ssh } = .{} };
+    const Ui = struct { starts: u32 = 0, deny: bool = false };
+    const Entropy = struct { release_allowed: bool = false, stops: u32 = 0 };
+    const Timer = struct {};
+    const Workspace = struct {
+        controller: u8,
+        pub fn initInPlace(self: *@This(), _: *Model, ui: *Ui) !void {
+            if (ui.deny) return error.Unavailable;
+            ui.starts += 1;
+            self.controller = 0;
+        }
+    };
+    const Visit = struct {
+        entropy: *Entropy,
+        pub fn initInPlace(self: *@This(), _: *Model, _: *u8, entropy: *Entropy, _: *Timer, _: u64, _: u64, _: u64) !void {
+            self.entropy = entropy;
+        }
+        pub fn poll(self: *@This(), visible: bool, _: u64) enum { idle, active, stopping } {
+            if (visible) return .active;
+            self.entropy.stops += 1;
+            return if (self.entropy.release_allowed) .idle else .stopping;
+        }
+    };
+    const Owner = PreparedRuntime(Model, Ui, Workspace, Visit, Entropy, Timer);
+    var owner: Owner = undefined;
+    var entropy: Entropy = .{};
+    var timer: Timer = .{};
+    var first: Model = .{};
+    var second: Model = .{};
+    var ui: Ui = .{};
+    owner.initInPlace(&entropy, &timer);
+    owner.poll(&first, &ui, 1);
+    try std.testing.expect(owner.active and owner.model == &first);
+    try std.testing.expectEqual(@as(u32, 1), ui.starts);
+    owner.poll(&second, &ui, 2);
+    owner.poll(null, &ui, 3);
+    try std.testing.expect(owner.active and owner.model == &first);
+    try std.testing.expectEqual(@as(u32, 1), ui.starts);
+    try std.testing.expectEqual(@as(u32, 2), entropy.stops);
+    entropy.release_allowed = true;
+    owner.poll(&second, &ui, 4);
+    try std.testing.expect(owner.active and owner.model == &second);
+    try std.testing.expectEqual(@as(u32, 2), ui.starts);
+    second.nav.screen = .home;
+    owner.poll(&second, &ui, 5);
+    try std.testing.expect(!owner.active and owner.model == null);
+    ui.deny = true;
+    owner.poll(&first, &ui, 6);
+    try std.testing.expect(!owner.active and owner.model == null);
+    ui.deny = false;
+    owner.poll(&first, &ui, 7);
+    try std.testing.expect(owner.active and owner.model == &first);
+    try std.testing.expectEqual(@as(u32, 3), ui.starts);
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {

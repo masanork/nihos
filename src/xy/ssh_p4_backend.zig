@@ -572,6 +572,7 @@ const TestForegroundModel = struct {
         close: *const fn (*anyopaque) void,
         snapshot: *const fn (*anyopaque, *View) bool,
     };
+    nav: struct { screen: enum { ssh, home } = .ssh } = .{},
     private_input: ?PrivateInputPortType = null,
     pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
         if (self.private_input != null) return false;
@@ -584,6 +585,63 @@ const TestForegroundModel = struct {
         port.close(port.context);
     }
 };
+
+test "prepared runtime waits for timed entropy cleanup before switching screens" {
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Entropy = struct {
+        state: enum { idle, collecting, cleaning, failed } = .idle,
+        release_allowed: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .cleaning and self.release_allowed) self.state = .idle;
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(_: *@This()) bool {
+            return false;
+        }
+        pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
+            return error.EntropyUnavailable;
+        }
+    };
+    const Ui = struct { starts: u32 = 0 };
+    const Workspace = struct {
+        controller: TestForegroundController,
+        pub fn initInPlace(self: *@This(), _: *TestForegroundModel, ui: *Ui) !void {
+            self.controller = .{};
+            ui.starts += 1;
+        }
+    };
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, Entropy, TickTimer);
+    const Runtime = lifecycle.PreparedRuntime(TestForegroundModel, Ui, Workspace, Timed, Entropy, TickTimer);
+    const owner = try std.testing.allocator.create(Runtime);
+    defer std.testing.allocator.destroy(owner);
+    var entropy: Entropy = .{};
+    var timer: TickTimer = .{};
+    var first: TestForegroundModel = .{};
+    var second: TestForegroundModel = .{};
+    var ui: Ui = .{};
+    owner.initInPlace(&entropy, &timer);
+    owner.poll(&first, &ui, 1);
+    try std.testing.expectEqual(.collecting, entropy.state);
+    owner.poll(&second, &ui, 2);
+    try std.testing.expectEqual(.cleaning, entropy.state);
+    try std.testing.expect(owner.model == &first and owner.active);
+    try std.testing.expectEqual(@as(u32, 1), ui.starts);
+    owner.poll(&second, &ui, 3);
+    try std.testing.expect(owner.model == &first and owner.active);
+    entropy.release_allowed = true;
+    owner.poll(&second, &ui, 4);
+    try std.testing.expect(owner.model == &second and owner.active);
+    try std.testing.expectEqual(@as(u32, 2), ui.starts);
+    try std.testing.expectEqual(.collecting, entropy.state);
+    owner.poll(null, &ui, 5);
+    try std.testing.expect(!owner.active and owner.model == null);
+    try std.testing.expectEqual(.idle, entropy.state);
+}
 const TestForegroundController = struct {
     state: @import("ssh_lifecycle.zig").State = .idle,
     pub fn beginProfile(_: *@This(), _: *const @import("ssh_lifecycle.zig").Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
