@@ -18,7 +18,12 @@ for the normal Tab5 device build, retaining them with the image evidence:
   set of cryptographic identifiers. Matches include comments and tests. It is
   not a complete crypto inventory and does not establish that a match is linked,
   enabled, or used. C sources, generated code, Zig standard library internals,
-  external components, bootloader and C6 firmware are not covered. RSA-2048
+  external components, bootloader and C6 firmware are not generally covered.
+  As a bounded exception, the audited SQLite source and ELF symbols can identify
+  a ChaCha20 candidate associated with `sqlite3_randomness`. This is evidence
+  of linked symbols and source markers, not proof that the algorithm executes,
+  provides encryption, or has sufficient entropy. Missing symbols do not prove
+  absence. RSA-2048
   candidates include generic 2048-bit finite-field declarations because the
   NPA card verifier uses that API; such a match alone does not establish RSA
   use. The verifier is built only in selected card profiles.

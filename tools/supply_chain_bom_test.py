@@ -82,15 +82,15 @@ class BomTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             (root / 'src').mkdir()
-            (root / 'sqlite3.c').write_bytes(b'sqlite')
-            sqlite_hash = hashlib.sha256(b'sqlite').hexdigest()
+            sqlite_source = b'static void chacha_block(\nSQLITE_API void sqlite3_randomness(\nchacha20_init[]\nchacha_block((u32*)wsdPrng.out, wsdPrng.s);\n'
+            sqlite_hash = hashlib.sha256(sqlite_source).hexdigest()
             fat_hash = hashlib.sha256(b'fatfs').hexdigest()
             (root / 'provenance.toml').write_text(
                 '[[source]]\nname="FatFs"\nstatus="runtime"\nrevision="R0.16"\npatched_ff_c_sha256="' + fat_hash + '"\n'
                 '[[source]]\nname="SQLite amalgamation"\nstatus="runtime"\nrevision="3"\n')
             # The production manifest uses a nested path ending in /sqlite3.c.
             (root / 'sqlite').mkdir()
-            (root / 'sqlite' / 'sqlite3.c').write_bytes(b'sqlite')
+            (root / 'sqlite' / 'sqlite3.c').write_bytes(sqlite_source)
             fs = {'upstream': {'ff.c': fat_hash}}
             sqld = {'sources': {'sqlite/sqlite3.c': sqlite_hash}}
             sqld['identity'] = hashlib.sha256(json.dumps(sqld, sort_keys=True).encode()).hexdigest()
@@ -99,10 +99,17 @@ class BomTest(unittest.TestCase):
             (image / 'normal-fs-manifest.json').write_text(json.dumps(fs))
             (image / 'sqld-manifest.json').write_text(json.dumps(sqld))
             audit.update({'normal_fs': {'manifest_sha256': hashlib.sha256(json.dumps(fs, sort_keys=True, separators=(',', ':')).encode()).hexdigest()},
-                          'sqld': {'identity': sqld['identity']}})
+                          'sqld': {'identity': sqld['identity'], 'sqlite_prng_link_evidence': {'function': 'sqlite3_randomness', 'function_address': '0x4008', 'function_bytes': 16, 'constant': 'sqlite3_randomness.chacha20_init', 'constant_address': '0x5004'}}})
             (image / 'image-audit.json').write_text(json.dumps(audit))
             out = root / 'out'
             bom.generate(root, image, out)
+            cbom = json.loads((out / 'source-cbom.cdx.json').read_text())
+            candidate = next(c for c in cbom['components'] if c['name'] == 'ChaCha20')
+            self.assertIn({'name': 'nihos:linked-function', 'value': 'sqlite3_randomness'}, candidate['properties'])
+            del audit['sqld']['sqlite_prng_link_evidence']
+            (image / 'image-audit.json').write_text(json.dumps(audit))
+            bom.generate(root, image, out)
+            self.assertFalse(any(c['name'] == 'ChaCha20' for c in json.loads((out / 'source-cbom.cdx.json').read_text())['components']))
             data = json.loads((out / 'audited-inputs.cdx.json').read_text())
             self.assertEqual([c['name'] for c in data['components']], ['bootloader.bin', 'partition-table.bin', 'nihos-native.bin', 'FatFs', 'SQLite'])
             for component, payload, offset in zip(data['components'][:3], (b'boot', b'partition', b'app'), ('0x2000', '0x8000', '0x10000')):
