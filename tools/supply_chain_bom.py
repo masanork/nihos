@@ -137,6 +137,22 @@ def generate(root, image_dir, output):
         sqlite_files = [(k, v) for k, v in manifest['sources'].items() if k.endswith('/sqlite3.c')]
         if len(sqlite_files) != 1 or digest(root / sqlite_files[0][0]) != sqlite_files[0][1]:
             raise ValueError('SQLite source differs from sqld manifest')
+        sqlite_source = (root / sqlite_files[0][0]).read_text(encoding='utf-8')
+        evidence = audit['sqld'].get('sqlite_prng_link_evidence')
+        markers = ('static void chacha_block(', 'SQLITE_API void sqlite3_randomness(',
+                   'chacha20_init[]', 'chacha_block((u32*)wsdPrng.out, wsdPrng.s);')
+        if evidence and all(marker in sqlite_source for marker in markers):
+            crypto.append({'type': 'cryptographic-asset', 'name': 'ChaCha20',
+                'cryptoProperties': {'assetType': 'algorithm',
+                    'algorithmProperties': {'primitive': 'stream-cipher'}},
+                'properties': [prop('evidence', 'SQLite source markers and linked function and initialization constant'),
+                    prop('source-location', sqlite_files[0][0]),
+                    prop('source-sha256', sqlite_files[0][1]),
+                    prop('linked-function', evidence['function']),
+                    prop('linked-function-address', evidence['function_address']),
+                    prop('linked-constant', evidence['constant']),
+                    prop('image-membership', 'linked symbol evidence; algorithm bytes and runtime use unverified'),
+                    prop('usage-context', 'SQLite pseudo-random generator; not evidence of encryption or entropy quality')]})
         sqlite = next(e for e in sources if e['name'].startswith('SQLite amalgamation'))
         audited.append({'type': 'library', 'name': 'SQLite', 'version': sqlite['revision'],
             'hashes': [{'alg': 'SHA-256', 'content': sqlite_files[0][1]}],
