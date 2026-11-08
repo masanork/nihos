@@ -31,21 +31,26 @@ export fn nih_ssh_workspace_probe(ws: *ssh.Workspace, model: *ssh.Model, ui: *ss
     return @intFromBool(foreground.stop());
 }
 
-// Compile-only foreground timing; this stub never provides entropy.
+// Compile-only foreground timing. Fixed bytes are not an entropy source.
 const ProbeSession = struct {
-    state: enum { idle, failed } = .idle,
-    pub fn begin(_: *@This(), _: u64, _: u64) error{Unavailable}!void {
-        return error.Unavailable;
+    state: enum { idle, collecting, ready, failed } = .idle,
+    enabled: bool = false,
+    pub fn begin(self: *@This(), _: u64, _: u64) error{Unavailable}!void {
+        if (!self.enabled) return error.Unavailable;
+        self.state = .collecting;
     }
-    pub fn poll(_: *@This(), _: u64) void {}
+    pub fn poll(self: *@This(), _: u64) void {
+        if (self.state == .collecting) self.state = .ready;
+    }
     pub fn cancel(self: *@This()) void {
         self.state = .idle;
     }
-    pub fn available(_: *@This()) bool {
-        return false;
+    pub fn available(self: *@This()) bool {
+        return self.state == .ready;
     }
-    pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
-        return error.EntropyUnavailable;
+    pub fn fill(self: *@This(), out: []u8) error{EntropyUnavailable}!void {
+        if (!self.available()) return error.EntropyUnavailable;
+        @memset(out, 0);
     }
 };
 const ProbeTimer = struct {
