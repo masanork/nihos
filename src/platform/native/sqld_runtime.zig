@@ -7,6 +7,7 @@ const timers = @import("timer_group");
 const options = @import("native_options");
 const abi = @import("sqld_wire.zig");
 const layout = @import("sqld_layout.zig");
+const ime = @import("sqld_ime_mailbox.zig");
 const RngGate = @import("p4_rng_gate.zig").Gate;
 var rng_gate: RngGate = .{};
 
@@ -33,6 +34,9 @@ extern fn nih_sqld_size() callconv(.c) usize;
 extern fn nih_store_size() callconv(.c) usize;
 extern fn nih_store_mount(*anyopaque, usize, *const Device, c_int) callconv(.c) c_int;
 extern fn nih_store_generation(*anyopaque) callconv(.c) u64;
+extern fn nih_store_pin_object(*anyopaque, u32, *u32, *u64) callconv(.c) i32;
+extern fn nih_store_read_object(*anyopaque, u32, u64, [*]u8, usize) callconv(.c) i32;
+extern fn nih_store_release(*anyopaque, u32) callconv(.c) i32;
 extern fn nih_sqld_native_allocator(*anyopaque, u32) callconv(.c) c_int;
 extern fn nih_sqld_start(*anyopaque, usize, *anyopaque, *const Platform, u32, u32) callconv(.c) c_int;
 extern fn nih_sqld_submit(*anyopaque, u32, *const abi.Request) callconv(.c) c_int;
@@ -65,6 +69,7 @@ const State = struct {
     allocator_ready: bool = false,
     report: abi.Report = .{},
     sector: [512]u8 = @splat(0),
+    ime: ime.Mailbox = .{},
     last_wake: u64 = 0,
     cache: PageCache = .{ .backing = .{}, .pages = @ptrFromInt(layout.cache) },
 };
@@ -77,6 +82,17 @@ fn store() *anyopaque {
 fn service() *anyopaque {
     return @ptrFromInt(layout.service);
 }
+const ImeBackend = struct {
+    pub fn pin(_: @This(), key: u32, token: *u32, length: *u64) i32 {
+        return nih_store_pin_object(store(), key, token, length);
+    }
+    pub fn read(_: @This(), token: u32, offset: u64, out: []u8) i32 {
+        return nih_store_read_object(store(), token, offset, out.ptr, out.len);
+    }
+    pub fn release(_: @This(), token: u32) i32 {
+        return nih_store_release(store(), token);
+    }
+};
 fn now() u64 {
     return timers.Timer.fromGroup(0x500c3000, 0).?.counter() orelse 0;
 }
@@ -212,6 +228,8 @@ pub export fn nih_sqld_native_task(_: u32) i32 {
         s.report.heap_used = @intCast(@max(0, sqlite3_memory_used()));
     }
     while (true) {
+        // Exactly one owner services both SQLite and dictionary requests.
+        if (s.ime.service(ImeBackend{}, s.started and s.report.phase == 2)) nih_sqld_wake(4);
         if (s.started) {
             acquireSqliteRng();
             const step_result = nih_sqld_step(service());
@@ -240,6 +258,19 @@ pub export fn nih_sqld_native_task(_: u32) i32 {
 }
 pub export fn nih_sqld_native_status() i32 {
     return @intCast(state().report.phase);
+}
+pub export fn nih_sqld_ime_submit(q: *ime.Request) callconv(.c) i32 {
+    const s = state();
+    if (identity(null) != s.principal) return -13;
+    if (s.report.phase != 2) return -19;
+    const rc = s.ime.submit(q);
+    if (rc == 0) nih_sqld_wake(1);
+    return rc;
+}
+pub export fn nih_sqld_ime_take(r: *ime.Response) callconv(.c) i32 {
+    const s = state();
+    if (identity(null) != s.principal) return -13;
+    return s.ime.take(r);
 }
 pub export fn nih_sqld_native_submit(q: *abi.Request) i32 {
     const s = state();
