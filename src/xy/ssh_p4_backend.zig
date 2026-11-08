@@ -239,6 +239,7 @@ const Fake = struct {
     apb: u32 = 80_000_000,
     timer: u8 = 0,
     clock_source: u32 = 1,
+    timer_snapshots: u32 = 0,
     control: u32 = 0,
     conf1: u32 = 0x2345,
     conf2: u32 = 0x5678,
@@ -333,6 +334,7 @@ const Fake = struct {
         }
     }
     pub fn counter(self: *@This()) ?u64 {
+        self.timer_snapshots += 1;
         return self.now;
     }
     fn tick(self: *@This()) void {
@@ -729,6 +731,8 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try std.testing.expect(!session.available() and resources.reserved);
     try std.testing.expect(!gate.trySqlite());
     try std.testing.expectEqual(.failed_cleanup, session.state);
+    // All timing came from foreground ticks, not another shared timer capture.
+    try std.testing.expectEqual(@as(u32, 0), io.timer_snapshots);
 }
 
 test "foreground tick time is unavailable until observed and latches rollback" {
