@@ -1151,7 +1151,11 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                             region.ssh_entropy_generations % @alignOf(u64) != 0)
                             @compileError("SSH entropy generation counter layout");
                     }
-                    @as(*volatile u64, @ptrFromInt(region.ssh_entropy_generations)).* = 0;
+                    const entropy_state: [*]volatile u8 = @ptrFromInt(region.ssh_entropy);
+                    const generations: *volatile u64 = @ptrFromInt(region.ssh_entropy_generations);
+                    if (!region.initializeSshEntropyBoot(entropy_state[0..region.ssh_entropy_state_bytes], generations))
+                        fail("SSH entropy PSRAM initialization");
+                    asm volatile ("fence iorw,iorw" ::: .{ .memory = true });
                     const foreground: *Foreground = @ptrFromInt(region.ssh_foreground);
                     const receipt = if (ssh_boot_clock_valid) @import("p4_entropy_clock.zig").receiptFromBoot(@as(*const cpu_boot.Report, @ptrCast(&ssh_boot_clock)).*, struct {
                         pub fn read(_: @This(), address: usize) u32 {

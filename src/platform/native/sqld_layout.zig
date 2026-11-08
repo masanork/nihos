@@ -42,6 +42,16 @@ pub const guard: u32 = 0xa5a5a5a5;
 pub const first_sector: u32 = 2048;
 pub const sector_count: u32 = 8192;
 
+/// Boot-only initialization, before any entropy owner can use this region.
+/// This clears the CPU-visible state and initializes the boot-epoch counter;
+/// it does not establish physical zeroization or cache-writeback guarantees.
+pub fn initializeSshEntropyBoot(state: []volatile u8, generations: *volatile u64) bool {
+    if (state.len != ssh_entropy_state_bytes) return false;
+    for (state) |*byte| byte.* = 0;
+    generations.* = 0;
+    return true;
+}
+
 pub fn admitted(capacity: u32, start: u32, length: u32) bool {
     return capacity >= 8 * 1024 * 1024 and start == base and length >= bytes and
         base + bytes <= 0x48000000 + capacity;
@@ -70,4 +80,18 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(ssh_foreground % 16 == 0 and ssh_entropy % 16 == 0);
     try std.testing.expect(ssh_foreground + ssh_foreground_bytes <= ssh_stack);
     try std.testing.expect(ssh_stack + ssh_stack_bytes <= base + bytes);
+}
+
+test "SSH entropy boot initialization is bounded and leaves adjacent bytes alone" {
+    const std = @import("std");
+    var bytes_: [ssh_entropy_state_bytes + 2]u8 = @splat(0xa5);
+    var generations: u64 = 17;
+    try std.testing.expect(!initializeSshEntropyBoot(bytes_[1..ssh_entropy_state_bytes], &generations));
+    try std.testing.expectEqual(@as(u64, 17), generations);
+    try std.testing.expect(std.mem.allEqual(u8, &bytes_, 0xa5));
+    try std.testing.expect(initializeSshEntropyBoot(bytes_[1 .. 1 + ssh_entropy_state_bytes], &generations));
+    try std.testing.expectEqual(@as(u64, 0), generations);
+    try std.testing.expectEqual(@as(u8, 0xa5), bytes_[0]);
+    try std.testing.expectEqual(@as(u8, 0xa5), bytes_[bytes_.len - 1]);
+    try std.testing.expect(std.mem.allEqual(u8, bytes_[1 .. 1 + ssh_entropy_state_bytes], 0));
 }
