@@ -1144,6 +1144,14 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                         if (@sizeOf(Foreground) > region.ssh_foreground_runtime_bytes) @compileError("SSH foreground exceeds its PSRAM partition");
                         if (region.ssh_foreground % @alignOf(Foreground) != 0) @compileError("SSH foreground reservation misaligned");
                     }
+                    // This boot-only path runs before CPU1 and before any SSH
+                    // visit. Do not reset the generation counter on re-entry.
+                    comptime {
+                        if (region.ssh_entropy_generations_bytes != @sizeOf(u64) or
+                            region.ssh_entropy_generations % @alignOf(u64) != 0)
+                            @compileError("SSH entropy generation counter layout");
+                    }
+                    @as(*volatile u64, @ptrFromInt(region.ssh_entropy_generations)).* = 0;
                     const foreground: *Foreground = @ptrFromInt(region.ssh_foreground);
                     const receipt = if (ssh_boot_clock_valid) @import("p4_entropy_clock.zig").receiptFromBoot(@as(*const cpu_boot.Report, @ptrCast(&ssh_boot_clock)).*, struct {
                         pub fn read(_: @This(), address: usize) u32 {

@@ -204,3 +204,25 @@ test "ready seed expires and clock rollback discards partial bytes" {
     try std.testing.expect(std.mem.allEqual(u8, &collector.seed, 0));
     try std.testing.expectEqual(@as(?u64, null), collector.lease());
 }
+
+test "separate visits share a boot counter and reject an earlier generation" {
+    var backend: Fake = .{};
+    var generations: Generations = .{};
+    const C = Collector(Fake);
+    var first = C.init(&backend, &generations);
+    try first.begin(0, 100);
+    for (0..entropy.seed_bytes) |_| first.poll(1);
+    const stale = first.lease() orelse return error.MissingLease;
+    first.cancel();
+    first.poll(2);
+
+    var next = C.init(&backend, &generations);
+    try next.begin(3, 100);
+    for (0..entropy.seed_bytes) |_| next.poll(4);
+    try std.testing.expectEqual(stale + 1, next.lease().?);
+    var out: [entropy.seed_bytes]u8 = @splat(0);
+    try std.testing.expectError(error.EntropyUnavailable, next.fillSeed(stale, &out));
+    try std.testing.expect(std.mem.allEqual(u8, &out, 0));
+    next.cancel();
+    next.poll(5);
+}

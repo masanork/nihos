@@ -110,7 +110,8 @@ const layout = @import("sqld_layout");
 comptime {
     if (@sizeOf(Prepared) > layout.ssh_entropy_state_bytes) @compileError("P4 entropy state exceeds its PSRAM partition");
     if (layout.ssh_entropy % @alignOf(Prepared) != 0) @compileError("P4 entropy PSRAM partition is misaligned");
-    if (@sizeOf(backend_mod.Generations) > layout.ssh_entropy_generations_bytes or
+    if (@sizeOf(backend_mod.Generations) != layout.ssh_entropy_generations_bytes or
+        @offsetOf(backend_mod.Generations, "last") != 0 or
         layout.ssh_entropy_generations % @alignOf(backend_mod.Generations) != 0)
         @compileError("P4 entropy generation counter does not fit its PSRAM partition");
 }
