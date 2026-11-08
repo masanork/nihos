@@ -114,6 +114,33 @@ def generate(root, image_dir, output):
                 'properties': [prop('evidence', 'source text match; includes possible comments and tests'),
                     prop('image-membership', 'unverified')] +
                     [prop('source-location', location) for location in locations]})
+    photo = audit.get('photo_codec') or {}
+    rsa_evidence = photo.get('card_rsa_link_evidence')
+    if rsa_evidence:
+        manifest = json.loads((image_dir / 'photo-manifest.json').read_text())
+        manifest_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if manifest_hash != photo.get('manifest_sha256'):
+            raise ValueError('photo manifest differs from image audit')
+        source_path = 'src/card/license_crypto.zig'
+        source_digest = digest(root / source_path)
+        config = manifest.get('license_crypto', {})
+        if (manifest.get('sources', {}).get(source_path) != source_digest or
+                not manifest.get('automatic_cards', {}).get('read_enabled') or
+                config.get('profile') != 'npa-raw-sha256-v1_5' or config.get('bits') != 2048 or
+                rsa_evidence.get('function') != 'nih_card_crypto' or
+                rsa_evidence.get('profile') != config.get('profile') or rsa_evidence.get('bits') != 2048 or
+                'nih_card_crypto' not in config.get('allowed_functions', [])):
+            raise ValueError('card RSA evidence differs from source or manifest')
+        rsa = next((c for c in crypto if c['name'] == 'RSA-2048'), None)
+        if rsa is None:
+            raise ValueError('card RSA evidence has no source candidate')
+        rsa['properties'] = [p for p in rsa['properties'] if p['name'] != 'nihos:image-membership']
+        rsa['properties'] += [prop('image-membership', 'linked entry point evidence; runtime execution unverified'),
+            prop('linked-function', rsa_evidence['function']),
+            prop('linked-function-address', rsa_evidence['function_address']),
+            prop('source-sha256', source_digest),
+            prop('audited-profile', config['profile']),
+            prop('usage-context', 'card signature verification; trust and runtime operation unverified')]
     # The native image audit already verifies the manifest identities embedded in
     # the ELF. Recheck those identities before extracting the two known inputs.
     audited = binary_components

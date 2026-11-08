@@ -78,6 +78,45 @@ class BomTest(unittest.TestCase):
         code = [line for line in source.splitlines() if not line.lstrip().startswith(('//', 'test '))]
         self.assertTrue(any(re.search(bom.PATTERNS['RSA-2048'][0], line) for line in code))
 
+    def test_rsa_link_evidence_requires_audited_profile_and_source(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'src/card').mkdir(parents=True)
+            source = root / 'src/card/license_crypto.zig'
+            source.write_text('const M = std.crypto.ff.Modulus(2048);\n')
+            (root / 'provenance.toml').write_text('[[source]]\nname="test"\nstatus="runtime"\n')
+            image = root / 'image'
+            audit = make_image(image)
+            manifest = {'sources': {'src/card/license_crypto.zig': bom.digest(source)},
+                        'automatic_cards': {'read_enabled': True},
+                        'license_crypto': {'profile': 'npa-raw-sha256-v1_5', 'bits': 2048,
+                                           'allowed_functions': ['nih_card_crypto']}}
+            def write_audit():
+                (image / 'photo-manifest.json').write_text(json.dumps(manifest))
+                (image / 'image-audit.json').write_text(json.dumps(audit))
+            audit['photo_codec'] = {'manifest_sha256': hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                'card_rsa_link_evidence': {'function': 'nih_card_crypto', 'function_address': '0x4000',
+                                            'function_bytes': 12, 'profile': 'npa-raw-sha256-v1_5', 'bits': 2048}}
+            write_audit()
+            out = root / 'out'
+            bom.generate(root, image, out)
+            rsa = next(c for c in json.loads((out / 'source-cbom.cdx.json').read_text())['components'] if c['name'] == 'RSA-2048')
+            self.assertIn({'name': 'nihos:linked-function', 'value': 'nih_card_crypto'}, rsa['properties'])
+            source.write_text('const M = std.crypto.ff.Modulus(2048); // modified\n')
+            with self.assertRaises(ValueError):
+                bom.generate(root, image, out)
+            source.write_text('const M = std.crypto.ff.Modulus(2048);\n')
+            manifest['automatic_cards']['read_enabled'] = False
+            audit['photo_codec']['manifest_sha256'] = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            write_audit()
+            with self.assertRaises(ValueError):
+                bom.generate(root, image, out)
+            del audit['photo_codec']['card_rsa_link_evidence']
+            write_audit()
+            bom.generate(root, image, out)
+            rsa = next(c for c in json.loads((out / 'source-cbom.cdx.json').read_text())['components'] if c['name'] == 'RSA-2048')
+            self.assertIn({'name': 'nihos:image-membership', 'value': 'unverified'}, rsa['properties'])
+
     def test_audited_input_manifests_are_checked(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

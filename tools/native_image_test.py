@@ -10,6 +10,15 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+class CardRsaEvidenceTest(unittest.TestCase):
+    def test_only_entry_point_inside_photo_text_is_evidence(self):
+        f = [('nih_card_crypto', 0x4010, 0x4020)]
+        self.assertEqual(MODULE.card_rsa_link_evidence(f, 0x4000, 0x4100)['bits'], 2048)
+        self.assertIsNone(MODULE.card_rsa_link_evidence([], 0x4000, 0x4100))
+        self.assertIsNone(MODULE.card_rsa_link_evidence(f, 0x4000, 0x4018))
+        self.assertIsNone(MODULE.card_rsa_link_evidence(f + f, 0x4000, 0x4100))
+
+
 class SqliteCryptoEvidenceTest(unittest.TestCase):
     def test_only_linked_function_and_matching_constant_are_reported(self):
         functions = [('sqlite3_randomness', 0x4008, 0x4018)]
