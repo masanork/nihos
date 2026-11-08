@@ -100,7 +100,7 @@ image and all three inventory files as one artifact set:
 
 ```sh
 python3 tools/verify_native_provenance.py PATH/TO/IMAGE-DIRECTORY \
-  --source-sha TRUSTED_COMMIT_SHA --require-image-layout
+  --source-sha TRUSTED_COMMIT_SHA --require-image-layout --require-audit-evidence
 ```
 
 The directory must contain `nihos-native-flash.bin` and the three `.cdx.json`
@@ -126,3 +126,14 @@ inventories that lack lengths; without the flag those older inventories remain
 verifiable but their component slices cannot be independently checked. When
 lengths are present the layout is always checked, even without the flag. These
 checks establish byte consistency, not source-to-binary provenance.
+
+With `--require-audit-evidence`, the consumer also requires the retained
+`nihos-native.elf` and `image-audit.json`. After verifying the signed inventory
+subjects, it checks the SHA-256 references in all three inventories against
+these files, checks the audit's ELF digest and device profile, and matches its
+application digest to the verified flash slice. The ELF and audit are bound
+indirectly by the signed inventories; they are not attestation subjects. This
+checks evidence consistency, not authenticity of the local audit's findings,
+a fresh audit, or proof that the source built the ELF. The option also requires
+the image-layout check. Without it, older artifact sets need not include the
+audit or ELF.
