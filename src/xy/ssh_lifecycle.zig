@@ -522,6 +522,33 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
     };
 }
 
+/// Drive a prepared visit with the exact timestamp observed by its foreground
+/// owner. A failed clock update stops the visit and retains any incomplete
+/// cleanup. Timer.observe must latch failures until its owner is recovered.
+/// This does not qualify the timer, entropy source or hardware reservation.
+pub fn TimedPreparedForeground(comptime Model: type, comptime ControllerType: type, comptime EntropySession: type, comptime Timer: type) type {
+    return struct {
+        const Self = @This();
+        const Visit = PreparedForeground(Model, ControllerType, EntropySession);
+        pub const State = Visit.State;
+        timer: *Timer,
+        visit: Visit,
+
+        pub fn initInPlace(self: *Self, model: *Model, controller: *ControllerType, entropy: *EntropySession, timer: *Timer, seed_timeout: u64, connect_timeout: u64, close_timeout: u64) !void {
+            try self.visit.initInPlace(model, controller, entropy, seed_timeout, connect_timeout, close_timeout);
+            self.timer = timer;
+        }
+
+        pub fn poll(self: *Self, visible: bool, now: u64) Self.State {
+            if (!self.timer.observe(now)) {
+                const stopped = self.visit.poll(false, now);
+                return if (visible and stopped == .idle) .failed else stopped;
+            }
+            return self.visit.poll(visible, now);
+        }
+    };
+}
+
 /// Network wraps one TCP owner and a reserved SSH owner; Ui is an in-place xy
 /// terminal session, and Model provides the terminal attachment API.
 pub fn Controller(comptime Network: type, comptime Ui: type, comptime Model: type) type {

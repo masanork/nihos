@@ -563,49 +563,50 @@ test "stuck analog restoration never admits or retains cancelled entropy" {
     try std.testing.expect(gate.releaseSqlite());
 }
 
+const TestForegroundModel = struct {
+    pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
+    pub const PrivateInputPortType = struct {
+        pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
+        context: *anyopaque,
+        key: *const fn (*anyopaque, PrivateInputKey) bool,
+        close: *const fn (*anyopaque) void,
+        snapshot: *const fn (*anyopaque, *View) bool,
+    };
+    private_input: ?PrivateInputPortType = null,
+    pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
+        if (self.private_input != null) return false;
+        self.private_input = port;
+        return true;
+    }
+    pub fn detachPrivateInput(self: *@This()) void {
+        const port = self.private_input orelse return;
+        self.private_input = null;
+        port.close(port.context);
+    }
+};
+const TestForegroundController = struct {
+    state: @import("ssh_lifecycle.zig").State = .idle,
+    pub fn beginProfile(_: *@This(), _: *const @import("ssh_lifecycle.zig").Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
+    pub fn pollProfile(_: *@This(), _: *const @import("ssh_lifecycle.zig").Profile, _: u64, _: ?*const @import("ssh_lifecycle.zig").ExchangeEntropy, _: *const [32]u8) !@import("ssh_lifecycle.zig").State {
+        return .opening;
+    }
+    pub fn cancel(_: *@This()) void {}
+    pub fn retryCleanup(_: *@This()) bool {
+        return true;
+    }
+};
+
 test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
     const sessions = @import("ssh_entropy_session.zig");
     const lifecycle = @import("ssh_lifecycle.zig");
-    const Model = struct {
-        pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
-        pub const PrivateInputPortType = struct {
-            pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
-            context: *anyopaque,
-            key: *const fn (*anyopaque, PrivateInputKey) bool,
-            close: *const fn (*anyopaque) void,
-            snapshot: *const fn (*anyopaque, *View) bool,
-        };
-        private_input: ?PrivateInputPortType = null,
-        pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
-            if (self.private_input != null) return false;
-            self.private_input = port;
-            return true;
-        }
-        pub fn detachPrivateInput(self: *@This()) void {
-            const port = self.private_input orelse return;
-            self.private_input = null;
-            port.close(port.context);
-        }
-    };
-    const Controller = struct {
-        state: lifecycle.State = .idle,
-        pub fn beginProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
-        pub fn pollProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: ?*const lifecycle.ExchangeEntropy, _: *const [32]u8) !lifecycle.State {
-            return .opening;
-        }
-        pub fn cancel(_: *@This()) void {}
-        pub fn retryCleanup(_: *@This()) bool {
-            return true;
-        }
-    };
     var gate: @import("p4_rng_gate").Gate = .{};
     var io: Fake = .{ .gate = &gate };
     var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
     var generations: collector_mod.Generations = .{};
     var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
-    var model: Model = .{};
-    var controller: Controller = .{};
-    var foreground = try lifecycle.PreparedForeground(Model, Controller, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    var foreground = try lifecycle.PreparedForeground(TestForegroundModel, TestForegroundController, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
     try std.testing.expect(gate.trySqlite());
     try std.testing.expectEqual(.acquiring, foreground.poll(true, 0));
     io.tick();
@@ -745,4 +746,113 @@ test "foreground tick time is unavailable until observed and latches rollback" {
     try std.testing.expect(!timer.observe(100));
     try std.testing.expect(timer.counter() == null);
     try std.testing.expect(!timer.observe(102));
+}
+
+test "tick-driven foreground prepares entropy before credentials and closes on rollback" {
+    const clock_mod = @import("p4_entropy_clock");
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Gate = @import("p4_rng_gate").Gate;
+    const Resources = struct {
+        reserved: bool = false,
+        pub fn tryReserve(self: *@This()) bool {
+            if (self.reserved) return false;
+            self.reserved = true;
+            return true;
+        }
+        pub fn owned(self: *@This()) bool {
+            return self.reserved;
+        }
+        pub fn releaseUnused(self: *@This()) void {
+            self.reserved = false;
+        }
+        pub fn releaseRestored(self: *@This()) bool {
+            self.reserved = false;
+            return true;
+        }
+    };
+    var gate: Gate = .{};
+    var resources: Resources = .{};
+    var io: Fake = .{ .cpu = 360_000_000, .apb = 90_000_000 };
+    var generations: Generations = .{};
+    var timer: TickTimer = .{};
+    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, TickTimer));
+    defer std.testing.allocator.destroy(prepared);
+    const report = .{ .status = @as(u32, 1), .error_code = @as(u32, 0), .source = @as(u32, 1), .cpll_mhz = @as(u32, 360), .after_mhz = @as(u32, 360), .mem_mhz = @as(u32, 180), .apb_mhz = @as(u32, 90), .rom_mhz = @as(u32, 360), .ctrl0 = @as(u32, 0), .ctrl1 = @as(u32, 1), .ctrl2 = @as(u32, 1 << 16) };
+    const receipt = clock_mod.receiptFromBoot(report, &io) orelse return error.MissingClockReceipt;
+    try prepared.initInPlace(&gate, &resources, &io, &timer, &generations, receipt);
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, @TypeOf(prepared.session), TickTimer);
+    const timed = try std.testing.allocator.create(Timed);
+    defer std.testing.allocator.destroy(timed);
+    try timed.initInPlace(&model, &controller, &prepared.session, &timer, 100_000, 20_000, 5_000);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectEqual(.acquiring, timed.poll(true, 0));
+    io.tick();
+    try std.testing.expectEqual(.acquiring, timed.poll(true, io.now));
+    try std.testing.expect(model.private_input == null and !resources.reserved);
+    try std.testing.expect(gate.releaseSqlite());
+    var saw_restoring = false;
+    for (0..800) |_| {
+        io.tick();
+        const state = timed.poll(true, io.now);
+        if (prepared.session.state == .restoring) {
+            saw_restoring = true;
+            try std.testing.expect(!gate.trySqlite());
+        }
+        try std.testing.expect(model.private_input == null);
+        if (state == .active) break;
+    }
+    try std.testing.expect(saw_restoring and prepared.session.available());
+    io.tick();
+    try std.testing.expectEqual(.active, timed.poll(true, io.now));
+    try std.testing.expect(model.private_input != null);
+    try std.testing.expectEqual(.failed, timed.poll(true, io.now - 1));
+    try std.testing.expect(model.private_input == null and !prepared.session.available());
+    try std.testing.expectEqual(.idle, timed.poll(false, io.now));
+    try std.testing.expectEqual(@as(u32, 0), io.timer_snapshots);
+}
+
+test "tick rollback holds foreground until pending cleanup finishes" {
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Entropy = struct {
+        state: enum { idle, collecting, cleaning, failed } = .idle,
+        held: bool = false,
+        release_allowed: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.held = true;
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .cleaning and self.release_allowed) {
+                self.held = false;
+                self.state = .idle;
+            }
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(_: *@This()) bool {
+            return false;
+        }
+        pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
+            return error.EntropyUnavailable;
+        }
+    };
+    var timer: TickTimer = .{};
+    var entropy: Entropy = .{};
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, Entropy, TickTimer);
+    const timed = try std.testing.allocator.create(Timed);
+    defer std.testing.allocator.destroy(timed);
+    try timed.initInPlace(&model, &controller, &entropy, &timer, 100, 100, 100);
+    try std.testing.expectEqual(.preparing, timed.poll(true, 10));
+    try std.testing.expectEqual(.stopping, timed.poll(true, 9));
+    try std.testing.expect(entropy.held and model.private_input == null);
+    try std.testing.expectEqual(.stopping, timed.poll(false, 11));
+    entropy.release_allowed = true;
+    try std.testing.expectEqual(.idle, timed.poll(false, 12));
+    try std.testing.expect(!entropy.held);
+    try std.testing.expectEqual(.failed, timed.poll(true, 13));
 }

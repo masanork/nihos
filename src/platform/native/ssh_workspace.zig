@@ -57,6 +57,11 @@ pub fn Foreground(comptime Entropy: type) type {
 pub fn PreparedForeground(comptime EntropySession: type) type {
     return lifecycle.PreparedForeground(Model, Controller, EntropySession);
 }
+/// A foreground owner can feed its existing tick to entropy preparation.
+/// The caller still owns and qualifies the timer and entropy session.
+pub fn TimedPreparedForeground(comptime EntropySession: type, comptime Timer: type) type {
+    return lifecycle.TimedPreparedForeground(Model, Controller, EntropySession, Timer);
+}
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,

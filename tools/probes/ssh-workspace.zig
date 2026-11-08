@@ -30,3 +30,38 @@ export fn nih_ssh_workspace_probe(ws: *ssh.Workspace, model: *ssh.Model, ui: *ss
     _ = foreground.poll(true, now +| 1000) catch return 0;
     return @intFromBool(foreground.stop());
 }
+
+// Compile-only foreground timing; this stub never provides entropy.
+const ProbeSession = struct {
+    state: enum { idle, failed } = .idle,
+    pub fn begin(_: *@This(), _: u64, _: u64) error{Unavailable}!void {
+        return error.Unavailable;
+    }
+    pub fn poll(_: *@This(), _: u64) void {}
+    pub fn cancel(self: *@This()) void {
+        self.state = .idle;
+    }
+    pub fn available(_: *@This()) bool {
+        return false;
+    }
+    pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
+        return error.EntropyUnavailable;
+    }
+};
+const ProbeTimer = struct {
+    last: u64 = 0,
+    failed: bool = false,
+    pub fn observe(self: *@This(), now: u64) bool {
+        if (self.failed or now < self.last) {
+            self.failed = true;
+            return false;
+        }
+        self.last = now;
+        return true;
+    }
+};
+const Timed = ssh.TimedPreparedForeground(ProbeSession, ProbeTimer);
+export fn nih_ssh_timed_workspace_probe(timed: *Timed, ws: *ssh.Workspace, model: *ssh.Model, entropy: *ProbeSession, timer: *ProbeTimer, now: u64) u32 {
+    timed.initInPlace(model, &ws.controller, entropy, timer, 10_000_000, 2_000_000, 2_000_000) catch return 0;
+    return @backingInt(timed.poll(true, now));
+}
