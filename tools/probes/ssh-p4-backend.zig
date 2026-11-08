@@ -97,3 +97,24 @@ export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platfo
     _ = backend.sample() catch return 0;
     return @intFromBool(backend.release());
 }
+
+// This compiles the complete in-place graph. Timer and reservation are stubs;
+// the emitted object must not be used as a native entropy implementation.
+const StubTimer = struct {
+    pub fn counter(_: *@This()) ?u64 {
+        return 0;
+    }
+};
+const Prepared = backend_mod.Prepared(leases.NativeRngGate, Resources, hw_mod.NativeAccess, StubTimer);
+export fn nih_ssh_p4_prepared_probe(prepared: *Prepared, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, timer: *StubTimer, generations: *backend_mod.Generations, receipt: *const clock_mod.Receipt) u32 {
+    prepared.initInPlace(gate, resources, access, timer, generations, receipt.*) catch return 0;
+    prepared.session.begin(0, 100_000) catch return 0;
+    prepared.session.poll(1);
+    prepared.session.cancel();
+    prepared.session.poll(2);
+    return @intFromBool(prepared.session.available());
+}
+
+export fn nih_ssh_p4_prepared_bytes() u32 {
+    return @sizeOf(Prepared);
+}

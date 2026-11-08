@@ -23,6 +23,15 @@ pub fn Backend(comptime Platform: type) type {
         pub fn init(platform: *Platform, setup_timeout_us: u64, transaction_timeout_us: u64, default_cpu_mhz: u32) Self {
             return .{ .platform = platform, .setup_timeout_us = setup_timeout_us, .transaction_timeout_us = transaction_timeout_us, .default_cpu_mhz = default_cpu_mhz };
         }
+        pub fn initInPlace(self: *Self, platform: *Platform, setup_timeout_us: u64, transaction_timeout_us: u64, default_cpu_mhz: u32) void {
+            self.platform = platform;
+            self.noise = .{};
+            self.sampler.clear();
+            self.phase = .idle;
+            self.setup_timeout_us = setup_timeout_us;
+            self.transaction_timeout_us = transaction_timeout_us;
+            self.default_cpu_mhz = default_cpu_mhz;
+        }
         /// A failed acquire must have taken no ownership or changed hardware.
         pub fn begin(self: *Self) !void {
             if (self.phase != .idle) return error.Busy;
@@ -132,8 +141,64 @@ pub fn Backend(comptime Platform: type) type {
     };
 }
 
+/// Compose the P4 entropy pipeline in stable caller-owned storage. The caller
+/// must retain the gate, hardware reservation, MMIO, timer and boot-epoch
+/// generation counter, and must not move or reinitialize this object while a
+/// session or its cleanup is live. This does not provide or qualify a native
+/// resource owner, timer, entropy source, or product-image placement.
+pub fn Prepared(comptime Gate: type, comptime Resources: type, comptime Access: type, comptime Timer: type) type {
+    const lease_mod = @import("p4_entropy_lease");
+    const hw_mod = @import("p4_entropy_hardware");
+    const clock_mod = @import("p4_entropy_clock");
+    const session_mod = @import("ssh_entropy_session.zig");
+    const Reservation = lease_mod.Lease(Gate, Resources);
+    const ClockIO = struct {
+        reservation: *Reservation,
+        access: *Access,
+        timer: *Timer,
+        pub fn owned(self: *@This()) bool {
+            return self.reservation.owned();
+        }
+        pub fn read(self: *@This(), address: usize) u32 {
+            return self.access.read(address);
+        }
+        pub fn counter(self: *@This()) ?u64 {
+            return self.timer.counter();
+        }
+    };
+    const Clock = clock_mod.Guard(ClockIO);
+    const Hardware = hw_mod.Hardware(Access, Clock);
+    const Platform = lease_mod.Platform(Reservation, Hardware);
+    const P4Backend = Backend(Platform);
+    const Session = session_mod.Session(P4Backend);
+    return struct {
+        const Self = @This();
+        reservation: Reservation,
+        clock_io: ClockIO,
+        clock: Clock,
+        hardware: Hardware,
+        platform: Platform,
+        backend: P4Backend,
+        session: Session,
+
+        /// Reject a missing receipt before acquiring anything or modifying self.
+        /// A fresh instance may be initialized only after any previous cleanup.
+        pub fn initInPlace(self: *Self, gate: *Gate, resources: *Resources, access: *Access, timer: *Timer, generations: *session_mod.Generations, receipt: ?clock_mod.Receipt) error{MissingClockReceipt}!void {
+            const verified = receipt orelse return error.MissingClockReceipt;
+            self.reservation = Reservation.init(gate, resources);
+            self.clock_io = .{ .reservation = &self.reservation, .access = access, .timer = timer };
+            self.clock = Clock.init(&self.clock_io, verified);
+            self.hardware = .{ .access = access, .clock = &self.clock };
+            self.platform = .{ .reservation = &self.reservation, .hardware = &self.hardware };
+            self.backend.initInPlace(&self.platform, 20_000, 1_000, 360);
+            self.session.initInPlace(&self.backend, generations);
+        }
+    };
+}
+
 const std = @import("std");
 const collector_mod = @import("ssh_seed_collector.zig");
+pub const Generations = collector_mod.Generations;
 const entropy_mod = @import("ssh_entropy.zig");
 const Fake = struct {
     gate: ?*@import("p4_rng_gate").Gate = null,
@@ -147,6 +212,7 @@ const Fake = struct {
     cpu: u32 = 160_000_000,
     apb: u32 = 80_000_000,
     timer: u8 = 0,
+    clock_source: u32 = 1,
     control: u32 = 0,
     conf1: u32 = 0x2345,
     conf2: u32 = 0x5678,
@@ -211,6 +277,10 @@ const Fake = struct {
     }
     pub fn read(self: *@This(), addr: usize) u32 {
         return switch (addr) {
+            0x500e6004 => 0,
+            0x500e6008 => 1,
+            0x500e600c => 1 << 16,
+            0x50111040 => self.clock_source,
             0x501101a4 => self.readRng(),
             0x50112010 => 0,
             0x50112014 => self.lowTimerByte(),
@@ -235,6 +305,9 @@ const Fake = struct {
             0x500de05c => self.adc[idx(0x500de054)] &= ~value,
             else => self.adc[idx(addr)] = value,
         }
+    }
+    pub fn counter(self: *@This()) ?u64 {
+        return self.now;
     }
     fn tick(self: *@This()) void {
         self.now += 28;
@@ -537,10 +610,7 @@ test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
 }
 
 test "composed reservation and P4 backend restore before seed becomes available" {
-    const lease_mod = @import("p4_entropy_lease");
-    const hw_mod = @import("p4_entropy_hardware");
     const clock_mod = @import("p4_entropy_clock");
-    const sessions = @import("ssh_entropy_session.zig");
     const Gate = @import("p4_rng_gate").Gate;
     const Resources = struct {
         io: *Fake,
@@ -571,37 +641,20 @@ test "composed reservation and P4 backend restore before seed becomes available"
     var gate: Gate = .{};
     var io: Fake = .{};
     var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
-    var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
-    const ClockIO = struct {
-        io: *Fake,
-        reservation: *@TypeOf(reservation),
-        pub fn owned(self: *@This()) bool {
-            return self.reservation.owned();
-        }
-        pub fn counter(self: *@This()) ?u64 {
-            return self.io.nowMicros();
-        }
-        pub fn read(_: *@This(), address: usize) u32 {
-            return switch (address) {
-                clock_mod.root => 0,
-                clock_mod.mem_sys => 1,
-                clock_mod.apb => 1 << 16,
-                clock_mod.source => 1,
-                else => unreachable,
-            };
-        }
-    };
-    var clock_io = ClockIO{ .io = &io, .reservation = &reservation };
-    const Clock = clock_mod.Guard(ClockIO);
-    var clock = Clock.init(&clock_io, .{ .root = 0, .mem_sys = 1, .apb = 1 << 16, .source = 1, .cpu_hz = 360_000_000, .apb_hz = 90_000_000 });
     io.cpu = 360_000_000;
     io.apb = 90_000_000;
-    var hardware = hw_mod.Hardware(Fake, Clock){ .access = &io, .clock = &clock };
-    const Platform = lease_mod.Platform(@TypeOf(reservation), @TypeOf(hardware));
-    var platform = Platform{ .reservation = &reservation, .hardware = &hardware };
-    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 360);
     var generations: collector_mod.Generations = .{};
-    var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);
+    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, Fake));
+    defer std.testing.allocator.destroy(prepared);
+    @memset(std.mem.asBytes(prepared), 0xa5);
+    try std.testing.expectError(error.MissingClockReceipt, prepared.initInPlace(&gate, &resources, &io, &io, &generations, null));
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(prepared), 0xa5));
+    try std.testing.expect(!resources.reserved and gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    const report = .{ .status = @as(u32, 1), .error_code = @as(u32, 0), .source = @as(u32, 1), .cpll_mhz = @as(u32, 360), .after_mhz = @as(u32, 360), .mem_mhz = @as(u32, 180), .apb_mhz = @as(u32, 90), .rom_mhz = @as(u32, 360), .ctrl0 = @as(u32, 0), .ctrl1 = @as(u32, 1), .ctrl2 = @as(u32, 1 << 16) };
+    const receipt = clock_mod.receiptFromBoot(report, &io) orelse return error.MissingClockReceipt;
+    try prepared.initInPlace(&gate, &resources, &io, &io, &generations, receipt);
+    const session = &prepared.session;
 
     try std.testing.expect(gate.trySqlite());
     try std.testing.expectError(error.Unavailable, session.begin(0, 100_000));
@@ -625,4 +678,22 @@ test "composed reservation and P4 backend restore before seed becomes available"
     session.cancel();
     session.poll(io.now);
     try std.testing.expectEqual(.idle, session.state);
+
+    // The same in-place graph can safely start a new generation after cleanup.
+    try session.begin(io.now, 100_000);
+    try std.testing.expectEqual(@as(u64, 2), generations.last);
+    for (0..100) |_| {
+        io.tick();
+        session.poll(io.now);
+        if (prepared.backend.noise.analog.dirty) break;
+    }
+    try std.testing.expect(prepared.backend.noise.analog.dirty);
+    io.clock_source = 0;
+    io.tick();
+    session.poll(io.now);
+    io.tick();
+    session.poll(io.now);
+    try std.testing.expect(!session.available() and resources.reserved);
+    try std.testing.expect(!gate.trySqlite());
+    try std.testing.expectEqual(.failed_cleanup, session.state);
 }

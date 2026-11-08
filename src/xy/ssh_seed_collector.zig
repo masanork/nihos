@@ -32,6 +32,18 @@ pub fn Collector(comptime Backend: type) type {
             return .{ .backend = backend, .generations = generations };
         }
 
+        /// Initialize stable storage; the caller must not reset a live collector.
+        pub fn initInPlace(self: *Self, backend: *Backend, generations: *Generations) void {
+            self.backend = backend;
+            self.generations = generations;
+            self.state = .idle;
+            std.crypto.secureZero(u8, &self.seed);
+            self.count = 0;
+            self.deadline = 0;
+            self.last_poll = 0;
+            self.generation = 0;
+        }
+
         pub fn begin(self: *Self, now: u64, timeout: u64) !void {
             if (self.state != .idle) return error.Busy;
             if (timeout == 0 or now > std.math.maxInt(u64) - timeout) return error.InvalidDeadline;
