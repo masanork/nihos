@@ -131,6 +131,6 @@ export fn nih_ssh_p4_prepared_bytes() u32 {
 // placement check only: the provided reservation and timer remain stubs.
 export fn nih_ssh_p4_slots_probe(region: *align(16) [layout.ssh_entropy_bytes]u8, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, receipt: *const clock_mod.Receipt) u32 {
     const slots = Slots.bind(region);
-    slots.prepared.initInPlace(gate, resources, access, slots.timer, slots.generations, receipt.*) catch return 0;
+    slots.prepareOnce(gate, resources, access, @as(?clock_mod.Receipt, receipt.*)) catch return 0;
     return @intFromBool(slots.prepared.session.available());
 }

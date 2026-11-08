@@ -36,6 +36,9 @@ pub const ssh_entropy_state_bytes: u32 = 0x3f0;
 pub const ssh_entropy_prepared_bytes: u32 = 0x3c0;
 pub const ssh_entropy_tick_timer: u32 = ssh_entropy + ssh_entropy_prepared_bytes;
 pub const ssh_entropy_tick_timer_bytes: u32 = 0x20;
+// Boot-cleared, CPU0-only one-shot marker; never reset between visits.
+pub const ssh_entropy_claim: u32 = ssh_entropy_tick_timer + ssh_entropy_tick_timer_bytes;
+pub const ssh_entropy_claim_bytes: u32 = 4;
 pub const ssh_entropy_generations: u32 = ssh_entropy + ssh_entropy_state_bytes;
 pub const ssh_entropy_generations_bytes: u32 = 8;
 // Exclusive CPU0 SSH stack, distinct from the Scheme and render stacks.
@@ -62,7 +65,8 @@ pub fn initializeSshEntropyBoot(state: []volatile u8, generations: *volatile u64
 pub fn SshEntropySlots(comptime Prepared: type, comptime Timer: type, comptime Generations: type) type {
     comptime {
         if (ssh_entropy_prepared_bytes > ssh_entropy_tick_timer - ssh_entropy or
-            ssh_entropy_tick_timer + ssh_entropy_tick_timer_bytes > ssh_entropy_generations or
+            ssh_entropy_tick_timer + ssh_entropy_tick_timer_bytes > ssh_entropy_claim or
+            ssh_entropy_claim + ssh_entropy_claim_bytes > ssh_entropy_generations or
             ssh_entropy_generations + ssh_entropy_generations_bytes > ssh_entropy + ssh_entropy_bytes)
             @compileError("entropy PSRAM slots overlap or exceed their reservation");
         if (@sizeOf(Prepared) > ssh_entropy_prepared_bytes or @alignOf(Prepared) > 16 or
@@ -80,13 +84,26 @@ pub fn SshEntropySlots(comptime Prepared: type, comptime Timer: type, comptime G
         prepared: *Prepared,
         timer: *Timer,
         generations: *Generations,
+        claim: *u32,
 
         pub fn bind(region: *align(16) [ssh_entropy_bytes]u8) @This() {
             return .{
                 .prepared = @ptrCast(region),
                 .timer = @ptrCast(@alignCast(&region[ssh_entropy_prepared_bytes])),
                 .generations = @ptrCast(@alignCast(&region[ssh_entropy_state_bytes])),
+                .claim = @ptrCast(@alignCast(&region[ssh_entropy_claim - ssh_entropy])),
             };
+        }
+
+        /// CPU0 only, after boot cleared the reservation and before use. A
+        /// successful or attempted initialization consumes this boot's slot;
+        /// failure stays closed and never permits overwriting live cleanup.
+        pub fn prepareOnce(self: @This(), gate: anytype, resources: anytype, access: anytype, receipt: anytype) !void {
+            if (self.claim.* != 0) return error.AlreadyPrepared;
+            if (receipt == null) return error.MissingClockReceipt;
+            self.claim.* = 1;
+            self.timer.* = .{};
+            try self.prepared.initInPlace(gate, resources, access, self.timer, self.generations, receipt);
         }
     };
 }
@@ -115,6 +132,8 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(ssh_entropy + ssh_entropy_bytes <= ssh_foreground + ssh_foreground_bytes);
     try std.testing.expect(ssh_entropy + ssh_entropy_prepared_bytes <= ssh_entropy_tick_timer);
     try std.testing.expect(ssh_entropy_tick_timer + ssh_entropy_tick_timer_bytes <= ssh_entropy_generations);
+    try std.testing.expect(ssh_entropy_claim % @alignOf(u32) == 0);
+    try std.testing.expect(ssh_entropy_claim + ssh_entropy_claim_bytes <= ssh_entropy_generations);
     try std.testing.expect(ssh_entropy_tick_timer % 8 == 0);
     try std.testing.expect(ssh_entropy + ssh_entropy_state_bytes <= ssh_entropy_generations);
     try std.testing.expect(ssh_entropy_generations + ssh_entropy_generations_bytes <= ssh_entropy + ssh_entropy_bytes);
@@ -122,6 +141,38 @@ test "sqld boot region is disjoint from display, heaps and its own parts" {
     try std.testing.expect(ssh_foreground % 16 == 0 and ssh_entropy % 16 == 0);
     try std.testing.expect(ssh_foreground + ssh_foreground_bytes <= ssh_stack);
     try std.testing.expect(ssh_stack + ssh_stack_bytes <= base + bytes);
+}
+
+test "SSH entropy preparation is once per boot and preserves live state" {
+    const std = @import("std");
+    const Timer = struct { last: u64 = 0 };
+    const Generations = struct { last: u64 = 0 };
+    const Prepared = struct {
+        attempts: u32,
+        pub fn initInPlace(self: *@This(), _: *u8, _: *u8, _: *u8, _: *Timer, _: *Generations, receipt: ?u8) !void {
+            if (receipt == null) return error.MissingClockReceipt;
+            if (receipt.? == 8) return error.InitFailed;
+            self.attempts = 1;
+        }
+    };
+    var region: [ssh_entropy_bytes]u8 align(16) = @splat(0);
+    const slots = SshEntropySlots(Prepared, Timer, Generations).bind(&region);
+    var dummy: u8 = 0;
+    try std.testing.expectError(error.MissingClockReceipt, slots.prepareOnce(&dummy, &dummy, &dummy, @as(?u8, null)));
+    try std.testing.expectEqual(@as(u32, 0), slots.claim.*);
+    try slots.prepareOnce(&dummy, &dummy, &dummy, @as(?u8, 7));
+    slots.prepared.attempts = 9;
+    slots.timer.last = 13;
+    slots.generations.last = 17;
+    const again = SshEntropySlots(Prepared, Timer, Generations).bind(&region);
+    try std.testing.expectError(error.AlreadyPrepared, again.prepareOnce(&dummy, &dummy, &dummy, @as(?u8, 7)));
+    try std.testing.expectEqual(@as(u32, 9), slots.prepared.attempts);
+    try std.testing.expectEqual(@as(u64, 13), slots.timer.last);
+    try std.testing.expectEqual(@as(u64, 17), slots.generations.last);
+    var failed_region: [ssh_entropy_bytes]u8 align(16) = @splat(0);
+    const failed = SshEntropySlots(Prepared, Timer, Generations).bind(&failed_region);
+    try std.testing.expectError(error.InitFailed, failed.prepareOnce(&dummy, &dummy, &dummy, @as(?u8, 8)));
+    try std.testing.expectError(error.AlreadyPrepared, failed.prepareOnce(&dummy, &dummy, &dummy, @as(?u8, 7)));
 }
 
 test "SSH entropy boot initialization is bounded and leaves adjacent bytes alone" {
