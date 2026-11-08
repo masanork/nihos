@@ -12,6 +12,8 @@ import re
 import subprocess
 import sys
 
+import native_build_tool_evidence
+
 REPO = 'masanork/nihos'
 WORKFLOW = '.github/workflows/native.yml'
 SIGNER = '.github/workflows/native-provenance.yml'
@@ -133,7 +135,25 @@ def check_audit_evidence(directory, inventories):
         raise ValueError('image audit application digest differs from flash inventory')
 
 
-def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=False, require_audit_evidence=False):
+def check_build_tool_evidence(inventories, expected_zig_sha256=None):
+    """Check identical, bounded tool observations from all signed inventories."""
+    receipts = []
+    for bom in inventories:
+        properties = bom.get('metadata', {}).get('properties', [])
+        if not isinstance(properties, list):
+            raise ValueError('invalid inventory metadata properties')
+        values = [p.get('value') for p in properties if isinstance(p, dict) and p.get('name') == 'nihos:build-tool-evidence']
+        if len(values) != 1 or not isinstance(values[0], str):
+            raise ValueError('missing or duplicate build tool evidence')
+        receipts.append(native_build_tool_evidence.validate(json.loads(values[0])))
+    if any(receipt != receipts[0] for receipt in receipts[1:]):
+        raise ValueError('build tool evidence differs between inventories')
+    if expected_zig_sha256 is not None and (not re.fullmatch(r'[0-9a-f]{64}', expected_zig_sha256) or receipts[0]['zig_sha256'] != expected_zig_sha256):
+        raise ValueError('Zig binary digest differs from independently trusted digest')
+    return receipts[0]
+
+
+def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=False, require_audit_evidence=False, require_build_tool_evidence=False, expected_zig_sha256=None):
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA must be 40 lowercase hexadecimal characters')
     if not re.fullmatch(r'refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*', source_ref):
@@ -167,6 +187,8 @@ def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=
             continue
         if require_audit_evidence:
             check_audit_evidence(directory, inventories)
+        if require_build_tool_evidence or expected_zig_sha256 is not None:
+            check_build_tool_evidence(inventories, expected_zig_sha256)
         return hashes
     raise ValueError('no verified statement satisfies native provenance policy')
 
@@ -181,15 +203,20 @@ def main():
                         help='require and verify binary offsets, lengths and digests')
     parser.add_argument('--require-audit-evidence', action='store_true',
                         help='require and verify retained image audit and ELF (also requires image layout)')
+    parser.add_argument('--require-build-tool-evidence', action='store_true',
+                        help='require matching signed build tool observations in all inventories')
+    parser.add_argument('--expected-zig-sha256', help='independently trusted Zig binary SHA-256; implies build tool evidence')
     args = parser.parse_args()
     try:
-        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle, args.require_image_layout, args.require_audit_evidence)
+        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle, args.require_image_layout, args.require_audit_evidence, args.require_build_tool_evidence, args.expected_zig_sha256)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as exc:
         print(f'native provenance verification failed: {exc}', file=sys.stderr)
         return 1
     print(json.dumps({'policy': 'experimental-native-main-v1', 'source_sha': args.source_sha,
                       'source_ref': args.source_ref, 'image_layout_required': args.require_image_layout or args.require_audit_evidence,
-                      'audit_evidence_verified': args.require_audit_evidence, 'subjects': hashes}, indent=2))
+                      'audit_evidence_verified': args.require_audit_evidence,
+                      'build_tool_evidence_verified': args.require_build_tool_evidence or args.expected_zig_sha256 is not None,
+                      'expected_zig_sha256': args.expected_zig_sha256, 'subjects': hashes}, indent=2))
     return 0
 
 
