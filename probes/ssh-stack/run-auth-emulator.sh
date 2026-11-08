@@ -29,7 +29,7 @@ git -C "$tmp/tree" apply --unidiff-zero "$root/probes/ssh-stack/auth-emulator-fi
 import hashlib, json, os, pathlib, re, subprocess, sys
 image, out, patch = map(pathlib.Path, sys.argv[1:])
 log = (out / 'emulator.log').read_text()
-if 'NIHOS_NATIVE_NORMAL_READY' not in log or 'NIHOS_SSH_STACK_FIXTURE_PASS' not in log or 'NIHOS_SSH_STACK_AUTH used=' not in log:
+if 'NIHOS_NATIVE_NORMAL_READY' not in log or 'NIHOS_SSH_ENTROPY_BOOT_PASS' not in log or 'NIHOS_SSH_STACK_FIXTURE_PASS' not in log or 'NIHOS_SSH_STACK_AUTH used=' not in log:
     raise SystemExit('fixture did not reach its success marker')
 if any(x in log for x in ('NIHOS_NATIVE_FAIL', 'NIHOS_NATIVE_PANIC', 'NIHOS_NATIVE_TRAP')):
     raise SystemExit('native failure marker in fixture log')
@@ -47,7 +47,7 @@ result = {'profile': 'headless ESP-EMU 0.50.0; fixed-key SSH auth packet; no net
           'fixture_patch_sha256': digest(patch), 'elf_sha256': audit['elf_sha256'],
           'image_sha256': audit['image_sha256'], 'heap_bytes': audit['heap']['bytes'], 'stack_used_bytes': stack_used,
           'emulator_log_sha256': digest(out / 'emulator.log'),
-          'checks': ['PSRAM stack pointer', 'timer interrupt while switched', 'nested admission rejected', 'stack admission released', 'stack reservation retained through wipe', 'transient stack cleared', 'fixed-key Ed25519 SSH authentication packet matches independent reference']}
+          'checks': ['entropy PSRAM initialization and visit counter retention', 'PSRAM stack pointer', 'timer interrupt while switched', 'nested admission rejected', 'stack admission released', 'stack reservation retained through wipe', 'transient stack cleared', 'fixed-key Ed25519 SSH authentication packet matches independent reference']}
 (out / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(result, sort_keys=True))
 PY
