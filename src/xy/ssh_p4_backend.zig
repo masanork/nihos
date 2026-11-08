@@ -141,6 +141,32 @@ pub fn Backend(comptime Platform: type) type {
     };
 }
 
+/// A foreground tick supplies one already-read monotonic timestamp. This avoids
+/// taking extra snapshots of the shared hardware timer inside the entropy
+/// pipeline. The outer owner remains responsible for a live, qualified timer;
+/// a frozen or repeatedly supplied value cannot establish elapsed time.
+/// Only the foreground owner may update it. Keep it stable and do not reset
+/// it while a session is live.
+pub const TickTimer = struct {
+    last: u64 = 0,
+    valid: bool = false,
+    failed: bool = false,
+
+    pub fn observe(self: *TickTimer, now: u64) bool {
+        if (self.failed) return false;
+        if (self.valid and now < self.last) {
+            self.failed = true;
+            return false;
+        }
+        self.last = now;
+        self.valid = true;
+        return true;
+    }
+    pub fn counter(self: *TickTimer) ?u64 {
+        return if (self.valid and !self.failed) self.last else null;
+    }
+};
+
 /// Compose the P4 entropy pipeline in stable caller-owned storage. The caller
 /// must retain the gate, hardware reservation, MMIO, timer and boot-epoch
 /// generation counter, and must not move or reinitialize this object while a
@@ -644,16 +670,18 @@ test "composed reservation and P4 backend restore before seed becomes available"
     io.cpu = 360_000_000;
     io.apb = 90_000_000;
     var generations: collector_mod.Generations = .{};
-    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, Fake));
+    var timer: TickTimer = .{};
+    try std.testing.expect(timer.observe(io.now));
+    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, TickTimer));
     defer std.testing.allocator.destroy(prepared);
     @memset(std.mem.asBytes(prepared), 0xa5);
-    try std.testing.expectError(error.MissingClockReceipt, prepared.initInPlace(&gate, &resources, &io, &io, &generations, null));
+    try std.testing.expectError(error.MissingClockReceipt, prepared.initInPlace(&gate, &resources, &io, &timer, &generations, null));
     try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(prepared), 0xa5));
     try std.testing.expect(!resources.reserved and gate.trySqlite());
     try std.testing.expect(gate.releaseSqlite());
     const report = .{ .status = @as(u32, 1), .error_code = @as(u32, 0), .source = @as(u32, 1), .cpll_mhz = @as(u32, 360), .after_mhz = @as(u32, 360), .mem_mhz = @as(u32, 180), .apb_mhz = @as(u32, 90), .rom_mhz = @as(u32, 360), .ctrl0 = @as(u32, 0), .ctrl1 = @as(u32, 1), .ctrl2 = @as(u32, 1 << 16) };
     const receipt = clock_mod.receiptFromBoot(report, &io) orelse return error.MissingClockReceipt;
-    try prepared.initInPlace(&gate, &resources, &io, &io, &generations, receipt);
+    try prepared.initInPlace(&gate, &resources, &io, &timer, &generations, receipt);
     const session = &prepared.session;
 
     try std.testing.expect(gate.trySqlite());
@@ -663,6 +691,7 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try session.begin(0, 100_000);
     for (0..800) |_| {
         io.tick();
+        try std.testing.expect(timer.observe(io.now));
         session.poll(io.now);
         if (resources.saw_restored) break;
     }
@@ -671,6 +700,7 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try std.testing.expect(!session.available() and !gate.trySqlite());
     resources.release_allowed = true;
     io.tick();
+    try std.testing.expect(timer.observe(io.now));
     session.poll(io.now);
     try std.testing.expect(session.available() and !resources.reserved);
     try std.testing.expect(gate.trySqlite());
@@ -684,16 +714,31 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try std.testing.expectEqual(@as(u64, 2), generations.last);
     for (0..100) |_| {
         io.tick();
+        try std.testing.expect(timer.observe(io.now));
         session.poll(io.now);
         if (prepared.backend.noise.analog.dirty) break;
     }
     try std.testing.expect(prepared.backend.noise.analog.dirty);
     io.clock_source = 0;
     io.tick();
+    try std.testing.expect(timer.observe(io.now));
     session.poll(io.now);
     io.tick();
+    try std.testing.expect(timer.observe(io.now));
     session.poll(io.now);
     try std.testing.expect(!session.available() and resources.reserved);
     try std.testing.expect(!gate.trySqlite());
     try std.testing.expectEqual(.failed_cleanup, session.state);
+}
+
+test "foreground tick time is unavailable until observed and latches rollback" {
+    var timer: TickTimer = .{};
+    try std.testing.expect(timer.counter() == null);
+    try std.testing.expect(timer.observe(100));
+    try std.testing.expectEqual(@as(?u64, 100), timer.counter());
+    try std.testing.expect(timer.observe(100));
+    try std.testing.expect(timer.observe(101));
+    try std.testing.expect(!timer.observe(100));
+    try std.testing.expect(timer.counter() == null);
+    try std.testing.expect(!timer.observe(102));
 }
