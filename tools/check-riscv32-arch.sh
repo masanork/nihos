@@ -150,10 +150,11 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
 # Full native lifecycle type with the same network and model module instances.
 # The fixture uses fixed material and is never executed.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-workspace.o" --dep ssh_workspace \
+    -femit-bin="$out_dir/ssh-workspace.o" --dep ssh_workspace --dep sqld_layout \
     "-Mroot=$repo_root/tools/probes/ssh-workspace.zig" \
     --dep network_service --dep text_console --dep ssh_terminal_session --dep ssh_lifecycle \
     "-Mssh_workspace=$repo_root/src/platform/native/ssh_workspace.zig" \
+    "-Msqld_layout=$repo_root/src/platform/native/sqld_layout.zig" \
     --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
     "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
     --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \

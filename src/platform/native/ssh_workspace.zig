@@ -86,3 +86,47 @@ pub const Workspace = struct {
         return self.controller.pollProfile(profile, now_us, exchange, padding);
     }
 };
+
+/// CPU0 owner for an already prepared, stable entropy session and timer.
+/// This is an integration boundary, not a qualified hardware owner. Keep
+/// this object, its entropy session, and timer in place for its lifetime.
+pub fn PreparedRuntime(comptime EntropySession: type, comptime Timer: type) type {
+    const TimedVisit = TimedPreparedForeground(EntropySession, Timer);
+    return struct {
+        const Self = @This();
+        workspace: Workspace,
+        visit: TimedVisit,
+        entropy: *EntropySession,
+        timer: *Timer,
+        model: ?*Model = null,
+        active: bool = false,
+
+        /// Boot-only, before the first visit; never reinitialize a live owner.
+        pub fn initInPlace(self: *Self, entropy: *EntropySession, timer: *Timer) void {
+            self.entropy = entropy;
+            self.timer = timer;
+            self.model = null;
+            self.active = false;
+        }
+
+        /// After network and UI service, using the owner's monotonic tick.
+        /// A departing or replaced model stays attached until cleanup succeeds.
+        pub fn poll(self: *Self, model: ?*Model, ui: *Ui, now: u64) void {
+            const visible = if (model) |m| m.nav.screen == .ssh else false;
+            if (self.active and (!visible or self.model != model)) {
+                if (self.visit.poll(false, now) != .idle) return;
+                self.active = false;
+                self.model = null;
+            }
+            if (!visible) return;
+            const current = model orelse return;
+            if (!self.active) {
+                self.workspace.initInPlace(current, ui) catch return;
+                self.visit.initInPlace(current, &self.workspace.controller, self.entropy, self.timer, 20_000_000, 20_000_000, 5_000_000) catch return;
+                self.model = current;
+                self.active = true;
+            }
+            _ = self.visit.poll(true, now);
+        }
+    };
+}

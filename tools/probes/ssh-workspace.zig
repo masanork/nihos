@@ -70,3 +70,17 @@ export fn nih_ssh_timed_workspace_probe(timed: *Timed, ws: *ssh.Workspace, model
     timed.initInPlace(model, &ws.controller, entropy, timer, 10_000_000, 2_000_000, 2_000_000) catch return 0;
     return @backingInt(timed.poll(true, now));
 }
+
+const PreparedRuntime = ssh.PreparedRuntime(ProbeSession, ProbeTimer);
+const layout = @import("sqld_layout");
+comptime {
+    if (@sizeOf(PreparedRuntime) > layout.ssh_foreground_runtime_bytes or
+        layout.ssh_foreground % @alignOf(PreparedRuntime) != 0)
+        @compileError("prepared SSH foreground does not fit its PSRAM slot");
+}
+// Compile-only: the stub session and timer do not qualify a hardware source.
+export fn nih_ssh_prepared_runtime_probe(runtime: *PreparedRuntime, model: *ssh.Model, ui: *ssh.Ui, entropy: *ProbeSession, timer: *ProbeTimer, now: u64) void {
+    runtime.initInPlace(entropy, timer);
+    runtime.poll(model, ui, now);
+    runtime.poll(null, ui, now);
+}
