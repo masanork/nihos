@@ -239,7 +239,10 @@ const Fake = struct {
     apb: u32 = 80_000_000,
     timer: u8 = 0,
     clock_source: u32 = 1,
-    timer_snapshots: u32 = 0,
+    clock_counter_reads: u32 = 0,
+    lp_timer_snapshots: u32 = 0,
+    lp_owner: ?*const bool = null,
+    unowned_lp_snapshots: u32 = 0,
     control: u32 = 0,
     conf1: u32 = 0x2345,
     conf2: u32 = 0x5678,
@@ -321,7 +324,14 @@ const Fake = struct {
     }
     pub fn write(self: *@This(), addr: usize, value: u32) void {
         switch (addr) {
-            0x50112010 => {},
+            0x50112010 => {
+                if (value & (1 << 28) != 0) {
+                    self.lp_timer_snapshots += 1;
+                    if (self.lp_owner) |owner| {
+                        if (!owner.*) self.unowned_lp_snapshots += 1;
+                    }
+                }
+            },
             0x50124000 => {
                 const reg: usize = (value >> 8) & 255;
                 if (value & (1 << 24) != 0) self.sar[reg] = @truncate(value >> 16);
@@ -334,7 +344,7 @@ const Fake = struct {
         }
     }
     pub fn counter(self: *@This()) ?u64 {
-        self.timer_snapshots += 1;
+        self.clock_counter_reads += 1;
         return self.now;
     }
     fn tick(self: *@This()) void {
@@ -728,6 +738,7 @@ test "composed reservation and P4 backend restore before seed becomes available"
     var gate: Gate = .{};
     var io: Fake = .{};
     var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
+    io.lp_owner = &resources.reserved;
     io.cpu = 360_000_000;
     io.apb = 90_000_000;
     var generations: collector_mod.Generations = .{};
@@ -790,8 +801,11 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try std.testing.expect(!session.available() and resources.reserved);
     try std.testing.expect(!gate.trySqlite());
     try std.testing.expectEqual(.failed_cleanup, session.state);
-    // All timing came from foreground ticks, not another shared timer capture.
-    try std.testing.expectEqual(@as(u32, 0), io.timer_snapshots);
+    // Clock-guard time comes from foreground ticks. The sampler separately
+    // captures the LP timer and therefore still needs its exclusive owner.
+    try std.testing.expectEqual(@as(u32, 0), io.clock_counter_reads);
+    try std.testing.expect(io.lp_timer_snapshots > 0);
+    try std.testing.expectEqual(@as(u32, 0), io.unowned_lp_snapshots);
 }
 
 test "foreground tick time is unavailable until observed and latches rollback" {
@@ -831,6 +845,7 @@ test "tick-driven foreground prepares entropy before credentials and closes on r
     var gate: Gate = .{};
     var resources: Resources = .{};
     var io: Fake = .{ .cpu = 360_000_000, .apb = 90_000_000 };
+    io.lp_owner = &resources.reserved;
     var generations: Generations = .{};
     var timer: TickTimer = .{};
     const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, TickTimer));
@@ -868,7 +883,9 @@ test "tick-driven foreground prepares entropy before credentials and closes on r
     try std.testing.expectEqual(.failed, timed.poll(true, io.now - 1));
     try std.testing.expect(model.private_input == null and !prepared.session.available());
     try std.testing.expectEqual(.idle, timed.poll(false, io.now));
-    try std.testing.expectEqual(@as(u32, 0), io.timer_snapshots);
+    try std.testing.expectEqual(@as(u32, 0), io.clock_counter_reads);
+    try std.testing.expect(io.lp_timer_snapshots > 0);
+    try std.testing.expectEqual(@as(u32, 0), io.unowned_lp_snapshots);
 }
 
 test "tick rollback holds foreground until pending cleanup finishes" {
