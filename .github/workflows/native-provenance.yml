@@ -60,7 +60,15 @@ jobs:
             exit 1
           fi
           python3 tools/verify_native_provenance.py "$dir" \
-            --source-sha "$GITHUB_SHA" --source-ref "$GITHUB_REF" --require-image-layout
+            --source-sha "$GITHUB_SHA" --source-ref "$GITHUB_REF" --require-image-layout --require-audit-evidence
+          cp "$dir/image-audit.json" "$RUNNER_TEMP/original-image-audit.json"
+          printf ' ' >> "$dir/image-audit.json"
+          if python3 tools/verify_native_provenance.py "$dir" \
+              --source-sha "$GITHUB_SHA" --source-ref "$GITHUB_REF" --require-audit-evidence; then
+            echo 'Modified image audit unexpectedly passed verification' >&2
+            exit 1
+          fi
+          mv "$RUNNER_TEMP/original-image-audit.json" "$dir/image-audit.json"
           cp "$dir/nihos-native-flash.bin" "$RUNNER_TEMP/modified.bin"
           printf x >> "$RUNNER_TEMP/modified.bin"
           if gh attestation verify "$RUNNER_TEMP/modified.bin" --repo "$GITHUB_REPOSITORY" \
