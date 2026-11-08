@@ -15122,15 +15122,15 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-08",
-    "measuredAt": "2026-11-08T11:31:14.855462+00:00",
+    "measuredAt": "2026-11-08T13:35:26.933629+00:00",
     "project": "nihos",
-    "commit": "8e85416228a6adf327fbdfe9ff9a8c7278e813c9",
+    "commit": "25ab968650aee2076e363292b7294a23cffff32a",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "7f852396ccb37295eb90f5fe7c8fda2ed4d917da16cf00d8320c6881da9bc21c",
+    "sourceTreeSha256": "65d7a063b085cc67606e7bffe2b6bd9887f5d949db9f5bf5dc4acde8c991591c",
     "code": {
       "implementation": 89699,
-      "tests": 49588,
-      "tooling": 31769,
+      "tests": 49629,
+      "tooling": 31799,
       "probes": 19453,
       "vendored": 723,
       "generated": 0
@@ -15170,8 +15170,8 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 11173,
-        "tooling": 22925,
+        "tests": 11214,
+        "tooling": 22955,
         "probes": 3448,
         "vendored": 0,
         "generated": 0
@@ -15252,8 +15252,8 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 11206,
-        "tooling": 31427,
+        "tests": 11247,
+        "tooling": 31457,
         "probes": 0,
         "vendored": 0,
         "generated": 0
