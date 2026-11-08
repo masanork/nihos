@@ -1053,7 +1053,14 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
     if (!options.boot_fast and !flash_records.begin(0)) fail("CPU0 Flash records begin");
     if (!tasks.memory.prepare() or !tasks.memory.begin()) fail("CPU0 memory prepare");
     if (!options.cold_capture) prepareTimers();
-    if (options.cpu_mhz != 0 and !cpu_boot.run(timer(0), &logger)) fail("native CPU clock");
+    var ssh_boot_clock: if (native_ssh_foreground) [@sizeOf(cpu_boot.Report)]u8 else [0]u8 align(@alignOf(cpu_boot.Report)) = if (native_ssh_foreground) @splat(0) else .{};
+    var ssh_boot_clock_valid = false;
+    if (options.cpu_mhz != 0) {
+        if (comptime native_ssh_foreground) {
+            if (!cpu_boot.run(timer(0), &logger, @ptrCast(&ssh_boot_clock))) fail("native CPU clock");
+            ssh_boot_clock_valid = true;
+        } else if (!cpu_boot.run(timer(0), &logger, null)) fail("native CPU clock");
+    }
     if (!ui.initializeClock()) fail("diagnostic clock");
     boot_clock_ready = true;
     const external_bytes = bootMemory();
@@ -1138,7 +1145,17 @@ export fn nih_native_main() linksection(if (native_sqld) ".flash.sqldtext" else 
                         if (region.ssh_foreground % @alignOf(Foreground) != 0) @compileError("SSH foreground reservation misaligned");
                     }
                     const foreground: *Foreground = @ptrFromInt(region.ssh_foreground);
+                    const receipt = if (ssh_boot_clock_valid) @import("p4_entropy_clock.zig").receiptFromBoot(@as(*const cpu_boot.Report, @ptrCast(&ssh_boot_clock)).*, struct {
+                        pub fn read(_: @This(), address: usize) u32 {
+                            return reg(address).*;
+                        }
+                    }{}) else null;
                     foreground.initInPlace();
+                    if (receipt) |value| {
+                        foreground.boot_clock = value;
+                        foreground.boot_clock_valid = true;
+                    }
+                    ssh_boot_clock_valid = false;
                     ssh_foreground = foreground;
                 }
             }

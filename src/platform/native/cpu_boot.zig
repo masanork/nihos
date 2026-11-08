@@ -46,9 +46,12 @@ inline fn measure(timer: timers.Timer) ?u32 {
     }
     return null;
 }
-pub noinline fn run(timer: timers.Timer, log: anytype) linksection(".flash.text.boot") bool {
+pub noinline fn run(timer: timers.Timer, log: anytype, out: ?*Report) linksection(".flash.text.boot") bool {
     var result = Report{};
-    defer log.record("NIHOS_NATIVE_CPU_CLOCK", null, .{ "status", "error_code", "pc", "source", "cpll_mhz", "before_mhz", "after_mhz", "mem_mhz", "apb_mhz", "ctrl0", "ctrl1", "ctrl2", "rom_mhz" }, &result);
+    defer {
+        if (out) |dest| dest.* = result;
+        log.record("NIHOS_NATIVE_CPU_CLOCK", null, .{ "status", "error_code", "pc", "source", "cpll_mhz", "before_mhz", "after_mhz", "mem_mhz", "apb_mhz", "ctrl0", "ctrl1", "ctrl2", "rom_mhz" }, &result);
+    }
     result.pc = asm volatile ("auipc %[pc],0"
         : [pc] "=r" (-> u32),
     );
