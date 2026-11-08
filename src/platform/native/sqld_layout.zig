@@ -55,6 +55,42 @@ pub fn initializeSshEntropyBoot(state: []volatile u8, generations: *volatile u64
     return true;
 }
 
+/// Bind the fixed reservation without writing to it. Boot must initialize the
+/// region once before use; the CPU0 owner must keep it stable and must not
+/// reinitialize a live preparation, timer, or boot generation counter.
+/// Binding alone neither acquires hardware nor qualifies entropy or time.
+pub fn SshEntropySlots(comptime Prepared: type, comptime Timer: type, comptime Generations: type) type {
+    comptime {
+        if (ssh_entropy_prepared_bytes > ssh_entropy_tick_timer - ssh_entropy or
+            ssh_entropy_tick_timer + ssh_entropy_tick_timer_bytes > ssh_entropy_generations or
+            ssh_entropy_generations + ssh_entropy_generations_bytes > ssh_entropy + ssh_entropy_bytes)
+            @compileError("entropy PSRAM slots overlap or exceed their reservation");
+        if (@sizeOf(Prepared) > ssh_entropy_prepared_bytes or @alignOf(Prepared) > 16 or
+            ssh_entropy % @alignOf(Prepared) != 0)
+            @compileError("prepared entropy does not fit its PSRAM slot");
+        if (@sizeOf(Timer) > ssh_entropy_tick_timer_bytes or @alignOf(Timer) > 16 or
+            ssh_entropy_tick_timer % @alignOf(Timer) != 0)
+            @compileError("entropy timer does not fit its PSRAM slot");
+        if (@sizeOf(Generations) != ssh_entropy_generations_bytes or @alignOf(Generations) > 16 or
+            ssh_entropy_generations % @alignOf(Generations) != 0 or @offsetOf(Generations, "last") != 0 or
+            @FieldType(Generations, "last") != u64)
+            @compileError("entropy generations do not fit their PSRAM slot");
+    }
+    return struct {
+        prepared: *Prepared,
+        timer: *Timer,
+        generations: *Generations,
+
+        pub fn bind(region: *align(16) [ssh_entropy_bytes]u8) @This() {
+            return .{
+                .prepared = @ptrCast(region),
+                .timer = @ptrCast(@alignCast(&region[ssh_entropy_prepared_bytes])),
+                .generations = @ptrCast(@alignCast(&region[ssh_entropy_state_bytes])),
+            };
+        }
+    };
+}
+
 pub fn admitted(capacity: u32, start: u32, length: u32) bool {
     return capacity >= 8 * 1024 * 1024 and start == base and length >= bytes and
         base + bytes <= 0x48000000 + capacity;
@@ -100,4 +136,20 @@ test "SSH entropy boot initialization is bounded and leaves adjacent bytes alone
     try std.testing.expectEqual(@as(u8, 0xa5), bytes_[0]);
     try std.testing.expectEqual(@as(u8, 0xa5), bytes_[bytes_.len - 1]);
     try std.testing.expect(std.mem.allEqual(u8, bytes_[1 .. 1 + ssh_entropy_state_bytes], 0));
+}
+
+test "SSH entropy slots bind disjoint storage without changing its contents" {
+    const std = @import("std");
+    const Prepared = struct { bytes_: [512]u8 };
+    const Timer = struct { last: u64, valid: bool };
+    const Generations = struct { last: u64 };
+    var region: [ssh_entropy_bytes]u8 align(16) = @splat(0xa5);
+    const slots = SshEntropySlots(Prepared, Timer, Generations).bind(&region);
+    try std.testing.expectEqual(@intFromPtr(&region), @intFromPtr(slots.prepared));
+    try std.testing.expectEqual(@intFromPtr(&region) + ssh_entropy_prepared_bytes, @intFromPtr(slots.timer));
+    try std.testing.expectEqual(@intFromPtr(&region) + ssh_entropy_state_bytes, @intFromPtr(slots.generations));
+    try std.testing.expect(std.mem.allEqual(u8, &region, 0xa5));
+    slots.generations.last = 42;
+    const rebound = SshEntropySlots(Prepared, Timer, Generations).bind(&region);
+    try std.testing.expectEqual(@as(u64, 42), rebound.generations.last);
 }

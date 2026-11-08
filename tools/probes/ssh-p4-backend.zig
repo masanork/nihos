@@ -103,6 +103,7 @@ export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platfo
 const TickTimer = backend_mod.TickTimer;
 const Prepared = backend_mod.Prepared(leases.NativeRngGate, Resources, hw_mod.NativeAccess, TickTimer);
 const layout = @import("sqld_layout");
+const Slots = layout.SshEntropySlots(Prepared, TickTimer, backend_mod.Generations);
 comptime {
     if (@sizeOf(Prepared) > layout.ssh_entropy_prepared_bytes) @compileError("P4 entropy state exceeds its PSRAM partition");
     if (@sizeOf(TickTimer) > layout.ssh_entropy_tick_timer_bytes or layout.ssh_entropy_tick_timer % @alignOf(TickTimer) != 0)
@@ -124,4 +125,12 @@ export fn nih_ssh_p4_prepared_probe(prepared: *Prepared, gate: *leases.NativeRng
 
 export fn nih_ssh_p4_prepared_bytes() u32 {
     return @sizeOf(Prepared);
+}
+
+// Compile the same fixed-slot binding intended for the CPU0 owner. This is a
+// placement check only: the provided reservation and timer remain stubs.
+export fn nih_ssh_p4_slots_probe(region: *align(16) [layout.ssh_entropy_bytes]u8, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, receipt: *const clock_mod.Receipt) u32 {
+    const slots = Slots.bind(region);
+    slots.prepared.initInPlace(gate, resources, access, slots.timer, slots.generations, receipt.*) catch return 0;
+    return @intFromBool(slots.prepared.session.available());
 }
