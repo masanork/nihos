@@ -1,5 +1,5 @@
 diff --git a/src/graphics/card_auto_font.json b/src/graphics/card_auto_font.json
-index 0127a06d..90d83dd9 100644
+index 495f3cdf..724fe57c 100644
 --- a/src/graphics/card_auto_font.json
 +++ b/src/graphics/card_auto_font.json
 @@ -53,7 +53,7 @@
@@ -7,12 +7,12 @@ index 0127a06d..90d83dd9 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "cefbc5b2c8d66d17daf31048298fef3d871a7caa39dd59a060a14cf722ba7c71",
++    "src/platform/native/esp32p4.ld": "4d674ca755a1e23a4af02c708f8c67706b1f74d4c0f1554c07116a0bac8bd02e",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/card_read_font.json b/src/graphics/card_read_font.json
-index 2e73293b..ad538b08 100644
+index eaf5ef1c..eb8c1652 100644
 --- a/src/graphics/card_read_font.json
 +++ b/src/graphics/card_read_font.json
 @@ -53,7 +53,7 @@
@@ -20,12 +20,12 @@ index 2e73293b..ad538b08 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "cefbc5b2c8d66d17daf31048298fef3d871a7caa39dd59a060a14cf722ba7c71",
++    "src/platform/native/esp32p4.ld": "4d674ca755a1e23a4af02c708f8c67706b1f74d4c0f1554c07116a0bac8bd02e",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/keypad_atlas.json b/src/graphics/keypad_atlas.json
-index 3887cc72..8b3ab4ed 100644
+index 5baf2765..8b87acc7 100644
 --- a/src/graphics/keypad_atlas.json
 +++ b/src/graphics/keypad_atlas.json
 @@ -17,7 +17,7 @@
@@ -33,12 +33,12 @@ index 3887cc72..8b3ab4ed 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "cefbc5b2c8d66d17daf31048298fef3d871a7caa39dd59a060a14cf722ba7c71",
++    "src/platform/native/esp32p4.ld": "4d674ca755a1e23a4af02c708f8c67706b1f74d4c0f1554c07116a0bac8bd02e",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
      "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
 diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
-index 64d8d091..a7b2afb7 100644
+index 64d8d091..1be66b91 100644
 --- a/src/platform/native/esp32p4.ld
 +++ b/src/platform/native/esp32p4.ld
 @@ -329,6 +329,11 @@ SECTIONS
@@ -57,7 +57,7 @@ index 64d8d091..a7b2afb7 100644
      } > flash_xy
      .flash.xyrodata : ALIGN(16) {
          __flash_xy_rodata_start = .;
-+        *(.rodata.__anon_85497)
++        *(.rodata.__anon_85507)
          *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
          *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
          /* LLVM's switch tables do not inherit the function's linksection.
