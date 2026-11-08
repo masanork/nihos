@@ -931,6 +931,18 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
+def card_rsa_link_evidence(functions, text_start, text_end):
+    """Return positive card verifier entry-point evidence, never absence proof."""
+    matches = [(start, end) for name, start, end in functions
+               if name == 'nih_card_crypto' and text_start <= start < end <= text_end]
+    if len(matches) != 1:
+        return None
+    start, end = matches[0]
+    return {'function': 'nih_card_crypto', 'function_address': hex(start),
+            'function_bytes': end - start, 'profile': 'npa-raw-sha256-v1_5',
+            'bits': 2048}
+
+
 def sqlite_prng_link_evidence(functions, symbols, sizes, text_start, text_size, ro_start, rodata):
     """Report positive symbol evidence only; missing symbols prove no absence."""
     matches = [(a, b) for name, a, b in functions if name == 'sqlite3_randomness'
@@ -1163,6 +1175,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         photo_report = {'name':codec['name'],'version':codec['version'],'decode_only':True,'text_start':hex(code_start),'text_end':hex(ro_start),'rodata_start':hex(ro_start),'rodata_end':hex(ro_start+len(ro)),'text_bytes':len(code),'rodata_bytes':len(ro),'text_sha256':hashlib.sha256(code).hexdigest(),'rodata_sha256':hashlib.sha256(ro).hexdigest(),'workspace_bytes':codec['workspace_bytes'],'stack_low':codec['stack_low'],'stack_high':codec['stack_high']}
         sizes = [elf[section[4]:section[4]+section[5]] for section in sections if string(names,section[0]) == '.stack_sizes']
         require(len(sizes)==1, 'missing photo C stack metadata')
+        photo_report['manifest_sha256'] = hashlib.sha256(json.dumps(keypad_manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if automatic and automatic['read_enabled']:
+            evidence = card_rsa_link_evidence(functions, code_start, ro_start)
+            if evidence is not None:
+                photo_report['card_rsa_link_evidence'] = evidence
         photo_report['static_c_stack'] = decode_stack_sizes(sizes[0],functions)
         require(photo_report['static_c_stack']['maximum_reported_frame_bytes'] <= 8192, 'photo C frame exceeds isolated stack margin')
     fs_span = None

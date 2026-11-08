@@ -26,7 +26,12 @@ for the normal Tab5 device build, retaining them with the image evidence:
   absence. RSA-2048
   candidates include generic 2048-bit finite-field declarations because the
   NPA card verifier uses that API; such a match alone does not establish RSA
-  use. The verifier is built only in selected card profiles.
+  use. In a read-enabled card profile, the image audit can record the linked
+  `nih_card_crypto` entry point and the generator cross-checks its audited
+  profile and source hash. This is link evidence, not proof of runtime use,
+  provisioned trust anchors, successful card verification or physical-device
+  behavior. Missing symbols do not prove absence. The ordinary Tab5 profile
+  remains a source candidate unless it has independent link evidence.
 
 The image audit and manifests are local unsigned evidence: the generator checks
 consistency with them, not their authenticity. It does not rerun the native
