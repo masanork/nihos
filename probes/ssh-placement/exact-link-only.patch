@@ -1,5 +1,5 @@
 diff --git a/src/graphics/card_auto_font.json b/src/graphics/card_auto_font.json
-index 0127a06d..644165b0 100644
+index 0127a06d..0f21e396 100644
 --- a/src/graphics/card_auto_font.json
 +++ b/src/graphics/card_auto_font.json
 @@ -53,7 +53,7 @@
@@ -7,12 +7,12 @@ index 0127a06d..644165b0 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "c4b8fb6edae2a13865830bbc24449f9ff2572bae136a46a475814edb6a234875",
++    "src/platform/native/esp32p4.ld": "7f457a8ef09ae3b61234e98b4ac7b492f7453a29505cbe2ae876be02f624c898",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/card_read_font.json b/src/graphics/card_read_font.json
-index 2e73293b..ef8df70c 100644
+index 2e73293b..76e6b537 100644
 --- a/src/graphics/card_read_font.json
 +++ b/src/graphics/card_read_font.json
 @@ -53,7 +53,7 @@
@@ -20,12 +20,12 @@ index 2e73293b..ef8df70c 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "c4b8fb6edae2a13865830bbc24449f9ff2572bae136a46a475814edb6a234875",
++    "src/platform/native/esp32p4.ld": "7f457a8ef09ae3b61234e98b4ac7b492f7453a29505cbe2ae876be02f624c898",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/keypad_atlas.json b/src/graphics/keypad_atlas.json
-index 3887cc72..3dcc4697 100644
+index 3887cc72..9c06c54b 100644
 --- a/src/graphics/keypad_atlas.json
 +++ b/src/graphics/keypad_atlas.json
 @@ -17,7 +17,7 @@
@@ -33,12 +33,12 @@ index 3887cc72..3dcc4697 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "c4b8fb6edae2a13865830bbc24449f9ff2572bae136a46a475814edb6a234875",
++    "src/platform/native/esp32p4.ld": "7f457a8ef09ae3b61234e98b4ac7b492f7453a29505cbe2ae876be02f624c898",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
      "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
 diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
-index 64d8d091..4cd283f0 100644
+index 64d8d091..94d6b982 100644
 --- a/src/platform/native/esp32p4.ld
 +++ b/src/platform/native/esp32p4.ld
 @@ -329,6 +329,111 @@ SECTIONS
@@ -85,11 +85,11 @@ index 64d8d091..4cd283f0 100644
 +        *(".text.crypto.aes.bitsliced.Batch(1).sbox")
 +        *(".text.crypto.aes.bitsliced.Batch(1).shiftRows")
 +        *(".text.crypto.aes.bitsliced.Batch(1).subBytes")
-+        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_439")
-+        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_440")
 +        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_441")
 +        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_442")
 +        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_443")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_444")
++        *(".text.crypto.aes.bitsliced.Batch(1).swapMove__func_445")
 +        *(".text.crypto.aes.soft.KeySchedule(crypto.aes.soft.Aes128).expandKey__struct_222.func")
 +        *(".text.crypto.hmac.Hmac(crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256)).create")
 +        *(".text.crypto.hmac.Hmac(crypto.sha2.Sha2x32(.{ 1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225 },256)).final")
@@ -140,9 +140,9 @@ index 64d8d091..4cd283f0 100644
 +        *(".text.ssh_socket_pump.Pump.poll")
 +        *(".text.ssh_stream.DecoderFor(true).release")
 +        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).cancel")
-+        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_430.Callbacks.close")
-+        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_430.Callbacks.snapshot")
-+        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_430.Callbacks.write")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_432.Callbacks.close")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_432.Callbacks.snapshot")
++        *(".text.ssh_terminal_session.Session(ssh_hosted_session.Owner,80,24,8).port__func_432.Callbacks.write")
 +        *(".text.ssh_transport.Transport.abort")
 +        *(".text.ssh_transport.Transport.prepare")
 +        *(".text.ssh_workspace.NativeNetwork.cancel")
@@ -157,15 +157,15 @@ index 64d8d091..4cd283f0 100644
      } > flash_xy
      .flash.xyrodata : ALIGN(16) {
          __flash_xy_rodata_start = .;
-+        *(.rodata.__anon_85456)
++        *(.rodata.__anon_85496)
          *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
          *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
          /* LLVM's switch tables do not inherit the function's linksection.
 diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
-index 09fd90fb..5e79f6ae 100644
+index 18ff5784..824d9426 100644
 --- a/src/platform/native/ssh_foreground.zig
 +++ b/src/platform/native/ssh_foreground.zig
-@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
+@@ -6,7 +6,7 @@ const entropy_clock = @import("p4_entropy_clock.zig");
  const UnavailableEntropy = struct {
      // Do not link the SSH cryptographic path into a device image until a
      // qualified source and its memory placement have both been admitted.

@@ -1,5 +1,5 @@
 diff --git a/src/graphics/card_auto_font.json b/src/graphics/card_auto_font.json
-index 0127a06d..c5b0f7bc 100644
+index 0127a06d..70231596 100644
 --- a/src/graphics/card_auto_font.json
 +++ b/src/graphics/card_auto_font.json
 @@ -53,7 +53,7 @@
@@ -7,12 +7,12 @@ index 0127a06d..c5b0f7bc 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "5280c8506c3a880c5e8404707f68711b5134915c563160934048d50a8442fafb",
++    "src/platform/native/esp32p4.ld": "a3597abf5c6eeba03c8d3f0c5b396921b45466b2a833925cce63a92ab27f11be",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/card_read_font.json b/src/graphics/card_read_font.json
-index 2e73293b..82824849 100644
+index 2e73293b..517ee741 100644
 --- a/src/graphics/card_read_font.json
 +++ b/src/graphics/card_read_font.json
 @@ -53,7 +53,7 @@
@@ -20,12 +20,12 @@ index 2e73293b..82824849 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "5280c8506c3a880c5e8404707f68711b5134915c563160934048d50a8442fafb",
++    "src/platform/native/esp32p4.ld": "a3597abf5c6eeba03c8d3f0c5b396921b45466b2a833925cce63a92ab27f11be",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/graphics/card_splash.zig": "b53f816295b19a8fe4a121ce4764a4632887dbee63e8bb014a0b3a5b7b48e3be",
      "src/graphics/card_boot/assets.zig": "5a832070ffe232b4c0d0dafed8d607337fc877d6b4b8fe3ee1bcc9487ac01373",
 diff --git a/src/graphics/keypad_atlas.json b/src/graphics/keypad_atlas.json
-index 3887cc72..10faacc2 100644
+index 3887cc72..1b1169d9 100644
 --- a/src/graphics/keypad_atlas.json
 +++ b/src/graphics/keypad_atlas.json
 @@ -17,7 +17,7 @@
@@ -33,12 +33,12 @@ index 3887cc72..10faacc2 100644
      "src/platform/native/base_sram.c": "7ffa1b8f07d1900d98bf2b5435544e89ef8a8e6d97a8c355727dcd8b16f89853",
      "src/platform/native/sram_pool.h": "bbe3d3ac598267c46ac78cf9ebda5115182984ce9b64dbaf8e4e3baf204539b8",
 -    "src/platform/native/esp32p4.ld": "00d481e8f2c34bd1636eb1c1b316b3cd3a4490bc13c03e6614ab8cc993e7a51a",
-+    "src/platform/native/esp32p4.ld": "5280c8506c3a880c5e8404707f68711b5134915c563160934048d50a8442fafb",
++    "src/platform/native/esp32p4.ld": "a3597abf5c6eeba03c8d3f0c5b396921b45466b2a833925cce63a92ab27f11be",
      "src/graphics/surface.zig": "14f5c75f63fe7fd34e04f3d6067528ef1c9fef56a6aa94cc8967327fe0a79d8f",
      "src/platform/native/card_boot.zig": "7b474d112e27411a172ca9fa1064789c48a0e838f79c521f62e5f23a08c6eb64",
      "src/graphics/card_boot/masks.rle": "a50cd1f79eaa7abc529683c9f941c9fec3e7376b3377bda50da1ab326232bae6",
 diff --git a/src/platform/native/esp32p4.ld b/src/platform/native/esp32p4.ld
-index 64d8d091..5e3f1f1e 100644
+index 64d8d091..4c7fb859 100644
 --- a/src/platform/native/esp32p4.ld
 +++ b/src/platform/native/esp32p4.ld
 @@ -329,6 +329,11 @@ SECTIONS
@@ -57,15 +57,15 @@ index 64d8d091..5e3f1f1e 100644
      } > flash_xy
      .flash.xyrodata : ALIGN(16) {
          __flash_xy_rodata_start = .;
-+        *(.rodata.__anon_85456)
++        *(.rodata.__anon_85496)
          *xy_render.o(.rodata .rodata.* .srodata .srodata.*)
          *xy_decimal.o(.rodata .rodata.* .srodata .srodata.*)
          /* LLVM's switch tables do not inherit the function's linksection.
 diff --git a/src/platform/native/ssh_foreground.zig b/src/platform/native/ssh_foreground.zig
-index 09fd90fb..5e79f6ae 100644
+index 18ff5784..824d9426 100644
 --- a/src/platform/native/ssh_foreground.zig
 +++ b/src/platform/native/ssh_foreground.zig
-@@ -5,7 +5,7 @@ const ssh = @import("ssh_workspace");
+@@ -6,7 +6,7 @@ const entropy_clock = @import("p4_entropy_clock.zig");
  const UnavailableEntropy = struct {
      // Do not link the SSH cryptographic path into a device image until a
      // qualified source and its memory placement have both been admitted.
