@@ -931,6 +931,21 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
+def sqlite_prng_link_evidence(functions, symbols, sizes, text_start, text_size, ro_start, rodata):
+    """Report positive symbol evidence only; missing symbols prove no absence."""
+    matches = [(a, b) for name, a, b in functions if name == 'sqlite3_randomness'
+               and text_start <= a < b <= text_start + text_size]
+    marker = 'sqlite3_randomness.chacha20_init'
+    at = symbols.get(marker, 0) - ro_start
+    magic = b'expand 32-byte k'
+    if len(matches) != 1 or sizes.get(marker) != len(magic) or not (0 <= at <= len(rodata) - len(magic)) or rodata[at:at + len(magic)] != magic:
+        return None
+    start, end = matches[0]
+    return {'function': 'sqlite3_randomness', 'function_address': hex(start),
+            'function_bytes': end - start, 'constant': marker,
+            'constant_address': hex(ro_start + at)}
+
+
 def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None, normal_fs_manifest=None, sqld_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
@@ -1343,6 +1358,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(not {'malloc','calloc','realloc','free','fopen','f_write','f_mkfs'}.intersection(symbols), 'libc heap or FAT writer linked in sqld')
         xy_payload += pad + code + bytes(ro_start - text_start - len(code)) + data
         sqld_report = {'identity': sqld_manifest['identity'], 'text_bytes':len(code), 'rodata_bytes':len(data), 'reservation':sqld_manifest['reservation'], 'heap':sqld_manifest['heap'], 'stack':sqld_manifest['stack'], 'media':sqld_manifest['media'], 'provision_cid':sqld_manifest['provision_cid'], 'physical_qualified':False}
+        prng_evidence = sqlite_prng_link_evidence(functions, symbols, symbol_sizes, text_start, len(code), ro_start, data)
+        if prng_evidence is not None:
+            sqld_report['sqlite_prng_link_evidence'] = prng_evidence
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span, rust_session_span=(symbols.get("__flash_rust_app_start", 0), symbols.get("__flash_rust_app_end", 0)))
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)
