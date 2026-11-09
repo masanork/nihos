@@ -4,6 +4,7 @@ const std = @import("std");
 const media = @import("storage/file_media.zig");
 const model = @import("storage/checkpoint_model.zig");
 const migration = @import("storage/capacity_copy.zig");
+const readiness = @import("storage/capacity_readiness.zig");
 const nfst = @import("storage/nfst_reader.zig");
 const io = std.testing.io;
 const OldDevice = media.Media(4 * 1024 * 1024);
@@ -69,6 +70,14 @@ test "larger host store copies real SQLite image and imports external dictionary
     var scratch: migration.Scratch = .{};
     const report = try migration.copy(&source, &target, 1, 2, &scratch);
     try std.testing.expect(report.objects > 0);
+    // Reopen before preparing readiness; no selector or card is written.
+    target_device.close();
+    target_device = try NewDevice.open(io, tmp.dir, "destination");
+    target = .{};
+    try target.recover(&target_device);
+    const layout = readiness.Layout{ .card_sectors = 200000, .source_start = 2048, .source_count = OldDevice.capacity / 512, .target_start = 10240, .target_count = NewDevice.capacity / 512, .record_lba = 1 };
+    const record = try readiness.prepare(&source, &target, layout, &scratch);
+    try std.testing.expectEqual(readiness.Decision.candidate_ready, try readiness.assess(&record, false, &source, &target, layout, &scratch));
     try std.testing.expectError(error.NotFound, source.get(200));
     const source_pin = try source.pin();
     defer source.release(source_pin) catch unreachable;
@@ -83,6 +92,8 @@ test "larger host store copies real SQLite image and imports external dictionary
     }
     try target.finishStream(stream);
     try target.commit();
+    // Readiness is invalid once the candidate changes; never activate on it.
+    try std.testing.expectError(error.RecoveryRequired, readiness.assess(&record, true, &source, &target, layout, &scratch));
     target_device.close();
     target_device = try NewDevice.open(io, tmp.dir, "destination");
     defer target_device.close();
