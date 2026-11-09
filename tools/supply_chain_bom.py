@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import tomllib
 
+import native_build_tool_evidence
+
 ROOT = Path(__file__).resolve().parent.parent
 # Patterns identify source candidates, not linked or reachable implementations.
 PATTERNS = {
@@ -32,7 +34,7 @@ def prop(name, value):
     return {'name': 'nihos:' + name, 'value': str(value)}
 
 
-def generate(root, image_dir, output):
+def generate(root, image_dir, output, tool_evidence=None):
     elf = image_dir / 'nihos-native.elf'
     image = image_dir / 'nihos-native-flash.bin'
     audit = json.loads((image_dir / 'image-audit.json').read_text())
@@ -89,6 +91,9 @@ def generate(root, image_dir, output):
         prop('provenance-toml-sha256', digest(root / 'provenance.toml')),
         prop('zig-source-set-sha256', source_hash.hexdigest()),
     ]}
+    if tool_evidence is not None:
+        evidence = native_build_tool_evidence.validate(tool_evidence)
+        metadata['properties'].append(prop('build-tool-evidence', json.dumps(evidence, sort_keys=True, separators=(',', ':'))))
     components = []
     sources = tomllib.loads((root / 'provenance.toml').read_text())['source']
     for i, entry in enumerate(sources):
@@ -200,8 +205,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('image_dir', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--tool-evidence', type=Path, help='pre/post checked native build tool receipt')
     args = parser.parse_args()
-    generate(ROOT, args.image_dir, args.output)
+    evidence = json.loads(args.tool_evidence.read_text()) if args.tool_evidence else None
+    generate(ROOT, args.image_dir, args.output, evidence)
 
 
 if __name__ == '__main__':
