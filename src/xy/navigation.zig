@@ -7,6 +7,7 @@ const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
 pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification, ssh };
+pub const SshFailure = enum(u8) { none, host_key_mismatch, connection_failed };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
 
 pub const CardViewData = struct {
@@ -61,6 +62,7 @@ pub const State = struct {
     previous_count: u16 = 0,
     return_screen: Screen = .home,
     error_code: u32 = 0,
+    ssh_failure: SshFailure = .none,
     can_try: bool = false,
     card: CardViewData = .{},
 

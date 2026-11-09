@@ -553,6 +553,10 @@ pub fn TimedPreparedForeground(comptime Model: type, comptime ControllerType: ty
             }
             return self.visit.poll(visible, now);
         }
+
+        pub fn failure(self: *Self) ?anyerror {
+            return self.visit.last_error;
+        }
     };
 }
 
@@ -582,6 +586,7 @@ pub fn PreparedRuntime(comptime Model: type, comptime Ui: type, comptime Workspa
             const visible = if (model) |m| m.nav.screen == .ssh else false;
             if (self.active and (!visible or self.model != model)) {
                 if (self.visit.poll(false, now) != .idle) return;
+                if (comptime @hasDecl(Model, "setSshFailure")) self.model.?.setSshFailure(null, false);
                 self.active = false;
                 self.model = null;
             }
@@ -590,10 +595,14 @@ pub fn PreparedRuntime(comptime Model: type, comptime Ui: type, comptime Workspa
             if (!self.active) {
                 self.workspace.initInPlace(current, ui) catch return;
                 self.visit.initInPlace(current, &self.workspace.controller, self.entropy, self.timer, 20_000_000, 20_000_000, 5_000_000) catch return;
+                if (comptime @hasDecl(Model, "setSshFailure")) current.setSshFailure(null, false);
                 self.model = current;
                 self.active = true;
             }
-            _ = self.visit.poll(true, now);
+            const status = self.visit.poll(true, now);
+            if (comptime @hasDecl(Model, "setSshFailure")) {
+                if (status == .failed) current.setSshFailure(self.visit.failure(), true);
+            }
         }
     };
 }

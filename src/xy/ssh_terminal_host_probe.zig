@@ -317,6 +317,9 @@ export fn probe_profile_cleared() bool {
     for (@import("std").mem.asBytes(&foreground.journey.profile)) |byte| if (byte != 0) return false;
     return true;
 }
+export fn probe_ssh_failure() u8 {
+    return @backingInt(model.nav.ssh_failure);
+}
 export fn probe_seed_cleared() bool {
     if (use_prepared_runtime) {
         for (prepared_runtime.visit.visit.visit.journey.profile.seed) |byte| if (byte != 0) return false;

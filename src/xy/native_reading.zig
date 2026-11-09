@@ -188,8 +188,20 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
         .ssh => {
             if (request.private_input) |view| try privateSetup(instance, target, view, 36) else {
                 try label(instance, target, 36, 48, "SSH", 36, 0x2147);
-                try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
-                try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+                switch (nav.ssh_failure) {
+                    .none => {
+                        try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
+                        try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+                    },
+                    .host_key_mismatch => {
+                        try label(instance, target, 36, 150, "Host key mismatch; connection refused.", 24, 0xb104);
+                        try label(instance, target, 36, 220, "Check the fingerprint before retrying.", 24, 0x528a);
+                    },
+                    .connection_failed => {
+                        try label(instance, target, 36, 150, "SSH connection failed.", 28, 0xb104);
+                        try label(instance, target, 36, 220, "Return home to retry.", 24, 0x528a);
+                    },
+                }
             }
         },
         .examples, .exercise => {
@@ -339,8 +351,20 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
         .ssh => {
             if (request.private_input) |view| try privateSetup(instance, target, view, 48) else {
                 try label(instance, target, 48, 48, "SSH", 36, 0x2147);
-                try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
-                try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+                switch (nav.ssh_failure) {
+                    .none => {
+                        try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
+                        try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+                    },
+                    .host_key_mismatch => {
+                        try label(instance, target, 48, 150, "Host key mismatch; connection refused.", 24, 0xb104);
+                        try label(instance, target, 48, 220, "Check the fingerprint before retrying.", 24, 0x528a);
+                    },
+                    .connection_failed => {
+                        try label(instance, target, 48, 150, "SSH connection failed.", 28, 0xb104);
+                        try label(instance, target, 48, 220, "Return home to retry.", 24, 0x528a);
+                    },
+                }
             }
             try footer(instance, target, false, false);
             if (request.private_input != null) try instance.renderKeyboard(request, target);

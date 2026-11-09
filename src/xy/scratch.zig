@@ -215,6 +215,18 @@ pub const Model = struct {
     fn changed(self: *Model) void {
         self.revision +%= 1;
     }
+    /// Only a public failure category enters the render model; no peer data,
+    /// credentials or raw backend error text are retained here.
+    pub fn setSshFailure(self: *Model, failure: ?anyerror, failed_: bool) void {
+        const next: navigation.SshFailure = if (!failed_) .none else if (failure) |err|
+            (if (err == error.HostKeyMismatch) .host_key_mismatch else .connection_failed)
+        else
+            .connection_failed;
+        if (self.nav.ssh_failure != next) {
+            self.nav.ssh_failure = next;
+            self.changed();
+        }
+    }
     fn failed(self: *Model, err: document.Error) void {
         self.status = switch (err) {
             error.BufferFull => .buffer_full,

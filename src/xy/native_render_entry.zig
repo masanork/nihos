@@ -295,6 +295,12 @@ test "portrait card scene renders synthetic data and returns on touch" {
     nav.screen = .ssh;
     try reading.renderPortrait(instance, &request, pack);
     try reading.render(instance, &request, pack);
+    nav.ssh_failure = .host_key_mismatch;
+    try reading.renderPortrait(instance, &request, pack);
+    try reading.render(instance, &request, pack);
+    nav.ssh_failure = .connection_failed;
+    try reading.renderPortrait(instance, &request, pack);
+    try reading.render(instance, &request, pack);
     var private_view = protocol.PrivateInputView{ .field = 4, .secret_length = 3, .invalid = 1, .text = "", .text_length = 0 };
     var private_request = request;
     private_request.private_input = &private_view;

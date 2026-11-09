@@ -592,6 +592,7 @@ def run():
                         vt.probe_lifecycle_poll.argtypes = [c.c_uint64]
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
                         vt.probe_profile_cleared.restype = c.c_bool
+                        vt.probe_ssh_failure.restype = c.c_uint8
                         vt.probe_seed_cleared.restype = c.c_bool
                         vt.probe_lifecycle_leave.argtypes = [c.c_uint64]
                         vt.probe_lifecycle_leave.restype = c.c_bool
@@ -612,6 +613,10 @@ def run():
                         state = vt_step()
                         if lifecycle_bad_pin and state == -2:
                             assert vt.probe_profile_cleared(), "profile retained after rejection"
+                            if lifecycle_prepared:
+                                assert vt.probe_ssh_failure() == 1, "host-key failure not presented to the model"
+                                assert vt.probe_lifecycle_leave(time.monotonic_ns() // 1000), "failure cleanup did not finish"
+                                assert vt.probe_ssh_failure() == 0, "failure survived leaving SSH"
                             sock.closed_by_controller = True
                             print("SSH profile rejected the wrong host pin and was cleared: OK")
                             return
