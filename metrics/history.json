@@ -16986,23 +16986,23 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T10:42:53.824049+00:00",
+    "measuredAt": "2026-11-09T16:56:56.824728+00:00",
     "project": "nihos",
-    "commit": "acb3c83b121ed54b2387e1b35b758ab07cb0b136",
+    "commit": "169ebf243907aec3799893f7ab80dec2b907cdb0",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "c441159e0befa5b0e5b2abf400d1a131de493dcf21e3c8cf3cabf467006084f9",
+    "sourceTreeSha256": "b6e4eb514167839389c43ab9d662949a817195360c38283be2197af63bf74ae4",
     "code": {
-      "implementation": 90262,
-      "tests": 50539,
-      "tooling": 32020,
+      "implementation": 90371,
+      "tests": 50654,
+      "tooling": 32021,
       "probes": 19465,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 82523,
-        "tests": 38930,
+        "implementation": 82632,
+        "tests": 39045,
         "tooling": 1944,
         "probes": 5788,
         "vendored": 0,
@@ -17051,7 +17051,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4861,
+        "tooling": 4862,
         "probes": 1840,
         "vendored": 0,
         "generated": 0
@@ -17099,8 +17099,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 88320,
-        "tests": 39056,
+        "implementation": 88429,
+        "tests": 39171,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -17117,7 +17117,7 @@
       "tools": {
         "implementation": 0,
         "tests": 11483,
-        "tooling": 31672,
+        "tooling": 31673,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -17217,7 +17217,7 @@
         "src/board/tab5/scene_pixels.h": "a6e005d46c440b89dc5a11dfba303a392eb978630b218bb36e7d913bc5637d31",
         "src/board/tab5/touch.zig": "c64b1ec60784f6bf8156c8e61def9ab209aaa8a23277d3cdfbcddcf4948bdf41",
         "src/board/tab5/touch_feedback.zig": "13b76794b976ea7bb96e8e8380796e6a83f78a71377a1c79a95384a83115fcef",
-        "src/capacity_copy_large_host_test.zig": "9cce01c54832af3342b439adac2483600e8f1f79e41172ce1fa50d603a255bf2",
+        "src/capacity_copy_large_host_test.zig": "8b1e3a2eb9be8747e9896b54a023bf307339c99706edd608bdfc8b08f2c7488a",
         "src/card.zig": "63fed4599782a91c2a374724dbc7d9a8ccd8a8c44216aaf7f664d7a067e116f9",
         "src/card/ccid_owner.zig": "d5ddbf66f1e91370d4b732a15f34746495bcb87d9995d82343d9116d2eb94f44",
         "src/card/extended_test.zig": "af8e418bed980ef9fb5f151372affaed57f3eb14bca3156f7a9fc5fe879b4c03",
@@ -17619,6 +17619,7 @@
         "src/storage/batch_test.zig": "12dfe798f20baa3fff6091b981a46ff2f7a617b2a67a00862157aa4ed1b798c5",
         "src/storage/block.zig": "e2d348ccd20957fa2e461b3b13e9ea270b17cb49605ca2935a953c75c09eb4c7",
         "src/storage/capacity_copy.zig": "7494d323b41636ffa8f0659d172ab60838f67c11e34a010c1fabf072d983466d",
+        "src/storage/capacity_readiness.zig": "86342fa276644de6b24a09e331c198e695baba1ffbe3b97355855ed24af20778",
         "src/storage/checkpoint_model.zig": "1baa564c5621c4a4a5001ce573011b45c83055b6444448e7e87f468f132ffb8d",
         "src/storage/checkpoint_model_test.zig": "d854984221edf6fd6c95644103a2dae11e451c47a2108ecb87951236ad6fac9d",
         "src/storage/checkpoint_service.zig": "fbc54941a7681e1c7a1e90a247fac18c06e89f01887901ac1176808be8f74dd2",
@@ -17631,7 +17632,7 @@
         "src/storage/dispatch_gate_test.zig": "140926dea71f6476e6c0c7d6d7c9d9a4fcecad6221a42520e6d7383f8cc658d1",
         "src/storage/editor_document_test.zig": "3ef3a8a759550c591f2a7557669e219f2f2b24890f87c6205e1166dc66e473a8",
         "src/storage/editor_sd_path_test.zig": "2e881db7863f5589d9786b3ff26d22c92c77bbe736477a5bdd3781fa9f886f7d",
-        "src/storage/experimental.zig": "c84bcf19b93a17b9014e1e0b140495c3ac57c5e9f882020daf7d5a8116ac6ae6",
+        "src/storage/experimental.zig": "637fd6ccb3bc0ee2c58e5da5082367ffb4d7b9e9ad68b83e07c0411f30dc2f4f",
         "src/storage/extent_map.zig": "1dd41ff3cf628c7a173375efbd3ef49fcdadc7aa400a2164a8e7da4288d1b3fd",
         "src/storage/extent_map_test.zig": "9e829c240b2d6a0d8f3b8e5902b3e5b261faa9681dbe7f71e074a939b16737e2",
         "src/storage/fatfs_backend.c": "768851d1c812125ce76a290ef6b464b5392bd4c7933a82599c829f9d10200793",
@@ -17716,9 +17717,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 18180,
-        "count": 19377,
-        "percent": 93.82257315373897
+        "covered": 18248,
+        "count": 19446,
+        "percent": 93.83934999485756
       },
       "files": {
         "src/app/animation.zig": {
@@ -18288,6 +18289,10 @@
         "src/storage/capacity_copy.zig": {
           "covered": 63,
           "count": 65
+        },
+        "src/storage/capacity_readiness.zig": {
+          "covered": 68,
+          "count": 69
         },
         "src/storage/checkpoint_model.zig": {
           "covered": 1192,
