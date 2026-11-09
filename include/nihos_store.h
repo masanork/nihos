@@ -26,6 +26,11 @@ int nih_store_remove(void *, uint32_t key);
 int nih_store_sync(void *);
 int nih_store_rollback(void *);
 int nih_store_snapshot(void *, uint32_t *token);
+/* Object pins are instance-scoped, owner-only and require drained I/O before
+ * release. They are not volume snapshots or cross-mount capabilities. Read
+ * output must not overlap the store state or its owner scratch. */
+int nih_store_pin_object(void *, uint32_t key, uint32_t *token, uint64_t *size);
+int nih_store_read_object(void *, uint32_t token, uint64_t offset, uint8_t *, size_t);
 int nih_store_release(void *, uint32_t token);
 int nih_store_restore(void *, uint32_t token);
 int nih_store_snapshot_valid(void *, uint32_t token);
