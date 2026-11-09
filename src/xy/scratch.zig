@@ -227,6 +227,19 @@ pub const Model = struct {
             self.changed();
         }
     }
+    /// Only a public phase is exposed to the renderer.
+    pub fn setSshProgress(self: *Model, progress: anytype) void {
+        const next: navigation.SshProgress = switch (progress) {
+            .none => .none,
+            .preparing => .preparing,
+            .connecting => .connecting,
+            .closing => .closing,
+        };
+        if (self.nav.ssh_progress != next) {
+            self.nav.ssh_progress = next;
+            self.changed();
+        }
+    }
     fn failed(self: *Model, err: document.Error) void {
         self.status = switch (err) {
             error.BufferFull => .buffer_full,

@@ -533,6 +533,7 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
 /// owner. A failed clock update stops the visit and retains any incomplete
 /// cleanup. Timer.observe must latch failures until its owner is recovered.
 /// This does not qualify the timer, entropy source or hardware reservation.
+pub const ForegroundProgress = enum { none, preparing, connecting, closing };
 pub fn TimedPreparedForeground(comptime Model: type, comptime ControllerType: type, comptime EntropySession: type, comptime Timer: type) type {
     return struct {
         const Self = @This();
@@ -556,6 +557,19 @@ pub fn TimedPreparedForeground(comptime Model: type, comptime ControllerType: ty
 
         pub fn failure(self: *Self) ?anyerror {
             return self.visit.last_error;
+        }
+        pub fn progress(self: *Self) ForegroundProgress {
+            return switch (self.visit.state) {
+                .acquiring, .preparing => .preparing,
+                .stopping => .closing,
+                .active => switch (self.visit.visit.app.status) {
+                    .idle => .preparing,
+                    .connecting => .connecting,
+                    .closing => .closing,
+                    else => .none,
+                },
+                else => .none,
+            };
         }
     };
 }
@@ -587,6 +601,7 @@ pub fn PreparedRuntime(comptime Model: type, comptime Ui: type, comptime Workspa
             if (self.active and (!visible or self.model != model)) {
                 if (self.visit.poll(false, now) != .idle) return;
                 if (comptime @hasDecl(Model, "setSshFailure")) self.model.?.setSshFailure(null, false);
+                if (comptime @hasDecl(Model, "setSshProgress")) self.model.?.setSshProgress(ForegroundProgress.none);
                 self.active = false;
                 self.model = null;
             }
@@ -603,6 +618,7 @@ pub fn PreparedRuntime(comptime Model: type, comptime Ui: type, comptime Workspa
             if (comptime @hasDecl(Model, "setSshFailure")) {
                 if (status == .failed) current.setSshFailure(self.visit.failure(), true);
             }
+            if (comptime @hasDecl(Model, "setSshProgress")) current.setSshProgress(self.visit.progress());
         }
     };
 }

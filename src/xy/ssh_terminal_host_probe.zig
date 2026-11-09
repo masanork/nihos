@@ -404,6 +404,7 @@ test "real home model reaches SSH profile after prepared entropy cleanup" {
     var timer: Timer = .{};
     owner.initInPlace(&entropy, &timer);
     owner.poll(m, u, 1);
+    try std.testing.expectEqual(.preparing, m.nav.ssh_progress);
     owner.poll(m, u, 2);
     try std.testing.expectEqual(.restoring, entropy.state);
     try std.testing.expect(m.private_input == null);
@@ -412,15 +413,18 @@ test "real home model reaches SSH profile after prepared entropy cleanup" {
     owner.poll(m, u, 4);
     owner.poll(m, u, 5);
     try std.testing.expect(m.private_input != null);
+    try std.testing.expectEqual(.none, m.nav.ssh_progress);
     for ([_][]const u8{ "10.0.2.2", "", "user", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
         for (value) |byte| m.feedSerial(byte, 5);
         m.handle(.enter);
     }
     owner.poll(m, u, 6);
     try std.testing.expectEqual(.opening, owner.workspace.controller.state);
+    try std.testing.expectEqual(.connecting, m.nav.ssh_progress);
     try std.testing.expect(m.private_input == null);
     m.nav.home();
     owner.poll(m, u, 7);
     try std.testing.expect(!owner.active and m.private_input == null);
+    try std.testing.expectEqual(.none, m.nav.ssh_progress);
     try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&owner.visit.visit.visit.journey.profile), 0));
 }
