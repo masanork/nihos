@@ -16986,14 +16986,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T02:29:27.383284+00:00",
+    "measuredAt": "2026-11-09T03:43:55.284101+00:00",
     "project": "nihos",
-    "commit": "554992207aa244e259e46b42b67e6411517332da",
+    "commit": "e9c715291e89d1faba6553b4fc976fc758225489",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "34467d8542d3deff6221dd4b3f42b38684f688b1b0793bab074734e47a69ccdc",
+    "sourceTreeSha256": "e0b2077510ea87a7d455f3d21d1cc61beba9a844c2222130f0b03857b7e24a43",
     "code": {
-      "implementation": 89747,
-      "tests": 49862,
+      "implementation": 89794,
+      "tests": 49971,
       "tooling": 31998,
       "probes": 19453,
       "vendored": 723,
@@ -17001,8 +17001,8 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 82008,
-        "tests": 38256,
+        "implementation": 82055,
+        "tests": 38365,
         "tooling": 1938,
         "probes": 5788,
         "vendored": 0,
@@ -17099,8 +17099,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 87805,
-        "tests": 38382,
+        "implementation": 87852,
+        "tests": 38491,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -17674,7 +17674,7 @@
         "src/xy/dict.zig": "5d3f34c8acec6dbf4f0e8f12b738ce10edaf99f12dfcbe31bf62f5395702a629",
         "src/xy/document.zig": "78c2bf81379fcd1f6fd8d211528137c8d7ce22848a9a0d24aab2cc27e8434139",
         "src/xy/ime_omni.zig": "8ed709ba62639d6cb3207cb8772d54b6fca328853a8f2227f330d1579fb43952",
-        "src/xy/ime_page_queue.zig": "562f75cd9576d76a6aa246f77b4a4faf2444b693defca80dc6c8211b1cd2d0a0",
+        "src/xy/ime_page_queue.zig": "47c426b524db4759a99a08f0c977e2f4a6a877ba2e5f4b98f3ca5ab757306845",
         "src/xy/learning_catalog.zig": "a417ddd59259acf6123ce07cca2b122c6984f00bc6e5963b21acdf17ac8b26f6",
         "src/xy/learning_session.zig": "e1ca51b7e6e0908cdca235a0b30b3180cb8c7aaf622b9b72d2cfd5eb14101679",
         "src/xy/learning_view.zig": "45b27376565971e8220e98f929c268f96d2d7dde67dfbd14c9930e2760aebbb5",
@@ -17710,9 +17710,9 @@
         "src/xy/view_config.zig": "07e6ed3cd764938221b2f57b4c88ce8c58e9551f5577554301a473ffd4224513"
       },
       "lines": {
-        "covered": 17977,
-        "count": 19108,
-        "percent": 94.08101318819342
+        "covered": 18113,
+        "count": 19308,
+        "percent": 93.81085560389477
       },
       "files": {
         "src/app/animation.zig": {
@@ -18335,6 +18335,10 @@
           "covered": 32,
           "count": 32
         },
+        "src/storage/store_abi.zig": {
+          "covered": 93,
+          "count": 155
+        },
         "src/usb/ccid.zig": {
           "covered": 20,
           "count": 20
@@ -18380,8 +18384,8 @@
           "count": 460
         },
         "src/xy/ime_page_queue.zig": {
-          "covered": 26,
-          "count": 27
+          "covered": 69,
+          "count": 72
         },
         "src/xy/learning_catalog.zig": {
           "covered": 4,
@@ -18811,7 +18815,6 @@
         "src/storage/scatter_test.zig",
         "src/storage/search_cache_test.zig",
         "src/storage/sector_media_test.zig",
-        "src/storage/store_abi.zig",
         "src/storage/stream_test.zig",
         "src/storage/write_budget_test.zig",
         "src/storage_vfs.zig",

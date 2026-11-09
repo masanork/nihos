@@ -2,8 +2,8 @@
 
 | Physical source lines | nihos |
 |---|---:|
-| implementation | 89,747 |
-| tests | 49,862 |
+| implementation | 89,794 |
+| tests | 49,971 |
 | tooling | 31,998 |
 | probes | 19,453 |
 | vendored | 723 |
@@ -13,8 +13,8 @@ Physical lines include comments and blanks. Test-code volume is not execution co
 
 ## nihos
 
-Commit: `554992207aa244e259e46b42b67e6411517332da`; working tree dirty: `False`; UTC: 2026-11-09T02:29:27.383284+00:00.
-Measured source fingerprint: `34467d8542d3deff6221dd4b3f42b38684f688b1b0793bab074734e47a69ccdc`.
+Commit: `e9c715291e89d1faba6553b4fc976fc758225489`; working tree dirty: `False`; UTC: 2026-11-09T03:43:55.284101+00:00.
+Measured source fingerprint: `e0b2077510ea87a7d455f3d21d1cc61beba9a844c2222130f0b03857b7e24a43`.
 
 | Area | Implementation | Tests | Tooling |
 |---|---:|---:|---:|
@@ -22,11 +22,11 @@ Measured source fingerprint: `34467d8542d3deff6221dd4b3f42b38684f688b1b0793bab07
 | compat | 996 | 0 | 0 |
 | include | 946 | 0 | 0 |
 | probes | 0 | 0 | 0 |
-| src | 87,805 | 38,382 | 0 |
+| src | 87,852 | 38,491 | 0 |
 | third_party | 0 | 0 | 0 |
 | tools | 0 | 11,480 | 31,656 |
 
-Host Zig emitted implementation line coverage: **94.1% (17977/19108)**.
-180 files represented; 401 src/ files unrepresented.
+Host Zig emitted implementation line coverage: **93.8% (18113/19308)**.
+181 files represented; 400 src/ files unrepresented.
 Only DWARF lines emitted in the Debug host test binary are in the denominator.
 Uncompiled functions/files, C/assembly, emulator and physical-device execution are outside this percentage.
