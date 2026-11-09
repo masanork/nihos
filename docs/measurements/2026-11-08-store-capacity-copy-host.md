@@ -31,25 +31,9 @@ writes, concurrent SQLite writers, user snapshots, native scheduler, DMA or
 Tab5 was tested. A failed or interrupted target must not be selected; commit
 failure may have an unknown outcome and requires recovery and revalidation.
 
-Reproduce with a separately obtained NFST dictionary and the pinned toolchain:
-
-```sh
-sh tools/build-sqld-host.sh
-work=$(mktemp -d /tmp/nihos-capacity-copy.XXXXXX)
-build/sqld/sqld-host --create "$work/legacy.img" <<'SQL'
-2 0 0 0 CREATE TABLE notes(id INTEGER PRIMARY KEY, body TEXT)
-2 0 0 0 INSERT INTO notes VALUES(1, '日本語')
-1 0 0 0 SELECT * FROM notes
-SQL
-NIHOS_LEGACY_IMAGE="$work/legacy.img" \
-NIHOS_NFST_PATH=/path/to/jisyo-l.nfst \
-NIHOS_MIGRATED_DB="$work/migrated.db" \
-  .tools/zig-0.17.0/zig test -O ReleaseSafe -lc \
-  src/capacity_copy_large_host_test.zig --test-filter 'larger host store'
-python3 - "$work/migrated.db" <<'PY'
-import sqlite3, sys
-c = sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True)
-assert c.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
-assert c.execute('SELECT id, body FROM notes').fetchall() == [(1, '日本語')]
-PY
-```
+The original reproduction compiled the migration test directly. After the ABI
+integration, use `NIHOS_NFST_PATH=/path/to/jisyo-l.nfst python3 tools/check-capacity-copy-abi.py`
+instead; it links the separate host-only ABI
+and imports into key 64. The measurements above record the earlier key 200
+experiment; see `2026-11-09-capacity-copy-dictionary-abi.md` for the integrated
+test and its evidence boundary.
