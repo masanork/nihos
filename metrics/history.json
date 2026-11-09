@@ -16986,14 +16986,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T21:01:38.214352+00:00",
+    "measuredAt": "2026-11-09T22:50:23.198523+00:00",
     "project": "nihos",
-    "commit": "611f61e0f106d42c49a0a3b805a9435394a4992b",
+    "commit": "2a530a65ce761d13ee5ab4f00cd05f5ba9dcff91",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "3fd83debb9c77da46cbd1e293e3022a985a142baa276a08f7ef4f96e56896754",
+    "sourceTreeSha256": "8e192018864607b0a4c77206394d72d247946ed04dace5169afc2afb50d58db8",
     "code": {
-      "implementation": 90467,
-      "tests": 50799,
+      "implementation": 90518,
+      "tests": 51004,
       "tooling": 32021,
       "probes": 19465,
       "vendored": 723,
@@ -17001,7 +17001,7 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 82728,
+        "implementation": 82772,
         "tests": 39190,
         "tooling": 1944,
         "probes": 5788,
@@ -17017,7 +17017,7 @@
         "generated": 0
       },
       "C/header": {
-        "implementation": 1740,
+        "implementation": 1747,
         "tests": 0,
         "tooling": 0,
         "probes": 602,
@@ -17034,7 +17034,7 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 11450,
+        "tests": 11655,
         "tooling": 23165,
         "probes": 3448,
         "vendored": 0,
@@ -17083,7 +17083,7 @@
         "generated": 0
       },
       "include": {
-        "implementation": 946,
+        "implementation": 953,
         "tests": 0,
         "tooling": 0,
         "probes": 0,
@@ -17099,7 +17099,7 @@
         "generated": 0
       },
       "src": {
-        "implementation": 88525,
+        "implementation": 88569,
         "tests": 39316,
         "tooling": 0,
         "probes": 0,
@@ -17116,7 +17116,7 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 11483,
+        "tests": 11688,
         "tooling": 31673,
         "probes": 0,
         "vendored": 0,
@@ -17663,7 +17663,8 @@
         "src/storage/search_cache_test.zig": "5fa40a13a3d5f0d12a0e1ac6985a494f37e931ea896c1cdd5907de8471152299",
         "src/storage/sector_media.zig": "62f945637ce5fa4aed1b50b8c093323fb367612b1365cfe217645ebf7d6640b6",
         "src/storage/sector_media_test.zig": "54f2b0acf2a0ce3cd05039ec5424e6eaf26464705507a1ae8f50483bd0cd1b73",
-        "src/storage/store_abi.zig": "83920c78e573033cc225cbe70e461eb7317df57181c08ab3bfb309a181f510ed",
+        "src/storage/store_abi.zig": "46a2910c880988f4e91a4b2df2d8ccc35350aab4a32701b8a5d62b18aece2171",
+        "src/storage/store_abi_32m_probe.zig": "2f4810cb4a2c60cfe1f94e72e5ac66757720fb8ae2ebd39bff615201b03255fd",
         "src/storage/stream_test.zig": "b0735be992d290497708e1ae965f22726673c255dc0b23275cf2c76a7e20e87a",
         "src/storage/write_budget_test.zig": "6ec758f7332cfa1f2992c182986b25152dcda9c18a475415529a411d69bb1359",
         "src/storage_vfs.zig": "c63e12c5cd5ac6b0b3e1a131d019875e952f0bb81d2606712e1f5c87d9808703",
@@ -17719,8 +17720,8 @@
       },
       "lines": {
         "covered": 18301,
-        "count": 19501,
-        "percent": 93.84646941182504
+        "count": 19526,
+        "percent": 93.72631363310458
       },
       "files": {
         "src/app/animation.zig": {
@@ -18357,7 +18358,7 @@
         },
         "src/storage/store_abi.zig": {
           "covered": 93,
-          "count": 155
+          "count": 180
         },
         "src/usb/ccid.zig": {
           "covered": 20,
@@ -18839,6 +18840,7 @@
         "src/storage/scatter_test.zig",
         "src/storage/search_cache_test.zig",
         "src/storage/sector_media_test.zig",
+        "src/storage/store_abi_32m_probe.zig",
         "src/storage/stream_test.zig",
         "src/storage/write_budget_test.zig",
         "src/storage_vfs.zig",

@@ -1,6 +1,10 @@
 //! Caller-owned checkpoint store. No allocator, paths, MMIO or native mounting.
 const std = @import("std");
 const model = @import("checkpoint_model.zig");
+comptime {
+    if (@hasDecl(@import("root"), "nih_store_probe_capacity") and @import("builtin").os.tag == .freestanding)
+        @compileError("alternate store geometry is host-only");
+}
 const Callbacks = extern struct {
     context: ?*anyopaque,
     read: *const fn (?*anyopaque, u64, [*]u8, usize) callconv(.c) c_int,
@@ -8,7 +12,9 @@ const Callbacks = extern struct {
     sync: *const fn (?*anyopaque) callconv(.c) c_int,
 };
 const Device = struct {
-    pub const capacity = 4 * 1024 * 1024;
+    // The alternate root is a host-only geometry probe. Native and existing
+    // consumers compile this file as root and retain the 4 MiB geometry.
+    pub const capacity = if (@hasDecl(@import("root"), "nih_store_probe_capacity")) @import("root").nih_store_probe_capacity else 4 * 1024 * 1024;
     callbacks: Callbacks,
     pub fn read(self: *@This(), offset: u64, bytes: []u8) error{Io}!void {
         if (self.callbacks.read(self.callbacks.context, offset, bytes.ptr, bytes.len) != 0) return error.Io;
@@ -37,9 +43,9 @@ fn failure(err: model.Error) c_int {
     return switch (err) {
         error.NotFound => -2,
         error.NoSpace, error.ReaderLimit => -28,
-        error.Busy => -16,
+        error.Busy, error.IncompleteStream => -16,
         error.Corrupt, error.Unformatted => -84,
-        error.InvalidArgument, error.InvalidReader, error.GenerationExhausted => -22,
+        error.InvalidArgument, error.InvalidReader, error.InvalidStream, error.GenerationExhausted => -22,
         else => -5,
     };
 }
@@ -105,6 +111,38 @@ pub export fn nih_store_write(raw: *anyopaque, key: u32, offset: u64, data: [*]c
         s.store.patchMappedPage(key, offset + done, data[done..][0..amount]) catch |err| return failure(err);
         done += amount;
     }
+    return 0;
+}
+/// Owner-only dictionary import. One transaction is reserved exclusively for
+/// key 64; sync publishes only after finish. The token is mount-local.
+pub export fn nih_store_dictionary_begin(raw: *anyopaque, length: u64, token: *u64) c_int {
+    token.* = 0;
+    const s = state(raw);
+    if (length == 0 or length > Device.capacity) return -22;
+    if (s.store.in_transaction) return -16;
+    s.store.begin() catch |err| return failure(err);
+    const stream = s.store.beginStream(64, length) catch |err| {
+        if (s.store.in_transaction and !s.store.faulted) s.store.rollback() catch return -5;
+        return failure(err);
+    };
+    token.* = stream.token;
+    return 0;
+}
+pub export fn nih_store_dictionary_write(raw: *anyopaque, token: u64, data: [*]const u8, bytes: usize) c_int {
+    if (token == 0 or bytes == 0 or bytes > model.page_bytes) return -22;
+    const n = state(raw).store.writeStream(.{ .token = token }, data[0..bytes]) catch |err| return failure(err);
+    return @intCast(n);
+}
+pub export fn nih_store_dictionary_finish(raw: *anyopaque, token: u64) c_int {
+    if (token == 0) return -22;
+    state(raw).store.finishStream(.{ .token = token }) catch |err| return failure(err);
+    return 0;
+}
+pub export fn nih_store_dictionary_abort(raw: *anyopaque, token: u64) c_int {
+    if (token == 0) return -22;
+    const s = state(raw);
+    s.store.abortStream(.{ .token = token }) catch |err| return failure(err);
+    s.store.rollback() catch |err| return failure(err);
     return 0;
 }
 pub export fn nih_store_remove(raw: *anyopaque, key: u32) c_int {

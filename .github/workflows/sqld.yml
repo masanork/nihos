@@ -20,6 +20,8 @@ jobs:
         run: sh tools/build-sqld-host.sh
       - name: Owner, queue, policy, restart and torn-write recovery
         run: python3 tools/sqld_test.py -v
+      - name: Dictionary stream ABI and separate 32 MiB host geometry
+        run: python3 tools/dictionary_store_abi_test.py -v
       - name: Native allocator and OS initialization contract
         run: python3 -m unittest discover -s tools -p sqld_allocator_test.py -v
       - name: Read-only SD capacity planner
