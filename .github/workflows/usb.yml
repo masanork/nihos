@@ -132,6 +132,10 @@ jobs:
               card-scene) export NIHOS_NATIVE_USB=1 NIHOS_NATIVE_DISPLAY=11 NIHOS_NATIVE_CARD_AUTO_PROBE=1 NIHOS_NATIVE_CARD_SCENE_EXERCISE=1 ;;
             esac
             sh tools/build-native.sh device integer
+            if [ "$feature" = card-auto ] || [ "$feature" = card-auto-probe ]; then
+              python3 tools/supply_chain_bom.py build/native-device build/native-device/bom
+              python3 -c 'import json,sys; d=json.load(open("build/native-device/bom/source-cbom.cdx.json")); r=next(c for c in d["components"] if c["name"]=="RSA-2048"); linked=any(p["name"]=="nihos:linked-function" and p["value"]=="nih_card_crypto" for p in r["properties"]); assert linked == (sys.argv[1] == "card-auto")' "$feature"
+            fi
             destination="build/usb-ci/$feature"
             mkdir -p "$destination"
             cp build/native-device/nihos-native.elf \
