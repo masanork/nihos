@@ -401,6 +401,59 @@ class MemoryService:
         return LIB.nih_sqld_stop(self.service)
 
 
+class PinnedObjectAbiTest(unittest.TestCase):
+    def test_object_pin_reads_old_version_and_rejects_snapshot_or_stale_tokens(self):
+        lib = LIB
+        lib.nih_store_create.argtypes = [c.c_void_p, c.c_uint32]
+        lib.nih_store_write.argtypes = [c.c_void_p, c.c_uint32, c.c_uint64, c.c_void_p, c.c_size_t]
+        lib.nih_store_sync.argtypes = [c.c_void_p]
+        lib.nih_store_remove.argtypes = [c.c_void_p, c.c_uint32]
+        lib.nih_store_collect.argtypes = [c.c_void_p]
+        lib.nih_store_pin_object.argtypes = [c.c_void_p, c.c_uint32, c.POINTER(c.c_uint32), c.POINTER(c.c_uint64)]
+        lib.nih_store_read_object.argtypes = [c.c_void_p, c.c_uint32, c.c_uint64, c.c_void_p, c.c_size_t]
+        lib.nih_store_snapshot.argtypes = [c.c_void_p, c.POINTER(c.c_uint32)]
+        lib.nih_store_snapshot_valid.argtypes = [c.c_void_p, c.c_uint32]
+        lib.nih_store_restore.argtypes = [c.c_void_p, c.c_uint32]
+        lib.nih_store_release.argtypes = [c.c_void_p, c.c_uint32]
+        live = MemoryService()
+        key = 200
+        token, size = c.c_uint32(99), c.c_uint64(99)
+        try:
+            self.assertEqual(lib.nih_store_pin_object(live.store, 0, c.byref(token), c.byref(size)), -22)
+            self.assertEqual((token.value, size.value), (0, 0))
+            self.assertEqual(lib.nih_store_create(live.store, key), 0)
+            self.assertEqual(lib.nih_store_write(live.store, key, 0, b'old', 3), 0)
+            self.assertEqual(lib.nih_store_pin_object(live.store, key, c.byref(token), c.byref(size)), -16)
+            self.assertEqual(lib.nih_store_sync(live.store), 0)
+            self.assertEqual(lib.nih_store_pin_object(live.store, key, c.byref(token), c.byref(size)), 0)
+            self.assertEqual(size.value, 3)
+            self.assertEqual(lib.nih_store_snapshot_valid(live.store, token), -22)
+            self.assertEqual(lib.nih_store_restore(live.store, token), -22)
+            self.assertEqual(lib.nih_store_write(live.store, key, 0, b'new', 3), 0)
+            self.assertEqual(lib.nih_store_sync(live.store), 0)
+            out = c.create_string_buffer(4)
+            self.assertEqual(lib.nih_store_read_object(live.store, token, 0, out, 3), 3)
+            self.assertEqual(out.raw[:3], b'old')
+            self.assertEqual(lib.nih_store_read_object(live.store, token, 2, out, 3), 1)
+            self.assertEqual(out.raw[:1], b'd')
+            self.assertEqual(lib.nih_store_read_object(live.store, token, 0, out, 4097), -22)
+            snapshot = c.c_uint32()
+            self.assertEqual(lib.nih_store_snapshot(live.store, c.byref(snapshot)), 0)
+            self.assertEqual(lib.nih_store_snapshot_valid(live.store, snapshot), 0)
+            self.assertEqual(lib.nih_store_read_object(live.store, snapshot, 0, out, 1), -22)
+            self.assertEqual(lib.nih_store_release(live.store, snapshot), 0)
+            self.assertEqual(lib.nih_store_remove(live.store, key), 0)
+            self.assertEqual(lib.nih_store_sync(live.store), 0)
+            self.assertEqual(lib.nih_store_collect(live.store), 0)
+            self.assertEqual(lib.nih_store_read_object(live.store, token, 0, out, 3), 3)
+            self.assertEqual(out.raw[:3], b'old')
+            self.assertEqual(lib.nih_store_release(live.store, token), 0)
+            self.assertEqual(lib.nih_store_read_object(live.store, token, 0, out, 1), -22)
+            self.assertEqual(lib.nih_store_release(live.store, token), -22)
+        finally:
+            self.assertEqual(live.close(), 0)
+
+
 class CrashTest(unittest.TestCase):
     def test_slow_media_lease_is_bounded_and_rolls_back_on_expiry(self):
         live = MemoryService(timeout_ms=30000)

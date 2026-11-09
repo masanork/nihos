@@ -27,6 +27,7 @@ const State = struct {
     scratch: model.ResizeScratch = .{},
     pins: [4]?model.Reader = @splat(null),
     tokens: [4]u32 = @splat(0),
+    pin_keys: [4]u32 = @splat(0),
     serial: u32 = 0,
 };
 fn state(raw: *anyopaque) *State {
@@ -131,11 +132,48 @@ pub export fn nih_store_snapshot(raw: *anyopaque, token: *u32) c_int {
         p.* = s.store.pin() catch |err| return failure(err);
         s.serial += 1;
         s.tokens[i] = s.serial;
+        s.pin_keys[i] = 0; // Volume snapshots have no object key.
         token.* = s.serial;
         return 0;
     };
     return -28;
 }
+/// Serialized owner API: the caller must retain the returned object token
+/// until every request and device callback using it has drained.
+pub export fn nih_store_pin_object(raw: *anyopaque, key: u32, token: *u32, size: *u64) c_int {
+    token.* = 0;
+    size.* = 0;
+    if (key == 0) return -22;
+    const s = state(raw);
+    if (s.store.in_transaction) return -16;
+    if (s.serial == std.math.maxInt(i32)) return -28;
+    for (&s.pins, 0..) |*p, i| if (p.* == null) {
+        const reader = s.store.pinObject(key) catch |err| return failure(err);
+        const pinned = s.store.getPinned(reader, key) catch |err| {
+            s.store.release(reader) catch |release_err| return failure(release_err);
+            return failure(err);
+        };
+        p.* = reader;
+        s.serial += 1;
+        s.tokens[i] = s.serial;
+        s.pin_keys[i] = key;
+        token.* = s.serial;
+        size.* = pinned.length;
+        return 0;
+    };
+    return -28;
+}
+
+/// Tokens are local to this mounted store instance, not process capabilities.
+pub export fn nih_store_read_object(raw: *anyopaque, token: u32, offset: u64, out: [*]u8, bytes: usize) c_int {
+    if (bytes > model.page_bytes) return -22;
+    const s = state(raw);
+    const i = slot(s, token) orelse return -22;
+    if (s.pin_keys[i] == 0) return -22;
+    const n = s.store.readPinnedWithScratch(s.pins[i].?, s.pin_keys[i], offset, out[0..bytes], &s.scratch.nodes[0]) catch |err| return failure(err);
+    return @intCast(n);
+}
+
 fn slot(s: *State, token: u32) ?usize {
     for (s.tokens, 0..) |t, i| if (t == token and token != 0 and s.pins[i] != null) return i;
     return null;
@@ -145,16 +183,21 @@ pub export fn nih_store_release(raw: *anyopaque, token: u32) c_int {
     const i = slot(s, token) orelse return -22;
     s.store.release(s.pins[i].?) catch |err| return failure(err);
     s.pins[i] = null;
+    s.pin_keys[i] = 0;
+    s.tokens[i] = 0;
     return 0;
 }
 pub export fn nih_store_restore(raw: *anyopaque, token: u32) c_int {
     const s = state(raw);
     const i = slot(s, token) orelse return -22;
+    if (s.pin_keys[i] != 0) return -22;
     s.store.restore(s.pins[i].?) catch |err| return failure(err);
     return 0;
 }
 pub export fn nih_store_snapshot_valid(raw: *anyopaque, token: u32) c_int {
-    return if (slot(state(raw), token) != null) 0 else -22;
+    const s = state(raw);
+    const i = slot(s, token) orelse return -22;
+    return if (s.pin_keys[i] == 0) 0 else -22;
 }
 pub export fn nih_store_collect(raw: *anyopaque) c_int {
     const s = state(raw);
