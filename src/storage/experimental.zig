@@ -18,6 +18,9 @@ test {
     _ = nfst_reader;
     _ = @import("async_page.zig");
     _ = @import("async_nfst.zig");
+    _ = @import("capacity_copy.zig");
+    _ = @import("capacity_readiness.zig");
+    _ = @import("capacity_activation.zig");
     _ = @import("nfst_reader_test.zig");
     _ = service.reader_drain;
     _ = service.deadline;
