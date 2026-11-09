@@ -5,6 +5,7 @@ const media = @import("storage/file_media.zig");
 const model = @import("storage/checkpoint_model.zig");
 const migration = @import("storage/capacity_copy.zig");
 const readiness = @import("storage/capacity_readiness.zig");
+const activation = @import("storage/capacity_activation.zig");
 const nfst = @import("storage/nfst_reader.zig");
 const io = std.testing.io;
 const OldDevice = media.Media(4 * 1024 * 1024);
@@ -78,6 +79,13 @@ test "larger host store copies real SQLite image and imports external dictionary
     const layout = readiness.Layout{ .card_sectors = 200000, .source_start = 2048, .source_count = OldDevice.capacity / 512, .target_start = 10240, .target_count = NewDevice.capacity / 512, .record_lba = 1 };
     const record = try readiness.prepare(&source, &target, layout, &scratch);
     try std.testing.expectEqual(readiness.Decision.candidate_ready, try readiness.assess(&record, false, &source, &target, layout, &scratch));
+    // Host model only: trusted identities stand in for future physical card
+    // and immutable target-instance identity checks.
+    const binding = activation.Binding{ .layout = layout, .card_id = @splat(1), .target_id = @splat(2) };
+    const Meta = @import("storage/model_media.zig").Media(512);
+    var metadata: Meta = .{};
+    var guard: activation.Guard = .{};
+    try guard.activate(&metadata, &record, &source, &target, binding, &scratch);
     try std.testing.expectError(error.NotFound, source.get(200));
     const source_pin = try source.pin();
     defer source.release(source_pin) catch unreachable;
@@ -99,6 +107,11 @@ test "larger host store copies real SQLite image and imports external dictionary
     defer target_device.close();
     var recovered: NewStore = .{};
     try recovered.recover(&target_device);
+    metadata.powerLoss();
+    var active_record: [512]u8 = undefined;
+    try metadata.read(0, &active_record);
+    try std.testing.expectEqual(activation.Choice.target, try activation.recover(&active_record, binding, true, false));
+    try std.testing.expectError(error.RecoveryRequired, activation.recover(&active_record, binding, false, true));
     // Compare every original key after reopening; permit only the new dictionary.
     for (1..OldStore.max_objects + 1) |raw_key| {
         const key: u32 = @intCast(raw_key);
