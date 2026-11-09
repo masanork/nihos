@@ -20,10 +20,14 @@
     "usb_probe.Device.powerCut",
     "display_runtime.start",
     "display_runtime.replaceCard",
+    "main.taskReport",
+    "main.floatingReport",
     "main.resourceReport",
     "main.stackReport"
   ],
   "diagnostic_reports": [
+    "main.taskReport",
+    "main.floatingReport",
     "main.resourceReport",
     "main.stackReport"
   ],
