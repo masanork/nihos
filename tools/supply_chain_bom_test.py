@@ -40,7 +40,13 @@ class BomTest(unittest.TestCase):
             audit = make_image(img)
             (img / 'image-audit.json').write_text(json.dumps(audit))
             out = root / 'out'
-            bom.generate(root, img, out)
+            receipt = {'schema': 1, 'zig_version': '0.17.0', 'zig_sha256': 'a' * 64,
+                       'idf_commit': bom.native_build_tool_evidence.IDF_COMMIT, 'idf_tracked_clean': True}
+            bom.generate(root, img, out, receipt)
+            for name in ('source-sbom.cdx.json', 'source-cbom.cdx.json', 'audited-inputs.cdx.json'):
+                metadata = json.loads((out / name).read_text())['metadata']
+                entries = [p['value'] for p in metadata['properties'] if p['name'] == 'nihos:build-tool-evidence']
+                self.assertEqual(json.loads(entries[0]), receipt)
             sbom = json.loads((out / 'source-sbom.cdx.json').read_text())
             cbom = json.loads((out / 'source-cbom.cdx.json').read_text())
             self.assertEqual(sbom['metadata']['component']['hashes'][0]['content'], hashlib.sha256((img / 'nihos-native-flash.bin').read_bytes()).hexdigest())

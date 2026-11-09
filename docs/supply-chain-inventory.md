@@ -137,3 +137,23 @@ checks evidence consistency, not authenticity of the local audit's findings,
 a fresh audit, or proof that the source built the ELF. The option also requires
 the image-layout check. Without it, older artifact sets need not include the
 audit or ELF.
+
+## Build tool observations
+
+The opt-in signed workflow fixes the ESP-IDF installer manager at `v0.20.1`
+(the version used by the preceding successful workflow). Before and after the
+build, it records the selected Zig executable's version and SHA-256, and checks
+that the ESP-IDF top-level Git checkout is clean for tracked files and at the
+peeled `v5.4.4` commit. A changed observation fails the build. The same
+`nihos:build-tool-evidence` value is included in all three signed inventories;
+`--require-build-tool-evidence` requires consistent, well-formed observations.
+The consumer can pass `--expected-zig-sha256` with an independently trusted
+compiler binary digest to require an exact match. Older inventories remain
+verifiable without either option.
+
+These observations do not identify the Zig library tree, ESP-IDF submodule
+contents, untracked files, Python packages, OS image or every downloaded tool;
+the installer version is pinned but its download is not independently
+checksum-verified here. The before/after comparison does not prove that tools
+were unchanged at every instant, or that the observed executables produced the
+image. This is not complete build provenance or an SLSA Level 3 claim.
