@@ -2,6 +2,7 @@
 //! submits I/O nor owns a pin: the caller must keep one immutable object pinned
 //! until detach, and must authenticate/serialize completions and DMA drain.
 const std = @import("std");
+pub const ime_code = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 pub const page_bytes = 4096;
 pub const Error = error{ Busy, Denied, Exhausted, InvalidArgument, Io, NotReady };
 pub const Request = struct { generation: u64, serial: u64, offset: u64, length: usize };
@@ -16,7 +17,7 @@ pub const Coordinator = struct {
     page: [page_bytes]u8 = @splat(0),
 
     /// `pin` is a caller-owned identity, not proof of an actual storage pin.
-    pub fn attach(self: *Coordinator, pin: u64, length: u64) Error!void {
+    pub fn attach(self: *Coordinator, pin: u64, length: u64) linksection(ime_code) Error!void {
         if (self.state != .detached) return error.Busy;
         if (pin == 0 or length == 0) return error.InvalidArgument;
         if (self.generation == std.math.maxInt(u64)) return error.Exhausted;
@@ -26,7 +27,7 @@ pub const Coordinator = struct {
         self.state = .idle;
     }
     /// The returned request must be completed exactly once, even after cancel.
-    pub fn request(self: *Coordinator, offset: u64) Error!Request {
+    pub fn request(self: *Coordinator, offset: u64) linksection(ime_code) Error!Request {
         if (self.state == .failed) return error.Io;
         if (self.state != .idle and self.state != .ready) return error.Busy;
         if (offset % page_bytes != 0 or offset >= self.length) return error.InvalidArgument;
@@ -36,18 +37,18 @@ pub const Coordinator = struct {
         self.state = .pending;
         return self.active;
     }
-    fn matches(self: *const Coordinator, req: Request) bool {
+    fn matches(self: *const Coordinator, req: Request) linksection(ime_code) bool {
         return req.generation == self.active.generation and req.serial == self.active.serial and req.offset == self.active.offset and req.length == self.active.length;
     }
     /// Cancellation is a request to discard the result, not an I/O stop.
-    pub fn cancel(self: *Coordinator, req: Request) Error!void {
+    pub fn cancel(self: *Coordinator, req: Request) linksection(ime_code) Error!void {
         if (!self.matches(req)) return error.Denied;
         if (self.state != .pending and self.state != .draining) return error.NotReady;
         self.state = .draining;
     }
     /// Call only once the producer has ceased using its own buffer. Null or a
     /// short completion fences the attachment; discarded results are never read.
-    pub fn complete(self: *Coordinator, req: Request, bytes: ?[]const u8) Error!void {
+    pub fn complete(self: *Coordinator, req: Request, bytes: ?[]const u8) linksection(ime_code) Error!void {
         if (!self.matches(req)) return error.Denied;
         if (self.state == .draining) {
             self.state = .idle;
@@ -65,13 +66,13 @@ pub const Coordinator = struct {
         @memcpy(self.page[0..value.len], value);
         self.state = .ready;
     }
-    pub fn copy(self: *const Coordinator, req: Request, offset: usize, out: []u8) Error!void {
+    pub fn copy(self: *const Coordinator, req: Request, offset: usize, out: []u8) linksection(ime_code) Error!void {
         if (!self.matches(req)) return error.Denied;
         if (self.state != .ready) return error.NotReady;
         if (offset > req.length or out.len > req.length - offset) return error.InvalidArgument;
         @memcpy(out, self.page[offset..][0..out.len]);
     }
-    pub fn detach(self: *Coordinator) Error!void {
+    pub fn detach(self: *Coordinator) linksection(ime_code) Error!void {
         if (self.state == .pending or self.state == .draining) return error.Busy;
         if (self.state == .detached) return error.NotReady;
         self.pin = 0;

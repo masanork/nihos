@@ -4,6 +4,7 @@ pub const session = @import("console/session.zig");
 pub const xy_presentation = @import("xy/presentation.zig");
 pub const xy_render_protocol = @import("xy/render_protocol.zig");
 pub const scratch = @import("xy/scratch.zig");
+pub const ime_mailbox_bridge = @import("xy/ime_mailbox_bridge.zig");
 pub const keyboard = @import("board/tab5/keyboard.zig");
 pub const Journal = @import("diagnostics/boot_journal.zig").Journal;
 pub const boot = @import("diagnostics/boot_state.zig");

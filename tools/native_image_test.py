@@ -10,6 +10,28 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+class CardRsaEvidenceTest(unittest.TestCase):
+    def test_only_entry_point_inside_photo_text_is_evidence(self):
+        f = [('nih_card_crypto', 0x4010, 0x4020)]
+        self.assertEqual(MODULE.card_rsa_link_evidence(f, 0x4000, 0x4100)['bits'], 2048)
+        self.assertIsNone(MODULE.card_rsa_link_evidence([], 0x4000, 0x4100))
+        self.assertIsNone(MODULE.card_rsa_link_evidence(f, 0x4000, 0x4018))
+        self.assertIsNone(MODULE.card_rsa_link_evidence(f + f, 0x4000, 0x4100))
+
+
+class SqliteCryptoEvidenceTest(unittest.TestCase):
+    def test_only_linked_function_and_matching_constant_are_reported(self):
+        functions = [('sqlite3_randomness', 0x4008, 0x4018)]
+        symbols = {'sqlite3_randomness.chacha20_init': 0x5004}
+        sizes = {'sqlite3_randomness.chacha20_init': 16}
+        data = b'xxxxexpand 32-byte k'
+        evidence = MODULE.sqlite_prng_link_evidence(functions, symbols, sizes, 0x4000, 32, 0x5000, data)
+        self.assertEqual(evidence['function_bytes'], 16)
+        self.assertIsNone(MODULE.sqlite_prng_link_evidence([], symbols, sizes, 0x4000, 32, 0x5000, data))
+        self.assertIsNone(MODULE.sqlite_prng_link_evidence(functions, symbols, sizes, 0x4000, 8, 0x5000, data))
+        self.assertIsNone(MODULE.sqlite_prng_link_evidence(functions, symbols, sizes, 0x4000, 32, 0x5000, data[:-1] + b'x'))
+
+
 class NativeInstructionTests(unittest.TestCase):
     def test_boot_sprite_table_must_be_flash_without_sram_copy(self):
         name, start = 'boot_graphics.paintTo__struct_60.sprites', 0x40012000
@@ -133,6 +155,9 @@ class NativeInstructionTests(unittest.TestCase):
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.touchMove'))
         self.assertTrue(MODULE.xy_function('xy.scratch.Model.applyKeyboardPresence'))
         self.assertTrue(MODULE.xy_function('board.tab5.keyboard.KeyboardIn(boot_i2c.Master(display_probe.Pins),".flash.xytext"[0..13]).poll'))
+        self.assertTrue(MODULE.xy_function('xy.async_ime_session.Runtime.pollPort'))
+        self.assertTrue(MODULE.xy_function('storage.async_nfst.Lookup.get'))
+        self.assertFalse(MODULE.xy_function('storage.async_nfst.Lookup.unreviewed'))
         self.assertTrue(MODULE.xy_function('network_service.startAttempt'))
         self.assertTrue(MODULE.xy_function('network_service.stop'))
         self.assertTrue(MODULE.xy_function('network_service.tcpPoll'))

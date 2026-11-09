@@ -2,6 +2,7 @@
 //! serializes input and completions, keeps the dictionary pinned, and drains
 //! outstanding producer buffers before detaching. No native worker is installed.
 const std = @import("std");
+pub const ime_code = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 const conv = @import("conv.zig");
 const ime = @import("standard_ime.zig");
 const async_conversion = @import("async_conversion.zig");
@@ -17,7 +18,7 @@ pub const Session = struct {
     revision: u32 = 0,
     document_cursor: u32 = 0,
 
-    pub fn start(self: *Session, state: *ime.State, doc: anytype, adapter: *async_conversion.Adapter) !void {
+    pub fn start(self: *Session, state: *ime.State, doc: anytype, adapter: *async_conversion.Adapter) linksection(ime_code) !void {
         if (self.phase != .idle or adapter.lookup_state != null) return error.Busy;
         if (!try state.prepareAsync(doc)) return error.NotReady;
         self.length = state.length;
@@ -27,28 +28,28 @@ pub const Session = struct {
         self.cursor.begin(&state.engine, adapter, self.reading[0..self.length]);
         self.phase = .converting;
     }
-    fn current(self: *const Session, state: *const ime.State, doc: anytype) bool {
+    fn current(self: *const Session, state: *const ime.State, doc: anytype) linksection(ime_code) bool {
         return state.active and !state.converting and state.romaji.len == 0 and state.length == self.length and
             std.mem.eql(u8, state.reading[0..state.length], self.reading[0..self.length]) and
             doc.revision == self.revision and doc.cursor == self.document_cursor and
             doc.preedit.anchor_byte == self.document_cursor and std.mem.eql(u8, doc.preedit.slice(), self.reading[0..self.length]);
     }
-    pub fn cancel(self: *Session, state: *ime.State, adapter: *async_conversion.Adapter) !void {
+    pub fn cancel(self: *Session, state: *ime.State, adapter: *async_conversion.Adapter) linksection(ime_code) !void {
         if (self.phase == .idle) return;
         self.cursor.cancel(&state.engine);
         try adapter.cancel();
         self.phase = if (adapter.lookup_state == null) .idle else .draining;
     }
-    pub fn request(self: *const Session, adapter: *const async_conversion.Adapter) ?pages.Request {
+    pub fn request(self: *const Session, adapter: *const async_conversion.Adapter) linksection(ime_code) ?pages.Request {
         if (self.phase != .lookup and self.phase != .draining) return null;
         return adapter.request();
     }
-    pub fn supply(self: *Session, adapter: *async_conversion.Adapter, req: pages.Request, data: ?[]const u8) !void {
+    pub fn supply(self: *Session, adapter: *async_conversion.Adapter, req: pages.Request, data: ?[]const u8) linksection(ime_code) !void {
         if (self.phase != .lookup and self.phase != .draining) return error.Denied;
         try adapter.supply(req, data);
         if (self.phase == .draining and adapter.lookup_state == null) self.phase = .idle;
     }
-    pub fn step(self: *Session, state: *ime.State, doc: anytype, adapter: *async_conversion.Adapter, budget: usize) !Progress {
+    pub fn step(self: *Session, state: *ime.State, doc: anytype, adapter: *async_conversion.Adapter, budget: usize) linksection(ime_code) !Progress {
         if (self.phase == .idle) return .idle;
         if (self.phase == .draining) return .draining;
         if (!self.current(state, doc)) {
@@ -203,28 +204,34 @@ pub const Runtime = struct {
     session: Session = .{},
     adapter: *async_conversion.Adapter,
 
-    pub fn port(self: *Runtime) @import("scratch.zig").AsyncImePort {
+    pub fn initInPlace(self: *Runtime, adapter: *async_conversion.Adapter) linksection(ime_code) void {
+        @memset(std.mem.asBytes(self), 0);
+        self.adapter = adapter;
+        self.session.cursor.resetInPlace();
+    }
+
+    pub fn port(self: *Runtime) linksection(ime_code) @import("scratch.zig").AsyncImePort {
         return .{ .context = self, .busy = isBusy, .start = startPort, .cancel = cancelPort, .poll = pollPort };
     }
-    fn from(ctx: *anyopaque) *Runtime {
+    fn from(ctx: *anyopaque) linksection(ime_code) *Runtime {
         return @ptrCast(@alignCast(ctx));
     }
-    fn isBusy(ctx: *anyopaque) bool {
+    fn isBusy(ctx: *anyopaque) linksection(ime_code) bool {
         return from(ctx).session.phase != .idle;
     }
-    fn startPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) bool {
+    fn startPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) linksection(ime_code) bool {
         const self = from(ctx);
         self.session.start(&model.standard_input, &model.doc, self.adapter) catch return false;
         return true;
     }
-    fn cancelPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) void {
+    fn cancelPort(ctx: *anyopaque, model: *@import("scratch.zig").Model) linksection(ime_code) void {
         const self = from(ctx);
         if (self.session.phase == .draining) return;
         self.session.cancel(&model.standard_input, self.adapter) catch {
             model.status = .invalid_input;
         };
     }
-    fn pollPort(ctx: *anyopaque, model: *@import("scratch.zig").Model, budget: usize) bool {
+    fn pollPort(ctx: *anyopaque, model: *@import("scratch.zig").Model, budget: usize) linksection(ime_code) bool {
         const self = from(ctx);
         if (model.mode != .edit or model.nav.screen != .document or model.ime.mode == .direct or model.skk_input) {
             cancelPort(ctx, model);
@@ -236,10 +243,10 @@ pub const Runtime = struct {
         };
         return progress == .complete;
     }
-    pub fn request(self: *const Runtime) ?pages.Request {
+    pub fn request(self: *const Runtime) linksection(ime_code) ?pages.Request {
         return self.session.request(self.adapter);
     }
-    pub fn supply(self: *Runtime, req: pages.Request, data: ?[]const u8) !void {
+    pub fn supply(self: *Runtime, req: pages.Request, data: ?[]const u8) linksection(ime_code) !void {
         try self.session.supply(self.adapter, req, data);
     }
 };

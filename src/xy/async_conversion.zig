@@ -3,6 +3,7 @@
 //! Caller serializes all access, keeps the object pinned, drives the lookup,
 //! and drains an outstanding page request before releasing any resources.
 const std = @import("std");
+pub const ime_code = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 const pages = @import("../storage/async_page.zig");
 const nfst = @import("../storage/async_nfst.zig");
 const candidates = @import("../storage/nfst_reader.zig").Candidates;
@@ -11,10 +12,10 @@ pub const Adapter = struct {
     const Key = struct {
         bytes: [64]u8 = @splat(0),
         len: u8 = 0,
-        fn matches(self: *const Key, key: []const u8) bool {
+        fn matches(self: *const Key, key: []const u8) linksection(ime_code) bool {
             return std.mem.eql(u8, self.bytes[0..self.len], key);
         }
-        fn set(self: *Key, key: []const u8) void {
+        fn set(self: *Key, key: []const u8) linksection(ime_code) void {
             @memcpy(self.bytes[0..key.len], key);
             self.len = @intCast(key.len);
         }
@@ -32,7 +33,7 @@ pub const Adapter = struct {
     failure: ?anyerror = null,
     cancelled: bool = false,
 
-    pub fn beginConversion(self: *Adapter) void {
+    pub fn beginConversion(self: *Adapter) linksection(ime_code) void {
         if (self.lookup_state != null) {
             self.failure = error.Busy;
             return;
@@ -42,11 +43,11 @@ pub const Adapter = struct {
         self.answer_count = 0;
         self.full_count = 0;
     }
-    pub fn conversionError(self: *const Adapter) anyerror!void {
+    pub fn conversionError(self: *const Adapter) linksection(ime_code) anyerror!void {
         if (self.failure) |err| return err;
         if (self.lookup_state != null) return error.WouldBlock;
     }
-    fn start(self: *Adapter, key: []const u8, full: bool) void {
+    fn start(self: *Adapter, key: []const u8, full: bool) linksection(ime_code) void {
         if (self.failure != null or self.lookup_state != null) return;
         if (key.len == 0 or key.len > 64) {
             self.failure = error.Capacity;
@@ -63,14 +64,14 @@ pub const Adapter = struct {
             return;
         };
     }
-    pub fn contains(self: *Adapter, key: []const u8) bool {
+    pub fn contains(self: *Adapter, key: []const u8) linksection(ime_code) bool {
         if (self.failure != null or self.lookup_state != null) return false;
         for (self.answers[0..self.answer_count]) |*a| if (a.key.matches(key)) return a.found;
         for (self.full[0..self.full_count]) |*a| if (a.key.matches(key)) return a.result.count != 0;
         self.start(key, false);
         return false;
     }
-    pub fn lookup(self: *Adapter, key: []const u8, out: [][]const u8) usize {
+    pub fn lookup(self: *Adapter, key: []const u8, out: [][]const u8) linksection(ime_code) usize {
         if (self.failure != null or self.lookup_state != null) return 0;
         for (self.full[0..self.full_count]) |*a| if (a.key.matches(key)) {
             const count = @min(out.len, a.result.count);
@@ -80,7 +81,7 @@ pub const Adapter = struct {
         self.start(key, true);
         return 0;
     }
-    pub fn step(self: *Adapter, budget: usize) anyerror!nfst.Progress {
+    pub fn step(self: *Adapter, budget: usize) linksection(ime_code) anyerror!nfst.Progress {
         if (self.failure) |err| return err;
         const l = if (self.lookup_state) |*value| value else return error.NotReady;
         const state = l.step(budget) catch |err| {
@@ -102,11 +103,11 @@ pub const Adapter = struct {
         }
         return state;
     }
-    pub fn request(self: *const Adapter) ?pages.Request {
+    pub fn request(self: *const Adapter) linksection(ime_code) ?pages.Request {
         if (self.lookup_state) |*value| return value.request();
         return null;
     }
-    pub fn supply(self: *Adapter, req: pages.Request, bytes: ?[]const u8) anyerror!void {
+    pub fn supply(self: *Adapter, req: pages.Request, bytes: ?[]const u8) linksection(ime_code) anyerror!void {
         const l = if (self.lookup_state) |*value| value else return error.Denied;
         l.supply(req, bytes) catch |err| {
             self.failure = err;
@@ -114,7 +115,7 @@ pub const Adapter = struct {
         };
         if (self.cancelled) self.lookup_state = null;
     }
-    pub fn cancel(self: *Adapter) anyerror!void {
+    pub fn cancel(self: *Adapter) linksection(ime_code) anyerror!void {
         self.cancelled = true;
         if (self.lookup_state) |*value| {
             try value.cancel();

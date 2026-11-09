@@ -119,6 +119,12 @@ FATハンドルを失効させた後、この範囲だけに書込み権限を�
 これは誤操作防止であり暗号学的なカード認証ではない。初期化はpartition mapとroot metadataを作成し、secure eraseは行わない。
 初期化候補を残さず、最後はCID指定なしの通常imageへ戻す。
 
+SD ownerのread-only情報要求は従来のsector数とCID CRC32に続き、version 1、
+host generation、controllerが取得したCIDの4 wordを返す。各wordはlittle endian。
+これはその時点の観測であり、CIDの真正性や以後のカード接続を保証しない。
+領域切替への利用には接続世代の再検証と別途store・領域の識別が必要で、
+この情報自体は領域の選択や書込み権限を変更しない。
+
 native allocatorは`SQLITE_OS_OTHER`、`SQLITE_ENABLE_MEMSYS5`、`SQLITE_ZERO_MALLOC`、
 `SQLITE_OMIT_DESERIALIZE`を組み合わせ、未登録default VFSに依存せず初期化する。
 SQL壁時計は未公開で、時刻取得callbackは利用不能を返す。snapshot tokenはmount内だけで有効。
