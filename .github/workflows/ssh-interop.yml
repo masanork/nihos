@@ -28,6 +28,12 @@ jobs:
         run: python3 tools/test_ssh_bridge_errors.py
       - name: Prepared entropy to real home-screen SSH setup
         run: sh tools/test-ssh-prepared-ui.sh
+      - name: Prepared home-screen SSH session with OpenSSH
+        run: |
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_PREPARED=1 python3 tools/ssh_openssh_probe.py
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_PREPARED=1 NIHOS_SSH_LIFECYCLE_LEAVE=1 python3 tools/ssh_openssh_probe.py
       - name: TCP loss and FIN interoperability
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
