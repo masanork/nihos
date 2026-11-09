@@ -16986,15 +16986,15 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T13:25:33.034194+00:00",
+    "measuredAt": "2026-11-09T16:56:56.824728+00:00",
     "project": "nihos",
-    "commit": "5cbbeecf444520dbb286c1f1e3b9d3e2a258e679",
+    "commit": "169ebf243907aec3799893f7ab80dec2b907cdb0",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "804141b550407f5e14e0c450b84494abf4ce0377f28baff172d2108580c947ac",
+    "sourceTreeSha256": "b6e4eb514167839389c43ab9d662949a817195360c38283be2197af63bf74ae4",
     "code": {
       "implementation": 90371,
       "tests": 50654,
-      "tooling": 32020,
+      "tooling": 32021,
       "probes": 19465,
       "vendored": 723,
       "generated": 0
@@ -17051,7 +17051,7 @@
       "Shell": {
         "implementation": 0,
         "tests": 33,
-        "tooling": 4861,
+        "tooling": 4862,
         "probes": 1840,
         "vendored": 0,
         "generated": 0
@@ -17117,7 +17117,7 @@
       "tools": {
         "implementation": 0,
         "tests": 11483,
-        "tooling": 31672,
+        "tooling": 31673,
         "probes": 0,
         "vendored": 0,
         "generated": 0
