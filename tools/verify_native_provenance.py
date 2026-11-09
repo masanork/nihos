@@ -12,6 +12,8 @@ import re
 import subprocess
 import sys
 
+import native_build_tool_evidence
+
 REPO = 'masanork/nihos'
 WORKFLOW = '.github/workflows/native.yml'
 SIGNER = '.github/workflows/native-provenance.yml'
@@ -110,7 +112,48 @@ def check_image_layout(flash, bom, required=False):
     return True
 
 
-def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=False):
+def check_audit_evidence(directory, inventories):
+    """Check the retained audit and ELF against the verified inventory set."""
+    elf_hash = digest(directory / 'nihos-native.elf')
+    audit_path = directory / 'image-audit.json'
+    audit_hash = digest(audit_path)
+    for bom in inventories:
+        properties = bom.get('metadata', {}).get('properties', [])
+        if not isinstance(properties, list):
+            raise ValueError('invalid inventory metadata properties')
+        for name, expected in (('nihos:elf-sha256', elf_hash), ('nihos:image-audit-sha256', audit_hash)):
+            values = [p.get('value') for p in properties if isinstance(p, dict) and p.get('name') == name]
+            if values != [expected]:
+                raise ValueError(f'inventory {name} differs from retained evidence')
+    audit = json.loads(audit_path.read_text())
+    if audit.get('elf_sha256') != elf_hash or audit.get('memory', {}).get('profile') != 'device':
+        raise ValueError('image audit ELF digest or device profile differs')
+    # The image layout checker already verified the application component's
+    # offset, size and hash against the flash image. Recheck the audit's app hash.
+    app = [c for c in inventories[0].get('components', []) if isinstance(c, dict) and c.get('name') == 'nihos-native.bin']
+    if len(app) != 1 or app[0].get('hashes') != [{'alg': 'SHA-256', 'content': audit.get('image_sha256')}]:
+        raise ValueError('image audit application digest differs from flash inventory')
+
+
+def check_build_tool_evidence(inventories, expected_zig_sha256=None):
+    """Check identical, bounded tool observations from all signed inventories."""
+    receipts = []
+    for bom in inventories:
+        properties = bom.get('metadata', {}).get('properties', [])
+        if not isinstance(properties, list):
+            raise ValueError('invalid inventory metadata properties')
+        values = [p.get('value') for p in properties if isinstance(p, dict) and p.get('name') == 'nihos:build-tool-evidence']
+        if len(values) != 1 or not isinstance(values[0], str):
+            raise ValueError('missing or duplicate build tool evidence')
+        receipts.append(native_build_tool_evidence.validate(json.loads(values[0])))
+    if any(receipt != receipts[0] for receipt in receipts[1:]):
+        raise ValueError('build tool evidence differs between inventories')
+    if expected_zig_sha256 is not None and (not re.fullmatch(r'[0-9a-f]{64}', expected_zig_sha256) or receipts[0]['zig_sha256'] != expected_zig_sha256):
+        raise ValueError('Zig binary digest differs from independently trusted digest')
+    return receipts[0]
+
+
+def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=False, require_audit_evidence=False, require_build_tool_evidence=False, expected_zig_sha256=None):
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA must be 40 lowercase hexadecimal characters')
     if not re.fullmatch(r'refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*', source_ref):
@@ -118,13 +161,15 @@ def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=
     files = {SUBJECTS[0]: directory / SUBJECTS[0]}
     files.update({name: directory / 'bom' / name for name in SUBJECTS[1:]})
     hashes = {name: digest(path) for name, path in files.items()}
+    inventories = []
     for name in SUBJECTS[1:]:
         bom = json.loads(files[name].read_text())
+        inventories.append(bom)
         component = bom.get('metadata', {}).get('component', {})
         if {'alg': 'SHA-256', 'content': hashes[SUBJECTS[0]]} not in component.get('hashes', []):
             raise ValueError('inventory image digest differs')
-    check_image_layout(files[SUBJECTS[0]].read_bytes(),
-                       json.loads(files[SUBJECTS[1]].read_text()), require_image_layout)
+    flash = files[SUBJECTS[0]].read_bytes()
+    check_image_layout(flash, inventories[0], require_image_layout or require_audit_evidence)
     command = ['gh', 'attestation', 'verify', str(files[SUBJECTS[0]]), '--repo', REPO,
                '--signer-workflow', f'{REPO}/{SIGNER}', '--source-ref', source_ref,
                '--source-digest', source_sha, '--signer-digest', source_sha,
@@ -138,9 +183,13 @@ def verify(directory, source_sha, source_ref, bundle=None, require_image_layout=
     for item in verified:
         try:
             check_statement(item['verificationResult']['statement'], hashes, source_sha, source_ref)
-            return hashes
         except (KeyError, TypeError, ValueError):
             continue
+        if require_audit_evidence:
+            check_audit_evidence(directory, inventories)
+        if require_build_tool_evidence or expected_zig_sha256 is not None:
+            check_build_tool_evidence(inventories, expected_zig_sha256)
+        return hashes
     raise ValueError('no verified statement satisfies native provenance policy')
 
 
@@ -152,14 +201,22 @@ def main():
     parser.add_argument('--bundle', type=Path, help='optional downloaded Sigstore bundle')
     parser.add_argument('--require-image-layout', action='store_true',
                         help='require and verify binary offsets, lengths and digests')
+    parser.add_argument('--require-audit-evidence', action='store_true',
+                        help='require and verify retained image audit and ELF (also requires image layout)')
+    parser.add_argument('--require-build-tool-evidence', action='store_true',
+                        help='require matching signed build tool observations in all inventories')
+    parser.add_argument('--expected-zig-sha256', help='independently trusted Zig binary SHA-256; implies build tool evidence')
     args = parser.parse_args()
     try:
-        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle, args.require_image_layout)
+        hashes = verify(args.directory, args.source_sha, args.source_ref, args.bundle, args.require_image_layout, args.require_audit_evidence, args.require_build_tool_evidence, args.expected_zig_sha256)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as exc:
         print(f'native provenance verification failed: {exc}', file=sys.stderr)
         return 1
     print(json.dumps({'policy': 'experimental-native-main-v1', 'source_sha': args.source_sha,
-                      'source_ref': args.source_ref, 'image_layout_required': args.require_image_layout, 'subjects': hashes}, indent=2))
+                      'source_ref': args.source_ref, 'image_layout_required': args.require_image_layout or args.require_audit_evidence,
+                      'audit_evidence_verified': args.require_audit_evidence,
+                      'build_tool_evidence_verified': args.require_build_tool_evidence or args.expected_zig_sha256 is not None,
+                      'expected_zig_sha256': args.expected_zig_sha256, 'subjects': hashes}, indent=2))
     return 0
 
 
