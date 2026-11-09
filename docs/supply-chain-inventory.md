@@ -18,10 +18,20 @@ for the normal Tab5 device build, retaining them with the image evidence:
   set of cryptographic identifiers. Matches include comments and tests. It is
   not a complete crypto inventory and does not establish that a match is linked,
   enabled, or used. C sources, generated code, Zig standard library internals,
-  external components, bootloader and C6 firmware are not covered. RSA-2048
+  external components, bootloader and C6 firmware are not generally covered.
+  As a bounded exception, the audited SQLite source and ELF symbols can identify
+  a ChaCha20 candidate associated with `sqlite3_randomness`. This is evidence
+  of linked symbols and source markers, not proof that the algorithm executes,
+  provides encryption, or has sufficient entropy. Missing symbols do not prove
+  absence. RSA-2048
   candidates include generic 2048-bit finite-field declarations because the
   NPA card verifier uses that API; such a match alone does not establish RSA
-  use. The verifier is built only in selected card profiles.
+  use. In a read-enabled card profile, the image audit can record the linked
+  `nih_card_crypto` entry point and the generator cross-checks its audited
+  profile and source hash. This is link evidence, not proof of runtime use,
+  provisioned trust anchors, successful card verification or physical-device
+  behavior. Missing symbols do not prove absence. The ordinary Tab5 profile
+  remains a source candidate unless it has independent link evidence.
 
 The image audit and manifests are local unsigned evidence: the generator checks
 consistency with them, not their authenticity. It does not rerun the native
@@ -90,7 +100,7 @@ image and all three inventory files as one artifact set:
 
 ```sh
 python3 tools/verify_native_provenance.py PATH/TO/IMAGE-DIRECTORY \
-  --source-sha TRUSTED_COMMIT_SHA --require-image-layout
+  --source-sha TRUSTED_COMMIT_SHA --require-image-layout --require-audit-evidence
 ```
 
 The directory must contain `nihos-native-flash.bin` and the three `.cdx.json`
@@ -116,3 +126,34 @@ inventories that lack lengths; without the flag those older inventories remain
 verifiable but their component slices cannot be independently checked. When
 lengths are present the layout is always checked, even without the flag. These
 checks establish byte consistency, not source-to-binary provenance.
+
+With `--require-audit-evidence`, the consumer also requires the retained
+`nihos-native.elf` and `image-audit.json`. After verifying the signed inventory
+subjects, it checks the SHA-256 references in all three inventories against
+these files, checks the audit's ELF digest and device profile, and matches its
+application digest to the verified flash slice. The ELF and audit are bound
+indirectly by the signed inventories; they are not attestation subjects. This
+checks evidence consistency, not authenticity of the local audit's findings,
+a fresh audit, or proof that the source built the ELF. The option also requires
+the image-layout check. Without it, older artifact sets need not include the
+audit or ELF.
+
+## Build tool observations
+
+The opt-in signed workflow fixes the ESP-IDF installer manager at `v0.20.1`
+(the version used by the preceding successful workflow). Before and after the
+build, it records the selected Zig executable's version and SHA-256, and checks
+that the ESP-IDF top-level Git checkout is clean for tracked files and at the
+peeled `v5.4.4` commit. A changed observation fails the build. The same
+`nihos:build-tool-evidence` value is included in all three signed inventories;
+`--require-build-tool-evidence` requires consistent, well-formed observations.
+The consumer can pass `--expected-zig-sha256` with an independently trusted
+compiler binary digest to require an exact match. Older inventories remain
+verifiable without either option.
+
+These observations do not identify the Zig library tree, ESP-IDF submodule
+contents, untracked files, Python packages, OS image or every downloaded tool;
+the installer version is pinned but its download is not independently
+checksum-verified here. The before/after comparison does not prove that tools
+were unchanged at every instant, or that the observed executables produced the
+image. This is not complete build provenance or an SLSA Level 3 claim.
