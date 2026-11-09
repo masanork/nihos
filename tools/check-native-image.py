@@ -308,6 +308,17 @@ XY_LEARNING_METHODS = {
 # minibuffer formatter is deliberately not approved: the device renderer
 # does not draw candidates yet, so it must not be linked into the image.
 XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'isBuiltinPrefixTrigger', 'triggerConversion', 'feed', 'clear', 'flushTrailingN', 'append'}
+# Foreground-only asynchronous dictionary transport and conversion. These
+# functions run with Flash available; they are not IRQ/cache-off callbacks.
+XY_ASYNC_IME_FUNCTIONS = {
+    'xy.async_ime_session.Runtime.supply', 'xy.async_ime_session.Runtime.request',
+    'xy.async_ime_session.Runtime.pollPort', 'xy.async_ime_session.Runtime.cancelPort',
+    'xy.async_ime_session.Runtime.startPort', 'xy.async_ime_session.Runtime.isBusy',
+    'xy.async_ime_session.Session.cancel', 'storage.async_page.Coordinator.matches',
+    'storage.async_nfst.Lookup.get', 'xy.async_conversion.Adapter.lookup',
+    'xy.async_conversion.Adapter.start', 'xy.async_conversion.Adapter.cancel',
+    'xy.async_conversion.Adapter.Key.matches', 'xy.ime_mailbox_bridge.Bridge.matches',
+}
 XY_DICT_METHODS = {'init', 'lookup', 'commonPrefixSearch', 'omniProvider', 'omniQuery'}
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
@@ -367,7 +378,7 @@ def xy_function(name):
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
     decimal_name = re.sub(r'__func_[0-9]+$', '', name)
-    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or standard_ime or conversion or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(name in XY_ASYNC_IME_FUNCTIONS or name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or standard_ime or conversion or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_udp_xy_functions(functions, span):
@@ -931,6 +942,33 @@ def decode_stack_sizes(data, functions):
             "recursive_or_Zig_call_graph_bound": False}
 
 
+def card_rsa_link_evidence(functions, text_start, text_end):
+    """Return positive card verifier entry-point evidence, never absence proof."""
+    matches = [(start, end) for name, start, end in functions
+               if name == 'nih_card_crypto' and text_start <= start < end <= text_end]
+    if len(matches) != 1:
+        return None
+    start, end = matches[0]
+    return {'function': 'nih_card_crypto', 'function_address': hex(start),
+            'function_bytes': end - start, 'profile': 'npa-raw-sha256-v1_5',
+            'bits': 2048}
+
+
+def sqlite_prng_link_evidence(functions, symbols, sizes, text_start, text_size, ro_start, rodata):
+    """Report positive symbol evidence only; missing symbols prove no absence."""
+    matches = [(a, b) for name, a, b in functions if name == 'sqlite3_randomness'
+               and text_start <= a < b <= text_start + text_size]
+    marker = 'sqlite3_randomness.chacha20_init'
+    at = symbols.get(marker, 0) - ro_start
+    magic = b'expand 32-byte k'
+    if len(matches) != 1 or sizes.get(marker) != len(magic) or not (0 <= at <= len(rodata) - len(magic)) or rodata[at:at + len(magic)] != magic:
+        return None
+    start, end = matches[0]
+    return {'function': 'sqlite3_randomness', 'function_address': hex(start),
+            'function_bytes': end - start, 'constant': marker,
+            'constant_address': hex(ro_start + at)}
+
+
 def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_manifest=None, normal_fs_manifest=None, sqld_manifest=None):
     require(profile in SRAM_PROFILES, "invalid native memory profile")
     low, high, revision = SRAM_PROFILES[profile]
@@ -1148,6 +1186,11 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         photo_report = {'name':codec['name'],'version':codec['version'],'decode_only':True,'text_start':hex(code_start),'text_end':hex(ro_start),'rodata_start':hex(ro_start),'rodata_end':hex(ro_start+len(ro)),'text_bytes':len(code),'rodata_bytes':len(ro),'text_sha256':hashlib.sha256(code).hexdigest(),'rodata_sha256':hashlib.sha256(ro).hexdigest(),'workspace_bytes':codec['workspace_bytes'],'stack_low':codec['stack_low'],'stack_high':codec['stack_high']}
         sizes = [elf[section[4]:section[4]+section[5]] for section in sections if string(names,section[0]) == '.stack_sizes']
         require(len(sizes)==1, 'missing photo C stack metadata')
+        photo_report['manifest_sha256'] = hashlib.sha256(json.dumps(keypad_manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if automatic and automatic['read_enabled']:
+            evidence = card_rsa_link_evidence(functions, code_start, ro_start)
+            if evidence is not None:
+                photo_report['card_rsa_link_evidence'] = evidence
         photo_report['static_c_stack'] = decode_stack_sizes(sizes[0],functions)
         require(photo_report['static_c_stack']['maximum_reported_frame_bytes'] <= 8192, 'photo C frame exceeds isolated stack margin')
     fs_span = None
@@ -1343,6 +1386,9 @@ def audit(elf, image, mode=None, profile="device", sqlite_manifest=None, keypad_
         require(not {'malloc','calloc','realloc','free','fopen','f_write','f_mkfs'}.intersection(symbols), 'libc heap or FAT writer linked in sqld')
         xy_payload += pad + code + bytes(ro_start - text_start - len(code)) + data
         sqld_report = {'identity': sqld_manifest['identity'], 'text_bytes':len(code), 'rodata_bytes':len(data), 'reservation':sqld_manifest['reservation'], 'heap':sqld_manifest['heap'], 'stack':sqld_manifest['stack'], 'media':sqld_manifest['media'], 'provision_cid':sqld_manifest['provision_cid'], 'physical_qualified':False}
+        prng_evidence = sqlite_prng_link_evidence(functions, symbols, symbol_sizes, text_start, len(code), ro_start, data)
+        if prng_evidence is not None:
+            sqld_report['sqlite_prng_link_evidence'] = prng_evidence
     boot_functions = audit_boot_functions(functions, boot_start, boot_end, low, high, sql_span, allowed_sql, card_span, (list(keypad_manifest.get('allowed_functions', ())) + (sorted(SERVICE_SRAM_FUNCTIONS) if service_sram else []) + (sorted(CARD_BOOT_FUNCTIONS) if keypad_manifest.get('card_boot') else [])) if allow_ui else (), photo_span, (keypad_manifest['codec']['allowed_functions']+keypad_manifest.get('license_crypto',{}).get('allowed_functions',[])+(['photo_runtime.cryptoExecute'] if keypad_manifest.get('automatic_cards',{}).get('read_enabled') else [])+(['nih_display_scene_mismatches'] if keypad_manifest.get('automatic_cards',{}).get('scene_exercise') else [])) if allow_photo else (), bool(keypad_manifest.get('automatic_cards')) if allow_ui else False, device_span=device_span, time_span=time_span, sdmmc_span=sd_boot if sd_boot[0] != sd_boot[1] else None, fs_span=fs_span, fs_functions=normal_fs_manifest['allowed_functions'] if allow_fs else (), render_span=(int(graph_report["render"]["start"],16), int(graph_report["render"]["end"],16)) if allow_graphics else None, pmp_span=pmp_span, user_span=user_span, xy_span=xy_span, rust_session_span=(symbols.get("__flash_rust_app_start", 0), symbols.get("__flash_rust_app_end", 0)))
     if sd_boot[0] != sd_boot[1]:
         audit_sdmmc_resident(symbols, symbol_sizes, low, high)

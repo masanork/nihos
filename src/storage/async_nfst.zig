@@ -2,6 +2,7 @@
 //! coordinator. One step processes at most one byte or one state transition.
 //! The caller serializes access and retains the same immutable object pin.
 const std = @import("std");
+pub const ime_code = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 const pages = @import("async_page.zig");
 const nfst = @import("nfst_reader.zig");
 
@@ -38,7 +39,7 @@ pub const Lookup = struct {
     candidate_entry: u32 = 0,
     result: nfst.Candidates = .{},
 
-    pub fn begin(coordinator: *pages.Coordinator, key: []const u8) Error!Lookup {
+    pub fn begin(coordinator: *pages.Coordinator, key: []const u8) linksection(ime_code) Error!Lookup {
         if (key.len == 0 or key.len > nfst.max_key_bytes or !std.unicode.utf8ValidateSlice(key)) return error.InvalidKey;
         if (coordinator.pin == 0) return error.NotReady;
         if (coordinator.state == .failed) return error.Io;
@@ -47,10 +48,10 @@ pub const Lookup = struct {
         @memcpy(self.key[0..key.len], key);
         return self;
     }
-    fn fits(offset: u64, n: u64, limit: u64) bool {
+    fn fits(offset: u64, n: u64, limit: u64) linksection(ime_code) bool {
         return offset <= limit and n <= limit - offset;
     }
-    fn get(self: *Lookup, offset: u64) Error!?u8 {
+    fn get(self: *Lookup, offset: u64) linksection(ime_code) Error!?u8 {
         if (offset >= self.coordinator.length) return error.Corrupt;
         if (self.pending != null) return null;
         const base = offset - offset % pages.page_bytes;
@@ -63,10 +64,10 @@ pub const Lookup = struct {
         self.pending = try self.coordinator.request(base);
         return null;
     }
-    pub fn request(self: *const Lookup) ?pages.Request {
+    pub fn request(self: *const Lookup) linksection(ime_code) ?pages.Request {
         return self.pending;
     }
-    pub fn supply(self: *Lookup, req: pages.Request, data: ?[]const u8) Error!void {
+    pub fn supply(self: *Lookup, req: pages.Request, data: ?[]const u8) linksection(ime_code) Error!void {
         const expected = self.pending orelse return error.Denied;
         if (!std.meta.eql(expected, req)) return error.Denied;
         self.coordinator.complete(req, data) catch |err| {
@@ -76,16 +77,16 @@ pub const Lookup = struct {
         };
         self.pending = null;
     }
-    pub fn cancel(self: *Lookup) Error!void {
+    pub fn cancel(self: *Lookup) linksection(ime_code) Error!void {
         if (self.pending) |req| try self.coordinator.cancel(req);
         self.result.count = 0;
         self.phase = .cancelled;
     }
-    pub fn candidates(self: *const Lookup) Error!nfst.Candidates {
+    pub fn candidates(self: *const Lookup) linksection(ime_code) Error!nfst.Candidates {
         if (self.phase != .complete) return error.NotReady;
         return self.result;
     }
-    fn consume(self: *Lookup) Error!void {
+    fn consume(self: *Lookup) linksection(ime_code) Error!void {
         switch (self.phase) {
             .header => {
                 const byte = (try self.get(self.pos)) orelse return;
@@ -227,7 +228,7 @@ pub const Lookup = struct {
             .complete, .cancelled, .failed => {},
         }
     }
-    pub fn step(self: *Lookup, budget: usize) Error!Progress {
+    pub fn step(self: *Lookup, budget: usize) linksection(ime_code) Error!Progress {
         for (0..budget) |_| {
             if (self.phase == .cancelled) return .cancelled;
             if (self.phase == .failed) return error.Io;

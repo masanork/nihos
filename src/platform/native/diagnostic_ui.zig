@@ -294,6 +294,10 @@ var camera_input_sequence: u32 = 0;
 var camera_preview_mismatches: u32 = 0xffffffff;
 var session_active = false;
 var session_pending = false;
+var ime_reset_blocked = false;
+pub fn setImeResetBlocked(blocked: bool) void {
+    ime_reset_blocked = blocked;
+}
 var session_serial = Session.input.Serial{};
 var session_hid = Session.input.Hid{};
 var shown_session_revision: u32 = 0;
@@ -812,6 +816,7 @@ pub fn startSession(log: anytype) bool {
 }
 // Foreground console handoff, with Flash available throughout.
 noinline fn beginSession(log: anytype) linksection(if (xy_workspace) ".flash.xytext" else if (options.rust_session) ".flash.text.rust_app" else ".text") void {
+    if (ime_reset_blocked) return;
     @memset(@import("std").mem.asBytes(session), 0);
     if (comptime xy_workspace) {
         scratch.initInPlace();
@@ -1286,6 +1291,7 @@ pub noinline fn service(log: anytype) linksection(if (@hasDecl(options, "sqld") 
         log.record("NIHOS_NATIVE_UI_SETTLED", null, .{ "frames", "progress", "target" }, &values);
     }
     if (session_pending and progress == 255) {
+        if (ime_reset_blocked) return true;
         if (model.details) {
             // A late boot-time Esc may have selected logs. Publish the final
             // splash/settled record before the next frame hands over the UI.
