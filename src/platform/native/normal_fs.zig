@@ -634,9 +634,17 @@ fn rawCommand(s: *State) i32 {
     if (s.raw_faulted or s.card_controller.sectors == 0 or s.host_generation != host.generation()) return -19;
     const cid = sd.crc32(std.mem.asBytes(&s.card_controller.cid));
     if (s.raw_op == 0) {
+        const generation = s.host_generation;
         @memset(&s.raw_data, 0);
         std.mem.writeInt(u32, s.raw_data[0..4], @intCast(s.card_controller.sectors), .little);
         std.mem.writeInt(u32, s.raw_data[4..8], cid, .little);
+        // Versioned observation, not an authentication or write capability.
+        std.mem.writeInt(u32, s.raw_data[8..12], 1, .little);
+        std.mem.writeInt(u32, s.raw_data[12..16], generation, .little);
+        for (s.card_controller.cid, 0..) |word, i| {
+            std.mem.writeInt(u32, s.raw_data[16 + i * 4 ..][0..4], word, .little);
+        }
+        if (generation != host.generation()) return -19;
         return 0;
     }
     if (s.raw_op == 4 or s.raw_op == 5) {
