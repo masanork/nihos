@@ -31,6 +31,13 @@ int nih_store_snapshot(void *, uint32_t *token);
  * output must not overlap the store state or its owner scratch. */
 int nih_store_pin_object(void *, uint32_t key, uint32_t *token, uint64_t *size);
 int nih_store_read_object(void *, uint32_t token, uint64_t offset, uint8_t *, size_t);
+/* Owner-only, mount-local import into dictionary key 64. Begin requires no
+ * staged transaction. Finish stages the complete object; sync publishes it.
+ * A failed sync has unknown outcome and requires recovery before reuse. */
+int nih_store_dictionary_begin(void *, uint64_t length, uint64_t *token);
+int nih_store_dictionary_write(void *, uint64_t token, const uint8_t *, size_t);
+int nih_store_dictionary_finish(void *, uint64_t token);
+int nih_store_dictionary_abort(void *, uint64_t token);
 int nih_store_release(void *, uint32_t token);
 int nih_store_restore(void *, uint32_t token);
 int nih_store_snapshot_valid(void *, uint32_t token);
