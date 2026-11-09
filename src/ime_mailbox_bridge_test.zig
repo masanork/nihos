@@ -2,7 +2,14 @@ const std = @import("std");
 const wire = @import("platform/native/sqld_ime_mailbox.zig");
 const Bridge = @import("xy/ime_mailbox_bridge.zig").Bridge;
 const Model = @import("xy/scratch.zig").Model;
+const SlicedConversion = @import("xy/conv.zig").SlicedConversion;
 const dictionary = @embedFile("xy/fixtures/jisyo_s_nfst.bin");
+test "in-place sliced conversion reset matches its default" {
+    var value: SlicedConversion = .{};
+    value.i = 3;
+    value.resetInPlace();
+    try std.testing.expectEqualDeep(SlicedConversion{}, value);
+}
 const Backend = struct {
     box: wire.Mailbox = .{},
     missing: bool = false,
@@ -44,7 +51,9 @@ test "workspace converts through copied mailbox and drains cancellation" {
     model.initInPlace();
     model.ime.mode = .hiragana;
     var backend: Backend = .{};
-    var bridge: Bridge = Bridge.init();
+    // SAFETY: The bridge is initialized in place before first use.
+    var bridge: Bridge = undefined;
+    bridge.initInPlace();
     try std.testing.expectEqual(@as(i32, 0), bridge.open(&backend));
     for (0..10) |_| {
         try tick(&bridge, &model, &backend);
