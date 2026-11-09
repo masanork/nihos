@@ -16986,14 +16986,14 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T00:03:13.889538+00:00",
+    "measuredAt": "2026-11-09T02:29:27.383284+00:00",
     "project": "nihos",
-    "commit": "f970ff836691f4cb4435d54c117a22fa0fe58923",
+    "commit": "554992207aa244e259e46b42b67e6411517332da",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "e45c9f3e4867cb9233f04cdc0c9fddb5827117432a370279bb9e7f4c6e79bf52",
+    "sourceTreeSha256": "34467d8542d3deff6221dd4b3f42b38684f688b1b0793bab074734e47a69ccdc",
     "code": {
-      "implementation": 89699,
-      "tests": 49809,
+      "implementation": 89747,
+      "tests": 49862,
       "tooling": 31998,
       "probes": 19453,
       "vendored": 723,
@@ -17001,7 +17001,7 @@
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 81965,
+        "implementation": 82008,
         "tests": 38256,
         "tooling": 1938,
         "probes": 5788,
@@ -17017,7 +17017,7 @@
         "generated": 0
       },
       "C/header": {
-        "implementation": 1735,
+        "implementation": 1740,
         "tests": 0,
         "tooling": 0,
         "probes": 602,
@@ -17034,7 +17034,7 @@
       },
       "Python": {
         "implementation": 26,
-        "tests": 11394,
+        "tests": 11447,
         "tooling": 23154,
         "probes": 3448,
         "vendored": 0,
@@ -17083,7 +17083,7 @@
         "generated": 0
       },
       "include": {
-        "implementation": 941,
+        "implementation": 946,
         "tests": 0,
         "tooling": 0,
         "probes": 0,
@@ -17099,7 +17099,7 @@
         "generated": 0
       },
       "src": {
-        "implementation": 87762,
+        "implementation": 87805,
         "tests": 38382,
         "tooling": 0,
         "probes": 0,
@@ -17116,7 +17116,7 @@
       },
       "tools": {
         "implementation": 0,
-        "tests": 11427,
+        "tests": 11480,
         "tooling": 31656,
         "probes": 0,
         "vendored": 0,
@@ -17656,7 +17656,7 @@
         "src/storage/search_cache_test.zig": "5fa40a13a3d5f0d12a0e1ac6985a494f37e931ea896c1cdd5907de8471152299",
         "src/storage/sector_media.zig": "62f945637ce5fa4aed1b50b8c093323fb367612b1365cfe217645ebf7d6640b6",
         "src/storage/sector_media_test.zig": "54f2b0acf2a0ce3cd05039ec5424e6eaf26464705507a1ae8f50483bd0cd1b73",
-        "src/storage/store_abi.zig": "b712cd66a7e94c6c2137b79511c4bce48d38e9227a41d6c66387da2ac0f86ef5",
+        "src/storage/store_abi.zig": "83920c78e573033cc225cbe70e461eb7317df57181c08ab3bfb309a181f510ed",
         "src/storage/stream_test.zig": "b0735be992d290497708e1ae965f22726673c255dc0b23275cf2c76a7e20e87a",
         "src/storage/write_budget_test.zig": "6ec758f7332cfa1f2992c182986b25152dcda9c18a475415529a411d69bb1359",
         "src/storage_vfs.zig": "c63e12c5cd5ac6b0b3e1a131d019875e952f0bb81d2606712e1f5c87d9808703",
