@@ -16986,24 +16986,24 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T05:06:04.907394+00:00",
+    "measuredAt": "2026-11-09T06:46:27.398301+00:00",
     "project": "nihos",
-    "commit": "8b84500450f1fca947f3be08baf1cf8ab68e24b9",
+    "commit": "48045d0620ce76af79d4a3ea741838c468c9413b",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "c2f88a88e43103a0319ddecd7adac857e45ada07448396fa0452fe9c1efd7449",
+    "sourceTreeSha256": "35ca7fe7a5dd591e8795d512a93c841cd5e9e3e694e9abbc59a5db5f78416028",
     "code": {
-      "implementation": 89927,
-      "tests": 50130,
-      "tooling": 32000,
+      "implementation": 90071,
+      "tests": 50287,
+      "tooling": 32004,
       "probes": 19453,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 82188,
-        "tests": 38524,
-        "tooling": 1940,
+        "implementation": 82332,
+        "tests": 38681,
+        "tooling": 1944,
         "probes": 5788,
         "vendored": 0,
         "generated": 0
@@ -17069,7 +17069,7 @@
       "build.zig": {
         "implementation": 0,
         "tests": 0,
-        "tooling": 344,
+        "tooling": 348,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -17099,8 +17099,8 @@
         "generated": 0
       },
       "src": {
-        "implementation": 87985,
-        "tests": 38650,
+        "implementation": 88129,
+        "tests": 38807,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -17306,6 +17306,7 @@
         "src/graphics/text_context.zig": "a55f50aa03a68f5fe2ead4575929223342045033fecf8e32b6e671d7ab5d82cc",
         "src/graphics/ttf.zig": "c449ad7bfe50009949da75fa19e862ab9f2eda7fdad26b056a9658f7736979d3",
         "src/graphics/viewport_layout.zig": "b7c8b3fe5f68b34be94c14073b5f68847450c33f795e11d29b10f5efacf3d775",
+        "src/ime_mailbox_bridge_test.zig": "f7182013e15fb218d601552177cb50c7a5ca1aa626edfca857bd1f97c8e8c339",
         "src/input/pointer.zig": "6a8acc1663e3a15c7df18925924f3efc03441dc19d27d10b076178ac53d9350e",
         "src/input/touch_service.zig": "dbe261836dab4d89c75c270997f48d123032e55d6974f18f2e660dae311fc8d4",
         "src/io/sdmmc_host.zig": "b0cfea5f68cfa38a9ab74ee6afe9057b52ab29520e77d6f83f341a1e06559ce0",
@@ -17675,6 +17676,7 @@
         "src/xy/conv.zig": "8580b183445743afbcde182eb851399d7e55bf437f272aa2edd182eac4059ab1",
         "src/xy/dict.zig": "5d3f34c8acec6dbf4f0e8f12b738ce10edaf99f12dfcbe31bf62f5395702a629",
         "src/xy/document.zig": "78c2bf81379fcd1f6fd8d211528137c8d7ce22848a9a0d24aab2cc27e8434139",
+        "src/xy/ime_mailbox_bridge.zig": "20816f17a0858cd4b9c73e4137bd6a1c72e7ebcc3f1ad905b9ba7343122d00bc",
         "src/xy/ime_omni.zig": "8ed709ba62639d6cb3207cb8772d54b6fca328853a8f2227f330d1579fb43952",
         "src/xy/ime_page_queue.zig": "47c426b524db4759a99a08f0c977e2f4a6a877ba2e5f4b98f3ca5ab757306845",
         "src/xy/learning_catalog.zig": "a417ddd59259acf6123ce07cca2b122c6984f00bc6e5963b21acdf17ac8b26f6",
@@ -18553,6 +18555,7 @@
         "src/graphics/rust_app_probe.zig",
         "src/graphics/ttf.zig",
         "src/graphics/viewport_layout.zig",
+        "src/ime_mailbox_bridge_test.zig",
         "src/input/touch_service.zig",
         "src/io/sdmmc_shared_test.zig",
         "src/kernel/buddy_heap_test.zig",
@@ -18825,6 +18828,7 @@
         "src/touch_sim.zig",
         "src/xy/c_abi_host.zig",
         "src/xy/catalog.zig",
+        "src/xy/ime_mailbox_bridge.zig",
         "src/xy/learning_view.zig",
         "src/xy/live_workspace.zig",
         "src/xy/native_reading.zig",
