@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import tomllib
 
+import native_build_tool_evidence
+
 ROOT = Path(__file__).resolve().parent.parent
 # Patterns identify source candidates, not linked or reachable implementations.
 PATTERNS = {
@@ -32,7 +34,7 @@ def prop(name, value):
     return {'name': 'nihos:' + name, 'value': str(value)}
 
 
-def generate(root, image_dir, output):
+def generate(root, image_dir, output, tool_evidence=None):
     elf = image_dir / 'nihos-native.elf'
     image = image_dir / 'nihos-native-flash.bin'
     audit = json.loads((image_dir / 'image-audit.json').read_text())
@@ -89,6 +91,9 @@ def generate(root, image_dir, output):
         prop('provenance-toml-sha256', digest(root / 'provenance.toml')),
         prop('zig-source-set-sha256', source_hash.hexdigest()),
     ]}
+    if tool_evidence is not None:
+        evidence = native_build_tool_evidence.validate(tool_evidence)
+        metadata['properties'].append(prop('build-tool-evidence', json.dumps(evidence, sort_keys=True, separators=(',', ':'))))
     components = []
     sources = tomllib.loads((root / 'provenance.toml').read_text())['source']
     for i, entry in enumerate(sources):
@@ -114,6 +119,33 @@ def generate(root, image_dir, output):
                 'properties': [prop('evidence', 'source text match; includes possible comments and tests'),
                     prop('image-membership', 'unverified')] +
                     [prop('source-location', location) for location in locations]})
+    photo = audit.get('photo_codec') or {}
+    rsa_evidence = photo.get('card_rsa_link_evidence')
+    if rsa_evidence:
+        manifest = json.loads((image_dir / 'photo-manifest.json').read_text())
+        manifest_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if manifest_hash != photo.get('manifest_sha256'):
+            raise ValueError('photo manifest differs from image audit')
+        source_path = 'src/card/license_crypto.zig'
+        source_digest = digest(root / source_path)
+        config = manifest.get('license_crypto', {})
+        if (manifest.get('sources', {}).get(source_path) != source_digest or
+                not manifest.get('automatic_cards', {}).get('read_enabled') or
+                config.get('profile') != 'npa-raw-sha256-v1_5' or config.get('bits') != 2048 or
+                rsa_evidence.get('function') != 'nih_card_crypto' or
+                rsa_evidence.get('profile') != config.get('profile') or rsa_evidence.get('bits') != 2048 or
+                'nih_card_crypto' not in config.get('allowed_functions', [])):
+            raise ValueError('card RSA evidence differs from source or manifest')
+        rsa = next((c for c in crypto if c['name'] == 'RSA-2048'), None)
+        if rsa is None:
+            raise ValueError('card RSA evidence has no source candidate')
+        rsa['properties'] = [p for p in rsa['properties'] if p['name'] != 'nihos:image-membership']
+        rsa['properties'] += [prop('image-membership', 'linked entry point evidence; runtime execution unverified'),
+            prop('linked-function', rsa_evidence['function']),
+            prop('linked-function-address', rsa_evidence['function_address']),
+            prop('source-sha256', source_digest),
+            prop('audited-profile', config['profile']),
+            prop('usage-context', 'card signature verification; trust and runtime operation unverified')]
     # The native image audit already verifies the manifest identities embedded in
     # the ELF. Recheck those identities before extracting the two known inputs.
     audited = binary_components
@@ -137,6 +169,22 @@ def generate(root, image_dir, output):
         sqlite_files = [(k, v) for k, v in manifest['sources'].items() if k.endswith('/sqlite3.c')]
         if len(sqlite_files) != 1 or digest(root / sqlite_files[0][0]) != sqlite_files[0][1]:
             raise ValueError('SQLite source differs from sqld manifest')
+        sqlite_source = (root / sqlite_files[0][0]).read_text(encoding='utf-8')
+        evidence = audit['sqld'].get('sqlite_prng_link_evidence')
+        markers = ('static void chacha_block(', 'SQLITE_API void sqlite3_randomness(',
+                   'chacha20_init[]', 'chacha_block((u32*)wsdPrng.out, wsdPrng.s);')
+        if evidence and all(marker in sqlite_source for marker in markers):
+            crypto.append({'type': 'cryptographic-asset', 'name': 'ChaCha20',
+                'cryptoProperties': {'assetType': 'algorithm',
+                    'algorithmProperties': {'primitive': 'stream-cipher'}},
+                'properties': [prop('evidence', 'SQLite source markers and linked function and initialization constant'),
+                    prop('source-location', sqlite_files[0][0]),
+                    prop('source-sha256', sqlite_files[0][1]),
+                    prop('linked-function', evidence['function']),
+                    prop('linked-function-address', evidence['function_address']),
+                    prop('linked-constant', evidence['constant']),
+                    prop('image-membership', 'linked symbol evidence; algorithm bytes and runtime use unverified'),
+                    prop('usage-context', 'SQLite pseudo-random generator; not evidence of encryption or entropy quality')]})
         sqlite = next(e for e in sources if e['name'].startswith('SQLite amalgamation'))
         audited.append({'type': 'library', 'name': 'SQLite', 'version': sqlite['revision'],
             'hashes': [{'alg': 'SHA-256', 'content': sqlite_files[0][1]}],
@@ -157,8 +205,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('image_dir', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--tool-evidence', type=Path, help='pre/post checked native build tool receipt')
     args = parser.parse_args()
-    generate(ROOT, args.image_dir, args.output)
+    evidence = json.loads(args.tool_evidence.read_text()) if args.tool_evidence else None
+    generate(ROOT, args.image_dir, args.output, evidence)
 
 
 if __name__ == '__main__':

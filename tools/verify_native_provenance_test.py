@@ -79,6 +79,41 @@ class PolicyTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify.check_image_layout(flash, old, required=True)
 
+    def test_retained_audit_and_elf_must_match_all_signed_inventories(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            elf = root / 'nihos-native.elf'; elf.write_bytes(b'elf')
+            audit_file = root / 'image-audit.json'
+            app_hash = hashlib.sha256(b'app').hexdigest()
+            audit = {'elf_sha256': verify.digest(elf), 'image_sha256': app_hash,
+                     'memory': {'profile': 'device'}}
+            audit_file.write_text(json.dumps(audit))
+            properties = [{'name': 'nihos:elf-sha256', 'value': verify.digest(elf)},
+                          {'name': 'nihos:image-audit-sha256', 'value': verify.digest(audit_file)}]
+            boms = [{'metadata': {'properties': copy.deepcopy(properties)}} for _ in range(3)]
+            boms[0]['components'] = [{'name': 'nihos-native.bin', 'hashes': [{'alg': 'SHA-256', 'content': app_hash}]}]
+            verify.check_audit_evidence(root, boms)
+            audit_file.write_text(json.dumps({**audit, 'image_sha256': '0' * 64}))
+            with self.assertRaises(ValueError):
+                verify.check_audit_evidence(root, boms)
+            for bom in boms:
+                bom['metadata']['properties'][1]['value'] = verify.digest(audit_file)
+            with self.assertRaises(ValueError):
+                verify.check_audit_evidence(root, boms)
+            audit_file.write_text(json.dumps(audit))
+            for bom in boms:
+                bom['metadata']['properties'][1]['value'] = verify.digest(audit_file)
+            elf.write_bytes(b'tampered')
+            with self.assertRaises(ValueError):
+                verify.check_audit_evidence(root, boms)
+            elf.write_bytes(b'elf')
+            boms[1]['metadata']['properties'].append(copy.deepcopy(properties[0]))
+            with self.assertRaises(ValueError):
+                verify.check_audit_evidence(root, boms)
+            audit_file.unlink()
+            with self.assertRaises(OSError):
+                verify.check_audit_evidence(root, boms)
+
     def test_requires_matching_inventory_and_invokes_gh_with_pins(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d); (root / 'bom').mkdir()
@@ -96,6 +131,12 @@ class PolicyTest(unittest.TestCase):
                 self.assertIn('--source-ref', args)
                 self.assertIn('--deny-self-hosted-runners', args)
                 self.assertTrue(run.call_args.kwargs['check'])
+            with patch.object(verify.subprocess, 'run', return_value=result), \
+                    patch.object(verify, 'check_image_layout') as layout, \
+                    patch.object(verify, 'check_audit_evidence') as audit_check:
+                self.assertEqual(verify.verify(root, SHA, REF, require_audit_evidence=True), hashes)
+                self.assertTrue(layout.call_args.args[2])
+                audit_check.assert_called_once()
             (root / 'bom' / verify.SUBJECTS[1]).write_text('{}')
             with self.assertRaises(ValueError):
                 verify.verify(root, SHA, REF)
