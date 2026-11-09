@@ -283,6 +283,8 @@ console_fault=${NIHOS_NATIVE_CONSOLE_FAULT:-0}
 case "$console_fault" in 0) console_fault=false ;; 1) console_fault=true ;; *) echo "CONSOLE_FAULT must be 0 or 1" >&2; exit 1 ;; esac
 console_live=${NIHOS_NATIVE_CONSOLE_LIVE:-0}
 xy_workspace=${NIHOS_NATIVE_XY_WORKSPACE:-0}
+ime_paged=${NIHOS_NATIVE_IME_PAGED:-0}
+case "$ime_paged" in 0) ime_paged=false ;; 1) ime_paged=true ;; *) echo "IME_PAGED must be 0 or 1" >&2; exit 1 ;; esac
 xy_trace=${NIHOS_NATIVE_XY_TRACE:-0}
 xy_portrait=${NIHOS_NATIVE_XY_PORTRAIT:-0}
 case "$xy_portrait" in 0) xy_portrait=false ;; 1) xy_portrait=true ;; *) echo "XY_PORTRAIT must be 0 or 1" >&2; exit 1 ;; esac
@@ -536,6 +538,7 @@ esac
 sqld=${NIHOS_NATIVE_SQLD:-0}
 case "$sqld" in 0) sqld=false; sqld_cpp=0 ;; 1) sqld=true; sqld_cpp=1 ;; *) echo "SQLD must be 0 or 1" >&2; exit 1 ;; esac
 if [ "$sqld" = true ] && { [ "$normal_storage" != true ] || [ "$xy_workspace" != true ]; }; then echo "SQLD requires normal storage and xy" >&2; exit 1; fi
+if [ "$ime_paged" = true ] && [ "$sqld" != true ]; then echo "IME_PAGED requires SQLD=1" >&2; exit 1; fi
 if [ "$experimental_tcp" = true ] && [ "$sqld" != true ]; then echo "EXPERIMENTAL_TCP requires the sqld PSRAM reservation" >&2; exit 1; fi
 if [ "$experimental_udp" = true ] && [ "$sqld" != true ]; then echo "EXPERIMENTAL_UDP requires the sqld PSRAM reservation" >&2; exit 1; fi
 if [ "$normal_storage" = true ] && { [ "$profile" != device ] || [ "$mode" != integer ] || [ "$boot_fast" != true ] || [ "$console_live" != true ] || [ "$sdmmc" = true ] || [ "$storage" = true ] || [ "$high_sram" = true ] || [ "$broker" = true ] || [ "$usb" = true ] || [ "$audio" = true ] || [ "$microphone" = true ] || [ "$rs485" = true ]; }; then
@@ -663,6 +666,7 @@ printf 'pub const canvas_demo = %s;\npub const canvas_offscreen = %s;\npub const
     printf 'pub const wasm_alignment_negative = %s;\n' "$wasm_align_negative"
     printf 'pub const wasm_alignment_corpus = %s;\n' "$wasm_align_corpus"
     printf 'pub const xy_workspace = %s;\n' "$xy_workspace"
+    printf 'pub const ime_paged = %s;\n' "$ime_paged"
     if [ "$experimental_tcp" = true ]; then echo 'pub const experimental_tcp = true;'; fi
     if [ "$experimental_udp" = true ]; then echo 'pub const experimental_udp = true;'; fi
     if [ "$udp_smoke" = true ]; then echo 'pub const experimental_udp_smoke = true;'; fi
