@@ -231,3 +231,88 @@ export fn probe_lifecycle_leave(now: u64) bool {
     host_entropy.clear();
     return model.terminal == null and model.private_input == null and probe_profile_cleared();
 }
+
+test "real home model reaches SSH profile after prepared entropy cleanup" {
+    const std = @import("std");
+    const Entropy = struct {
+        state: enum { idle, collecting, restoring, ready, cleaning, failed } = .idle,
+        allow_restore: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .collecting) self.state = .restoring else if (self.state == .restoring and self.allow_restore) self.state = .ready else if (self.state == .cleaning) self.state = .idle;
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(self: *@This()) bool {
+            return self.state == .ready;
+        }
+        pub fn fill(self: *@This(), out: []u8) !void {
+            if (!self.available()) return error.EntropyUnavailable;
+            @memset(out, 0x42);
+        }
+    };
+    const Timer = struct {
+        last: u64 = 0,
+        pub fn observe(self: *@This(), now: u64) bool {
+            if (now < self.last) return false;
+            self.last = now;
+            return true;
+        }
+    };
+    const Workspace = struct {
+        controller: Controller,
+        pub fn initInPlace(self: *@This(), m: *console.scratch.Model, u: *Ui) !void {
+            self.controller = Controller.init(&host_network, u, m);
+        }
+    };
+    const Calls = struct {
+        fn start(_: *const [16]u8, _: *const [32]u8, _: *const [32]u8) callconv(.c) bool {
+            return true;
+        }
+        fn yes() callconv(.c) bool {
+            return true;
+        }
+        fn no() callconv(.c) bool {
+            return false;
+        }
+    };
+    const Timed = lifecycle.TimedPreparedForeground(console.scratch.Model, Controller, Entropy, Timer);
+    const Runtime = lifecycle.PreparedRuntime(console.scratch.Model, Ui, Workspace, Timed, Entropy, Timer);
+    const owner = try std.testing.allocator.create(Runtime);
+    defer std.testing.allocator.destroy(owner);
+    const m = try std.testing.allocator.create(console.scratch.Model);
+    defer std.testing.allocator.destroy(m);
+    const u = try std.testing.allocator.create(Ui);
+    defer std.testing.allocator.destroy(u);
+    host_network = .{ .start = Calls.start, .ready_fn = Calls.no, .release_fn = Calls.yes, .cancel_fn = Calls.yes, .close_fn = Calls.yes, .complete_fn = Calls.yes };
+    m.initInPlace();
+    m.nav.home();
+    m.handle(.{ .text = 't' });
+    try std.testing.expectEqual(.ssh, m.nav.screen);
+    var entropy: Entropy = .{};
+    var timer: Timer = .{};
+    owner.initInPlace(&entropy, &timer);
+    owner.poll(m, u, 1);
+    owner.poll(m, u, 2);
+    try std.testing.expectEqual(.restoring, entropy.state);
+    try std.testing.expect(m.private_input == null);
+    entropy.allow_restore = true;
+    owner.poll(m, u, 3);
+    owner.poll(m, u, 4);
+    owner.poll(m, u, 5);
+    try std.testing.expect(m.private_input != null);
+    for ([_][]const u8{ "10.0.2.2", "", "user", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| m.feedSerial(byte, 5);
+        m.handle(.enter);
+    }
+    owner.poll(m, u, 6);
+    try std.testing.expectEqual(.opening, owner.workspace.controller.state);
+    try std.testing.expect(m.private_input == null);
+    m.nav.home();
+    owner.poll(m, u, 7);
+    try std.testing.expect(!owner.active and m.private_input == null);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&owner.visit.visit.visit.journey.profile), 0));
+}

@@ -26,6 +26,8 @@ jobs:
         run: sh tools/bootstrap-zig.sh
       - name: Bridge failure and backpressure semantics
         run: python3 tools/test_ssh_bridge_errors.py
+      - name: Prepared entropy to real home-screen SSH setup
+        run: sh tools/test-ssh-prepared-ui.sh
       - name: TCP loss and FIN interoperability
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
