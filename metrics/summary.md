@@ -2,10 +2,10 @@
 
 | Physical source lines | nihos |
 |---|---:|
-| implementation | 90,154 |
+| implementation | 90,162 |
 | tests | 50,299 |
 | tooling | 32,020 |
-| probes | 19,453 |
+| probes | 19,465 |
 | vendored | 723 |
 | generated | 0 |
 
@@ -13,8 +13,8 @@ Physical lines include comments and blanks. Test-code volume is not execution co
 
 ## nihos
 
-Commit: `0ff619d214accdae5cf15831a97087dcde1c5262`; working tree dirty: `False`; UTC: 2026-11-09T07:23:12.780455+00:00.
-Measured source fingerprint: `942c63b5a9d752e56f0f854a00ea2f24500d54c6f48d360f628fe27c0af1cfde`.
+Commit: `a4ebfff06374869b4241a78b4adb65f81623a8ad`; working tree dirty: `False`; UTC: 2026-11-09T09:25:14.900867+00:00.
+Measured source fingerprint: `6524fceeca838b0ae106aba083980c38774e7bda3ee539bcceeb4ee02bb21c48`.
 
 | Area | Implementation | Tests | Tooling |
 |---|---:|---:|---:|
@@ -22,7 +22,7 @@ Measured source fingerprint: `942c63b5a9d752e56f0f854a00ea2f24500d54c6f48d360f62
 | compat | 996 | 0 | 0 |
 | include | 946 | 0 | 0 |
 | probes | 0 | 0 | 0 |
-| src | 88,212 | 38,816 | 0 |
+| src | 88,220 | 38,816 | 0 |
 | third_party | 0 | 0 | 0 |
 | tools | 0 | 11,483 | 31,672 |
 

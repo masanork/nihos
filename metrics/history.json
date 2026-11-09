@@ -16986,22 +16986,22 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T07:23:12.780455+00:00",
+    "measuredAt": "2026-11-09T09:25:14.900867+00:00",
     "project": "nihos",
-    "commit": "0ff619d214accdae5cf15831a97087dcde1c5262",
+    "commit": "a4ebfff06374869b4241a78b4adb65f81623a8ad",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "942c63b5a9d752e56f0f854a00ea2f24500d54c6f48d360f628fe27c0af1cfde",
+    "sourceTreeSha256": "6524fceeca838b0ae106aba083980c38774e7bda3ee539bcceeb4ee02bb21c48",
     "code": {
-      "implementation": 90154,
+      "implementation": 90162,
       "tests": 50299,
       "tooling": 32020,
-      "probes": 19453,
+      "probes": 19465,
       "vendored": 723,
       "generated": 0
     },
     "byLanguage": {
       "Zig": {
-        "implementation": 82415,
+        "implementation": 82423,
         "tests": 38690,
         "tooling": 1944,
         "probes": 5788,
@@ -17012,7 +17012,7 @@
         "implementation": 4457,
         "tests": 126,
         "tooling": 541,
-        "probes": 7415,
+        "probes": 7427,
         "vendored": 0,
         "generated": 0
       },
@@ -17094,12 +17094,12 @@
         "implementation": 0,
         "tests": 0,
         "tooling": 0,
-        "probes": 19453,
+        "probes": 19465,
         "vendored": 0,
         "generated": 0
       },
       "src": {
-        "implementation": 88212,
+        "implementation": 88220,
         "tests": 38816,
         "tooling": 0,
         "probes": 0,
@@ -17537,7 +17537,7 @@
         "src/platform/native/memory.zig": "f0851f26c5d98c8b1efa53854aa6de020a5eeb0802cd0dbf62820fa8f569eb95",
         "src/platform/native/microphone_probe.zig": "e9f67b35914b9863aaaac4cbca1d29f3ced895c97b58acfc554ca49d09db913f",
         "src/platform/native/network_service.zig": "e08d23bb09d165537211504f3f5e16712ff0fc2158d30b6819f5829a23c6196f",
-        "src/platform/native/normal_fs.zig": "c2348a86b0f39d70f13eec92653dda9bddab94bbfda0a27abcd4ff99db0623eb",
+        "src/platform/native/normal_fs.zig": "1d700f31b2f0491037fa0a9e195138035205fe6f96510d2851d8cb52e40ea4b4",
         "src/platform/native/normal_fs_abi.zig": "debb0c25261589277d0bdf551ba822f4bd4ba5286cbb132f2d7e33a0d212003a",
         "src/platform/native/normal_fs_test_hooks.zig": "1878f547baeb912849944b2c938bfb9b912d83c6a6b2872eee9882d274230c31",
         "src/platform/native/normal_touch.zig": "2e2a0850e9b7cb9a14b6f14888df22c179990a4da98397998bf39ca25cf73549",
