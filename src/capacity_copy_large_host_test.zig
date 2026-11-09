@@ -5,6 +5,13 @@ const media = @import("storage/file_media.zig");
 const model = @import("storage/checkpoint_model.zig");
 const migration = @import("storage/capacity_copy.zig");
 const nfst = @import("storage/nfst_reader.zig");
+// Linked from the separately compiled host-only 32 MiB ABI root.
+extern fn nih_store_size() callconv(.c) usize;
+extern fn nih_store_mount(*anyopaque, usize, *const Callbacks, c_int) callconv(.c) c_int;
+extern fn nih_store_dictionary_begin(*anyopaque, u64, *u64) callconv(.c) c_int;
+extern fn nih_store_dictionary_write(*anyopaque, u64, [*]const u8, usize) callconv(.c) c_int;
+extern fn nih_store_dictionary_finish(*anyopaque, u64) callconv(.c) c_int;
+extern fn nih_store_sync(*anyopaque) callconv(.c) c_int;
 const io = std.testing.io;
 const OldDevice = media.Media(4 * 1024 * 1024);
 const NewDevice = media.Media(32 * 1024 * 1024);
@@ -14,7 +21,7 @@ const DictReader = struct {
     store: *NewStore,
     pin: model.Reader,
     pub fn read(self: *@This(), offset: u64, output: []u8) model.Error!usize {
-        return self.store.readPinned(self.pin, 200, offset, output);
+        return self.store.readPinned(self.pin, 64, offset, output);
     }
 };
 fn digest(file: std.Io.File, length: u64) ![32]u8 {
@@ -29,6 +36,29 @@ fn digest(file: std.Io.File, length: u64) ![32]u8 {
     }
     return hash.finalResult();
 }
+const Callbacks = extern struct {
+    context: ?*anyopaque,
+    read: *const fn (?*anyopaque, u64, [*]u8, usize) callconv(.c) c_int,
+    write: *const fn (?*anyopaque, u64, [*]const u8, usize) callconv(.c) c_int,
+    sync: *const fn (?*anyopaque) callconv(.c) c_int,
+};
+const AbiMedia = struct {
+    fn read(ctx: ?*anyopaque, offset: u64, out: [*]u8, count: usize) callconv(.c) c_int {
+        const device: *NewDevice = @ptrCast(@alignCast(ctx.?));
+        device.read(offset, out[0..count]) catch return -1;
+        return 0;
+    }
+    fn write(ctx: ?*anyopaque, offset: u64, data: [*]const u8, count: usize) callconv(.c) c_int {
+        const device: *NewDevice = @ptrCast(@alignCast(ctx.?));
+        device.write(offset, data[0..count]) catch return -1;
+        return 0;
+    }
+    fn sync(ctx: ?*anyopaque) callconv(.c) c_int {
+        const device: *NewDevice = @ptrCast(@alignCast(ctx.?));
+        device.sync() catch return -1;
+        return 0;
+    }
+};
 
 test "larger host store copies real SQLite image and imports external dictionary" {
     const image_path = std.c.getenv("NIHOS_LEGACY_IMAGE") orelse return error.SkipZigTest;
@@ -69,20 +99,25 @@ test "larger host store copies real SQLite image and imports external dictionary
     var scratch: migration.Scratch = .{};
     const report = try migration.copy(&source, &target, 1, 2, &scratch);
     try std.testing.expect(report.objects > 0);
-    try std.testing.expectError(error.NotFound, source.get(200));
+    try std.testing.expectError(error.NotFound, source.get(64));
     const source_pin = try source.pin();
     defer source.release(source_pin) catch unreachable;
-    try target.begin();
-    const stream = try target.beginStream(200, dictionary_size);
+    const storage = try std.testing.allocator.alignedAlloc(u8, .@"16", nih_store_size());
+    defer std.testing.allocator.free(storage);
+    const raw: *anyopaque = @ptrCast(storage.ptr);
+    const callbacks = Callbacks{ .context = &target_device, .read = AbiMedia.read, .write = AbiMedia.write, .sync = AbiMedia.sync };
+    try std.testing.expectEqual(@as(c_int, 0), nih_store_mount(raw, storage.len, &callbacks, 0));
+    var stream: u64 = 0;
+    try std.testing.expectEqual(@as(c_int, 0), nih_store_dictionary_begin(raw, dictionary_size, &stream));
     offset = 0;
     while (offset < dictionary_size) {
         const n: usize = @intCast(@min(block.len, dictionary_size - offset));
         try std.testing.expectEqual(n, try dictionary.readPositionalAll(io, block[0..n], offset));
-        try std.testing.expectEqual(n, try target.writeStream(stream, block[0..n]));
+        try std.testing.expectEqual(@as(c_int, @intCast(n)), nih_store_dictionary_write(raw, stream, &block, n));
         offset += n;
     }
-    try target.finishStream(stream);
-    try target.commit();
+    try std.testing.expectEqual(@as(c_int, 0), nih_store_dictionary_finish(raw, stream));
+    try std.testing.expectEqual(@as(c_int, 0), nih_store_sync(raw));
     target_device.close();
     target_device = try NewDevice.open(io, tmp.dir, "destination");
     defer target_device.close();
@@ -91,7 +126,7 @@ test "larger host store copies real SQLite image and imports external dictionary
     // Compare every original key after reopening; permit only the new dictionary.
     for (1..OldStore.max_objects + 1) |raw_key| {
         const key: u32 = @intCast(raw_key);
-        if (key == 200) continue;
+        if (key == 64) continue;
         const original = source.getPinned(source_pin, key) catch |err| {
             if (err != error.NotFound) return err;
             try std.testing.expectError(error.NotFound, recovered.get(key));
@@ -121,7 +156,15 @@ test "larger host store copies real SQLite image and imports external dictionary
         offset += n;
     }
     try exported.sync(io);
-    const dict_pin = try recovered.pinObject(200);
+    const dict_pin = try recovered.pinObject(64);
+    offset = 0;
+    while (offset < dictionary_size) {
+        const n: usize = @intCast(@min(block.len, dictionary_size - offset));
+        try std.testing.expectEqual(n, try dictionary.readPositionalAll(io, scratch.data[0..n], offset));
+        try std.testing.expectEqual(n, try recovered.readPinnedWithScratch(dict_pin, 64, offset, scratch.compare[0..n], &scratch.read));
+        try std.testing.expectEqualSlices(u8, scratch.data[0..n], scratch.compare[0..n]);
+        offset += n;
+    }
     var source_reader = DictReader{ .store = &recovered, .pin = dict_pin };
     var dict = try nfst.Dictionary(DictReader).init(&source_reader, dictionary_size);
     var candidates: nfst.Candidates = .{};

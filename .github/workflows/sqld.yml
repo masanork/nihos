@@ -22,6 +22,8 @@ jobs:
         run: python3 tools/sqld_test.py -v
       - name: Dictionary stream ABI and separate 32 MiB host geometry
         run: python3 tools/dictionary_store_abi_test.py -v
+      - name: Copy SQLite to a larger host store and import through dictionary ABI
+        run: python3 tools/check-capacity-copy-abi.py
       - name: Native allocator and OS initialization contract
         run: python3 -m unittest discover -s tools -p sqld_allocator_test.py -v
       - name: Owned SD capability, request copies and write bounds (modeled MMIO)
