@@ -575,8 +575,13 @@ pub const SlicedConversion = struct {
     populate_index: usize = 0,
     reverse: [max_segments]Segment = @splat(.{}),
 
-    pub fn begin(self: *SlicedConversion, engine: *Engine, dict: anytype, reading: []const u8) void {
-        self.* = .{};
+    pub fn resetInPlace(self: *SlicedConversion) linksection(code_section) void {
+        @memset(std.mem.asBytes(self), 0);
+        self.phase = .cancelled;
+        self.j = 1;
+    }
+    pub fn begin(self: *SlicedConversion, engine: *Engine, dict: anytype, reading: []const u8) linksection(code_section) void {
+        self.resetInPlace();
         if (@hasDecl(@TypeOf(dict.*), "beginConversion")) dict.beginConversion();
         const len = @min(reading.len, max_reading);
         @memcpy(engine.reading_buf[0..len], reading[0..len]);
@@ -594,17 +599,17 @@ pub const SlicedConversion = struct {
     }
 
     /// Retire a stale cursor without changing an engine already reused by the caller.
-    pub fn abandon(self: *SlicedConversion) void {
+    pub fn abandon(self: *SlicedConversion) linksection(code_section) void {
         self.phase = .cancelled;
     }
 
-    pub fn cancel(self: *SlicedConversion, engine: *Engine) void {
+    pub fn cancel(self: *SlicedConversion, engine: *Engine) linksection(code_section) void {
         engine.segment_count = 0;
         engine.cand_pool_len = 0;
         self.phase = .cancelled;
     }
 
-    pub fn step(self: *SlicedConversion, engine: *Engine, dict: anytype, budget: usize) !Progress {
+    pub fn step(self: *SlicedConversion, engine: *Engine, dict: anytype, budget: usize) linksection(code_section) !Progress {
         var remaining = budget;
         while (remaining > 0) : (remaining -= 1) {
             switch (self.phase) {

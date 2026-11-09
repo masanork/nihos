@@ -308,6 +308,17 @@ XY_LEARNING_METHODS = {
 # minibuffer formatter is deliberately not approved: the device renderer
 # does not draw candidates yet, so it must not be linked into the image.
 XY_IME_METHODS = {'handleKey', 'syncDocumentOverlay', 'commitSelected', 'classifyPrefix', 'appendReading', 'isCustomPrefixTrigger', 'isBuiltinPrefixTrigger', 'triggerConversion', 'feed', 'clear', 'flushTrailingN', 'append'}
+# Foreground-only asynchronous dictionary transport and conversion. These
+# functions run with Flash available; they are not IRQ/cache-off callbacks.
+XY_ASYNC_IME_FUNCTIONS = {
+    'xy.async_ime_session.Runtime.supply', 'xy.async_ime_session.Runtime.request',
+    'xy.async_ime_session.Runtime.pollPort', 'xy.async_ime_session.Runtime.cancelPort',
+    'xy.async_ime_session.Runtime.startPort', 'xy.async_ime_session.Runtime.isBusy',
+    'xy.async_ime_session.Session.cancel', 'storage.async_page.Coordinator.matches',
+    'storage.async_nfst.Lookup.get', 'xy.async_conversion.Adapter.lookup',
+    'xy.async_conversion.Adapter.start', 'xy.async_conversion.Adapter.cancel',
+    'xy.async_conversion.Adapter.Key.matches', 'xy.ime_mailbox_bridge.Bridge.matches',
+}
 XY_DICT_METHODS = {'init', 'lookup', 'commonPrefixSearch', 'omniProvider', 'omniQuery'}
 XY_CATALOG_METHODS = {
     'init', 'matchesLibrary', 'credits', 'text', 'string', 'references', 'reference',
@@ -367,7 +378,7 @@ def xy_function(name):
     presence_tracker = re.fullmatch(r'(?:xy\.)?soft_keyboard\.PresenceTracker\.observe(?:__func_[0-9]+)?', name)
     learning_allowed = (lesson and lesson[1] in XY_LEARNING_METHODS) or (catalogue and catalogue[1] in XY_CATALOG_METHODS) or lesson_helper or name in ('learning_catalog.read', 'xy.learning_catalog.read', 'learning_session.Host.schemeCall', 'xy.learning_session.Host.schemeCall')
     decimal_name = re.sub(r'__func_[0-9]+$', '', name)
-    return bool(name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or standard_ime or conversion or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
+    return bool(name in XY_ASYNC_IME_FUNCTIONS or name in XY_CONTINUATION_FUNCTIONS or name in XY_NUMERIC_HELPERS or decimal_name in XY_DECIMAL_FUNCTIONS or document or document_helper or learning_allowed or soft_keyboard or presence_tracker or keyboard_driver or ime_helper or standard_ime or conversion or (ime and ime[1] in XY_IME_METHODS) or (dict_match and dict_match[1] in XY_DICT_METHODS) or name in XY_RENDER_FUNCTIONS or name in TCP_XY_FUNCTIONS or decimal_name in UDP_XY_FUNCTIONS or name in TIME_STATION or render_helper or (match and match[1] in XY_METHODS) or (host and host[1] in XY_HOST_METHODS) or name in ('network_service.startAttempt', 'network_service.stop', 'network_service.tcpPoll', 'network_service.tcpReceive', 'network_service.udpPoll', 'network_service.udpReceive', 'network_service.experimentalUdpSmokePoll', 'network_service.timePoll', 'ipv6.Client.tick', 'ipv6.Client.tx', 'ipv6.packet', 'scheme_runtime.message', 'xy.scheme_runtime.message', 'diagnostic_ui.drawSession', 'diagnostic_ui.updateSplash', 'diagnostic_ui.paintTouchControl', 'diagnostic_ui.captureXySystem', 'diagnostic_ui.traceScratch', 'xy_render_runtime.draw', 'sqld_abi.call', 'xy_eval_runtime.nih_xy_evaluate', 'nih_xy_evaluate', 'xy_eval_runtime.nih_xy_eval_on_stack', 'nih_xy_eval_on_stack', 'nih_xy_eval_call', 'nih_xy_render', 'nih_xy_render_init', 'nih_xy_render_bytes', 'nih_xy_render_call', '.Lttf.SliceReader.fromSlice.Impl.readSlice'))
 
 
 def audit_udp_xy_functions(functions, span):

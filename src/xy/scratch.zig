@@ -144,19 +144,19 @@ pub const Model = struct {
         self.revision = 1;
         self.resetScheme();
     }
-    pub fn attachAsyncIme(self: *Model, port: *const AsyncImePort) bool {
+    pub fn attachAsyncIme(self: *Model, port: *const AsyncImePort) linksection(scheme.code_section) bool {
         if (self.async_ime != null or port.busy(port.context)) return false;
         self.async_ime = port;
         return true;
     }
-    pub fn detachAsyncIme(self: *Model) bool {
+    pub fn detachAsyncIme(self: *Model) linksection(scheme.code_section) bool {
         const port = self.async_ime orelse return true;
         if (port.busy(port.context)) return false;
         self.async_ime = null;
         return true;
     }
     /// Called by the owning event loop; no I/O is performed by this method.
-    pub fn pollAsyncIme(self: *Model, budget: usize) void {
+    pub fn pollAsyncIme(self: *Model, budget: usize) linksection(scheme.code_section) void {
         const port = self.async_ime orelse return;
         if (!port.busy(port.context)) return;
         if (port.poll(port.context, self, budget)) self.changed();

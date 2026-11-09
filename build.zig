@@ -45,6 +45,8 @@ pub fn build(b: *std.Build) void {
     }));
 
     const test_step = b.step("test", "Run host-side nihOS unit tests");
+    const ime_mailbox_tests = b.createModule(.{ .root_source_file = b.path("src/sqld_ime_mailbox_test.zig"), .target = target, .optimize = optimize });
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ime_mailbox_tests })).step);
     const wasm_ui_tests = b.createModule(.{ .root_source_file = b.path("src/app/wasm_ui_controller.zig"), .target = target, .optimize = optimize });
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = wasm_ui_tests })).step);
     const async_start_tests = b.createModule(.{ .root_source_file = b.path("src/app/async_start.zig"), .target = target, .optimize = optimize });
@@ -106,6 +108,10 @@ pub fn build(b: *std.Build) void {
     const console_scroll_probe = b.createModule(.{ .root_source_file = b.path("src/graphics/console_canvas_scroll_test.zig"), .target = target, .optimize = optimize });
     console_scroll_probe.addImport("canvas", canvas_module);
     const console_probe_module = b.createModule(.{ .root_source_file = b.path("src/console.zig"), .target = target, .optimize = optimize });
+    const ime_bridge_tests = b.createModule(.{ .root_source_file = b.path("src/ime_mailbox_bridge_test.zig"), .target = target, .optimize = optimize });
+    ime_bridge_tests.addImport("view_config", view_config_module);
+    ime_bridge_tests.addImport("canvas", canvas_module);
+    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = ime_bridge_tests })).step);
     console_probe_module.addImport("view_config", view_config_module);
     console_probe_module.addImport("canvas", canvas_module);
     const camera_input = b.createModule(.{ .root_source_file = b.path("src/console/camera_input.zig"), .target = target, .optimize = optimize });
