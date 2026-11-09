@@ -422,6 +422,8 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
         visit: Visit,
         visit_live: bool = false,
         state: Self.State = .idle,
+        /// Retained until a new visit is initialized; never bypass cleanup.
+        last_error: ?anyerror = null,
         seed_timeout: u64,
         seed_deadline: u64 = 0,
         seed_last: u64 = 0,
@@ -442,6 +444,7 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
             self.entropy = entropy;
             self.visit_live = false;
             self.state = .idle;
+            self.last_error = null;
             self.seed_timeout = seed_timeout;
             self.seed_deadline = 0;
             self.seed_last = 0;
@@ -455,6 +458,7 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
             if (!visible and self.state != .idle and self.state != .stopping) self.beginStop();
             switch (self.state) {
                 .idle => if (visible) {
+                    self.last_error = null;
                     self.seed_deadline = std.math.add(u64, now, self.seed_timeout) catch {
                         self.state = .failed;
                         return self.state;
@@ -480,16 +484,19 @@ pub fn PreparedForeground(comptime Model: type, comptime ControllerType: type, c
                     }
                 },
                 .active => {
-                    const status = self.visit.poll(true, now) catch {
+                    const status = self.visit.poll(true, now) catch |err| {
+                        self.last_error = err;
                         self.beginStop();
                         return self.state;
                     };
+                    if (status == .failed) self.last_error = error.SessionFailed;
                     if (status == .closed or status == .failed) self.beginStop();
                 },
                 .stopping => {
                     if (self.visit_live and self.visit.stop()) self.visit_live = false;
                     self.entropy.poll(now);
-                    if (!self.visit_live and self.entropy.state == .idle) self.state = if (visible) .finished else .idle;
+                    if (!self.visit_live and self.entropy.state == .idle)
+                        self.state = if (!visible) .idle else if (self.last_error != null) .failed else .finished;
                 },
                 .failed => self.entropy.poll(now),
                 .finished => {},
@@ -935,12 +942,14 @@ const TestJourneyController = struct {
     sequence: u32 = 0,
     exchange_seen: bool = false,
     cleanup_ok: bool = true,
+    fail_poll: bool = false,
     fn beginProfile(self: *@This(), _: *const Profile, _: u64, _: u64, _: u64, local_port: u16, sequence: u32) !void {
         self.local_port = local_port;
         self.sequence = sequence;
         self.state = .opening;
     }
     fn pollProfile(self: *@This(), _: *const Profile, _: u64, exchange: ?*const ExchangeEntropy, _: *const [32]u8) !State {
+        if (self.fail_poll) return error.HostKeyMismatch;
         self.exchange_seen = exchange != null;
         self.state = self.next;
         return self.next;
@@ -1403,6 +1412,40 @@ test "prepared foreground waits for entropy and cleanup before credentials" {
     try std.testing.expectEqual(.idle, prepared.poll(false, 7));
     try std.testing.expectEqual(.preparing, prepared.poll(true, 9));
     try std.testing.expectEqual(@as(u64, 2), generations.last);
+}
+
+test "prepared foreground retains connection failure through cleanup" {
+    const entropy = @import("ssh_entropy_session.zig");
+    const Session = entropy.Session(PreparedTestBackend);
+    var backend: PreparedTestBackend = .{ .release_ready = true };
+    var generations: entropy.Generations = .{};
+    var session = Session.init(&backend, &generations);
+    var model: TestPrivateModel = .{};
+    var controller: TestJourneyController = .{};
+    var prepared = try PreparedForeground(TestPrivateModel, TestJourneyController, Session).init(&model, &controller, &session, 200, 100, 20);
+    _ = prepared.poll(true, 0);
+    for (0..40) |_| _ = prepared.poll(true, 1);
+    _ = prepared.poll(true, 2);
+    try std.testing.expect(model.private_input != null);
+    for ([_][]const u8{ "10.0.2.2", "22", "alice", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| try std.testing.expect(model.send(.{ .text = byte }));
+        try std.testing.expect(model.send(.enter));
+    }
+    _ = prepared.poll(true, 3);
+    controller.fail_poll = true;
+    controller.cleanup_ok = false;
+    try std.testing.expectEqual(.stopping, prepared.poll(true, 4));
+    try std.testing.expectEqual(error.HostKeyMismatch, prepared.last_error.?);
+    try std.testing.expectEqual(.stopping, prepared.poll(true, 5));
+    try std.testing.expect(!session.available() and model.private_input == null);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&prepared.visit.journey.profile), 0));
+    controller.cleanup_ok = true;
+    try std.testing.expectEqual(.failed, prepared.poll(true, 6));
+    try std.testing.expectEqual(error.HostKeyMismatch, prepared.last_error.?);
+    try std.testing.expectEqual(.failed, prepared.poll(true, 7));
+    try std.testing.expectEqual(.idle, prepared.poll(false, 8));
+    try std.testing.expectEqual(.preparing, prepared.poll(true, 9));
+    try std.testing.expect(prepared.last_error == null);
 }
 
 test "prepared foreground cancellation and entropy failure never open credentials" {

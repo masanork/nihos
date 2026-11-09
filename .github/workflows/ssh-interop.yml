@@ -34,6 +34,8 @@ jobs:
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_PREPARED=1 python3 tools/ssh_openssh_probe.py
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
             NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_PREPARED=1 NIHOS_SSH_LIFECYCLE_LEAVE=1 python3 tools/ssh_openssh_probe.py
+          SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \
+            NIHOS_SSH_SLIRP=1 NIHOS_SSH_LIFECYCLE=1 NIHOS_SSH_LIFECYCLE_PREPARED=1 NIHOS_SSH_LIFECYCLE_BADPIN=1 python3 tools/ssh_openssh_probe.py
       - name: TCP loss and FIN interoperability
         run: |
           SLIRP_PREFIX=/usr SLIRP_LIBDIR="$(pkg-config --variable=libdir slirp)" \

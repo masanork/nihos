@@ -290,7 +290,7 @@ export fn probe_lifecycle_poll(now: u64) isize {
         prepared_runtime.poll(&model, &ui, now);
         const visit = &prepared_runtime.visit.visit;
         return switch (visit.state) {
-            .failed => -1,
+            .failed => if (visit.last_error) |failure| (if (failure == error.HostKeyMismatch) -2 else -1) else -1,
             .finished, .idle => 2,
             .active => if (visit.visit.app.status == .connected) 1 else 0,
             else => 0,

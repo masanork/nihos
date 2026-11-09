@@ -209,7 +209,7 @@ def run():
         lifecycle_leave = os.environ.get("NIHOS_SSH_LIFECYCLE_LEAVE") == "1"
         lifecycle_seeded = os.environ.get("NIHOS_SSH_LIFECYCLE_SEEDED") == "1"
         lifecycle_prepared = os.environ.get("NIHOS_SSH_LIFECYCLE_PREPARED") == "1"
-        if lifecycle_prepared and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin or lifecycle_bad_entropy or lifecycle_seeded):
+        if lifecycle_prepared and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_entropy or lifecycle_seeded):
             raise ValueError("prepared lifecycle requires the normal lifecycle over libslirp")
         if lifecycle_seeded and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin or lifecycle_bad_entropy):
             raise ValueError("seeded lifecycle requires the normal lifecycle over libslirp")
