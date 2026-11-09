@@ -1,6 +1,7 @@
 //! Foreground-only IME client for the serialized dictionary mailbox. The
 //! caller owns a stable workspace and backend until shutdown has completed.
 const std = @import("std");
+pub const ime_code = if (@import("builtin").os.tag == .freestanding) ".flash.xytext" else if (@import("builtin").object_format == .macho) "__TEXT,__text" else ".text";
 const wire = @import("../platform/native/sqld_ime_mailbox.zig");
 const pages = @import("../storage/async_page.zig");
 const conversion = @import("async_conversion.zig");
@@ -22,31 +23,36 @@ pub const Bridge = struct {
     pending: ?pages.Request = null,
     response: wire.Response = .{},
 
-    pub fn init() Bridge {
+    pub fn init() linksection(ime_code) Bridge {
         // SAFETY: The opening phase initializes these self-referential fields
         // in place before the active or reading phase can access them.
         return .{ .adapter = undefined, .runtime = undefined, .port = undefined };
     }
+    pub fn initInPlace(self: *Bridge) linksection(ime_code) void {
+        // SAFETY: The opening phase initializes all pointer-bearing fields
+        // before they are read. All initial scalar states have value zero.
+        @memset(std.mem.asBytes(self), 0);
+    }
 
     /// Backend.submit copies the request and assigns a sequence. The backend
     /// must have exactly one producer and must not be shared with other users.
-    pub fn open(self: *Bridge, backend: anytype) i32 {
+    pub fn open(self: *Bridge, backend: anytype) linksection(ime_code) i32 {
         if (self.phase != .idle) return -16;
         self.ticket = .{ .operation = 1 };
         const rc = backend.submit(&self.ticket);
         if (rc == 0) self.phase = .opening;
         return rc;
     }
-    pub fn stop(self: *Bridge, model: *Model) void {
+    pub fn stop(self: *Bridge, model: *Model) linksection(ime_code) void {
         self.stopping = true;
         if (self.phase == .active or self.phase == .reading) self.port.cancel(self.port.context, model);
     }
-    fn matches(self: *const Bridge) bool {
+    fn matches(self: *const Bridge) linksection(ime_code) bool {
         return std.meta.eql(self.ticket, self.response.request);
     }
     /// Does at most one mailbox exchange per call. Returns false only on an
     /// unknown/mismatched result, where reuse/release must remain fenced.
-    pub fn poll(self: *Bridge, model: *Model, backend: anytype, budget: usize) bool {
+    pub fn poll(self: *Bridge, model: *Model, backend: anytype, budget: usize) linksection(ime_code) bool {
         if (self.attached and model.async_ime != &self.port) return self.fence();
         switch (self.phase) {
             .idle, .closed => return true,
@@ -64,7 +70,7 @@ pub const Bridge = struct {
                 } else {
                     self.page.attach(1, self.response.size) catch return self.fence();
                     self.adapter = .{ .coordinator = &self.page };
-                    self.runtime = .{ .adapter = &self.adapter };
+                    self.runtime.initInPlace(&self.adapter);
                     self.port = self.runtime.port();
                     if (!self.stopping) {
                         self.attached = model.attachAsyncIme(&self.port);
@@ -137,7 +143,7 @@ pub const Bridge = struct {
         }
         return true;
     }
-    fn fence(self: *Bridge) bool {
+    fn fence(self: *Bridge) linksection(ime_code) bool {
         self.phase = .fenced;
         return false;
     }

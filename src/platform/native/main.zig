@@ -1801,7 +1801,10 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
             @import("ssh_foreground_stack.zig").poll(foreground, ui.sshForegroundModel(), @ptrFromInt(region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH foreground clock"));
         }
         if (options.wasm_interactive_repeat) @import("wasm_session_fixture.zig").foregroundProbe();
-        if (native_sqld and !native_udp_smoke) serviceSqld();
+        if (native_sqld and !native_udp_smoke) {
+            serviceSqld();
+            if (comptime @hasDecl(options, "ime_paged") and options.ime_paged) serviceImeMailbox();
+        }
         if (!ui.service(&logger)) fail("normal console idle");
         if (options.wasm_interactive_repeat) {
             const fixture = @import("wasm_session_fixture.zig");
@@ -2185,6 +2188,58 @@ fn nih_sqld_wake(bits: u32) callconv(.c) void {
 }
 var sqld_reported_phase: u32 = 0;
 var sqld_progress_time: u64 = 0;
+const ImeBridge = text_console.ime_mailbox_bridge.Bridge;
+const ImeRequest = text_console.ime_mailbox_bridge.Request;
+const ImeResponse = text_console.ime_mailbox_bridge.Response;
+extern fn nih_sqld_ime_submit(*ImeRequest) callconv(.c) i32;
+extern fn nih_sqld_ime_take(*ImeResponse) callconv(.c) i32;
+const ImeTransport = struct {
+    pub fn submit(_: @This(), q: *ImeRequest) i32 {
+        return nih_sqld_ime_submit(q);
+    }
+    pub fn take(_: @This(), r: *ImeResponse) i32 {
+        return nih_sqld_ime_take(r);
+    }
+};
+var ime_lease: ?tasks.memory.reusable.Allocation = null;
+var ime_bridge: ?*ImeBridge = null;
+var ime_model: ?*text_console.scratch.Model = null;
+var ime_attempted = false;
+fn serviceImeMailbox() linksection(".flash.sqldtext") void {
+    const visible = ui.sshForegroundModel();
+    if (ime_bridge) |bridge| {
+        const model = ime_model orelse return;
+        if (visible == null or visible.? != model) bridge.stop(model);
+        _ = bridge.poll(model, ImeTransport{}, 128);
+        if (bridge.phase == .closed) {
+            const allocation = ime_lease orelse return;
+            tasks.memory.freeExternal(allocation) catch return;
+            ime_lease = null;
+            ime_bridge = null;
+            ime_model = null;
+            if (visible == null) ime_attempted = false;
+            ui.setImeResetBlocked(false);
+        }
+        return;
+    }
+    if (visible == null) {
+        ime_attempted = false;
+        return;
+    }
+    if (ime_attempted or sqld.nih_sqld_native_status() != 2) return;
+    ime_attempted = true;
+    const allocation = tasks.memory.allocExternal(@sizeOf(ImeBridge), @alignOf(ImeBridge)) catch return;
+    const bridge: *ImeBridge = @ptrCast(@alignCast(allocation.bytes.ptr));
+    bridge.initInPlace();
+    if (bridge.open(ImeTransport{}) != 0) {
+        tasks.memory.freeExternal(allocation) catch fail("IME allocation release");
+        return;
+    }
+    ime_lease = allocation;
+    ime_bridge = bridge;
+    ime_model = visible;
+    ui.setImeResetBlocked(true);
+}
 fn serviceSqld() linksection(".flash.sqldtext") void {
     sqld.nih_sqld_native_poll();
     const value = sqld.report();
