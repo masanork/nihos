@@ -6,7 +6,8 @@ pub const section = config.section;
 const theme_key linksection(config.data_section) = "theme".*;
 const dark_name linksection(config.data_section) = "dark".*;
 const light_name linksection(config.data_section) = "light".*;
-pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification, ssh };
+pub const Screen = enum(u8) { document, home, chapters, reading, settings, credits, examples, exercise, card_view, certification, ssh, wifi };
+pub const WifiStatus = enum(u8) { unavailable, disconnected, connecting, connected, failed };
 pub const SshFailure = enum(u8) { none, host_key_mismatch, connection_failed };
 pub const SshProgress = enum(u8) { none, preparing, connecting, closing };
 pub const PageLocation = struct { chapter: u16 = 0, offset: u32 = 0 };
@@ -65,6 +66,9 @@ pub const State = struct {
     error_code: u32 = 0,
     ssh_failure: SshFailure = .none,
     ssh_progress: SshProgress = .none,
+    wifi_status: WifiStatus = .unavailable,
+    wifi_ip: u32 = 0,
+    wifi_apply_failed: bool = false,
     can_try: bool = false,
     card: CardViewData = .{},
 
@@ -121,7 +125,7 @@ pub const State = struct {
     pub fn handle(self: *State, key: Key, view: *config.Config) linksection(section) void {
         self.error_code = 0;
         if (key == .escape or key == .cancel) {
-            if (self.screen == .certification) self.screen = .settings else if (self.screen == .credits) self.screen = .reading else self.home();
+            if (self.screen == .certification or self.screen == .wifi) self.screen = .settings else if (self.screen == .credits) self.screen = .reading else self.home();
             return;
         }
         switch (self.screen) {
@@ -181,6 +185,7 @@ pub const State = struct {
                 .down => view.style.body_px = @max(16, view.style.body_px -| 4),
                 .text => |byte| switch (byte) {
                     'g', 'G' => self.screen = .certification,
+                    'w', 'W' => self.screen = .wifi,
                     'v' => view.style.axis = 1 - view.style.axis,
                     'f' => view.style.style_id = 1 - view.style.style_id,
                     't' => {
@@ -205,7 +210,7 @@ pub const State = struct {
                 .enter => self.screen = .document,
                 else => {},
             },
-            .ssh => {},
+            .ssh, .wifi => {},
         }
         view.style.ruby_px = @max(8, view.style.body_px / 2);
     }
@@ -286,7 +291,7 @@ pub const State = struct {
             },
             .reading => if (x < 360) self.back() else self.next(),
             .settings => {
-                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen;
+                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 360) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 640) self.screen = self.return_screen else if (y >= 660 and y < 740) self.screen = .wifi;
             },
             .certification => self.screen = .settings,
             .credits => self.screen = .reading,
@@ -345,12 +350,14 @@ pub const State = struct {
             },
             .reading => if (x < 640) self.back() else self.next(),
             .settings => {
-                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560) self.screen = self.return_screen;
+                if (y >= 80 and y < 150) self.screen = .certification else if (y >= 160 and y < 240) self.handle(.{ .text = if (x < 640) '-' else '+' }, view) else if (y >= 260 and y < 340) self.handle(.{ .text = 'v' }, view) else if (y >= 360 and y < 440) self.handle(.{ .text = 'f' }, view) else if (y >= 460 and y < 540) self.handle(.{ .text = 't' }, view) else if (y >= 560 and y < 648) {
+                    if (x >= 640) self.screen = .wifi else self.screen = self.return_screen;
+                }
             },
             .certification => self.screen = .settings,
             .credits => self.screen = .reading,
             .card_view => self.screen = self.return_screen,
-            .examples, .exercise, .ssh => {},
+            .examples, .exercise, .ssh, .wifi => {},
             .document => self.home(),
         }
     }
@@ -453,4 +460,19 @@ test "certification screen opens from settings and returns" {
     state.handle(.enter, &view);
     state.touch(100, 100, &view);
     try std.testing.expectEqual(Screen.certification, state.screen);
+}
+
+test "Wi-Fi settings is reachable and returns to settings" {
+    var state = State{};
+    var view = config.Config{};
+    state.screen = .settings;
+    state.handle(.{ .text = 'w' }, &view);
+    try std.testing.expectEqual(Screen.wifi, state.screen);
+    state.handle(.escape, &view);
+    try std.testing.expectEqual(Screen.settings, state.screen);
+    state.touch(800, 600, &view);
+    try std.testing.expectEqual(Screen.wifi, state.screen);
+    state.screen = .settings;
+    state.touchPortrait(100, 700, &view);
+    try std.testing.expectEqual(Screen.wifi, state.screen);
 }

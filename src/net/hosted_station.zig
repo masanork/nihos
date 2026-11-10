@@ -53,6 +53,7 @@ pub const Configuration = struct {
             for (net.ssid) |b| if (b < 32 or b == 127) return error.InvalidArgument;
             for (net.password) |b| if (b < 32 or b == 127) return error.InvalidArgument;
         }
+        std.crypto.secureZero(u8, &self.password);
         self.* = .{};
         switch (join) {
             .disabled => {},

@@ -200,6 +200,43 @@ fn sshStatus(instance: *Session, target: anytype, nav: anytype, x: i32) !void {
     }
 }
 
+fn wifiScreen(instance: *Session, target: anytype, nav: anytype, view: ?*const protocol.PrivateInputView, x: i32) !void {
+    try label(instance, target, x, 36, "Wi-Fi", 32, 0x2147);
+    if (view) |form| {
+        if (form.field > 1 or form.text_length > 32 or form.secret_length > 63 or form.invalid > 1) return error.Range;
+        if ((form.field == 1 and form.text_length != 0) or (form.field == 0 and form.secret_length != 0)) return error.Range;
+        try label(instance, target, x, 105, if (form.field == 0) "1/2 SSID (ASCII)" else "2/2 Password (empty for open network)", 24, 0x2147);
+        const mask: [63]u8 = @splat('*');
+        const text = if (form.field == 1) mask[0..form.secret_length] else form.text[0..form.text_length];
+        const split = @min(text.len, 32);
+        try label(instance, target, x, 160, text[0..split], 24, 0x2147);
+        if (split < text.len) try label(instance, target, x, 200, text[split..], 24, 0x2147);
+        try label(instance, target, x, 265, "Enter: next / connect  Arrows: field  Esc: cancel", 20, 0x528a);
+        if (form.invalid != 0) try label(instance, target, x, 305, "Invalid input; check SSID or password", 20, 0xb104);
+    } else {
+        const status = switch (nav.wifi_status) {
+            .unavailable => "Wi-Fi unavailable",
+            .disconnected => "Not connected",
+            .connecting => "Connecting...",
+            .connected => "Connected",
+            .failed => "Connection failed; check settings",
+        };
+        try label(instance, target, x, 105, status, 28, 0x2147);
+        if (nav.wifi_ip != 0) {
+            var buf: [32]u8 = undefined;
+            const ip = nav.wifi_ip;
+            const line = try std.fmt.bufPrint(&buf, "IPv4: {d}.{d}.{d}.{d}", .{ ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255 });
+            try label(instance, target, x, 160, line, 24, 0x2147);
+        }
+        if (nav.wifi_status != .unavailable) {
+            try label(instance, target, x, 240, "C: connect", 24, 0x2147);
+            try label(instance, target, if (target.width == 720) 380 else 680, 240, "D: disconnect", 24, 0x2147);
+        }
+        try label(instance, target, x, 325, "Esc: back", 20, 0x528a);
+        try label(instance, target, x, 295, "Credentials are not saved; enter again after reboot.", 20, 0x528a);
+    }
+}
+
 /// Portrait navigation renders into the panel's native surface.
 pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
     const nav = request.navigation orelse return error.Range;
@@ -208,6 +245,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
     nav.chapter_count = try pack.counts();
     _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
     switch (nav.screen) {
+        .wifi => try wifiScreen(instance, target, nav, request.private_input, 36),
         .ssh => {
             if (request.private_input) |view| try privateSetup(instance, target, view, 36) else try sshStatus(instance, target, nav, 36);
         },
@@ -225,6 +263,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
             try label(instance, target, 80, 378, if (request.config.style.style_id == 0) "明朝 / ゴシック" else "ゴシック / 明朝", 28, 0x2147);
             try label(instance, target, 80, 478, "明るい紙面 / 暗い紙面", 28, 0x2147);
             try label(instance, target, 80, 578, "設定を反映して戻る", 28, 0x2147);
+            try label(instance, target, 80, 678, "Wi-Fi 設定 / w", 28, 0x2147);
         },
         .certification => try certification(instance, target, 36),
         .chapters => {
@@ -320,7 +359,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
         try label(instance, target, 128, 1232, "前の一覧", 20, 0xffff);
         try label(instance, target, 368, 1232, "次の一覧", 20, 0xffff);
     } else try label(instance, target, 8, 1232, "Home", 20, 0xffff);
-    if (nav.screen == .ssh and request.private_input != null) try instance.renderKeyboard(request, target);
+    if ((nav.screen == .ssh or nav.screen == .wifi) and request.private_input != null) try instance.renderKeyboard(request, target);
 }
 
 /// Portrait Home uses the panel's physical coordinates and shared card geometry.
@@ -355,6 +394,10 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     const config = request.config.*;
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
+        .wifi => {
+            try wifiScreen(instance, target, nav, request.private_input, 48);
+            if (request.private_input != null) try instance.renderKeyboard(request, target);
+        },
         .ssh => {
             if (request.private_input) |view| try privateSetup(instance, target, view, 48) else try sshStatus(instance, target, nav, 48);
             try footer(instance, target, false, false);
@@ -404,6 +447,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
             try label(instance, target, 160, 378, if (config.style.style_id == 0) "明朝    /  f でゴシックへ" else "ゴシック /  f で明朝へ", 32, 0x2147);
             try label(instance, target, 160, 478, "明るい紙面・暗い紙面 / t", 32, 0x2147);
             try label(instance, target, 160, 578, "設定を反映して戻る / Enter", 28, 0x2147);
+            try label(instance, target, 680, 578, "Wi-Fi 設定 / w", 28, 0x2147);
             try footer(instance, target, false, false);
         },
         .certification => {

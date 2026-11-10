@@ -392,6 +392,10 @@ pub fn failed() void {
         model.fail(1);
         session_pending = false;
         if (session_active) {
+            if (comptime xy_workspace) {
+                if (scratch.nav.screen == .wifi) scratch.detachPrivateInput();
+                scratch.wifiConsumed();
+            }
             // Rebuild the diagnostic grid from its own journal on failure.
             session_active = false;
             renderer_ready = false;
