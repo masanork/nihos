@@ -1,6 +1,7 @@
 //! CPU0 foreground binding for the experimental xy SSH owner.
 //! No hardware entropy source is qualified here; setup remains unavailable.
 const ssh = @import("ssh_workspace");
+const entropy_clock = @import("p4_entropy_clock.zig");
 
 const UnavailableEntropy = struct {
     // Do not link the SSH cryptographic path into a device image until a
@@ -28,6 +29,9 @@ pub const Runtime = struct {
     visit: Visit,
     model: ?*ssh.Model = null,
     active: bool = false,
+    // Stored in this PSRAM reservation; read only when boot_clock_valid is true.
+    boot_clock: entropy_clock.Receipt,
+    boot_clock_valid: bool = false,
 
     /// Initialize the reserved, stable PSRAM storage before the first poll.
     /// Workspace and visit are initialized in place before their first use.
@@ -35,6 +39,7 @@ pub const Runtime = struct {
         self.entropy = .{};
         self.model = null;
         self.active = false;
+        self.boot_clock_valid = false;
     }
 
     /// Call on CPU0 after the network owner and UI have each been serviced.

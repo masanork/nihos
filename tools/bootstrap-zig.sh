@@ -44,7 +44,9 @@ mkdir -p "$repo_root/.tools"
 stage=$(mktemp -d "$repo_root/.tools/zig-stage.XXXXXX")
 trap 'rm -rf "$stage"' EXIT HUP INT TERM
 
-curl -fsSL "https://ziglang.org/download/$version/$archive" -o "$stage/$archive"
+echo "Downloading pinned Zig $version ($archive)" >&2
+curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 --connect-timeout 15 --max-time 60 \
+    "https://ziglang.org/download/$version/$archive" -o "$stage/$archive"
 if command -v sha256sum >/dev/null 2>&1; then
     actual_sha256=$(sha256sum "$stage/$archive" | awk '{print $1}')
 else

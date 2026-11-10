@@ -97,3 +97,40 @@ export fn nih_ssh_p4_composed_probe(backend: *ComposedBackend, platform: *Platfo
     _ = backend.sample() catch return 0;
     return @intFromBool(backend.release());
 }
+
+// This compiles the complete in-place graph. Timer and reservation are stubs;
+// the emitted object must not be used as a native entropy implementation.
+const TickTimer = backend_mod.TickTimer;
+const Prepared = backend_mod.Prepared(leases.NativeRngGate, Resources, hw_mod.NativeAccess, TickTimer);
+const layout = @import("sqld_layout");
+const Slots = layout.SshEntropySlots(Prepared, TickTimer, backend_mod.Generations);
+comptime {
+    if (@sizeOf(Prepared) > layout.ssh_entropy_prepared_bytes) @compileError("P4 entropy state exceeds its PSRAM partition");
+    if (@sizeOf(TickTimer) > layout.ssh_entropy_tick_timer_bytes or layout.ssh_entropy_tick_timer % @alignOf(TickTimer) != 0)
+        @compileError("P4 tick timer does not fit its PSRAM partition");
+    if (layout.ssh_entropy % @alignOf(Prepared) != 0) @compileError("P4 entropy PSRAM partition is misaligned");
+    if (@sizeOf(backend_mod.Generations) != layout.ssh_entropy_generations_bytes or
+        @offsetOf(backend_mod.Generations, "last") != 0 or
+        layout.ssh_entropy_generations % @alignOf(backend_mod.Generations) != 0)
+        @compileError("P4 entropy generation counter does not fit its PSRAM partition");
+}
+export fn nih_ssh_p4_prepared_probe(prepared: *Prepared, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, timer: *TickTimer, generations: *backend_mod.Generations, receipt: *const clock_mod.Receipt) u32 {
+    prepared.initInPlace(gate, resources, access, timer, generations, receipt.*) catch return 0;
+    prepared.session.begin(0, 100_000) catch return 0;
+    prepared.session.poll(1);
+    prepared.session.cancel();
+    prepared.session.poll(2);
+    return @intFromBool(prepared.session.available());
+}
+
+export fn nih_ssh_p4_prepared_bytes() u32 {
+    return @sizeOf(Prepared);
+}
+
+// Compile the same fixed-slot binding intended for the CPU0 owner. This is a
+// placement check only: the provided reservation and timer remain stubs.
+export fn nih_ssh_p4_slots_probe(region: *align(16) [layout.ssh_entropy_bytes]u8, gate: *leases.NativeRngGate, resources: *Resources, access: *hw_mod.NativeAccess, receipt: *const clock_mod.Receipt) u32 {
+    const slots = Slots.bind(region);
+    slots.prepareOnce(gate, resources, access, @as(?clock_mod.Receipt, receipt.*)) catch return 0;
+    return @intFromBool(slots.prepared.session.available());
+}

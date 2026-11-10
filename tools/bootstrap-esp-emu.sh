@@ -42,7 +42,7 @@ mkdir -p "$repo_root/.tools"
 stage=$(mktemp -d "$repo_root/.tools/esp-emu-stage.XXXXXX")
 trap 'rm -rf "$stage"' EXIT HUP INT TERM
 
-curl -fsSL \
+curl -fsSL --retry 4 --retry-delay 2 --retry-max-time 120 \
     "https://github.com/espressif/esp-emulator/releases/download/v$version/$archive" \
     -o "$stage/$archive"
 if command -v sha256sum >/dev/null 2>&1; then

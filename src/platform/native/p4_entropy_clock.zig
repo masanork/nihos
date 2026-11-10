@@ -19,6 +19,23 @@ pub const Receipt = struct {
     apb_hz: u32,
 };
 
+/// Turn the native boot report into a receipt only while the caller still
+/// exclusively controls the boot clocks. Re-read every divider and the full
+/// source register: the diagnostic report stores only the source selector.
+/// A receipt does not establish runtime ownership or entropy quality.
+pub fn receiptFromBoot(report: anytype, io: anytype) ?Receipt {
+    if (report.status != 1 or report.error_code != 0 or report.source != 1 or
+        report.cpll_mhz != 360 or report.after_mhz < 358 or report.after_mhz > 362 or
+        report.mem_mhz != 180 or report.apb_mhz != 90 or report.rom_mhz != 360 or
+        report.ctrl0 & (update | 0x1fffffe0) != 0 or
+        report.ctrl1 & 0xff0000ff != 1 or report.ctrl2 & 0x00ff0000 != 1 << 16) return null;
+    const raw_source = io.read(source);
+    if (raw_source & 3 != 1 or io.read(root) != report.ctrl0 or
+        io.read(mem_sys) != report.ctrl1 or io.read(apb) != report.ctrl2 or
+        io.read(source) != raw_source) return null;
+    return .{ .root = report.ctrl0, .mem_sys = report.ctrl1, .apb = report.ctrl2, .source = raw_source, .cpu_hz = 360_000_000, .apb_hz = 90_000_000 };
+}
+
 /// IO supplies bounded owned(), read(address) and counter() ?u64 methods.
 /// counter() returns monotonic microseconds or null if unavailable. The clock
 /// owner must prevent even transient changes between observations. A loss of
@@ -162,4 +179,75 @@ test "invalid initial receipt, timer failure and rollback fail closed" {
         try std.testing.expectEqual(@as(u64, 0), guard.nowMicros());
         try std.testing.expect(!guard.ready());
     }
+}
+
+test "boot receipt requires successful measured report and current register agreement" {
+    const Report = struct {
+        status: u32 = 1,
+        error_code: u32 = 0,
+        source: u32 = 1,
+        cpll_mhz: u32 = 360,
+        after_mhz: u32 = 360,
+        mem_mhz: u32 = 180,
+        apb_mhz: u32 = 90,
+        rom_mhz: u32 = 360,
+        ctrl0: u32 = 0,
+        ctrl1: u32 = 1,
+        ctrl2: u32 = 1 << 16,
+    };
+    var io: Fake = .{ .source_ = 0x12340001 };
+    var report: Report = .{};
+    const receipt = receiptFromBoot(report, &io) orelse return error.MissingReceipt;
+    try std.testing.expectEqual(io.source_, receipt.source);
+    var guard = Guard(Fake).init(&io, receipt);
+    try std.testing.expect(guard.begin());
+    report.status = 0;
+    try std.testing.expect(receiptFromBoot(report, &io) == null);
+    report = .{ .after_mhz = 357 };
+    try std.testing.expect(receiptFromBoot(report, &io) == null);
+    report = .{ .rom_mhz = 0 };
+    try std.testing.expect(receiptFromBoot(report, &io) == null);
+    report = .{};
+    io.mem_ = 2;
+    try std.testing.expect(receiptFromBoot(report, &io) == null);
+}
+
+test "boot receipt rejects a changing source and inconsistent dividers" {
+    const Report = struct {
+        status: u32 = 1,
+        error_code: u32 = 0,
+        source: u32 = 1,
+        cpll_mhz: u32 = 360,
+        after_mhz: u32 = 360,
+        mem_mhz: u32 = 180,
+        apb_mhz: u32 = 90,
+        rom_mhz: u32 = 360,
+        ctrl0: u32 = 0,
+        ctrl1: u32 = 1,
+        ctrl2: u32 = 1 << 16,
+    };
+    const ChangingIO = struct {
+        source_reads: u8 = 0,
+        pub fn read(self: *@This(), address: usize) u32 {
+            return switch (address) {
+                source => blk: {
+                    self.source_reads += 1;
+                    break :blk if (self.source_reads == 1) 1 else 0x101;
+                },
+                root => 0,
+                mem_sys => 1,
+                apb => 1 << 16,
+                else => unreachable,
+            };
+        }
+    };
+    var changing: ChangingIO = .{};
+    try std.testing.expect(receiptFromBoot(Report{}, &changing) == null);
+    var io: Fake = .{};
+    var bad = Report{};
+    bad.ctrl0 = 1 << 5;
+    io.root_ = bad.ctrl0;
+    try std.testing.expect(receiptFromBoot(bad, &io) == null);
+    bad = .{ .error_code = 1 };
+    try std.testing.expect(receiptFromBoot(bad, &io) == null);
 }

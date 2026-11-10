@@ -60,7 +60,7 @@ index 7cf1bb66..735b5811 100644
  const native_ssh_foreground = @hasDecl(options, "experimental_tcp") and options.experimental_tcp and options.xy_workspace;
  var ssh_foreground: if (native_ssh_foreground) ?*@import("ssh_foreground.zig").Runtime else void = if (native_ssh_foreground) null else {};
  const cpu_boot = @import("cpu_boot");
-@@ -1785,6 +1786,27 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
+@@ -1785,6 +1786,41 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
                  logger.record("NIHOS_NATIVE_NORMAL_IDLE", null, .{ "hart", "ticks", "work0", "work1", "switches", "calls", "reaped", "sleeps" }, &idle);
              }
              printBoot("NIHOS_NATIVE_NORMAL_IDLE_PASS headless=1 evidence=emulator\n");
@@ -68,7 +68,21 @@ index 7cf1bb66..735b5811 100644
 +            const stack_test = @import("ssh_foreground_stack.zig");
 +            const stack_region = @import("sqld_layout.zig");
 +            const runtime: *@import("ssh_foreground.zig").Runtime = @ptrFromInt(stack_region.ssh_foreground);
++            const entropy: [*]volatile u8 = @ptrFromInt(stack_region.ssh_entropy);
++            const generation: *volatile u64 = @ptrFromInt(stack_region.ssh_entropy_generations);
++            const before: *volatile u8 = @ptrFromInt(stack_region.ssh_entropy - 1);
++            const after: *volatile u8 = @ptrFromInt(stack_region.ssh_entropy_generations + stack_region.ssh_entropy_generations_bytes);
++            before.* = 0xa5;
++            after.* = 0x5a;
++            entropy[0] = 0xa5;
++            entropy[stack_region.ssh_entropy_state_bytes - 1] = 0xa5;
++            generation.* = 17;
++            if (!stack_region.initializeSshEntropyBoot(entropy[0..stack_region.ssh_entropy_state_bytes], generation)) fail("SSH entropy boot init");
++            if (entropy[0] != 0 or entropy[stack_region.ssh_entropy_state_bytes - 1] != 0 or generation.* != 0 or before.* != 0xa5 or after.* != 0x5a) fail("SSH entropy boot bounds");
++            generation.* = 41;
 +            runtime.initInPlace();
++            if (generation.* != 41) fail("SSH generation reset on visit");
++            print("NIHOS_SSH_ENTROPY_BOOT_PASS\n");
 +            runtime.active = true;
 +            stack_test.poll(runtime, null, @ptrFromInt(stack_region.ssh_ui_experiment), ui.timer().counter() orelse fail("SSH fixture clock"));
 +            const sp = stack_test.fixture_sp;

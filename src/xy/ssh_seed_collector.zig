@@ -32,6 +32,18 @@ pub fn Collector(comptime Backend: type) type {
             return .{ .backend = backend, .generations = generations };
         }
 
+        /// Initialize stable storage; the caller must not reset a live collector.
+        pub fn initInPlace(self: *Self, backend: *Backend, generations: *Generations) void {
+            self.backend = backend;
+            self.generations = generations;
+            self.state = .idle;
+            std.crypto.secureZero(u8, &self.seed);
+            self.count = 0;
+            self.deadline = 0;
+            self.last_poll = 0;
+            self.generation = 0;
+        }
+
         pub fn begin(self: *Self, now: u64, timeout: u64) !void {
             if (self.state != .idle) return error.Busy;
             if (timeout == 0 or now > std.math.maxInt(u64) - timeout) return error.InvalidDeadline;
@@ -191,4 +203,26 @@ test "ready seed expires and clock rollback discards partial bytes" {
     collector.poll(30);
     try std.testing.expect(std.mem.allEqual(u8, &collector.seed, 0));
     try std.testing.expectEqual(@as(?u64, null), collector.lease());
+}
+
+test "separate visits share a boot counter and reject an earlier generation" {
+    var backend: Fake = .{};
+    var generations: Generations = .{};
+    const C = Collector(Fake);
+    var first = C.init(&backend, &generations);
+    try first.begin(0, 100);
+    for (0..entropy.seed_bytes) |_| first.poll(1);
+    const stale = first.lease() orelse return error.MissingLease;
+    first.cancel();
+    first.poll(2);
+
+    var next = C.init(&backend, &generations);
+    try next.begin(3, 100);
+    for (0..entropy.seed_bytes) |_| next.poll(4);
+    try std.testing.expectEqual(stale + 1, next.lease().?);
+    var out: [entropy.seed_bytes]u8 = @splat(0);
+    try std.testing.expectError(error.EntropyUnavailable, next.fillSeed(stale, &out));
+    try std.testing.expect(std.mem.allEqual(u8, &out, 0));
+    next.cancel();
+    next.poll(5);
 }

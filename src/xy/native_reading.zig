@@ -177,6 +177,29 @@ fn privateSetup(instance: *Session, target: anytype, view: *const protocol.Priva
     if (view.invalid != 0) try label(instance, target, x, 305, "Invalid input; review fields", 20, 0xb104);
 }
 
+fn sshStatus(instance: *Session, target: anytype, nav: anytype, x: i32) !void {
+    try label(instance, target, x, 48, "SSH", 36, 0x2147);
+    switch (nav.ssh_failure) {
+        .host_key_mismatch => {
+            try label(instance, target, x, 150, "Host key mismatch; connection refused.", 24, 0xb104);
+            try label(instance, target, x, 220, "Check the fingerprint before retrying.", 24, 0x528a);
+        },
+        .connection_failed => {
+            try label(instance, target, x, 150, "SSH connection failed.", 28, 0xb104);
+            try label(instance, target, x, 220, "Return home to retry.", 24, 0x528a);
+        },
+        .none => switch (nav.ssh_progress) {
+            .preparing => try label(instance, target, x, 150, "Preparing secure connection...", 28, 0x2147),
+            .connecting => try label(instance, target, x, 150, "Connecting...", 28, 0x2147),
+            .closing => try label(instance, target, x, 150, "Closing connection...", 28, 0x2147),
+            .none => {
+                try label(instance, target, x, 150, "SSH 接続は準備中です。", 28, 0x2147);
+                try label(instance, target, x, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
+            },
+        },
+    }
+}
+
 /// Portrait navigation renders into the panel's native surface.
 pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack: catalog.Pack) !void {
     const nav = request.navigation orelse return error.Range;
@@ -186,11 +209,7 @@ pub fn renderPortrait(instance: *Session, request: *const protocol.Request, pack
     _ = target.fillRect(0, 0, 720, 1280, 0xf7bd);
     switch (nav.screen) {
         .ssh => {
-            if (request.private_input) |view| try privateSetup(instance, target, view, 36) else {
-                try label(instance, target, 36, 48, "SSH", 36, 0x2147);
-                try label(instance, target, 36, 150, "SSH 接続は準備中です。", 28, 0x2147);
-                try label(instance, target, 36, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
-            }
+            if (request.private_input) |view| try privateSetup(instance, target, view, 36) else try sshStatus(instance, target, nav, 36);
         },
         .examples, .exercise => {
             const lessons = request.learning orelse return error.Range;
@@ -337,11 +356,7 @@ pub fn render(instance: *Session, request: *const protocol.Request, pack: catalo
     _ = target.fillRect(0, 0, 1280, 720, 0xf7bd);
     switch (nav.screen) {
         .ssh => {
-            if (request.private_input) |view| try privateSetup(instance, target, view, 48) else {
-                try label(instance, target, 48, 48, "SSH", 36, 0x2147);
-                try label(instance, target, 48, 150, "SSH 接続は準備中です。", 28, 0x2147);
-                try label(instance, target, 48, 220, "接続先と鍵の設定はまだ使えません。", 24, 0x528a);
-            }
+            if (request.private_input) |view| try privateSetup(instance, target, view, 48) else try sshStatus(instance, target, nav, 48);
             try footer(instance, target, false, false);
             if (request.private_input != null) try instance.renderKeyboard(request, target);
         },

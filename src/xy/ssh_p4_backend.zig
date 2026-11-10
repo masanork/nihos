@@ -23,6 +23,15 @@ pub fn Backend(comptime Platform: type) type {
         pub fn init(platform: *Platform, setup_timeout_us: u64, transaction_timeout_us: u64, default_cpu_mhz: u32) Self {
             return .{ .platform = platform, .setup_timeout_us = setup_timeout_us, .transaction_timeout_us = transaction_timeout_us, .default_cpu_mhz = default_cpu_mhz };
         }
+        pub fn initInPlace(self: *Self, platform: *Platform, setup_timeout_us: u64, transaction_timeout_us: u64, default_cpu_mhz: u32) void {
+            self.platform = platform;
+            self.noise = .{};
+            self.sampler.clear();
+            self.phase = .idle;
+            self.setup_timeout_us = setup_timeout_us;
+            self.transaction_timeout_us = transaction_timeout_us;
+            self.default_cpu_mhz = default_cpu_mhz;
+        }
         /// A failed acquire must have taken no ownership or changed hardware.
         pub fn begin(self: *Self) !void {
             if (self.phase != .idle) return error.Busy;
@@ -132,8 +141,90 @@ pub fn Backend(comptime Platform: type) type {
     };
 }
 
+/// A foreground tick supplies one already-read monotonic timestamp. This avoids
+/// taking extra snapshots of the shared hardware timer inside the entropy
+/// pipeline. The outer owner remains responsible for a live, qualified timer;
+/// a frozen or repeatedly supplied value cannot establish elapsed time.
+/// Only the foreground owner may update it. Keep it stable and do not reset
+/// it while a session is live.
+pub const TickTimer = struct {
+    last: u64 = 0,
+    valid: bool = false,
+    failed: bool = false,
+
+    pub fn observe(self: *TickTimer, now: u64) bool {
+        if (self.failed) return false;
+        if (self.valid and now < self.last) {
+            self.failed = true;
+            return false;
+        }
+        self.last = now;
+        self.valid = true;
+        return true;
+    }
+    pub fn counter(self: *TickTimer) ?u64 {
+        return if (self.valid and !self.failed) self.last else null;
+    }
+};
+
+/// Compose the P4 entropy pipeline in stable caller-owned storage. The caller
+/// must retain the gate, hardware reservation, MMIO, timer and boot-epoch
+/// generation counter, and must not move or reinitialize this object while a
+/// session or its cleanup is live. This does not provide or qualify a native
+/// resource owner, timer, entropy source, or product-image placement.
+pub fn Prepared(comptime Gate: type, comptime Resources: type, comptime Access: type, comptime Timer: type) type {
+    const lease_mod = @import("p4_entropy_lease");
+    const hw_mod = @import("p4_entropy_hardware");
+    const clock_mod = @import("p4_entropy_clock");
+    const session_mod = @import("ssh_entropy_session.zig");
+    const Reservation = lease_mod.Lease(Gate, Resources);
+    const ClockIO = struct {
+        reservation: *Reservation,
+        access: *Access,
+        timer: *Timer,
+        pub fn owned(self: *@This()) bool {
+            return self.reservation.owned();
+        }
+        pub fn read(self: *@This(), address: usize) u32 {
+            return self.access.read(address);
+        }
+        pub fn counter(self: *@This()) ?u64 {
+            return self.timer.counter();
+        }
+    };
+    const Clock = clock_mod.Guard(ClockIO);
+    const Hardware = hw_mod.Hardware(Access, Clock);
+    const Platform = lease_mod.Platform(Reservation, Hardware);
+    const P4Backend = Backend(Platform);
+    const Session = session_mod.Session(P4Backend);
+    return struct {
+        const Self = @This();
+        reservation: Reservation,
+        clock_io: ClockIO,
+        clock: Clock,
+        hardware: Hardware,
+        platform: Platform,
+        backend: P4Backend,
+        session: Session,
+
+        /// Reject a missing receipt before acquiring anything or modifying self.
+        /// A fresh instance may be initialized only after any previous cleanup.
+        pub fn initInPlace(self: *Self, gate: *Gate, resources: *Resources, access: *Access, timer: *Timer, generations: *session_mod.Generations, receipt: ?clock_mod.Receipt) error{MissingClockReceipt}!void {
+            const verified = receipt orelse return error.MissingClockReceipt;
+            self.reservation = Reservation.init(gate, resources);
+            self.clock_io = .{ .reservation = &self.reservation, .access = access, .timer = timer };
+            self.clock = Clock.init(&self.clock_io, verified);
+            self.hardware = .{ .access = access, .clock = &self.clock };
+            self.platform = .{ .reservation = &self.reservation, .hardware = &self.hardware };
+            self.backend.initInPlace(&self.platform, 20_000, 1_000, 360);
+            self.session.initInPlace(&self.backend, generations);
+        }
+    };
+}
+
 const std = @import("std");
 const collector_mod = @import("ssh_seed_collector.zig");
+pub const Generations = collector_mod.Generations;
 const entropy_mod = @import("ssh_entropy.zig");
 const Fake = struct {
     gate: ?*@import("p4_rng_gate").Gate = null,
@@ -147,6 +238,11 @@ const Fake = struct {
     cpu: u32 = 160_000_000,
     apb: u32 = 80_000_000,
     timer: u8 = 0,
+    clock_source: u32 = 1,
+    clock_counter_reads: u32 = 0,
+    lp_timer_snapshots: u32 = 0,
+    lp_owner: ?*const bool = null,
+    unowned_lp_snapshots: u32 = 0,
     control: u32 = 0,
     conf1: u32 = 0x2345,
     conf2: u32 = 0x5678,
@@ -211,6 +307,10 @@ const Fake = struct {
     }
     pub fn read(self: *@This(), addr: usize) u32 {
         return switch (addr) {
+            0x500e6004 => 0,
+            0x500e6008 => 1,
+            0x500e600c => 1 << 16,
+            0x50111040 => self.clock_source,
             0x501101a4 => self.readRng(),
             0x50112010 => 0,
             0x50112014 => self.lowTimerByte(),
@@ -224,7 +324,14 @@ const Fake = struct {
     }
     pub fn write(self: *@This(), addr: usize, value: u32) void {
         switch (addr) {
-            0x50112010 => {},
+            0x50112010 => {
+                if (value & (1 << 28) != 0) {
+                    self.lp_timer_snapshots += 1;
+                    if (self.lp_owner) |owner| {
+                        if (!owner.*) self.unowned_lp_snapshots += 1;
+                    }
+                }
+            },
             0x50124000 => {
                 const reg: usize = (value >> 8) & 255;
                 if (value & (1 << 24) != 0) self.sar[reg] = @truncate(value >> 16);
@@ -235,6 +342,10 @@ const Fake = struct {
             0x500de05c => self.adc[idx(0x500de054)] &= ~value,
             else => self.adc[idx(addr)] = value,
         }
+    }
+    pub fn counter(self: *@This()) ?u64 {
+        self.clock_counter_reads += 1;
+        return self.now;
     }
     fn tick(self: *@This()) void {
         self.now += 28;
@@ -462,49 +573,108 @@ test "stuck analog restoration never admits or retains cancelled entropy" {
     try std.testing.expect(gate.releaseSqlite());
 }
 
+const TestForegroundModel = struct {
+    pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
+    pub const PrivateInputPortType = struct {
+        pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
+        context: *anyopaque,
+        key: *const fn (*anyopaque, PrivateInputKey) bool,
+        close: *const fn (*anyopaque) void,
+        snapshot: *const fn (*anyopaque, *View) bool,
+    };
+    nav: struct { screen: enum { ssh, home } = .ssh } = .{},
+    private_input: ?PrivateInputPortType = null,
+    pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
+        if (self.private_input != null) return false;
+        self.private_input = port;
+        return true;
+    }
+    pub fn detachPrivateInput(self: *@This()) void {
+        const port = self.private_input orelse return;
+        self.private_input = null;
+        port.close(port.context);
+    }
+};
+
+test "prepared runtime waits for timed entropy cleanup before switching screens" {
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Entropy = struct {
+        state: enum { idle, collecting, cleaning, failed } = .idle,
+        release_allowed: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .cleaning and self.release_allowed) self.state = .idle;
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(_: *@This()) bool {
+            return false;
+        }
+        pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
+            return error.EntropyUnavailable;
+        }
+    };
+    const Ui = struct { starts: u32 = 0 };
+    const Workspace = struct {
+        controller: TestForegroundController,
+        pub fn initInPlace(self: *@This(), _: *TestForegroundModel, ui: *Ui) !void {
+            self.controller = .{};
+            ui.starts += 1;
+        }
+    };
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, Entropy, TickTimer);
+    const Runtime = lifecycle.PreparedRuntime(TestForegroundModel, Ui, Workspace, Timed, Entropy, TickTimer);
+    const owner = try std.testing.allocator.create(Runtime);
+    defer std.testing.allocator.destroy(owner);
+    var entropy: Entropy = .{};
+    var timer: TickTimer = .{};
+    var first: TestForegroundModel = .{};
+    var second: TestForegroundModel = .{};
+    var ui: Ui = .{};
+    owner.initInPlace(&entropy, &timer);
+    owner.poll(&first, &ui, 1);
+    try std.testing.expectEqual(.collecting, entropy.state);
+    owner.poll(&second, &ui, 2);
+    try std.testing.expectEqual(.cleaning, entropy.state);
+    try std.testing.expect(owner.model == &first and owner.active);
+    try std.testing.expectEqual(@as(u32, 1), ui.starts);
+    owner.poll(&second, &ui, 3);
+    try std.testing.expect(owner.model == &first and owner.active);
+    entropy.release_allowed = true;
+    owner.poll(&second, &ui, 4);
+    try std.testing.expect(owner.model == &second and owner.active);
+    try std.testing.expectEqual(@as(u32, 2), ui.starts);
+    try std.testing.expectEqual(.collecting, entropy.state);
+    owner.poll(null, &ui, 5);
+    try std.testing.expect(!owner.active and owner.model == null);
+    try std.testing.expectEqual(.idle, entropy.state);
+}
+const TestForegroundController = struct {
+    state: @import("ssh_lifecycle.zig").State = .idle,
+    pub fn beginProfile(_: *@This(), _: *const @import("ssh_lifecycle.zig").Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
+    pub fn pollProfile(_: *@This(), _: *const @import("ssh_lifecycle.zig").Profile, _: u64, _: ?*const @import("ssh_lifecycle.zig").ExchangeEntropy, _: *const [32]u8) !@import("ssh_lifecycle.zig").State {
+        return .opening;
+    }
+    pub fn cancel(_: *@This()) void {}
+    pub fn retryCleanup(_: *@This()) bool {
+        return true;
+    }
+};
+
 test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
     const sessions = @import("ssh_entropy_session.zig");
     const lifecycle = @import("ssh_lifecycle.zig");
-    const Model = struct {
-        pub const PrivateInputKey = union(enum) { text: u8, backspace, left, up, right, down, enter, escape, cancel, eof };
-        pub const PrivateInputPortType = struct {
-            pub const View = struct { field: u8, secret_length: u8, invalid: u8, text: [*]const u8, text_length: usize };
-            context: *anyopaque,
-            key: *const fn (*anyopaque, PrivateInputKey) bool,
-            close: *const fn (*anyopaque) void,
-            snapshot: *const fn (*anyopaque, *View) bool,
-        };
-        private_input: ?PrivateInputPortType = null,
-        pub fn attachPrivateInput(self: *@This(), port: PrivateInputPortType) bool {
-            if (self.private_input != null) return false;
-            self.private_input = port;
-            return true;
-        }
-        pub fn detachPrivateInput(self: *@This()) void {
-            const port = self.private_input orelse return;
-            self.private_input = null;
-            port.close(port.context);
-        }
-    };
-    const Controller = struct {
-        state: lifecycle.State = .idle,
-        pub fn beginProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: u64, _: u64, _: u16, _: u32) !void {}
-        pub fn pollProfile(_: *@This(), _: *const lifecycle.Profile, _: u64, _: ?*const lifecycle.ExchangeEntropy, _: *const [32]u8) !lifecycle.State {
-            return .opening;
-        }
-        pub fn cancel(_: *@This()) void {}
-        pub fn retryCleanup(_: *@This()) bool {
-            return true;
-        }
-    };
     var gate: @import("p4_rng_gate").Gate = .{};
     var io: Fake = .{ .gate = &gate };
     var backend = Backend(Fake).init(&io, 20_000, 1_000, 160);
     var generations: collector_mod.Generations = .{};
     var session = sessions.Session(Backend(Fake)).init(&backend, &generations);
-    var model: Model = .{};
-    var controller: Controller = .{};
-    var foreground = try lifecycle.PreparedForeground(Model, Controller, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    var foreground = try lifecycle.PreparedForeground(TestForegroundModel, TestForegroundController, @TypeOf(session)).init(&model, &controller, &session, 100_000, 20_000, 5_000);
     try std.testing.expect(gate.trySqlite());
     try std.testing.expectEqual(.acquiring, foreground.poll(true, 0));
     io.tick();
@@ -537,10 +707,7 @@ test "SSH foreground waits for SQLite RNG gate then opens setup after cleanup" {
 }
 
 test "composed reservation and P4 backend restore before seed becomes available" {
-    const lease_mod = @import("p4_entropy_lease");
-    const hw_mod = @import("p4_entropy_hardware");
     const clock_mod = @import("p4_entropy_clock");
-    const sessions = @import("ssh_entropy_session.zig");
     const Gate = @import("p4_rng_gate").Gate;
     const Resources = struct {
         io: *Fake,
@@ -571,37 +738,23 @@ test "composed reservation and P4 backend restore before seed becomes available"
     var gate: Gate = .{};
     var io: Fake = .{};
     var resources = Resources{ .io = &io, .original_sar = io.sar, .original_adc = io.adc };
-    var reservation = lease_mod.Lease(Gate, Resources).init(&gate, &resources);
-    const ClockIO = struct {
-        io: *Fake,
-        reservation: *@TypeOf(reservation),
-        pub fn owned(self: *@This()) bool {
-            return self.reservation.owned();
-        }
-        pub fn counter(self: *@This()) ?u64 {
-            return self.io.nowMicros();
-        }
-        pub fn read(_: *@This(), address: usize) u32 {
-            return switch (address) {
-                clock_mod.root => 0,
-                clock_mod.mem_sys => 1,
-                clock_mod.apb => 1 << 16,
-                clock_mod.source => 1,
-                else => unreachable,
-            };
-        }
-    };
-    var clock_io = ClockIO{ .io = &io, .reservation = &reservation };
-    const Clock = clock_mod.Guard(ClockIO);
-    var clock = Clock.init(&clock_io, .{ .root = 0, .mem_sys = 1, .apb = 1 << 16, .source = 1, .cpu_hz = 360_000_000, .apb_hz = 90_000_000 });
+    io.lp_owner = &resources.reserved;
     io.cpu = 360_000_000;
     io.apb = 90_000_000;
-    var hardware = hw_mod.Hardware(Fake, Clock){ .access = &io, .clock = &clock };
-    const Platform = lease_mod.Platform(@TypeOf(reservation), @TypeOf(hardware));
-    var platform = Platform{ .reservation = &reservation, .hardware = &hardware };
-    var backend = Backend(Platform).init(&platform, 20_000, 1_000, 360);
     var generations: collector_mod.Generations = .{};
-    var session = sessions.Session(@TypeOf(backend)).init(&backend, &generations);
+    var timer: TickTimer = .{};
+    try std.testing.expect(timer.observe(io.now));
+    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, TickTimer));
+    defer std.testing.allocator.destroy(prepared);
+    @memset(std.mem.asBytes(prepared), 0xa5);
+    try std.testing.expectError(error.MissingClockReceipt, prepared.initInPlace(&gate, &resources, &io, &timer, &generations, null));
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(prepared), 0xa5));
+    try std.testing.expect(!resources.reserved and gate.trySqlite());
+    try std.testing.expect(gate.releaseSqlite());
+    const report = .{ .status = @as(u32, 1), .error_code = @as(u32, 0), .source = @as(u32, 1), .cpll_mhz = @as(u32, 360), .after_mhz = @as(u32, 360), .mem_mhz = @as(u32, 180), .apb_mhz = @as(u32, 90), .rom_mhz = @as(u32, 360), .ctrl0 = @as(u32, 0), .ctrl1 = @as(u32, 1), .ctrl2 = @as(u32, 1 << 16) };
+    const receipt = clock_mod.receiptFromBoot(report, &io) orelse return error.MissingClockReceipt;
+    try prepared.initInPlace(&gate, &resources, &io, &timer, &generations, receipt);
+    const session = &prepared.session;
 
     try std.testing.expect(gate.trySqlite());
     try std.testing.expectError(error.Unavailable, session.begin(0, 100_000));
@@ -610,6 +763,7 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try session.begin(0, 100_000);
     for (0..800) |_| {
         io.tick();
+        try std.testing.expect(timer.observe(io.now));
         session.poll(io.now);
         if (resources.saw_restored) break;
     }
@@ -618,6 +772,7 @@ test "composed reservation and P4 backend restore before seed becomes available"
     try std.testing.expect(!session.available() and !gate.trySqlite());
     resources.release_allowed = true;
     io.tick();
+    try std.testing.expect(timer.observe(io.now));
     session.poll(io.now);
     try std.testing.expect(session.available() and !resources.reserved);
     try std.testing.expect(gate.trySqlite());
@@ -625,4 +780,154 @@ test "composed reservation and P4 backend restore before seed becomes available"
     session.cancel();
     session.poll(io.now);
     try std.testing.expectEqual(.idle, session.state);
+
+    // The same in-place graph can safely start a new generation after cleanup.
+    try session.begin(io.now, 100_000);
+    try std.testing.expectEqual(@as(u64, 2), generations.last);
+    for (0..100) |_| {
+        io.tick();
+        try std.testing.expect(timer.observe(io.now));
+        session.poll(io.now);
+        if (prepared.backend.noise.analog.dirty) break;
+    }
+    try std.testing.expect(prepared.backend.noise.analog.dirty);
+    io.clock_source = 0;
+    io.tick();
+    try std.testing.expect(timer.observe(io.now));
+    session.poll(io.now);
+    io.tick();
+    try std.testing.expect(timer.observe(io.now));
+    session.poll(io.now);
+    try std.testing.expect(!session.available() and resources.reserved);
+    try std.testing.expect(!gate.trySqlite());
+    try std.testing.expectEqual(.failed_cleanup, session.state);
+    // Clock-guard time comes from foreground ticks. The sampler separately
+    // captures the LP timer and therefore still needs its exclusive owner.
+    try std.testing.expectEqual(@as(u32, 0), io.clock_counter_reads);
+    try std.testing.expect(io.lp_timer_snapshots > 0);
+    try std.testing.expectEqual(@as(u32, 0), io.unowned_lp_snapshots);
+}
+
+test "foreground tick time is unavailable until observed and latches rollback" {
+    var timer: TickTimer = .{};
+    try std.testing.expect(timer.counter() == null);
+    try std.testing.expect(timer.observe(100));
+    try std.testing.expectEqual(@as(?u64, 100), timer.counter());
+    try std.testing.expect(timer.observe(100));
+    try std.testing.expect(timer.observe(101));
+    try std.testing.expect(!timer.observe(100));
+    try std.testing.expect(timer.counter() == null);
+    try std.testing.expect(!timer.observe(102));
+}
+
+test "tick-driven foreground prepares entropy before credentials and closes on rollback" {
+    const clock_mod = @import("p4_entropy_clock");
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Gate = @import("p4_rng_gate").Gate;
+    const Resources = struct {
+        reserved: bool = false,
+        pub fn tryReserve(self: *@This()) bool {
+            if (self.reserved) return false;
+            self.reserved = true;
+            return true;
+        }
+        pub fn owned(self: *@This()) bool {
+            return self.reserved;
+        }
+        pub fn releaseUnused(self: *@This()) void {
+            self.reserved = false;
+        }
+        pub fn releaseRestored(self: *@This()) bool {
+            self.reserved = false;
+            return true;
+        }
+    };
+    var gate: Gate = .{};
+    var resources: Resources = .{};
+    var io: Fake = .{ .cpu = 360_000_000, .apb = 90_000_000 };
+    io.lp_owner = &resources.reserved;
+    var generations: Generations = .{};
+    var timer: TickTimer = .{};
+    const prepared = try std.testing.allocator.create(Prepared(Gate, Resources, Fake, TickTimer));
+    defer std.testing.allocator.destroy(prepared);
+    const report = .{ .status = @as(u32, 1), .error_code = @as(u32, 0), .source = @as(u32, 1), .cpll_mhz = @as(u32, 360), .after_mhz = @as(u32, 360), .mem_mhz = @as(u32, 180), .apb_mhz = @as(u32, 90), .rom_mhz = @as(u32, 360), .ctrl0 = @as(u32, 0), .ctrl1 = @as(u32, 1), .ctrl2 = @as(u32, 1 << 16) };
+    const receipt = clock_mod.receiptFromBoot(report, &io) orelse return error.MissingClockReceipt;
+    try prepared.initInPlace(&gate, &resources, &io, &timer, &generations, receipt);
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, @TypeOf(prepared.session), TickTimer);
+    const timed = try std.testing.allocator.create(Timed);
+    defer std.testing.allocator.destroy(timed);
+    try timed.initInPlace(&model, &controller, &prepared.session, &timer, 100_000, 20_000, 5_000);
+    try std.testing.expect(gate.trySqlite());
+    try std.testing.expectEqual(.acquiring, timed.poll(true, 0));
+    io.tick();
+    try std.testing.expectEqual(.acquiring, timed.poll(true, io.now));
+    try std.testing.expect(model.private_input == null and !resources.reserved);
+    try std.testing.expect(gate.releaseSqlite());
+    var saw_restoring = false;
+    for (0..800) |_| {
+        io.tick();
+        const state = timed.poll(true, io.now);
+        if (prepared.session.state == .restoring) {
+            saw_restoring = true;
+            try std.testing.expect(!gate.trySqlite());
+        }
+        try std.testing.expect(model.private_input == null);
+        if (state == .active) break;
+    }
+    try std.testing.expect(saw_restoring and prepared.session.available());
+    io.tick();
+    try std.testing.expectEqual(.active, timed.poll(true, io.now));
+    try std.testing.expect(model.private_input != null);
+    try std.testing.expectEqual(.failed, timed.poll(true, io.now - 1));
+    try std.testing.expect(model.private_input == null and !prepared.session.available());
+    try std.testing.expectEqual(.idle, timed.poll(false, io.now));
+    try std.testing.expectEqual(@as(u32, 0), io.clock_counter_reads);
+    try std.testing.expect(io.lp_timer_snapshots > 0);
+    try std.testing.expectEqual(@as(u32, 0), io.unowned_lp_snapshots);
+}
+
+test "tick rollback holds foreground until pending cleanup finishes" {
+    const lifecycle = @import("ssh_lifecycle.zig");
+    const Entropy = struct {
+        state: enum { idle, collecting, cleaning, failed } = .idle,
+        held: bool = false,
+        release_allowed: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.held = true;
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .cleaning and self.release_allowed) {
+                self.held = false;
+                self.state = .idle;
+            }
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(_: *@This()) bool {
+            return false;
+        }
+        pub fn fill(_: *@This(), _: []u8) error{EntropyUnavailable}!void {
+            return error.EntropyUnavailable;
+        }
+    };
+    var timer: TickTimer = .{};
+    var entropy: Entropy = .{};
+    var model: TestForegroundModel = .{};
+    var controller: TestForegroundController = .{};
+    const Timed = lifecycle.TimedPreparedForeground(TestForegroundModel, TestForegroundController, Entropy, TickTimer);
+    const timed = try std.testing.allocator.create(Timed);
+    defer std.testing.allocator.destroy(timed);
+    try timed.initInPlace(&model, &controller, &entropy, &timer, 100, 100, 100);
+    try std.testing.expectEqual(.preparing, timed.poll(true, 10));
+    try std.testing.expectEqual(.stopping, timed.poll(true, 9));
+    try std.testing.expect(entropy.held and model.private_input == null);
+    try std.testing.expectEqual(.stopping, timed.poll(false, 11));
+    entropy.release_allowed = true;
+    try std.testing.expectEqual(.idle, timed.poll(false, 12));
+    try std.testing.expect(!entropy.held);
+    try std.testing.expectEqual(.failed, timed.poll(true, 13));
 }

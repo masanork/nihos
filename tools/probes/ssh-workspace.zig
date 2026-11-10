@@ -30,3 +30,57 @@ export fn nih_ssh_workspace_probe(ws: *ssh.Workspace, model: *ssh.Model, ui: *ss
     _ = foreground.poll(true, now +| 1000) catch return 0;
     return @intFromBool(foreground.stop());
 }
+
+// Compile-only foreground timing. Fixed bytes are not an entropy source.
+const ProbeSession = struct {
+    state: enum { idle, collecting, ready, failed } = .idle,
+    enabled: bool = false,
+    pub fn begin(self: *@This(), _: u64, _: u64) error{Unavailable}!void {
+        if (!self.enabled) return error.Unavailable;
+        self.state = .collecting;
+    }
+    pub fn poll(self: *@This(), _: u64) void {
+        if (self.state == .collecting) self.state = .ready;
+    }
+    pub fn cancel(self: *@This()) void {
+        self.state = .idle;
+    }
+    pub fn available(self: *@This()) bool {
+        return self.state == .ready;
+    }
+    pub fn fill(self: *@This(), out: []u8) error{EntropyUnavailable}!void {
+        if (!self.available()) return error.EntropyUnavailable;
+        @memset(out, 0);
+    }
+};
+const ProbeTimer = struct {
+    last: u64 = 0,
+    failed: bool = false,
+    pub fn observe(self: *@This(), now: u64) bool {
+        if (self.failed or now < self.last) {
+            self.failed = true;
+            return false;
+        }
+        self.last = now;
+        return true;
+    }
+};
+const Timed = ssh.TimedPreparedForeground(ProbeSession, ProbeTimer);
+export fn nih_ssh_timed_workspace_probe(timed: *Timed, ws: *ssh.Workspace, model: *ssh.Model, entropy: *ProbeSession, timer: *ProbeTimer, now: u64) u32 {
+    timed.initInPlace(model, &ws.controller, entropy, timer, 10_000_000, 2_000_000, 2_000_000) catch return 0;
+    return @backingInt(timed.poll(true, now));
+}
+
+const PreparedRuntime = ssh.PreparedRuntime(ProbeSession, ProbeTimer);
+const layout = @import("sqld_layout");
+comptime {
+    if (@sizeOf(PreparedRuntime) > layout.ssh_foreground_runtime_bytes or
+        layout.ssh_foreground % @alignOf(PreparedRuntime) != 0)
+        @compileError("prepared SSH foreground does not fit its PSRAM slot");
+}
+// Compile-only: the stub session and timer do not qualify a hardware source.
+export fn nih_ssh_prepared_runtime_probe(runtime: *PreparedRuntime, model: *ssh.Model, ui: *ssh.Ui, entropy: *ProbeSession, timer: *ProbeTimer, now: u64) void {
+    runtime.initInPlace(entropy, timer);
+    runtime.poll(model, ui, now);
+    runtime.poll(null, ui, now);
+}

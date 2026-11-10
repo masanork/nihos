@@ -21,6 +21,13 @@ pub fn Session(comptime Backend: type) type {
             return .{ .collector = Collector.init(backend, generations) };
         }
 
+        /// Initialize stable storage without copying CSPRNG state by value.
+        pub fn initInPlace(self: *Self, backend: *Backend, generations: *collector_mod.Generations) void {
+            self.collector.initInPlace(backend, generations);
+            self.entropy.clear();
+            self.state = .idle;
+        }
+
         pub fn begin(self: *Self, now: u64, timeout: u64) !void {
             if (self.state != .idle) return error.Busy;
             self.entropy.clear();

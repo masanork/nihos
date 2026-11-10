@@ -145,6 +145,70 @@ const HostSeedSource = struct {
 };
 const HostJourney = lifecycle.Journey(console.scratch.Model, Controller);
 const HostForeground = lifecycle.Foreground(console.scratch.Model, Controller, HostEntropy);
+// Host-only adapter: OS random bytes seed the same CSPRNG used by the visit.
+// This cannot qualify the native P4 entropy source or its resource owner.
+const PreparedEntropy = struct {
+    host: HostEntropy,
+    state: enum { idle, collecting, restoring, ready, cleaning, failed } = .idle,
+    pub fn begin(self: *@This(), _: u64, _: u64) !void {
+        if (self.state != .idle) return error.Busy;
+        self.state = .collecting;
+    }
+    pub fn poll(self: *@This(), _: u64) void {
+        switch (self.state) {
+            .collecting => {
+                var source: HostSeedSource = .{ .fill_fn = self.host.fill_fn };
+                self.host.generator.seedFrom(&source) catch {
+                    self.state = .failed;
+                    return;
+                };
+                self.host.seeded = true;
+                self.state = .restoring;
+            },
+            .restoring => self.state = .ready,
+            .cleaning => self.state = .idle,
+            else => {},
+        }
+    }
+    pub fn cancel(self: *@This()) void {
+        self.host.clear();
+        if (self.state != .idle) self.state = .cleaning;
+    }
+    pub fn available(self: *@This()) bool {
+        return self.state == .ready and self.host.available();
+    }
+    pub fn fill(self: *@This(), out: []u8) !void {
+        if (!self.available()) return error.EntropyUnavailable;
+        try self.host.fill(out);
+    }
+};
+const PreparedTimer = struct {
+    last: u64 = 0,
+    failed: bool = false,
+    pub fn observe(self: *@This(), now: u64) bool {
+        if (self.failed or now < self.last) {
+            self.failed = true;
+            return false;
+        }
+        self.last = now;
+        return true;
+    }
+};
+const PreparedWorkspace = struct {
+    controller: Controller,
+    pub fn initInPlace(self: *@This(), m: *console.scratch.Model, u: *Ui) !void {
+        self.controller = Controller.init(&host_network, u, m);
+    }
+};
+const PreparedVisit = lifecycle.TimedPreparedForeground(console.scratch.Model, Controller, PreparedEntropy, PreparedTimer);
+const HostPreparedRuntime = lifecycle.PreparedRuntime(console.scratch.Model, Ui, PreparedWorkspace, PreparedVisit, PreparedEntropy, PreparedTimer);
+// SAFETY: the lifecycle begin function initializes these before use.
+var prepared_entropy: PreparedEntropy = undefined;
+// SAFETY: the lifecycle begin function initializes these before use.
+var prepared_timer: PreparedTimer = undefined;
+// SAFETY: the lifecycle begin function initializes these before use.
+var prepared_runtime: HostPreparedRuntime = undefined;
+var use_prepared_runtime = false;
 // SAFETY: probe_lifecycle_begin initializes these stable objects before use.
 var host_network: HostNetwork = undefined;
 // SAFETY: probe_lifecycle_begin initializes this stable object before use.
@@ -155,8 +219,9 @@ var journey: HostJourney = undefined;
 var host_entropy: HostEntropy = undefined;
 // SAFETY: probe_lifecycle_begin initializes the foreground app before use.
 var foreground: HostForeground = undefined;
-export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, use_seeded: bool, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
+export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Start, ready: Action, release: Action, cancel: Action, close: Action, complete: Action, fill: Fill, use_seeded: bool, use_prepared: bool, now: u64, user: [*]const u8, user_len: usize, fingerprint: *const [50]u8, seed_hex: *const [64]u8) bool {
     initialized = false;
+    use_prepared_runtime = use_prepared;
     model.initInPlace();
     model.nav.home();
     model.handle(.{ .text = 't' });
@@ -175,34 +240,62 @@ export fn probe_lifecycle_begin(poll: Poll, read: Read, write: Write, start: Sta
     if (journey.syncSetup() != .closed or model.private_input != null or journey.profile.valid) return false;
     for (@import("std").mem.asBytes(&journey.setup.form)) |byte| if (byte != 0) return false;
     host_entropy = .{ .fill_fn = fill };
-    defer if (!initialized) host_entropy.clear();
-    if (use_seeded) {
+    if (use_prepared) prepared_entropy = .{ .host = .{ .fill_fn = fill } };
+    defer if (!initialized) {
+        host_entropy.clear();
+        if (use_prepared) prepared_entropy.host.clear();
+    };
+    if (use_seeded and !use_prepared) {
         var source: HostSeedSource = .{ .fill_fn = fill };
         host_entropy.generator.seedFrom(&source) catch return false;
         host_entropy.seeded = true;
     }
-    foreground.initInPlace(&model, &controller, &host_entropy, 20_000_000, 20_000_000) catch return false;
-    if ((foreground.poll(true, now) catch return false) != .editing) return false;
+    if (use_prepared) {
+        prepared_timer = .{};
+        prepared_runtime.initInPlace(&prepared_entropy, &prepared_timer);
+        for (0..8) |_| {
+            prepared_runtime.poll(&model, &ui, now);
+            if (model.private_input != null) break;
+        }
+        if (model.private_input == null) return false;
+    } else {
+        foreground.initInPlace(&model, &controller, &host_entropy, 20_000_000, 20_000_000) catch return false;
+        if ((foreground.poll(true, now) catch return false) != .editing) return false;
+    }
     for ([_][]const u8{ "10.0.2.2", "", user[0..user_len], fingerprint, seed_hex }) |value| {
         for (value) |byte| {
             model.feedSerial(byte, now);
             if (model.status != .none) {
-                _ = foreground.stop();
+                if (use_prepared) prepared_runtime.poll(null, &ui, now) else _ = foreground.stop();
                 return false;
             }
         }
         model.handle(.enter);
     }
-    if (foreground.journey.setup.status != .ready or model.private_input != null) {
-        _ = foreground.stop();
+    const setup_ready = if (use_prepared) prepared_runtime.visit.visit.visit.journey.setup.status == .ready else foreground.journey.setup.status == .ready;
+    if (!setup_ready or model.private_input != null) {
+        if (use_prepared) prepared_runtime.poll(null, &ui, now) else _ = foreground.stop();
         return false;
     }
-    if ((foreground.poll(true, now) catch return false) != .connecting) return false;
+    if (use_prepared) {
+        prepared_runtime.poll(&model, &ui, now);
+        if (prepared_runtime.workspace.controller.state != .opening) return false;
+    } else if ((foreground.poll(true, now) catch return false) != .connecting) return false;
     initialized = true;
     return true;
 }
 export fn probe_lifecycle_poll(now: u64) isize {
     if (!initialized) return -1;
+    if (use_prepared_runtime) {
+        prepared_runtime.poll(&model, &ui, now);
+        const visit = &prepared_runtime.visit.visit;
+        return switch (visit.state) {
+            .failed => if (visit.last_error) |failure| (if (failure == error.HostKeyMismatch) -2 else -1) else -1,
+            .finished, .idle => 2,
+            .active => if (visit.visit.app.status == .connected) 1 else 0,
+            else => 0,
+        };
+    }
     return switch (foreground.poll(model.nav.screen == .ssh, now) catch |err| {
         host_entropy.clear();
         return if (err == error.HostKeyMismatch) -2 else if (err == error.EntropyUnavailable) -3 else -1;
@@ -217,17 +310,121 @@ export fn probe_lifecycle_poll(now: u64) isize {
     };
 }
 export fn probe_profile_cleared() bool {
+    if (use_prepared_runtime) {
+        for (@import("std").mem.asBytes(&prepared_runtime.visit.visit.visit.journey.profile)) |byte| if (byte != 0) return false;
+        return true;
+    }
     for (@import("std").mem.asBytes(&foreground.journey.profile)) |byte| if (byte != 0) return false;
     return true;
 }
+export fn probe_ssh_failure() u8 {
+    return @backingInt(model.nav.ssh_failure);
+}
 export fn probe_seed_cleared() bool {
+    if (use_prepared_runtime) {
+        for (prepared_runtime.visit.visit.visit.journey.profile.seed) |byte| if (byte != 0) return false;
+        return true;
+    }
     for (foreground.journey.profile.seed) |byte| if (byte != 0) return false;
     return true;
 }
 export fn probe_lifecycle_leave(now: u64) bool {
     if (!initialized) return false;
     model.nav.home();
+    if (use_prepared_runtime) {
+        prepared_runtime.poll(&model, &ui, now);
+        return !prepared_runtime.active and model.terminal == null and model.private_input == null and probe_profile_cleared();
+    }
     if ((foreground.poll(false, now) catch return false) != .closed) return false;
     host_entropy.clear();
     return model.terminal == null and model.private_input == null and probe_profile_cleared();
+}
+
+test "real home model reaches SSH profile after prepared entropy cleanup" {
+    const std = @import("std");
+    const Entropy = struct {
+        state: enum { idle, collecting, restoring, ready, cleaning, failed } = .idle,
+        allow_restore: bool = false,
+        pub fn begin(self: *@This(), _: u64, _: u64) !void {
+            self.state = .collecting;
+        }
+        pub fn poll(self: *@This(), _: u64) void {
+            if (self.state == .collecting) self.state = .restoring else if (self.state == .restoring and self.allow_restore) self.state = .ready else if (self.state == .cleaning) self.state = .idle;
+        }
+        pub fn cancel(self: *@This()) void {
+            if (self.state != .idle) self.state = .cleaning;
+        }
+        pub fn available(self: *@This()) bool {
+            return self.state == .ready;
+        }
+        pub fn fill(self: *@This(), out: []u8) !void {
+            if (!self.available()) return error.EntropyUnavailable;
+            @memset(out, 0x42);
+        }
+    };
+    const Timer = struct {
+        last: u64 = 0,
+        pub fn observe(self: *@This(), now: u64) bool {
+            if (now < self.last) return false;
+            self.last = now;
+            return true;
+        }
+    };
+    const Workspace = struct {
+        controller: Controller,
+        pub fn initInPlace(self: *@This(), m: *console.scratch.Model, u: *Ui) !void {
+            self.controller = Controller.init(&host_network, u, m);
+        }
+    };
+    const Calls = struct {
+        fn start(_: *const [16]u8, _: *const [32]u8, _: *const [32]u8) callconv(.c) bool {
+            return true;
+        }
+        fn yes() callconv(.c) bool {
+            return true;
+        }
+        fn no() callconv(.c) bool {
+            return false;
+        }
+    };
+    const Timed = lifecycle.TimedPreparedForeground(console.scratch.Model, Controller, Entropy, Timer);
+    const Runtime = lifecycle.PreparedRuntime(console.scratch.Model, Ui, Workspace, Timed, Entropy, Timer);
+    const owner = try std.testing.allocator.create(Runtime);
+    defer std.testing.allocator.destroy(owner);
+    const m = try std.testing.allocator.create(console.scratch.Model);
+    defer std.testing.allocator.destroy(m);
+    const u = try std.testing.allocator.create(Ui);
+    defer std.testing.allocator.destroy(u);
+    host_network = .{ .start = Calls.start, .ready_fn = Calls.no, .release_fn = Calls.yes, .cancel_fn = Calls.yes, .close_fn = Calls.yes, .complete_fn = Calls.yes };
+    m.initInPlace();
+    m.nav.home();
+    m.handle(.{ .text = 't' });
+    try std.testing.expectEqual(.ssh, m.nav.screen);
+    var entropy: Entropy = .{};
+    var timer: Timer = .{};
+    owner.initInPlace(&entropy, &timer);
+    owner.poll(m, u, 1);
+    try std.testing.expectEqual(.preparing, m.nav.ssh_progress);
+    owner.poll(m, u, 2);
+    try std.testing.expectEqual(.restoring, entropy.state);
+    try std.testing.expect(m.private_input == null);
+    entropy.allow_restore = true;
+    owner.poll(m, u, 3);
+    owner.poll(m, u, 4);
+    owner.poll(m, u, 5);
+    try std.testing.expect(m.private_input != null);
+    try std.testing.expectEqual(.none, m.nav.ssh_progress);
+    for ([_][]const u8{ "10.0.2.2", "", "user", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0101010101010101010101010101010101010101010101010101010101010101" }) |value| {
+        for (value) |byte| m.feedSerial(byte, 5);
+        m.handle(.enter);
+    }
+    owner.poll(m, u, 6);
+    try std.testing.expectEqual(.opening, owner.workspace.controller.state);
+    try std.testing.expectEqual(.connecting, m.nav.ssh_progress);
+    try std.testing.expect(m.private_input == null);
+    m.nav.home();
+    owner.poll(m, u, 7);
+    try std.testing.expect(!owner.active and m.private_input == null);
+    try std.testing.expectEqual(.none, m.nav.ssh_progress);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&owner.visit.visit.visit.journey.profile), 0));
 }

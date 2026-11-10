@@ -21,18 +21,22 @@ arch=$(uname -m)
 case "$os/$arch" in
     Darwin/arm64)
         asset=zlint-macos-aarch64
+        asset_id=569295887
         sha256=9dcc4b27f450c7ba6707403283b9a44092a41b777356ec7326a611bd9ec67200
         ;;
     Darwin/x86_64)
         asset=zlint-macos-x86_64
+        asset_id=569295888
         sha256=59f6ad25c625dabdfb4bed6cb640e400c4235fdd5475608966060e548c208b3b
         ;;
     Linux/x86_64)
         asset=zlint-linux-x86_64
+        asset_id=569295889
         sha256=0b331646d5e40bec3cfcb0694c5da0b13b9de8b10af12937a777ab3144b70b65
         ;;
     Linux/aarch64)
         asset=zlint-linux-aarch64
+        asset_id=569295891
         sha256=ec5e31eacc889540dbfa0a32f0e694199d06c16f640b832bf2a3bd8ecc07c3e3
         ;;
     *)
@@ -45,9 +49,15 @@ mkdir -p "$repo_root/.tools"
 stage=$(mktemp -d "$repo_root/.tools/zlint-stage.XXXXXX")
 trap 'rm -rf "$stage"' EXIT HUP INT TERM
 
-curl -fsSL \
-    "https://github.com/DonIsaac/zlint/releases/download/v$version/$asset" \
-    -o "$stage/zlint"
+echo "Downloading pinned ZLint $version ($asset)" >&2
+if ! curl -fsSL --retry 2 --retry-delay 2 --retry-max-time 40 --connect-timeout 10 --max-time 30 \
+    "https://github.com/DonIsaac/zlint/releases/download/v$version/$asset" -o "$stage/zlint"; then
+    # The API serves the same pinned release asset; verify the digest below.
+    rm -f "$stage/zlint"
+    curl -fsSL --retry 2 --retry-delay 2 --retry-max-time 40 --connect-timeout 10 --max-time 30 \
+        -H 'Accept: application/octet-stream' \
+        "https://api.github.com/repos/DonIsaac/zlint/releases/assets/$asset_id" -o "$stage/zlint"
+fi
 if command -v sha256sum >/dev/null 2>&1; then
     actual_sha256=$(sha256sum "$stage/zlint" | awk '{print $1}')
 else

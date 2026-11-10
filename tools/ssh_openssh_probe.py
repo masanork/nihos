@@ -208,6 +208,9 @@ def run():
         lifecycle_bad_entropy = os.environ.get("NIHOS_SSH_LIFECYCLE_BADENTROPY") == "1"
         lifecycle_leave = os.environ.get("NIHOS_SSH_LIFECYCLE_LEAVE") == "1"
         lifecycle_seeded = os.environ.get("NIHOS_SSH_LIFECYCLE_SEEDED") == "1"
+        lifecycle_prepared = os.environ.get("NIHOS_SSH_LIFECYCLE_PREPARED") == "1"
+        if lifecycle_prepared and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_entropy or lifecycle_seeded):
+            raise ValueError("prepared lifecycle requires the normal lifecycle over libslirp")
         if lifecycle_seeded and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin or lifecycle_bad_entropy):
             raise ValueError("seeded lifecycle requires the normal lifecycle over libslirp")
         if lifecycle_leave and (os.environ.get("NIHOS_SSH_LIFECYCLE") != "1" or not bridge or lifecycle_bad_pin or lifecycle_bad_entropy):
@@ -584,17 +587,18 @@ def run():
                         def lifecycle_close(): return bridge.bridge_close_write()
                         @action_cb
                         def lifecycle_complete(): return bridge.bridge_closed()
-                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, entropy_cb, c.c_bool, c.c_uint64, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p]
+                        vt.probe_lifecycle_begin.argtypes = [poll_cb, io_cb, io_cb, start_cb, action_cb, action_cb, action_cb, action_cb, action_cb, entropy_cb, c.c_bool, c.c_bool, c.c_uint64, c.c_void_p, c.c_size_t, c.c_void_p, c.c_void_p]
                         vt.probe_lifecycle_begin.restype = c.c_bool
                         vt.probe_lifecycle_poll.argtypes = [c.c_uint64]
                         vt.probe_lifecycle_poll.restype = c.c_ssize_t
                         vt.probe_profile_cleared.restype = c.c_bool
+                        vt.probe_ssh_failure.restype = c.c_uint8
                         vt.probe_seed_cleared.restype = c.c_bool
                         vt.probe_lifecycle_leave.argtypes = [c.c_uint64]
                         vt.probe_lifecycle_leave.restype = c.c_bool
                         fingerprint = b"SHA256:" + base64.b64encode(pin).rstrip(b"=")
                         seed_hex = seed.raw.hex().encode("ascii")
-                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, lifecycle_entropy, lifecycle_seeded, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
+                        assert vt.probe_lifecycle_begin(vt_poll_backend, vt_read_backend, vt_write_backend, lifecycle_start, lifecycle_ready, lifecycle_release, lifecycle_cancel, lifecycle_close, lifecycle_complete, lifecycle_entropy, lifecycle_seeded, lifecycle_prepared, time.monotonic_ns() // 1000, buffer(username), len(username), buffer(fingerprint), buffer(seed_hex))
                     else:
                         vt.probe_vt_begin(vt_poll_backend, vt_read_backend, vt_write_backend)
                     def vt_step():
@@ -609,6 +613,10 @@ def run():
                         state = vt_step()
                         if lifecycle_bad_pin and state == -2:
                             assert vt.probe_profile_cleared(), "profile retained after rejection"
+                            if lifecycle_prepared:
+                                assert vt.probe_ssh_failure() == 1, "host-key failure not presented to the model"
+                                assert vt.probe_lifecycle_leave(time.monotonic_ns() // 1000), "failure cleanup did not finish"
+                                assert vt.probe_ssh_failure() == 0, "failure survived leaving SSH"
                             sock.closed_by_controller = True
                             print("SSH profile rejected the wrong host pin and was cleared: OK")
                             return
@@ -652,7 +660,7 @@ def run():
                         if time.monotonic() > deadline: raise TimeoutError("VT close timeout")
                     if lifecycle_mode:
                         assert vt.probe_profile_cleared(), "profile retained after close"
-                        if lifecycle_seeded: assert entropy_calls == 1, "seed source called after initialization"
+                        if lifecycle_seeded or lifecycle_prepared: assert entropy_calls == 1, "seed source called after initialization"
                         sock.closed_by_controller = True
                 elif auto_client:
                     def tty_step():

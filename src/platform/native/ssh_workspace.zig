@@ -57,6 +57,11 @@ pub fn Foreground(comptime Entropy: type) type {
 pub fn PreparedForeground(comptime EntropySession: type) type {
     return lifecycle.PreparedForeground(Model, Controller, EntropySession);
 }
+/// A foreground owner can feed its existing tick to entropy preparation.
+/// The caller still owns and qualifies the timer and entropy session.
+pub fn TimedPreparedForeground(comptime EntropySession: type, comptime Timer: type) type {
+    return lifecycle.TimedPreparedForeground(Model, Controller, EntropySession, Timer);
+}
 pub const Workspace = struct {
     network: NativeNetwork,
     controller: Controller,
@@ -81,3 +86,10 @@ pub const Workspace = struct {
         return self.controller.pollProfile(profile, now_us, exchange, padding);
     }
 };
+
+/// CPU0 owner for an already prepared, stable entropy session and timer.
+/// This is an integration boundary, not a qualified hardware owner. Keep
+/// this object, its entropy session, and timer in place for its lifetime.
+pub fn PreparedRuntime(comptime EntropySession: type, comptime Timer: type) type {
+    return lifecycle.PreparedRuntime(Model, Ui, Workspace, TimedPreparedForeground(EntropySession, Timer), EntropySession, Timer);
+}

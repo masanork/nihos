@@ -150,10 +150,11 @@ echo "SSH VT and Hosted session RV32 codegen: ok"
 # Full native lifecycle type with the same network and model module instances.
 # The fixture uses fixed material and is never executed.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-workspace.o" --dep ssh_workspace \
+    -femit-bin="$out_dir/ssh-workspace.o" --dep ssh_workspace --dep sqld_layout \
     "-Mroot=$repo_root/tools/probes/ssh-workspace.zig" \
     --dep network_service --dep text_console --dep ssh_terminal_session --dep ssh_lifecycle \
     "-Mssh_workspace=$repo_root/src/platform/native/ssh_workspace.zig" \
+    "-Msqld_layout=$repo_root/src/platform/native/sqld_layout.zig" \
     --dep native_options --dep network_config --dep timer_group --dep c6_probe --dep sdio --dep c6_sdio --dep hosted_station \
     "-Mnetwork_service=$repo_root/src/platform/native/network_service.zig" \
     --dep native_options --dep sdio --dep c6_sdio --dep at_controller --dep timer_group --dep hosted_station \
@@ -191,14 +192,15 @@ echo "P4 RNG noise setup RV32 codegen: ok (not target execution)"
 
 # Fixed ownership stubs do not qualify or enable hardware entropy.
 "$zig" build-obj -target "$target" -mcpu="$cpu" -O ReleaseSafe \
-    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend --dep p4_entropy_lease --dep p4_entropy_hardware --dep p4_entropy_clock \
+    -femit-bin="$out_dir/ssh-p4-backend.o" --dep ssh_p4_backend --dep p4_entropy_lease --dep p4_entropy_hardware --dep p4_entropy_clock --dep sqld_layout \
     "-Mroot=$repo_root/tools/probes/ssh-p4-backend.zig" \
-    --dep rng_noise "-Mssh_p4_backend=$repo_root/src/xy/ssh_p4_backend.zig" \
+    --dep rng_noise --dep p4_entropy_lease --dep p4_entropy_hardware --dep p4_entropy_clock "-Mssh_p4_backend=$repo_root/src/xy/ssh_p4_backend.zig" \
     "-Mrng_noise=$repo_root/src/soc/esp32p4/rng_noise.zig" \
     --dep p4_rng_gate "-Mp4_entropy_lease=$repo_root/src/platform/native/p4_entropy_lease.zig" \
     "-Mp4_rng_gate=$repo_root/src/platform/native/p4_rng_gate.zig" \
     "-Mp4_entropy_hardware=$repo_root/src/platform/native/p4_entropy_hardware.zig" \
-    "-Mp4_entropy_clock=$repo_root/src/platform/native/p4_entropy_clock.zig"
+    "-Mp4_entropy_clock=$repo_root/src/platform/native/p4_entropy_clock.zig" \
+    "-Msqld_layout=$repo_root/src/platform/native/sqld_layout.zig"
 echo "SSH P4 entropy pipeline RV32 codegen: ok (not target execution)"
 
 # This fixed-source probe is code generation only; no entropy is qualified.
