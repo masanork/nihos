@@ -16986,15 +16986,15 @@
   {
     "schemaVersion": 1,
     "date": "2026-11-09",
-    "measuredAt": "2026-11-09T22:50:23.198523+00:00",
+    "measuredAt": "2026-11-09T23:48:41.807679+00:00",
     "project": "nihos",
-    "commit": "2a530a65ce761d13ee5ab4f00cd05f5ba9dcff91",
+    "commit": "531b36f48fccd51aef576c321eef1bc17c3ccced",
     "workingTreeDirty": false,
-    "sourceTreeSha256": "8e192018864607b0a4c77206394d72d247946ed04dace5169afc2afb50d58db8",
+    "sourceTreeSha256": "b3a6e9a484e117e350b967e42a5c38ab49365176984cde75aea1e0b355c54e90",
     "code": {
       "implementation": 90518,
-      "tests": 51004,
-      "tooling": 32021,
+      "tests": 51043,
+      "tooling": 32076,
       "probes": 19465,
       "vendored": 723,
       "generated": 0
@@ -17002,7 +17002,7 @@
     "byLanguage": {
       "Zig": {
         "implementation": 82772,
-        "tests": 39190,
+        "tests": 39229,
         "tooling": 1944,
         "probes": 5788,
         "vendored": 0,
@@ -17035,7 +17035,7 @@
       "Python": {
         "implementation": 26,
         "tests": 11655,
-        "tooling": 23165,
+        "tooling": 23220,
         "probes": 3448,
         "vendored": 0,
         "generated": 0
@@ -17100,7 +17100,7 @@
       },
       "src": {
         "implementation": 88569,
-        "tests": 39316,
+        "tests": 39355,
         "tooling": 0,
         "probes": 0,
         "vendored": 0,
@@ -17117,7 +17117,7 @@
       "tools": {
         "implementation": 0,
         "tests": 11688,
-        "tooling": 31673,
+        "tooling": 31728,
         "probes": 0,
         "vendored": 0,
         "generated": 0
@@ -17217,7 +17217,7 @@
         "src/board/tab5/scene_pixels.h": "a6e005d46c440b89dc5a11dfba303a392eb978630b218bb36e7d913bc5637d31",
         "src/board/tab5/touch.zig": "c64b1ec60784f6bf8156c8e61def9ab209aaa8a23277d3cdfbcddcf4948bdf41",
         "src/board/tab5/touch_feedback.zig": "13b76794b976ea7bb96e8e8380796e6a83f78a71377a1c79a95384a83115fcef",
-        "src/capacity_copy_large_host_test.zig": "2df19e0a4c4b1319dac4252f7b1ced5ab7e3c8bdca92ce7cf7d5804f4b36c796",
+        "src/capacity_copy_large_host_test.zig": "3222d2ac18374afef8f13cddeaf6a2f8118fa67a951878093135dd19aaff12aa",
         "src/card.zig": "63fed4599782a91c2a374724dbc7d9a8ccd8a8c44216aaf7f664d7a067e116f9",
         "src/card/ccid_owner.zig": "d5ddbf66f1e91370d4b732a15f34746495bcb87d9995d82343d9116d2eb94f44",
         "src/card/extended_test.zig": "af8e418bed980ef9fb5f151372affaed57f3eb14bca3156f7a9fc5fe879b4c03",
