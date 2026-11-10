@@ -580,11 +580,13 @@ pub const Model = struct {
         if (self.nav.screen == .wifi) switch (key) {
             .text => |byte| switch (byte) {
                 'c', 'C' => {
+                    if (self.nav.wifi_status == .unavailable) return;
                     self.nav.wifi_apply_failed = false;
                     if (!self.beginWifiInput()) self.status = .invalid_input;
                     return;
                 },
                 'd', 'D' => {
+                    if (self.nav.wifi_status == .unavailable) return;
                     self.nav.wifi_apply_failed = false;
                     if (self.wifi.pending == .none) self.wifi.pending = .disconnect;
                     self.changed();
@@ -1258,6 +1260,10 @@ test "Wi-Fi private input masks and clears credentials on submission and cancel"
     };
     var model: Model = undefined;
     model.initInPlace();
+    model.nav.screen = .wifi;
+    model.handle(.{ .text = 'c' });
+    try std.testing.expect(model.private_input == null);
+    model.setWifiStatus(.disconnected, 0);
     model.nav.screen = .settings;
     model.handle(.{ .text = 'w' });
     try std.testing.expectEqual(navigation.Screen.wifi, model.nav.screen);

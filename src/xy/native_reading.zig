@@ -228,8 +228,10 @@ fn wifiScreen(instance: *Session, target: anytype, nav: anytype, view: ?*const p
             const line = try std.fmt.bufPrint(&buf, "IPv4: {d}.{d}.{d}.{d}", .{ ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255 });
             try label(instance, target, x, 160, line, 24, 0x2147);
         }
-        try label(instance, target, x, 240, "C: connect", 24, 0x2147);
-        try label(instance, target, if (target.width == 720) 380 else 680, 240, "D: disconnect", 24, 0x2147);
+        if (nav.wifi_status != .unavailable) {
+            try label(instance, target, x, 240, "C: connect", 24, 0x2147);
+            try label(instance, target, if (target.width == 720) 380 else 680, 240, "D: disconnect", 24, 0x2147);
+        }
         try label(instance, target, x, 325, "Esc: back", 20, 0x528a);
         try label(instance, target, x, 295, "Credentials are not saved; enter again after reboot.", 20, 0x528a);
     }
