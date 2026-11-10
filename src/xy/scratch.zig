@@ -82,6 +82,15 @@ pub const Model = struct {
     learning: ?*@import("learning_session.zig").Session,
     terminal: ?TerminalPort,
     private_input: ?PrivateInputPort,
+    wifi: struct {
+        ssid: [32]u8,
+        password: [63]u8,
+        ssid_len: u8,
+        password_len: u8,
+        field: u8,
+        invalid: u8,
+        pending: enum(u8) { none, connect, disconnect },
+    },
     vm: scheme.Runtime,
     continuation: ScratchDispatch,
     continuation_authority: ScratchDispatchAuthority,
@@ -187,7 +196,7 @@ pub const Model = struct {
     }
     /// Do not consume or replay input collected before entering private mode.
     pub fn attachPrivateInput(self: *Model, port: PrivateInputPort) linksection(scheme.code_section) bool {
-        if (self.nav.screen != .ssh or self.private_input != null or self.terminal != null or self.vm.running or self.deferred_count != 0 or self.deferred_serial_count != 0 or self.deferred_touch_count != 0 or self.deferred_overflow or self.utf8_length != 0 or self.serial.state != .idle) return false;
+        if ((self.nav.screen != .ssh and self.nav.screen != .wifi) or self.private_input != null or self.terminal != null or self.vm.running or self.deferred_count != 0 or self.deferred_serial_count != 0 or self.deferred_touch_count != 0 or self.deferred_overflow or self.utf8_length != 0 or self.serial.state != .idle) return false;
         std.crypto.secureZero(u8, std.mem.asBytes(&self.deferred));
         std.crypto.secureZero(u8, &self.deferred_serial);
         std.crypto.secureZero(u8, &self.deferred_serial_delta);
@@ -211,6 +220,112 @@ pub const Model = struct {
     pub fn privateInputSnapshot(self: *const Model, out: *PrivateInputPort.View) linksection(scheme.code_section) bool {
         const port = self.private_input orelse return false;
         return port.snapshot(port.context, out);
+    }
+    fn wifiClose(ctx: *anyopaque) void {
+        const self: *Model = @ptrCast(@alignCast(ctx));
+        if (self.wifi.pending != .connect) std.crypto.secureZero(u8, std.mem.asBytes(&self.wifi));
+    }
+    fn wifiSnapshot(ctx: *anyopaque, out: *PrivateInputPort.View) bool {
+        const self: *Model = @ptrCast(@alignCast(ctx));
+        const ssid = self.wifi.ssid[0..self.wifi.ssid_len];
+        out.* = .{ .field = self.wifi.field, .secret_length = if (self.wifi.field == 1) self.wifi.password_len else 0, .invalid = self.wifi.invalid, .text = if (self.wifi.field == 0) ssid.ptr else "", .text_length = if (self.wifi.field == 0) ssid.len else 0 };
+        return true;
+    }
+    fn wifiKey(ctx: *anyopaque, key: input.Key) bool {
+        const self: *Model = @ptrCast(@alignCast(ctx));
+        self.wifi.invalid = 0;
+        switch (key) {
+            .text => |byte| {
+                if (byte < 32 or byte > 126) {
+                    self.wifi.invalid = 1;
+                    return false;
+                }
+                if (self.wifi.field == 0) {
+                    if (self.wifi.ssid_len == self.wifi.ssid.len) {
+                        self.wifi.invalid = 1;
+                        return false;
+                    }
+                    self.wifi.ssid[self.wifi.ssid_len] = byte;
+                    self.wifi.ssid_len += 1;
+                } else {
+                    if (self.wifi.password_len == self.wifi.password.len) {
+                        self.wifi.invalid = 1;
+                        return false;
+                    }
+                    self.wifi.password[self.wifi.password_len] = byte;
+                    self.wifi.password_len += 1;
+                }
+            },
+            .backspace => if (self.wifi.field == 0) {
+                if (self.wifi.ssid_len > 0) {
+                    self.wifi.ssid_len -= 1;
+                    self.wifi.ssid[self.wifi.ssid_len] = 0;
+                }
+            } else {
+                if (self.wifi.password_len > 0) {
+                    self.wifi.password_len -= 1;
+                    self.wifi.password[self.wifi.password_len] = 0;
+                }
+            },
+            .left, .up => self.wifi.field = 0,
+            .right, .down => self.wifi.field = 1,
+            .enter => if (self.wifi.field == 0) {
+                if (self.wifi.ssid_len == 0) {
+                    self.wifi.invalid = 1;
+                    return false;
+                }
+                self.wifi.field = 1;
+            } else {
+                if (self.wifi.ssid_len == 0) {
+                    self.wifi.invalid = 1;
+                    return false;
+                }
+                self.wifi.pending = .connect;
+                self.detachPrivateInput();
+            },
+            .escape, .cancel => {
+                self.detachPrivateInput();
+                self.nav.screen = .settings;
+            },
+            else => return false,
+        }
+        return true;
+    }
+    fn beginWifiInput(self: *Model) bool {
+        if (self.wifi.pending != .none) return false;
+        std.crypto.secureZero(u8, std.mem.asBytes(&self.wifi));
+        return self.attachPrivateInput(.{ .context = self, .key = wifiKey, .close = wifiClose, .snapshot = wifiSnapshot });
+    }
+    pub fn wifiPending(self: *const Model) u8 {
+        return @backingInt(self.wifi.pending);
+    }
+    pub fn wifiSsid(self: *const Model) []const u8 {
+        return self.wifi.ssid[0..self.wifi.ssid_len];
+    }
+    pub fn wifiPassword(self: *const Model) []const u8 {
+        return self.wifi.password[0..self.wifi.password_len];
+    }
+    pub fn wifiConsumed(self: *Model) void {
+        std.crypto.secureZero(u8, std.mem.asBytes(&self.wifi));
+    }
+    /// Called only by the serialized owner, which copies credentials before
+    /// returning. Always erase the transient form, including on failure.
+    pub fn applyWifi(self: *Model, comptime Backend: type) bool {
+        const pending = self.wifi.pending;
+        if (pending == .none) return true;
+        defer self.wifiConsumed();
+        if (pending == .connect) {
+            Backend.configure(.{ .network = .{ .ssid = self.wifiSsid(), .password = self.wifiPassword() } }) catch return false;
+        } else {
+            Backend.configure(.disabled) catch return false;
+        }
+        return true;
+    }
+    pub fn setWifiStatus(self: *Model, status: navigation.WifiStatus, ip: u32) void {
+        if (self.nav.wifi_status == status and self.nav.wifi_ip == ip) return;
+        self.nav.wifi_status = status;
+        self.nav.wifi_ip = ip;
+        self.changed();
     }
     fn changed(self: *Model) void {
         self.revision +%= 1;
@@ -437,7 +552,7 @@ pub const Model = struct {
 
     pub fn handle(self: *Model, key: input.Key) linksection(scheme.code_section) void {
         if (self.private_input) |port| {
-            if (self.vm.running or self.nav.screen != .ssh) {
+            if (self.vm.running or (self.nav.screen != .ssh and self.nav.screen != .wifi)) {
                 self.detachPrivateInput();
                 self.status = .invalid_input;
                 return;
@@ -462,6 +577,23 @@ pub const Model = struct {
             self.deferred_count += 1;
             return;
         }
+        if (self.nav.screen == .wifi) switch (key) {
+            .text => |byte| switch (byte) {
+                'c', 'C' => {
+                    self.nav.wifi_apply_failed = false;
+                    if (!self.beginWifiInput()) self.status = .invalid_input;
+                    return;
+                },
+                'd', 'D' => {
+                    self.nav.wifi_apply_failed = false;
+                    if (self.wifi.pending == .none) self.wifi.pending = .disconnect;
+                    self.changed();
+                    return;
+                },
+                else => {},
+            },
+            else => {},
+        };
         self.status = .none;
         self.changed();
         if (self.terminal) |port| {
@@ -748,6 +880,11 @@ pub const Model = struct {
             if (soft_keyboard.containsIn(x, y, self.touchOrientation())) return; // Gaps between keys.
         }
         if (self.terminal != null) return;
+        if (self.nav.screen == .wifi and self.private_input == null and y >= 215 and y < 285) {
+            const midpoint: u32 = if (self.portrait_touch) 360 else 640;
+            self.handle(.{ .text = if (x < midpoint) 'c' else 'd' });
+            return;
+        }
         if (self.nav.screen == .examples or self.nav.screen == .exercise) {
             if (self.learning) |l| {
                 if (self.portrait_touch) l.touchPortrait(&self.nav, x, y, self.softKeyboardVisible()) else l.touch(&self.nav, x, y);
@@ -755,7 +892,7 @@ pub const Model = struct {
         } else if (self.portrait_touch) {
             self.nav.touchPortrait(x, y, &self.vm.view);
         } else self.nav.touch(x, y, &self.vm.view);
-        if (self.private_input != null and self.nav.screen != .ssh) self.detachPrivateInput();
+        if (self.private_input != null and self.nav.screen != .ssh and self.nav.screen != .wifi) self.detachPrivateInput();
         self.changed();
     }
     fn deferTouch(self: *Model, x: u32, y: u32, kind: DeferredTouchKind) linksection(scheme.code_section) void {
@@ -941,7 +1078,7 @@ pub const Model = struct {
     }
     pub fn feedSerial(self: *Model, byte: u8, now: u64) linksection(scheme.code_section) void {
         if (self.private_input != null) {
-            if (self.vm.running or self.nav.screen != .ssh) {
+            if (self.vm.running or (self.nav.screen != .ssh and self.nav.screen != .wifi)) {
                 self.detachPrivateInput();
                 self.status = .invalid_input;
             } else if (byte >= 128) {
@@ -1102,6 +1239,74 @@ pub const Model = struct {
         } else grid.write(self.statusText());
     }
 };
+
+test "Wi-Fi private input masks and clears credentials on submission and cancel" {
+    const Backend = struct {
+        const Join = union(enum) { disabled, network: struct { ssid: []const u8, password: []const u8 } };
+        var called = false;
+        var rejected = false;
+        var disconnected = false;
+        fn configure(join: Join) error{Rejected}!void {
+            called = true;
+            if (rejected) return error.Rejected;
+            if (join == .disabled) {
+                disconnected = true;
+                return;
+            }
+            if (join != .network or !std.mem.eql(u8, join.network.ssid, "My AP") or !std.mem.eql(u8, join.network.password, "secret123")) return error.Rejected;
+        }
+    };
+    var model: Model = undefined;
+    model.initInPlace();
+    model.nav.screen = .settings;
+    model.handle(.{ .text = 'w' });
+    try std.testing.expectEqual(navigation.Screen.wifi, model.nav.screen);
+    model.handle(.{ .text = 'c' });
+    try std.testing.expect(model.private_input != null);
+    model.handle(.enter);
+    try std.testing.expectEqual(@as(u8, 0), model.wifi.field);
+    try std.testing.expectEqual(@as(u8, 1), model.wifi.invalid);
+    for ("My AP") |c| model.handle(.{ .text = c });
+    model.handle(.enter);
+    for ("secret123") |c| model.handle(.{ .text = c });
+    var view: PrivateInputPort.View = undefined;
+    try std.testing.expect(model.privateInputSnapshot(&view));
+    try std.testing.expectEqual(@as(usize, 0), view.text_length);
+    try std.testing.expectEqual(@as(u8, 9), view.secret_length);
+    try std.testing.expectEqual(@as(u32, 0), model.doc.len);
+    try std.testing.expectEqual(@as(u8, 0), model.deferred_count);
+    model.handle(.enter);
+    try std.testing.expect(model.private_input == null);
+    try std.testing.expectEqual(@as(u8, 1), model.wifiPending());
+    try std.testing.expectEqualStrings("My AP", model.wifiSsid());
+    try std.testing.expectEqualStrings("secret123", model.wifiPassword());
+    Backend.called = false;
+    try std.testing.expect(model.applyWifi(Backend));
+    try std.testing.expect(Backend.called);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&model.wifi), 0));
+    model.handle(.{ .text = 'c' });
+    model.handle(.{ .text = 'x' });
+    model.handle(.enter);
+    model.handle(.{ .text = 'p' });
+    model.handle(.escape);
+    try std.testing.expectEqual(navigation.Screen.settings, model.nav.screen);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&model.wifi), 0));
+    model.nav.screen = .wifi;
+    model.handle(.{ .text = 'c' });
+    model.handle(.{ .text = 'x' });
+    model.handle(.enter);
+    model.handle(.{ .text = 'p' });
+    model.handle(.enter);
+    Backend.rejected = true;
+    try std.testing.expect(!model.applyWifi(Backend));
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&model.wifi), 0));
+    Backend.rejected = false;
+    Backend.disconnected = false;
+    model.handle(.{ .text = 'd' });
+    try std.testing.expect(model.applyWifi(Backend));
+    try std.testing.expect(Backend.disconnected);
+    try std.testing.expect(std.mem.allEqual(u8, std.mem.asBytes(&model.wifi), 0));
+}
 
 test "private input bypasses editor and deferred queues and clears on detach" {
     const Sink = struct {

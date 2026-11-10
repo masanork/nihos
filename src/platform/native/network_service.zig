@@ -744,8 +744,8 @@ pub fn scanBluetooth() !void {
 /// validation and revokes all addresses/output by starting a fresh C6 epoch.
 pub fn configure(join: hosted.Join) !void {
     if (phase == .off) return error.NotStarted;
-    try configuration.set(join);
     const now = clock.counter() orelse return error.Clock;
+    try configuration.set(join);
     nih_c6_reset(0);
     startAttempt(now);
 }

@@ -1818,6 +1818,7 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         }
         flushDisplayReport();
         serviceNetwork();
+        if (comptime @hasDecl(options, "xy_workspace") and options.xy_workspace) serviceWifiSettings();
         serviceStorage();
         if (comptime native_ssh_foreground) {
             const region = @import("sqld_layout.zig");
@@ -1866,6 +1867,27 @@ fn normalReady() linksection(if (native_sqld) ".flash.sqldtext" else ".text") no
         }
         tasks.idleOnce(0);
     }
+}
+
+// The workspace and station are both CPU0-owned. The private form never
+// enters the editor, logs, or persistent storage; the station copies it before
+// the form is wiped. Reconfiguration is serialized with the network poll.
+fn serviceWifiSettings() linksection(".flash.xytext") void {
+    const model = ui.sshForegroundModel() orelse return;
+    if (!options.network) {
+        model.wifiConsumed();
+        model.setWifiStatus(.unavailable, 0);
+        return;
+    }
+    if (!model.applyWifi(network)) {
+        model.nav.wifi_apply_failed = true;
+        model.setWifiStatus(.failed, 0);
+        return;
+    }
+    if (model.nav.wifi_apply_failed) return;
+    const state = network.snapshot();
+    const status: text_console.scratch.navigation.WifiStatus = if (state.ip != 0) .connected else if (state.configured == 0) .disconnected else if (state.error_code != 0) .failed else .connecting;
+    model.setWifiStatus(status, state.ip);
 }
 
 const ForegroundTimerIo = struct {

@@ -317,6 +317,14 @@ test "portrait card scene renders synthetic data and returns on touch" {
     private_view.text_length = 1;
     try std.testing.expectError(error.Range, reading.renderPortrait(instance, &private_request, pack));
     try std.testing.expectError(error.Range, reading.render(instance, &private_request, pack));
+    nav.screen = .wifi;
+    private_view = .{ .field = 1, .secret_length = 8, .invalid = 0, .text = "", .text_length = 0 };
+    try reading.renderPortrait(instance, &private_request, pack);
+    try reading.render(instance, &private_request, pack);
+    private_view.text = "x";
+    private_view.text_length = 1;
+    try std.testing.expectError(error.Range, reading.renderPortrait(instance, &private_request, pack));
+    try std.testing.expectError(error.Range, reading.render(instance, &private_request, pack));
     try std.testing.expectEqualSlices(u8, &(@as([16]u8, @splat(0xa5))), pixels[pixels.len - 16 ..]);
 }
 

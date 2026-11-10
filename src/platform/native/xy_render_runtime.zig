@@ -100,7 +100,7 @@ pub noinline fn draw(model: *console.scratch.Model, frame: []u8) linksection(sec
     // The snapshot only borrows public text and a secret length, never seed bytes.
     // SAFETY: the producer remains stable for this foreground draw.
     var private_view: protocol.PrivateInputView = undefined;
-    if (experimental_tcp and model.private_input != null) {
+    if (model.private_input != null) {
         if (!model.privateInputSnapshot(&private_view)) return false;
         request.private_input = &private_view;
     }
