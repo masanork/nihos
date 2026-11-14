@@ -4,19 +4,22 @@
 const api = @import("vfs.zig");
 const ring = @import("../kernel/spsc_ring.zig");
 pub const Operation = enum { open, write, sync, close };
+/// The caller supplies a never-reused session ID for each new service.
+pub const Handle = struct { session: u64, inner: api.Handle };
 pub const Request = struct {
+    session: u64 = 0,
     epoch: u32 = 0,
     sequence: u32 = 0,
     operation: Operation = .open,
-    handle: ?api.Handle = null,
+    handle: ?Handle = null,
     offset: u64 = 0,
     length: u32 = 0,
     path_length: u32 = 0,
     path: [512]u8 = @splat(0),
     data: [4096]u8 = @splat(0),
 };
-pub const Result = union(enum) { ok, handle: api.Handle, transfer: api.Transfer, failure: api.Error };
-pub const Response = struct { epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok };
+pub const Result = union(enum) { ok, handle: Handle, transfer: api.Transfer, failure: api.Error };
+pub const Response = struct { session: u64 = 0, epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok };
 pub const Queues = struct {
     requests: ring.SpscRing(Request, 2) = .init(),
     responses: ring.SpscRing(Response, 2) = .init(),
@@ -38,11 +41,25 @@ pub fn Service(comptime Backend: type) type {
         lanes: [2]Lane = .{ .{}, .{} },
         next: usize = 0,
         faulted: bool = false,
+        session: u64 = 0,
         request: Request = .{},
         response: Response = .{},
-        pub fn start(self: *Self, backend: *Backend) api.Error!void {
+        pub fn start(self: *Self, backend: *Backend, session: u64) api.Error!void {
             if (self.mount != null) return error.Busy;
+            if (session == 0) return error.InvalidArgument;
             self.mount = try self.core.mount(backend, 1, .{ .write_at = true, .sync_file = true }, .{ .writable = true });
+            self.session = session;
+        }
+        /// Trusted serialized owner notification; not an interrupt or DMA fence.
+        pub fn markRemoved(self: *Self) api.Error!void {
+            const mount = self.mount orelse return error.Busy;
+            self.faulted = true;
+            try self.core.markRemoved(mount);
+        }
+        fn checkedHandle(self: *const Self, handle: ?Handle) api.Error!api.Handle {
+            const value = handle orelse return error.StaleHandle;
+            if (value.session != self.session) return error.StaleHandle;
+            return value.inner;
         }
         pub fn bind(self: *Self, index: usize, principal: u32, queues: *Queues) api.Error!u32 {
             if (index >= 2 or principal == 0 or self.faulted) return error.InvalidArgument;
@@ -58,13 +75,13 @@ pub fn Service(comptime Backend: type) type {
         pub fn submit(self: *Self, queues: *Queues, index: usize, caller: u32, request: *const Request) bool {
             if (index >= 2 or self.faulted) return false;
             const lane = &self.lanes[index];
-            if (!lane.alive or lane.principal != caller or lane.queues != queues or request.epoch != lane.epoch) return false;
+            if (!lane.alive or lane.principal != caller or lane.queues != queues or request.session != self.session or request.epoch != lane.epoch) return false;
             return queues.requests.tryPushFrom(request);
         }
         fn execute(self: *Self, index: usize) api.Error!Result {
             const lane = &self.lanes[index];
             const req = &self.request;
-            if (req.epoch != lane.epoch or req.sequence == 0 or req.sequence != lane.next_sequence) return error.InvalidArgument;
+            if (req.session != self.session or req.epoch != lane.epoch or req.sequence == 0 or req.sequence != lane.next_sequence) return error.InvalidArgument;
             lane.next_sequence +%= 1;
             switch (req.operation) {
                 .open => {
@@ -74,18 +91,18 @@ pub fn Service(comptime Backend: type) type {
                     } else return error.NoHandles;
                     const file = try self.core.openAt(lane.principal, lane.root.?, req.path[0..req.path_length], .{ .write = true });
                     lane.files[slot] = file;
-                    return .{ .handle = file };
+                    return .{ .handle = .{ .session = self.session, .inner = file } };
                 },
                 .write => {
                     if (req.length > req.data.len) return error.TooLarge;
-                    return .{ .transfer = try self.core.writeAt(lane.principal, req.handle orelse return error.StaleHandle, req.offset, req.data[0..req.length]) };
+                    return .{ .transfer = try self.core.writeAt(lane.principal, try self.checkedHandle(req.handle), req.offset, req.data[0..req.length]) };
                 },
                 .sync => {
-                    try self.core.syncFile(lane.principal, req.handle orelse return error.StaleHandle);
+                    try self.core.syncFile(lane.principal, try self.checkedHandle(req.handle));
                     return .ok;
                 },
                 .close => {
-                    const handle = req.handle orelse return error.StaleHandle;
+                    const handle = try self.checkedHandle(req.handle);
                     for (&lane.files) |*file| {
                         const value = file.* orelse continue;
                         if (value.slot != handle.slot or value.generation != handle.generation) continue;
@@ -107,7 +124,7 @@ pub fn Service(comptime Backend: type) type {
                 const i = (self.next + offset) % 2;
                 if (!self.lanes[i].alive or self.lanes[i].queues != &queues[i] or queues[i].responses.countApprox() == 2) continue;
                 if (!queues[i].requests.tryPopInto(&self.request)) continue;
-                self.response = .{ .epoch = self.request.epoch, .sequence = self.request.sequence, .result = self.execute(i) catch |err| .{ .failure = err } };
+                self.response = .{ .session = self.request.session, .epoch = self.request.epoch, .sequence = self.request.sequence, .result = self.execute(i) catch |err| .{ .failure = err } };
                 self.request = .{};
                 if (!queues[i].responses.tryPushFrom(&self.response)) unreachable;
                 self.response = .{};

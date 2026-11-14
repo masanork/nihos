@@ -16,6 +16,10 @@ static FIL files[2];
 static unsigned open_mask;
 static int active;
 void nih_multi_fixture_destroy(void);
+#ifdef NIHOS_MULTI_FAULTS
+extern void host_disk_multi_reset(void);
+extern unsigned host_disk_multi_removed(void);
+#endif
 
 static int create(const char *path) {
     FIL file;
@@ -24,6 +28,9 @@ static int create(const char *path) {
 }
 int nih_multi_fixture_init(void) {
     if (active) return -1;
+#ifdef NIHOS_MULTI_FAULTS
+    host_disk_multi_reset();
+#endif
     memcpy(directory, "/tmp/nihos-fatfs-multi-XXXXXX", sizeof directory);
     if (!mkdtemp(directory)) return -1;
     size_t n = strlen(directory);
@@ -46,7 +53,12 @@ int nih_multi_fixture_open(unsigned index) {
 int nih_multi_fixture_write(unsigned index, unsigned long long offset, const unsigned char *data, unsigned length) {
     UINT written = 0;
     if (index >= 2 || !(open_mask & (1u << index)) || f_lseek(&files[index], offset) != FR_OK ||
-        f_tell(&files[index]) != offset || f_write(&files[index], data, length, &written) != FR_OK || written != length) return -1;
+        f_tell(&files[index]) != offset || f_write(&files[index], data, length, &written) != FR_OK || written != length) {
+#ifdef NIHOS_MULTI_FAULTS
+        if (host_disk_multi_removed()) return -2;
+#endif
+        return -1;
+    }
     return 0;
 }
 int nih_multi_fixture_sync(unsigned index) {
@@ -88,4 +100,5 @@ extern unsigned host_disk_multi_triggered(void);
 void nih_multi_fixture_arm(unsigned mode) { host_disk_multi_arm(mode); }
 unsigned nih_multi_fixture_triggered(void) { return host_disk_multi_triggered(); }
 unsigned long long nih_multi_fixture_writes(void) { return host_disk_writes(); }
+unsigned nih_multi_fixture_open_mask(void) { return open_mask; }
 #endif

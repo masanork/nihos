@@ -7,9 +7,16 @@ backend identities let the shared VFS reject a conflicting reader or writer,
 including aliases of the same file. Independent files can be opened and written
 by different principals. A full reply queue does not block the other lane.
 
-The trusted caller binds a principal and receives an epoch. Requests carry that
-epoch and a per-binding sequence; replies echo both. The caller must stop the
-producer and ensure the backend callback has returned before `stop`. Cleanup
+The trusted caller supplies a nonzero, never-reused service session ID, binds a
+principal and receives an epoch. Requests carry the session, epoch and a
+per-binding sequence; replies echo all three. File handles carry the session as
+well, so unchanged stale copies are rejected after rebuilding the service even
+if internal VFS slots and generations repeat. These values are correlation
+tags, not unforgeable capabilities: callers are trusted and must not relabel old
+handles. The prototype does not generate or persist unique session IDs. The caller must stop the
+producer and ensure the backend callback has returned before `stop`. A trusted,
+serialized `markRemoved` stops both lanes and marks the mount removed; it does
+not synchronize an IRQ or establish a device/DMA fence. Cleanup
 closes that lane's files, drains its queues, and preserves the other lane. A
 failed close quarantines the session. Backend write timeout is reported as
 `outcome_unknown` and a faulted mount stops both lanes. This is not rollback or
