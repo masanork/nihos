@@ -17,6 +17,21 @@ static uint64_t read_budget = 8192;
 static uint64_t patch_offset;
 static size_t patch_length;
 static unsigned char patch_data[512];
+#ifdef NIHOS_MULTI_FAULTS
+#if !defined(NIHOS_FIXTURE_WRITER)
+#error "multi-client faults require the private writable fixture"
+#endif
+/* One-shot host-only faults: 1/2 disk_write before/after, 3/4 sync before/after. */
+static unsigned multi_fault, multi_triggered;
+void host_disk_multi_arm(unsigned fault) { multi_fault = fault; multi_triggered = 0; }
+unsigned host_disk_multi_triggered(void) { return multi_triggered; }
+static int multi_fail(unsigned fault) {
+    if (multi_fault != fault) return 0;
+    multi_fault = 0;
+    multi_triggered = fault;
+    return 1;
+}
+#endif
 
 int host_disk_open(const char *path, uint64_t create_bytes) {
     struct stat info;
@@ -130,6 +145,9 @@ DRESULT disk_write(BYTE drive, const BYTE *buffer, LBA_t sector, UINT count) {
     size_t amount;
     if (drive != 0 || image < 0) return RES_NOTRDY;
     if (byte_range(sector, count, &offset, &amount) != 0) return RES_PARERR;
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_fail(1)) return RES_ERROR;
+#endif
     size_t done = 0;
     while (done < amount) {
         ssize_t put = pwrite(image, buffer + done, amount - done, (off_t)(offset + done));
@@ -137,6 +155,9 @@ DRESULT disk_write(BYTE drive, const BYTE *buffer, LBA_t sector, UINT count) {
         if (put <= 0) return RES_ERROR;
         done += (size_t)put;
     }
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_fail(2)) return RES_ERROR;
+#endif
     return RES_OK;
 #else
     (void)drive; (void)buffer; (void)sector; (void)count;
@@ -151,7 +172,15 @@ DRESULT disk_ioctl(BYTE drive, BYTE command, void *buffer) {
         case GET_SECTOR_SIZE: *(WORD *)buffer = 512; return RES_OK;
         case GET_BLOCK_SIZE: *(DWORD *)buffer = 1; return RES_OK;
 #ifdef NIHOS_FIXTURE_WRITER
-        case CTRL_SYNC: return fsync(image) == 0 ? RES_OK : RES_ERROR;
+        case CTRL_SYNC:
+#ifdef NIHOS_MULTI_FAULTS
+            if (multi_fail(3)) return RES_ERROR;
+#endif
+            if (fsync(image) != 0) return RES_ERROR;
+#ifdef NIHOS_MULTI_FAULTS
+            if (multi_fail(4)) return RES_ERROR;
+#endif
+            return RES_OK;
 #endif
         default: return RES_PARERR;
     }

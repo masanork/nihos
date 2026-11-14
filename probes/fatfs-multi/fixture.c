@@ -9,7 +9,7 @@
 #if !defined(NIHOS_FIXTURE_WRITER) || FF_FS_READONLY != 0
 #error "host fixture needs its isolated writable FatFs profile"
 #endif
-static char directory[] = "/tmp/nihos-fatfs-multi-XXXXXX";
+static char directory[sizeof "/tmp/nihos-fatfs-multi-XXXXXX"];
 static char image[128];
 static FATFS fs;
 static FIL files[2];
@@ -23,7 +23,9 @@ static int create(const char *path) {
     return f_close(&file) == FR_OK ? 0 : -1;
 }
 int nih_multi_fixture_init(void) {
-    if (active || !mkdtemp(directory)) return -1;
+    if (active) return -1;
+    memcpy(directory, "/tmp/nihos-fatfs-multi-XXXXXX", sizeof directory);
+    if (!mkdtemp(directory)) return -1;
     size_t n = strlen(directory);
     memcpy(image, directory, n);
     memcpy(image + n, "/volume.img", sizeof "/volume.img");
@@ -77,4 +79,13 @@ void nih_multi_fixture_destroy(void) {
         active = 0;
     }
     (void)rmdir(directory);
+    open_mask = 0;
 }
+
+#ifdef NIHOS_MULTI_FAULTS
+extern void host_disk_multi_arm(unsigned);
+extern unsigned host_disk_multi_triggered(void);
+void nih_multi_fixture_arm(unsigned mode) { host_disk_multi_arm(mode); }
+unsigned nih_multi_fixture_triggered(void) { return host_disk_multi_triggered(); }
+unsigned long long nih_multi_fixture_writes(void) { return host_disk_writes(); }
+#endif

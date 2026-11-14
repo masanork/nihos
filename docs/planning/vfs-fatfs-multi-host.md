@@ -16,5 +16,10 @@ uses a separate C adapter, fixed path-to-identity mapping and host-only disk.
 This proves a bounded serialized host path through VFS, FatFs and host file
 sync. It does not establish native task integration, safe general path identity,
 concurrent raw sqld/FAT ownership, FAT recovery, physical SD behavior or power
-loss safety. Failure injection, media removal and production admission remain
+loss safety. The host fixture also injects one-shot disk write and sync errors both before
+and after the host operation. It verifies that an unknown write or failed sync
+faults the shared service and prevents a queued peer request from running. A
+separate case stops one client and lets the other write and sync. The tests do
+not claim rollback, byte-level atomicity or a specific recovered state after an
+error. Media removal, real device faults and production admission remain
 separate work. The image is destroyed after the test; this is not a device tool.

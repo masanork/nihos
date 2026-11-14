@@ -79,3 +79,98 @@ test "serialized multi-client writes survive FatFs sync and remount on host fixt
     try service.stop(&queues[1], 1, 2);
     try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_remount_check());
 }
+
+extern fn nih_multi_fixture_arm(c_uint) void;
+extern fn nih_multi_fixture_triggered() c_uint;
+extern fn nih_multi_fixture_writes() c_ulonglong;
+
+test "FatFs write and sync failures quarantine both endpoints" {
+    for (1..5) |mode| {
+        try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_init());
+        defer nih_multi_fixture_destroy();
+        var backend = Backend{};
+        var service = multi.Service(Backend){};
+        var queues: [2]multi.Queues = .{ .{}, .{} };
+        var handles: [2]api.Handle = undefined;
+        try service.start(&backend);
+        for (0..2) |i| {
+            _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+            var request = multi.Request{ .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
+            @memcpy(request.path[0..5], if (i == 0) "a.txt" else "b.txt");
+            try std.testing.expect(service.submit(&queues[i], i, @intCast(i + 1), &request));
+            try std.testing.expectEqual(i, service.step(&queues).?);
+            var response = multi.Response{};
+            try std.testing.expect(queues[i].responses.tryPopInto(&response));
+            handles[i] = response.result.handle;
+        }
+        if (mode >= 3) {
+            var write = multi.Request{ .epoch = 1, .sequence = 2, .operation = .write, .handle = handles[0], .length = 4 };
+            @memcpy(write.data[0..4], "data");
+            try std.testing.expect(service.submit(&queues[0], 0, 1, &write));
+            try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+            var response = multi.Response{};
+            try std.testing.expect(queues[0].responses.tryPopInto(&response));
+            try std.testing.expectEqual(@as(usize, 4), response.result.transfer.transferred);
+            var peer_sync = multi.Request{ .epoch = 1, .sequence = 2, .operation = .sync, .handle = handles[1] };
+            try std.testing.expect(service.submit(&queues[1], 1, 2, &peer_sync));
+            try std.testing.expectEqual(@as(usize, 1), service.step(&queues).?);
+            try std.testing.expect(queues[1].responses.tryPopInto(&response));
+            try std.testing.expectEqual(multi.Result.ok, response.result);
+        }
+        var pending = multi.Request{ .epoch = 1, .sequence = if (mode >= 3) 3 else 2, .operation = .sync, .handle = handles[1] };
+        try std.testing.expect(service.submit(&queues[1], 1, 2, &pending));
+        var request = multi.Request{ .epoch = 1, .sequence = if (mode >= 3) 3 else 2, .operation = if (mode >= 3) .sync else .write, .handle = handles[0], .length = if (mode >= 3) 0 else 4096 };
+        @memset(&request.data, 0x5a);
+        nih_multi_fixture_arm(@intCast(mode));
+        try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+        try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+        try std.testing.expectEqual(@as(c_uint, @intCast(mode)), nih_multi_fixture_triggered());
+        var failed = multi.Response{};
+        try std.testing.expect(queues[0].responses.tryPopInto(&failed));
+        if (mode < 3) {
+            try std.testing.expectEqual(api.Failure.outcome_unknown, failed.result.transfer.failure.?);
+        } else {
+            try std.testing.expectEqual(api.Error.IoError, failed.result.failure);
+        }
+        try std.testing.expect(service.faulted);
+        const writes = nih_multi_fixture_writes();
+        try std.testing.expect(service.step(&queues) == null);
+        try std.testing.expectEqual(@as(usize, 1), queues[1].requests.countApprox());
+        try std.testing.expect(!service.submit(&queues[1], 1, 2, &pending));
+        try std.testing.expectEqual(writes, nih_multi_fixture_writes());
+    }
+}
+
+test "client exit releases only its FatFs handle and peer can finish" {
+    try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_init());
+    defer nih_multi_fixture_destroy();
+    var backend = Backend{};
+    var service = multi.Service(Backend){};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    var handles: [2]api.Handle = undefined;
+    try service.start(&backend);
+    for (0..2) |i| {
+        _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+        var request = multi.Request{ .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
+        @memcpy(request.path[0..5], if (i == 0) "a.txt" else "b.txt");
+        try std.testing.expect(service.submit(&queues[i], i, @intCast(i + 1), &request));
+        try std.testing.expectEqual(i, service.step(&queues).?);
+        var response = multi.Response{};
+        try std.testing.expect(queues[i].responses.tryPopInto(&response));
+        handles[i] = response.result.handle;
+    }
+    try service.stop(&queues[0], 0, 1);
+    var request = multi.Request{ .epoch = 1, .sequence = 2, .operation = .write, .handle = handles[1], .length = 4 };
+    @memcpy(request.data[0..4], "peer");
+    try std.testing.expect(service.submit(&queues[1], 1, 2, &request));
+    try std.testing.expectEqual(@as(usize, 1), service.step(&queues).?);
+    var response = multi.Response{};
+    try std.testing.expect(queues[1].responses.tryPopInto(&response));
+    try std.testing.expectEqual(@as(usize, 4), response.result.transfer.transferred);
+    request = .{ .epoch = 1, .sequence = 3, .operation = .sync, .handle = handles[1] };
+    try std.testing.expect(service.submit(&queues[1], 1, 2, &request));
+    try std.testing.expectEqual(@as(usize, 1), service.step(&queues).?);
+    try std.testing.expect(queues[1].responses.tryPopInto(&response));
+    try std.testing.expectEqual(multi.Result.ok, response.result);
+    try service.stop(&queues[1], 1, 2);
+}
