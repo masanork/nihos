@@ -7,13 +7,18 @@ backend identities let the shared VFS reject a conflicting reader or writer,
 including aliases of the same file. Independent files can be opened and written
 by different principals. A full reply queue does not block the other lane.
 
-The trusted caller supplies a nonzero, never-reused service session ID, binds a
-principal and receives an epoch. Requests carry the session, epoch and a
-per-binding sequence; replies echo all three. File handles carry the session as
-well, so unchanged stale copies are rejected after rebuilding the service even
-if internal VFS slots and generations repeat. These values are correlation
-tags, not unforgeable capabilities: callers are trusted and must not relabel old
-handles. The prototype does not generate or persist unique session IDs. The caller must stop the
+The trusted caller supplies a nonzero, never-reused service session ID and a
+shared issuer retained across service rebuilds. Requests carry the session,
+epoch and per-binding sequence; replies echo all three. The owner issues a
+monotonically increasing token and stores its mapping to the internal VFS
+handle in the bound lane. A stale token remains absent after a rebuild even if
+its session field is relabelled. Exhaustion fails before backend lookup; an
+unsuccessful open burns its reserved token.
+
+The issuer has one serialized trusted owner. It must not be copied, reset,
+reused concurrently or recreated while older tokens can return. IDs are
+predictable and are not unforgeable capabilities; this model does not provide
+untrusted-client authorization or persistent uniqueness across reboot. The caller must stop the
 producer and ensure the backend callback has returned before `stop`. A trusted,
 serialized `markRemoved` stops both lanes and marks the mount removed; it does
 not synchronize an IRQ or establish a device/DMA fence. Cleanup
@@ -31,7 +36,7 @@ closing and reopening them. The adapter uses a fixed identity mapping, not a
 general filesystem backend. These serialized host tests do not establish
 physical durability or actual concurrent device execution.
 
-This is not connected to normal_fs, FatFs, sqld, a native scheduler or DMA.
+This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
 identities, implement IRQ-safe exit notification and in-flight I/O fencing,
 coordinate raw sqld ownership, validate real backend write/sync and media-change

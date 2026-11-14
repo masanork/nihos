@@ -40,8 +40,9 @@ test "serialized multi-client writes survive FatFs sync and remount on host fixt
     defer nih_multi_fixture_destroy();
     var backend = Backend{};
     var service = multi.Service(Backend){};
+    var issuer = multi.Issuer{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
-    try service.start(&backend, 1);
+    try service.start(&backend, 1, &issuer);
     var handles: [2]multi.Handle = undefined;
     for (0..2) |i| {
         _ = try service.bind(i, @intCast(i + 1), &queues[i]);
@@ -92,9 +93,10 @@ test "FatFs write and sync failures quarantine both endpoints" {
         defer nih_multi_fixture_destroy();
         var backend = Backend{};
         var service = multi.Service(Backend){};
+        var issuer = multi.Issuer{};
         var queues: [2]multi.Queues = .{ .{}, .{} };
         var handles: [2]multi.Handle = undefined;
-        try service.start(&backend, 1);
+        try service.start(&backend, 1, &issuer);
         for (0..2) |i| {
             _ = try service.bind(i, @intCast(i + 1), &queues[i]);
             var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
@@ -148,9 +150,10 @@ test "client exit releases only its FatFs handle and peer can finish" {
     defer nih_multi_fixture_destroy();
     var backend = Backend{};
     var service = multi.Service(Backend){};
+    var issuer = multi.Issuer{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
     var handles: [2]multi.Handle = undefined;
-    try service.start(&backend, 1);
+    try service.start(&backend, 1, &issuer);
     for (0..2) |i| {
         _ = try service.bind(i, @intCast(i + 1), &queues[i]);
         var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
@@ -183,9 +186,10 @@ test "simulated media removal during FatFs write halts peer and skips backend cl
         defer nih_multi_fixture_destroy();
         var backend = Backend{};
         var service = multi.Service(Backend){};
+        var issuer = multi.Issuer{};
         var queues: [2]multi.Queues = .{ .{}, .{} };
         var handles: [2]multi.Handle = undefined;
-        try service.start(&backend, 1);
+        try service.start(&backend, 1, &issuer);
         for (0..2) |i| {
             _ = try service.bind(i, @intCast(i + 1), &queues[i]);
             var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
