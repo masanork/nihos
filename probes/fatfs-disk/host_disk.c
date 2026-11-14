@@ -21,14 +21,18 @@ static unsigned char patch_data[512];
 #if !defined(NIHOS_FIXTURE_WRITER)
 #error "multi-client faults require the private writable fixture"
 #endif
-/* One-shot host-only faults: 1/2 disk_write before/after, 3/4 sync before/after. */
-static unsigned multi_fault, multi_triggered;
+/* Host-only one-shot faults: 1/2 write error, 3/4 sync error, 5/6 removal;
+ * odd/even means before/after the host operation. */
+static unsigned multi_fault, multi_triggered, multi_removed;
 void host_disk_multi_arm(unsigned fault) { multi_fault = fault; multi_triggered = 0; }
+void host_disk_multi_reset(void) { multi_fault = multi_triggered = multi_removed = 0; }
+unsigned host_disk_multi_removed(void) { return multi_removed; }
 unsigned host_disk_multi_triggered(void) { return multi_triggered; }
 static int multi_fail(unsigned fault) {
     if (multi_fault != fault) return 0;
     multi_fault = 0;
     multi_triggered = fault;
+    if (fault == 5 || fault == 6) multi_removed = 1;
     return 1;
 }
 #endif
@@ -95,6 +99,9 @@ int host_disk_set_patch(uint64_t offset, const unsigned char *data, size_t lengt
 
 DSTATUS disk_status(BYTE drive) {
     if (drive != 0 || image < 0) return STA_NOINIT;
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_removed) return STA_NOINIT | STA_NODISK;
+#endif
 #ifdef NIHOS_FIXTURE_WRITER
     return 0;
 #else
@@ -121,6 +128,9 @@ DRESULT disk_read(BYTE drive, BYTE *buffer, LBA_t sector, UINT count) {
     uint64_t offset;
     size_t amount;
     if (drive != 0 || image < 0) return RES_NOTRDY;
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_removed) return RES_NOTRDY;
+#endif
     if (byte_range(sector, count, &offset, &amount) != 0) return RES_PARERR;
     if (reads >= read_budget) { exhausted++; return RES_ERROR; }
     reads++;
@@ -144,8 +154,12 @@ DRESULT disk_write(BYTE drive, const BYTE *buffer, LBA_t sector, UINT count) {
     uint64_t offset;
     size_t amount;
     if (drive != 0 || image < 0) return RES_NOTRDY;
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_removed) return RES_NOTRDY;
+#endif
     if (byte_range(sector, count, &offset, &amount) != 0) return RES_PARERR;
 #ifdef NIHOS_MULTI_FAULTS
+    if (multi_fail(5)) return RES_NOTRDY;
     if (multi_fail(1)) return RES_ERROR;
 #endif
     size_t done = 0;
@@ -156,6 +170,7 @@ DRESULT disk_write(BYTE drive, const BYTE *buffer, LBA_t sector, UINT count) {
         done += (size_t)put;
     }
 #ifdef NIHOS_MULTI_FAULTS
+    if (multi_fail(6)) return RES_NOTRDY;
     if (multi_fail(2)) return RES_ERROR;
 #endif
     return RES_OK;
@@ -167,6 +182,9 @@ DRESULT disk_write(BYTE drive, const BYTE *buffer, LBA_t sector, UINT count) {
 
 DRESULT disk_ioctl(BYTE drive, BYTE command, void *buffer) {
     if (drive != 0 || image < 0) return RES_NOTRDY;
+#ifdef NIHOS_MULTI_FAULTS
+    if (multi_removed) return RES_NOTRDY;
+#endif
     switch (command) {
         case GET_SECTOR_COUNT: *(LBA_t *)buffer = (LBA_t)region_count; return RES_OK;
         case GET_SECTOR_SIZE: *(WORD *)buffer = 512; return RES_OK;

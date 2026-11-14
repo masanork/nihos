@@ -21,5 +21,8 @@ and after the host operation. It verifies that an unknown write or failed sync
 faults the shared service and prevents a queued peer request from running. A
 separate case stops one client and lets the other write and sync. The tests do
 not claim rollback, byte-level atomicity or a specific recovered state after an
-error. Media removal, real device faults and production admission remain
-separate work. The image is destroyed after the test; this is not a device tool.
+error. Host-only removal injection before or after a sector write returns a
+removed status, prevents the peer from running, and checks that endpoint cleanup
+does not call the removed backend. Reattachment uses a separate model service;
+this does not remount or recover the old FatFs image. Real device removal and
+production admission remain separate work. The image is destroyed after the test; this is not a device tool.
