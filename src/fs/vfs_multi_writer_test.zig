@@ -5,12 +5,14 @@ const expect = std.testing.expect;
 const eq = std.testing.expectEqual;
 const Fake = struct {
     data: [2][16]u8 = @splat(@splat(0)),
+    lookups: u32 = 0,
     writes: u32 = 0,
     syncs: u32 = 0,
     closes: u32 = 0,
     fail_close: bool = false,
     fail_write: ?api.Failure = null,
-    pub fn lookupBeneath(_: *@This(), _: u64, path: []const u8) api.Error!u64 {
+    pub fn lookupBeneath(self: *@This(), _: u64, path: []const u8) api.Error!u64 {
+        self.lookups += 1;
         if (std.mem.eql(u8, path, "a") or std.mem.eql(u8, path, "alias-a")) return 1;
         if (std.mem.eql(u8, path, "b")) return 2;
         return error.NotFound;
@@ -40,10 +42,11 @@ const Fake = struct {
 const Service = multi.Service(Fake);
 const Fixture = struct {
     backend: Fake = .{},
+    issuer: multi.Issuer = .{},
     service: Service = .{},
     queues: [2]multi.Queues = .{ .{}, .{} },
     fn init(self: *@This()) !void {
-        try self.service.start(&self.backend, 1);
+        try self.service.start(&self.backend, 1, &self.issuer);
         try eq(@as(u32, 1), try self.service.bind(0, 10, &self.queues[0]));
         try eq(@as(u32, 1), try self.service.bind(1, 20, &self.queues[1]));
     }
@@ -82,7 +85,7 @@ test "two clients write different files and same identity excludes conflicting w
     try eq(@as(usize, 2), response.result.transfer.transferred);
     try std.testing.expectEqualSlices(u8, "hi", f.backend.data[0][0..2]);
     req = .{ .session = 1, .sequence = 3, .operation = .write, .handle = a, .length = 1 };
-    try eq(api.Error.PermissionDenied, (try f.request(1, req)).result.failure);
+    try eq(api.Error.StaleHandle, (try f.request(1, req)).result.failure);
     req = .{ .session = 1, .sequence = 4, .operation = .write, .handle = b, .length = 1 };
     req.data[0] = 'b';
     _ = try f.request(1, req);
@@ -185,8 +188,9 @@ test "two endpoints sync real host files and reopen their bytes" {
         try dir.dir.createFile(io, "b", .{ .read = true }),
     } };
     var service = multi.Service(HostFiles){};
+    var issuer = multi.Issuer{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
-    try service.start(&backend, 1);
+    try service.start(&backend, 1, &issuer);
     _ = try service.bind(0, 10, &queues[0]);
     _ = try service.bind(1, 20, &queues[1]);
     var files: [2]multi.Handle = undefined;
@@ -227,10 +231,11 @@ test "two endpoints sync real host files and reopen their bytes" {
 
 test "media removal stops both lanes and a fresh session rejects stale messages and handles" {
     var old_backend = Fake{};
+    var issuer = multi.Issuer{};
     var old = Service{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
-    try std.testing.expectError(error.InvalidArgument, old.start(&old_backend, 0));
-    try old.start(&old_backend, 1);
+    try std.testing.expectError(error.InvalidArgument, old.start(&old_backend, 0, &issuer));
+    try old.start(&old_backend, 1, &issuer);
     _ = try old.bind(0, 10, &queues[0]);
     _ = try old.bind(1, 20, &queues[1]);
     var request = opening(1, "a");
@@ -240,6 +245,7 @@ test "media removal stops both lanes and a fresh session rejects stale messages 
     var response = multi.Response{};
     try expect(queues[0].responses.tryPopInto(&response));
     const stale_handle = response.result.handle;
+    const old_inner = old.lanes[0].files[0].?.inner;
     var pending = opening(1, "b");
     pending.epoch = 1;
     try expect(old.submit(&queues[1], 1, 20, &pending));
@@ -253,7 +259,7 @@ test "media removal stops both lanes and a fresh session rejects stale messages 
 
     var backend = Fake{};
     var fresh = Service{};
-    try fresh.start(&backend, 2);
+    try fresh.start(&backend, 2, &issuer);
     _ = try fresh.bind(0, 10, &queues[0]);
     _ = try fresh.bind(1, 20, &queues[1]);
     try expect(!fresh.submit(&queues[0], 0, 10, &request));
@@ -267,12 +273,37 @@ test "media removal stops both lanes and a fresh session rejects stale messages 
     try eq(@as(usize, 0), fresh.step(&queues).?);
     try expect(queues[0].responses.tryPopInto(&response));
     const new_handle = response.result.handle;
-    try eq(stale_handle.inner.slot, new_handle.inner.slot);
-    try eq(stale_handle.inner.generation, new_handle.inner.generation);
-    request = .{ .session = 2, .epoch = 1, .sequence = 2, .operation = .write, .handle = stale_handle, .length = 1 };
+    try expect(stale_handle.token != new_handle.token);
+    const new_inner = fresh.lanes[0].files[0].?.inner;
+    try eq(old_inner.slot, new_inner.slot);
+    try eq(old_inner.generation, new_inner.generation);
+    // Rewriting the correlation field still cannot register the old token.
+    var relabelled = stale_handle;
+    relabelled.session = 2;
+    request = .{ .session = 2, .epoch = 1, .sequence = 2, .operation = .write, .handle = relabelled, .length = 1 };
     try expect(fresh.submit(&queues[0], 0, 10, &request));
     try eq(@as(usize, 0), fresh.step(&queues).?);
     try expect(queues[0].responses.tryPopInto(&response));
     try eq(api.Error.StaleHandle, response.result.failure);
     try eq(@as(u32, 0), backend.writes);
+}
+
+test "issuer exhaustion fails closed before backend lookup" {
+    var f = Fixture{};
+    try f.init();
+    f.issuer.next = std.math.maxInt(u64);
+    const last = (try f.request(0, opening(1, "a"))).result.handle;
+    try eq(std.math.maxInt(u64), last.token);
+    try eq(@as(u64, 0), f.issuer.next);
+    const lookups = f.backend.lookups;
+    try eq(api.Error.NoHandles, (try f.request(1, opening(1, "b"))).result.failure);
+    try eq(lookups, f.backend.lookups);
+}
+
+test "failed open burns its reserved token" {
+    var f = Fixture{};
+    try f.init();
+    try eq(api.Error.NotFound, (try f.request(0, opening(1, "missing"))).result.failure);
+    const file = (try f.request(0, opening(2, "a"))).result.handle;
+    try eq(@as(u64, 2), file.token);
 }

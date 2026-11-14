@@ -4,8 +4,18 @@
 const api = @import("vfs.zig");
 const ring = @import("../kernel/spsc_ring.zig");
 pub const Operation = enum { open, write, sync, close };
-/// The caller supplies a never-reused session ID for each new service.
-pub const Handle = struct { session: u64, inner: api.Handle };
+/// Host model only: one trusted owner retains the issuer across service rebuilds.
+/// Do not reset, copy, or use concurrently while an older token may exist.
+pub const Issuer = struct {
+    next: u64 = 1,
+    fn reserve(self: *@This()) api.Error!u64 {
+        if (self.next == 0) return error.NoHandles;
+        const token = self.next;
+        self.next +%= 1;
+        return token;
+    }
+};
+pub const Handle = struct { session: u64, token: u64 };
 pub const Request = struct {
     session: u64 = 0,
     epoch: u32 = 0,
@@ -27,11 +37,12 @@ pub const Queues = struct {
 pub fn Service(comptime Backend: type) type {
     return struct {
         const Self = @This();
+        const File = struct { token: u64, inner: api.Handle };
         const Lane = struct {
             principal: u32 = 0,
             queues: ?*Queues = null,
             root: ?api.Handle = null,
-            files: [8]?api.Handle = @splat(null),
+            files: [8]?File = @splat(null),
             epoch: u32 = 0,
             next_sequence: u32 = 1,
             alive: bool = false,
@@ -42,13 +53,15 @@ pub fn Service(comptime Backend: type) type {
         next: usize = 0,
         faulted: bool = false,
         session: u64 = 0,
+        issuer: ?*Issuer = null,
         request: Request = .{},
         response: Response = .{},
-        pub fn start(self: *Self, backend: *Backend, session: u64) api.Error!void {
+        pub fn start(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
             if (self.mount != null) return error.Busy;
             if (session == 0) return error.InvalidArgument;
             self.mount = try self.core.mount(backend, 1, .{ .write_at = true, .sync_file = true }, .{ .writable = true });
             self.session = session;
+            self.issuer = issuer;
         }
         /// Trusted serialized owner notification; not an interrupt or DMA fence.
         pub fn markRemoved(self: *Self) api.Error!void {
@@ -56,10 +69,14 @@ pub fn Service(comptime Backend: type) type {
             self.faulted = true;
             try self.core.markRemoved(mount);
         }
-        fn checkedHandle(self: *const Self, handle: ?Handle) api.Error!api.Handle {
+        fn checkedHandle(self: *const Self, lane: *const Lane, handle: ?Handle) api.Error!api.Handle {
             const value = handle orelse return error.StaleHandle;
-            if (value.session != self.session) return error.StaleHandle;
-            return value.inner;
+            if (value.session != self.session or value.token == 0) return error.StaleHandle;
+            for (lane.files) |entry| {
+                const file = entry orelse continue;
+                if (file.token == value.token) return file.inner;
+            }
+            return error.StaleHandle;
         }
         pub fn bind(self: *Self, index: usize, principal: u32, queues: *Queues) api.Error!u32 {
             if (index >= 2 or principal == 0 or self.faulted) return error.InvalidArgument;
@@ -89,24 +106,26 @@ pub fn Service(comptime Backend: type) type {
                     const slot = for (lane.files, 0..) |file, i| {
                         if (file == null) break i;
                     } else return error.NoHandles;
+                    // Reserve before backend access. Failed opens burn a token.
+                    const token = try self.issuer.?.reserve();
                     const file = try self.core.openAt(lane.principal, lane.root.?, req.path[0..req.path_length], .{ .write = true });
-                    lane.files[slot] = file;
-                    return .{ .handle = .{ .session = self.session, .inner = file } };
+                    lane.files[slot] = .{ .token = token, .inner = file };
+                    return .{ .handle = .{ .session = self.session, .token = token } };
                 },
                 .write => {
                     if (req.length > req.data.len) return error.TooLarge;
-                    return .{ .transfer = try self.core.writeAt(lane.principal, try self.checkedHandle(req.handle), req.offset, req.data[0..req.length]) };
+                    return .{ .transfer = try self.core.writeAt(lane.principal, try self.checkedHandle(lane, req.handle), req.offset, req.data[0..req.length]) };
                 },
                 .sync => {
-                    try self.core.syncFile(lane.principal, try self.checkedHandle(req.handle));
+                    try self.core.syncFile(lane.principal, try self.checkedHandle(lane, req.handle));
                     return .ok;
                 },
                 .close => {
-                    const handle = try self.checkedHandle(req.handle);
+                    const handle = try self.checkedHandle(lane, req.handle);
                     for (&lane.files) |*file| {
                         const value = file.* orelse continue;
-                        if (value.slot != handle.slot or value.generation != handle.generation) continue;
-                        self.core.close(lane.principal, value) catch |err| {
+                        if (value.inner.slot != handle.slot or value.inner.generation != handle.generation) continue;
+                        self.core.close(lane.principal, value.inner) catch |err| {
                             if (err != error.Busy) file.* = null;
                             return err;
                         };
@@ -146,7 +165,7 @@ pub fn Service(comptime Backend: type) type {
             lane.alive = false;
             var failed = false;
             for (&lane.files) |*file| {
-                if (file.*) |value| self.core.close(caller, value) catch {
+                if (file.*) |value| self.core.close(caller, value.inner) catch {
                     failed = true;
                 };
                 file.* = null;
