@@ -124,6 +124,7 @@ test {
     _ = @import("fs/sdmmc_owner_test.zig");
     _ = @import("fs/vfs_test.zig");
     _ = @import("fs/vfs_rpc_test.zig");
+    _ = @import("fs/vfs_multi_writer_test.zig");
     _ = @import("fs/vfs_wakeup_test.zig");
     _ = storage_rpc;
     _ = @import("kernel/storage_rpc_test.zig");
