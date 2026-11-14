@@ -146,3 +146,79 @@ test "rebind changes epoch and rejects old copied requests and handles" {
     try expect(f.queues[0].responses.tryPopInto(&response));
     try eq(api.Error.StaleHandle, response.result.failure);
 }
+
+// Test-only adapter over two already-opened host files. Its fixed mapping is
+// deliberate: it does not model path lookup, aliases, or external writers.
+const HostFiles = struct {
+    files: [2]std.Io.File,
+    pub fn lookupBeneath(_: *@This(), _: u64, path: []const u8) api.Error!u64 {
+        if (std.mem.eql(u8, path, "a")) return 1;
+        if (std.mem.eql(u8, path, "b")) return 2;
+        return error.NotFound;
+    }
+    pub fn open(_: *@This(), identity: u64, _: api.Rights) api.Error!u64 {
+        return identity;
+    }
+    pub fn close(_: *@This(), _: u64) api.Error!void {}
+    pub fn readAt(_: *@This(), _: u64, _: u64, _: []u8) api.Transfer {
+        unreachable;
+    }
+    pub fn writeAt(self: *@This(), token: u64, offset: u64, bytes: []const u8) api.Transfer {
+        // A host error after submission does not prove that no bytes changed.
+        self.files[@intCast(token - 1)].writePositionalAll(std.testing.io, bytes, offset) catch return .{ .failure = .outcome_unknown };
+        return .{ .transferred = bytes.len };
+    }
+    pub fn syncFile(self: *@This(), token: u64) api.Error!void {
+        self.files[@intCast(token - 1)].sync(std.testing.io) catch return error.IoError;
+    }
+    pub fn syncVolume(_: *@This(), _: u64) api.Error!void {}
+};
+
+test "two endpoints sync real host files and reopen their bytes" {
+    var dir = std.testing.tmpDir(.{});
+    defer dir.cleanup();
+    const io = std.testing.io;
+    var backend = HostFiles{ .files = .{
+        try dir.dir.createFile(io, "a", .{ .read = true }),
+        try dir.dir.createFile(io, "b", .{ .read = true }),
+    } };
+    var service = multi.Service(HostFiles){};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    try service.start(&backend);
+    _ = try service.bind(0, 10, &queues[0]);
+    _ = try service.bind(1, 20, &queues[1]);
+    var files: [2]api.Handle = undefined;
+    for (0..2) |i| {
+        var req = opening(1, if (i == 0) "a" else "b");
+        req.epoch = 1;
+        try expect(service.submit(&queues[i], i, if (i == 0) 10 else 20, &req));
+        try eq(i, service.step(&queues).?);
+        var response = multi.Response{};
+        try expect(queues[i].responses.tryPopInto(&response));
+        files[i] = response.result.handle;
+    }
+    for (0..2) |i| {
+        var req = multi.Request{ .epoch = 1, .sequence = 2, .operation = .write, .handle = files[i], .length = 4 };
+        @memcpy(req.data[0..4], if (i == 0) "one!" else "two!");
+        try expect(service.submit(&queues[i], i, if (i == 0) 10 else 20, &req));
+        try eq(i, service.step(&queues).?);
+        var response = multi.Response{};
+        try expect(queues[i].responses.tryPopInto(&response));
+        try eq(@as(usize, 4), response.result.transfer.transferred);
+        req = .{ .epoch = 1, .sequence = 3, .operation = .sync, .handle = files[i] };
+        try expect(service.submit(&queues[i], i, if (i == 0) 10 else 20, &req));
+        try eq(i, service.step(&queues).?);
+        try expect(queues[i].responses.tryPopInto(&response));
+        try eq(multi.Result.ok, response.result);
+    }
+    try service.stop(&queues[0], 0, 10);
+    try service.stop(&queues[1], 1, 20);
+    for (backend.files) |file| file.close(io);
+    for (0..2) |i| {
+        const file = try dir.dir.openFile(io, if (i == 0) "a" else "b", .{});
+        defer file.close(io);
+        var bytes: [4]u8 = undefined;
+        try eq(@as(usize, 4), try file.readPositionalAll(io, &bytes, 0));
+        try std.testing.expectEqualSlices(u8, if (i == 0) "one!" else "two!", &bytes);
+    }
+}

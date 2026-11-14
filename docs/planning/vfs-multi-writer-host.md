@@ -18,9 +18,11 @@ the owner's working frames after dispatch or cleanup.
 
 Run `zig test -O ReleaseSafe src/vfs_multi_writer_host_test.zig`. Tests cover
 independent writes, alias conflict, foreign handles, reply backpressure, exit,
-rebind, sync, unknown write outcome, and failed cleanup. The fake backend and
-serialized host tests do not establish durability or actual concurrent device
-execution.
+rebind, sync, unknown write outcome, and failed cleanup. A test-only adapter also
+writes and syncs two real temporary host files and verifies their contents after
+closing and reopening them. The adapter uses a fixed identity mapping, not a
+general filesystem backend. These serialized host tests do not establish
+physical durability or actual concurrent device execution.
 
 This is not connected to normal_fs, FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
