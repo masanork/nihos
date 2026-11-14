@@ -54,6 +54,9 @@ jobs:
       - name: Guarded FatFs VFS/RPC and broker lifetime checks (host only)
         run: python3 tools/check-fatfs-backend.py
 
+      - name: Multi-client writable FatFs fixture (host only)
+        run: sh tools/check-vfs-fatfs-multi-host.sh
+
       - name: Normal FS task with shared SDMMC, faults and negative controls (host only)
         run: python3 tools/check-normal-fs.py
 
