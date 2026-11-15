@@ -75,3 +75,10 @@ proposed aligned allocator must be present; the older 64-byte pool contract
 cannot guarantee this type's 128-byte alignment. The host service now supports
 a read-only mount so the existing normal FS policy can be preserved during
 future integration. No physical-device behavior is established here.
+
+The later chunked-reader host model adds a 56-byte RV32 state object. Including
+it in the same projected State results in 55,552 bytes and 9,984 bytes of parent
+headroom. It reuses the one projected request/response frame and existing 4 KiB
+result buffer; it adds neither another buffer nor the persistent issuer. Actual
+integration may change the layout, and stacks, the other client's frames,
+notifications and device fences remain excluded.
