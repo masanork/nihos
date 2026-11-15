@@ -11,6 +11,8 @@ const Fake = struct {
     closes: u32 = 0,
     fail_close: bool = false,
     fail_write: ?api.Failure = null,
+    fail_read: bool = false,
+    invalid_read_count: bool = false,
     pub fn lookupBeneath(self: *@This(), _: u64, path: []const u8) api.Error!u64 {
         self.lookups += 1;
         if (std.mem.eql(u8, path, "a") or std.mem.eql(u8, path, "alias-a")) return 1;
@@ -24,8 +26,15 @@ const Fake = struct {
         self.closes += 1;
         if (self.fail_close) return error.IoError;
     }
-    pub fn readAt(_: *@This(), _: u64, _: u64, _: []u8) api.Transfer {
-        unreachable;
+    pub fn readAt(self: *@This(), token: u64, offset: u64, bytes: []u8) api.Transfer {
+        if (self.fail_read or self.invalid_read_count) {
+            @memset(bytes, 0x5a);
+            return if (self.fail_read) .{ .transferred = 4, .eof = true, .failure = .io_error } else .{ .transferred = bytes.len + 1 };
+        }
+        const pos: usize = @intCast(@min(offset, 16));
+        const count = @min(bytes.len, 16 - pos);
+        @memcpy(bytes[0..count], self.data[@intCast(token - 1)][pos..][0..count]);
+        return .{ .transferred = count, .eof = pos + count == 16 };
     }
     pub fn writeAt(self: *@This(), token: u64, offset: u64, bytes: []const u8) api.Transfer {
         self.writes += 1;
@@ -47,8 +56,8 @@ const Fixture = struct {
     queues: [2]multi.Queues = .{ .{}, .{} },
     fn init(self: *@This()) !void {
         try self.service.start(&self.backend, 1, &self.issuer);
-        try eq(@as(u32, 1), try self.service.bind(0, 10, &self.queues[0]));
-        try eq(@as(u32, 1), try self.service.bind(1, 20, &self.queues[1]));
+        try eq(@as(u32, 1), try self.service.bind(0, 10, &self.queues[0], .{ .read = true, .write = true }));
+        try eq(@as(u32, 1), try self.service.bind(1, 20, &self.queues[1], .{ .read = true, .write = true }));
     }
     fn request(self: *@This(), lane: usize, request_value: multi.Request) !multi.Response {
         var request_copy = request_value;
@@ -139,7 +148,7 @@ test "rebind changes epoch and rejects old copied requests and handles" {
     try f.init();
     const old = (try f.request(0, opening(1, "a"))).result.handle;
     try f.service.stop(&f.queues[0], 0, 10);
-    try eq(@as(u32, 2), try f.service.bind(0, 11, &f.queues[0]));
+    try eq(@as(u32, 2), try f.service.bind(0, 11, &f.queues[0], .{ .read = true, .write = true }));
     var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .sync, .handle = old };
     try expect(!f.service.submit(&f.queues[1], 0, 10, &request));
     try expect(!f.service.submit(&f.queues[0], 0, 10, &request));
@@ -165,8 +174,9 @@ const HostFiles = struct {
         return identity;
     }
     pub fn close(_: *@This(), _: u64) api.Error!void {}
-    pub fn readAt(_: *@This(), _: u64, _: u64, _: []u8) api.Transfer {
-        unreachable;
+    pub fn readAt(self: *@This(), token: u64, offset: u64, bytes: []u8) api.Transfer {
+        const n = self.files[@intCast(token - 1)].readPositionalAll(std.testing.io, bytes, offset) catch return .{ .failure = .io_error };
+        return .{ .transferred = n, .eof = n < bytes.len };
     }
     pub fn writeAt(self: *@This(), token: u64, offset: u64, bytes: []const u8) api.Transfer {
         // A host error after submission does not prove that no bytes changed.
@@ -191,8 +201,8 @@ test "two endpoints sync real host files and reopen their bytes" {
     var issuer = multi.Issuer{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
     try service.start(&backend, 1, &issuer);
-    _ = try service.bind(0, 10, &queues[0]);
-    _ = try service.bind(1, 20, &queues[1]);
+    _ = try service.bind(0, 10, &queues[0], .{ .read = true, .write = true });
+    _ = try service.bind(1, 20, &queues[1], .{ .read = true, .write = true });
     var files: [2]multi.Handle = undefined;
     for (0..2) |i| {
         var req = opening(1, if (i == 0) "a" else "b");
@@ -236,8 +246,8 @@ test "media removal stops both lanes and a fresh session rejects stale messages 
     var queues: [2]multi.Queues = .{ .{}, .{} };
     try std.testing.expectError(error.InvalidArgument, old.start(&old_backend, 0, &issuer));
     try old.start(&old_backend, 1, &issuer);
-    _ = try old.bind(0, 10, &queues[0]);
-    _ = try old.bind(1, 20, &queues[1]);
+    _ = try old.bind(0, 10, &queues[0], .{ .read = true, .write = true });
+    _ = try old.bind(1, 20, &queues[1], .{ .read = true, .write = true });
     var request = opening(1, "a");
     request.epoch = 1;
     try expect(old.submit(&queues[0], 0, 10, &request));
@@ -260,8 +270,8 @@ test "media removal stops both lanes and a fresh session rejects stale messages 
     var backend = Fake{};
     var fresh = Service{};
     try fresh.start(&backend, 2, &issuer);
-    _ = try fresh.bind(0, 10, &queues[0]);
-    _ = try fresh.bind(1, 20, &queues[1]);
+    _ = try fresh.bind(0, 10, &queues[0], .{ .read = true, .write = true });
+    _ = try fresh.bind(1, 20, &queues[1], .{ .read = true, .write = true });
     try expect(!fresh.submit(&queues[0], 0, 10, &request));
     // A stale copy already in the ring is rejected again by the owner.
     try expect(queues[0].requests.tryPushFrom(&request));
@@ -306,4 +316,73 @@ test "failed open burns its reserved token" {
     try eq(api.Error.NotFound, (try f.request(0, opening(1, "missing"))).result.failure);
     const file = (try f.request(0, opening(2, "a"))).result.handle;
     try eq(@as(u64, 2), file.token);
+}
+
+test "read-only grants cannot open for write while a different file is writable" {
+    var backend = Fake{};
+    @memcpy(backend.data[0][0..4], "text");
+    var issuer = multi.Issuer{};
+    var service = Service{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    try service.start(&backend, 1, &issuer);
+    _ = try service.bind(0, 10, &queues[0], .{ .read = true });
+    _ = try service.bind(1, 20, &queues[1], .{ .read = true, .write = true });
+    var request = opening(1, "a");
+    request.epoch = 1;
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    var response = multi.Response{};
+    try expect(queues[0].responses.tryPopInto(&response));
+    try eq(api.Error.PermissionDenied, response.result.failure);
+    request = opening(2, "a");
+    request.epoch = 1;
+    request.rights = .{ .read = true };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    const file = response.result.handle;
+    request = .{ .session = 1, .epoch = 1, .sequence = 3, .operation = .read, .handle = file, .offset = 0, .length = 4 };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try eq(@as(usize, 4), response.result.transfer.transferred);
+    try std.testing.expectEqualSlices(u8, "text", response.data[0..4]);
+    for (response.data[4..]) |byte| try eq(@as(u8, 0), byte);
+    request = .{ .session = 1, .epoch = 1, .sequence = 4, .operation = .write, .handle = file, .length = 1 };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try eq(api.Error.PermissionDenied, response.result.failure);
+    request = opening(1, "a");
+    request.epoch = 1;
+    try expect(service.submit(&queues[1], 1, 20, &request));
+    try eq(@as(usize, 1), service.step(&queues).?);
+    try expect(queues[1].responses.tryPopInto(&response));
+    try eq(api.Error.Busy, response.result.failure);
+    request = opening(2, "b");
+    request.epoch = 1;
+    try expect(service.submit(&queues[1], 1, 20, &request));
+    try eq(@as(usize, 1), service.step(&queues).?);
+    try expect(queues[1].responses.tryPopInto(&response));
+    _ = response.result.handle;
+}
+
+test "read errors and backend contract violations scrub reply data" {
+    for (0..2) |mode| {
+        var f = Fixture{};
+        try f.init();
+        var req = opening(1, "a");
+        req.rights = .{ .read = true };
+        const file = (try f.request(0, req)).result.handle;
+        f.backend.fail_read = mode == 0;
+        f.backend.invalid_read_count = mode == 1;
+        const response = try f.request(0, .{ .sequence = 2, .operation = .read, .handle = file, .length = 16 });
+        if (mode == 0) {
+            try eq(api.Failure.io_error, response.result.transfer.failure.?);
+            try eq(@as(usize, 0), response.result.transfer.transferred);
+            try expect(!response.result.transfer.eof);
+        } else try eq(api.Error.BackendContract, response.result.failure);
+        for (response.data) |byte| try eq(@as(u8, 0), byte);
+        try expect(f.service.faulted);
+    }
 }

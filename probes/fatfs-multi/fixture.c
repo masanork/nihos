@@ -44,10 +44,26 @@ int nih_multi_fixture_init(void) {
         create("a.txt") || create("b.txt")) { nih_multi_fixture_destroy(); return -1; }
     return 0;
 }
-int nih_multi_fixture_open(unsigned index) {
-    if (!active || index >= 2 || (open_mask & (1u << index))) return -1;
-    if (f_open(&files[index], index ? "b.txt" : "a.txt", FA_WRITE) != FR_OK) return -1;
+int nih_multi_fixture_open(unsigned index, unsigned rights) {
+    if (!active || index >= 2 || (open_mask & (1u << index)) || rights == 0 || rights > 3) return -1;
+    BYTE flags = (BYTE)((rights & 1 ? FA_READ : 0) | (rights & 2 ? FA_WRITE : 0));
+    if (f_open(&files[index], index ? "b.txt" : "a.txt", flags) != FR_OK) return -1;
     open_mask |= 1u << index;
+    return 0;
+}
+int nih_multi_fixture_read(unsigned index, unsigned long long offset, unsigned char *data, unsigned length, unsigned *read, unsigned *eof) {
+    if (index >= 2 || !(open_mask & (1u << index)) || !read || !eof) return -1;
+    *read = *eof = 0;
+    FSIZE_t size = f_size(&files[index]);
+    if (offset >= size) { *eof = 1; return 0; }
+    if (f_lseek(&files[index], offset) != FR_OK || f_tell(&files[index]) != offset ||
+        f_read(&files[index], data, length, read) != FR_OK) {
+#ifdef NIHOS_MULTI_FAULTS
+        if (host_disk_multi_removed()) return -2;
+#endif
+        return -1;
+    }
+    *eof = offset + *read >= size;
     return 0;
 }
 int nih_multi_fixture_write(unsigned index, unsigned long long offset, const unsigned char *data, unsigned length) {

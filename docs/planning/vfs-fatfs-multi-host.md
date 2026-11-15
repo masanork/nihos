@@ -4,7 +4,8 @@ This experiment runs the host-only multi-writer VFS service over FatFs R0.16
 with the existing `NIHOS_FIXTURE_WRITER` configuration and host image driver.
 The fixture creates a private temporary directory and a new 16 MiB image,
 formats it, and creates two files. Two independently bound clients open and
-write different files. A conflicting open of the first file is rejected before
+write different files. A read-only handle also reads a previously written file
+while the other client writes a different file. A conflicting open of the first file is rejected before
 it reaches FatFs. The clients sync and close their files; FatFs is unmounted,
 remounted on the same host image, and both contents are read back.
 

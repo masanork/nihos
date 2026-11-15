@@ -3,7 +3,7 @@
 //! This is not a native syscall, DMA fence, or durability implementation.
 const api = @import("vfs.zig");
 const ring = @import("../kernel/spsc_ring.zig");
-pub const Operation = enum { open, write, sync, close };
+pub const Operation = enum { open, read, write, sync, close };
 /// Host model only: one trusted owner retains the issuer across service rebuilds.
 /// Do not reset, copy, or use concurrently while an older token may exist.
 pub const Issuer = struct {
@@ -21,6 +21,7 @@ pub const Request = struct {
     epoch: u32 = 0,
     sequence: u32 = 0,
     operation: Operation = .open,
+    rights: api.Rights = .{ .write = true },
     handle: ?Handle = null,
     offset: u64 = 0,
     length: u32 = 0,
@@ -29,7 +30,7 @@ pub const Request = struct {
     data: [4096]u8 = @splat(0),
 };
 pub const Result = union(enum) { ok, handle: Handle, transfer: api.Transfer, failure: api.Error };
-pub const Response = struct { session: u64 = 0, epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok };
+pub const Response = struct { session: u64 = 0, epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok, data: [4096]u8 = @splat(0) };
 pub const Queues = struct {
     requests: ring.SpscRing(Request, 2) = .init(),
     responses: ring.SpscRing(Response, 2) = .init(),
@@ -78,13 +79,13 @@ pub fn Service(comptime Backend: type) type {
             }
             return error.StaleHandle;
         }
-        pub fn bind(self: *Self, index: usize, principal: u32, queues: *Queues) api.Error!u32 {
-            if (index >= 2 or principal == 0 or self.faulted) return error.InvalidArgument;
+        pub fn bind(self: *Self, index: usize, principal: u32, queues: *Queues, rights: api.Rights) api.Error!u32 {
+            if (index >= 2 or principal == 0 or self.faulted or (!rights.read and !rights.write)) return error.InvalidArgument;
             if (self.lanes[index].alive or self.lanes[1 - index].principal == principal or self.lanes[1 - index].queues == queues or queues.requests.countApprox() != 0 or queues.responses.countApprox() != 0) return error.Busy;
             if (self.lanes[index].epoch == 0xffffffff) return error.NoHandles;
             const epoch = self.lanes[index].epoch + 1;
             const mount = self.mount orelse return error.Busy;
-            const root = try self.core.grantRoot(mount, principal, .{ .write = true });
+            const root = try self.core.grantRoot(mount, principal, rights);
             self.lanes[index] = .{ .principal = principal, .root = root, .alive = true, .epoch = epoch, .queues = queues };
             return epoch;
         }
@@ -103,14 +104,29 @@ pub fn Service(comptime Backend: type) type {
             switch (req.operation) {
                 .open => {
                     if (req.path_length > 511) return error.TooLarge;
+                    if (!req.rights.read and !req.rights.write) return error.InvalidArgument;
                     const slot = for (lane.files, 0..) |file, i| {
                         if (file == null) break i;
                     } else return error.NoHandles;
                     // Reserve before backend access. Failed opens burn a token.
                     const token = try self.issuer.?.reserve();
-                    const file = try self.core.openAt(lane.principal, lane.root.?, req.path[0..req.path_length], .{ .write = true });
+                    const file = try self.core.openAt(lane.principal, lane.root.?, req.path[0..req.path_length], req.rights);
                     lane.files[slot] = .{ .token = token, .inner = file };
                     return .{ .handle = .{ .session = self.session, .token = token } };
+                },
+                .read => {
+                    if (req.length > self.response.data.len) return error.TooLarge;
+                    const handle = try self.checkedHandle(lane, req.handle);
+                    const result = self.core.readAt(lane.principal, handle, req.offset, self.response.data[0..req.length]) catch |err| {
+                        @memset(&self.response.data, 0);
+                        return err;
+                    };
+                    if (result.failure) |failure| {
+                        @memset(&self.response.data, 0);
+                        return .{ .transfer = .{ .failure = failure } };
+                    }
+                    @memset(self.response.data[result.transferred..], 0);
+                    return .{ .transfer = result };
                 },
                 .write => {
                     if (req.length > req.data.len) return error.TooLarge;
@@ -143,7 +159,8 @@ pub fn Service(comptime Backend: type) type {
                 const i = (self.next + offset) % 2;
                 if (!self.lanes[i].alive or self.lanes[i].queues != &queues[i] or queues[i].responses.countApprox() == 2) continue;
                 if (!queues[i].requests.tryPopInto(&self.request)) continue;
-                self.response = .{ .session = self.request.session, .epoch = self.request.epoch, .sequence = self.request.sequence, .result = self.execute(i) catch |err| .{ .failure = err } };
+                self.response = .{ .session = self.request.session, .epoch = self.request.epoch, .sequence = self.request.sequence };
+                self.response.result = self.execute(i) catch |err| .{ .failure = err };
                 self.request = .{};
                 if (!queues[i].responses.tryPushFrom(&self.response)) unreachable;
                 self.response = .{};

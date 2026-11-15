@@ -2,10 +2,13 @@
 
 This host-only prototype routes two bounded copied request queues through one
 VFS instance, one mount, and a single synchronous backend owner. It opens
-existing files with write rights; it does not create or rename files. Stable
+existing files with explicitly granted read and/or write rights; it does not create or rename files. Stable
 backend identities let the shared VFS reject a conflicting reader or writer,
 including aliases of the same file. Independent files can be opened and written
-by different principals. A full reply queue does not block the other lane.
+by different principals. A full reply queue does not block the other lane. The
+trusted binder supplies each lane's maximum rights, and open requests cannot
+amplify them. Read replies carry at most 4096 copied bytes, zero their unused
+tail, and discard all bytes and transferred counts when a read fails.
 
 The trusted caller supplies a nonzero, never-reused service session ID and a
 shared issuer retained across service rebuilds. Requests carry the session,
@@ -29,7 +32,8 @@ proof that a timed-out write had no effect. Payloads are copied and cleared from
 the owner's working frames after dispatch or cleanup.
 
 Run `zig test -O ReleaseSafe src/vfs_multi_writer_host_test.zig`. Tests cover
-independent writes, alias conflict, foreign handles, reply backpressure, exit,
+independent reads and writes, rights attenuation, alias conflict, foreign handles,
+reply scrubbing on backend errors, reply backpressure, exit,
 rebind, sync, unknown write outcome, and failed cleanup. A test-only adapter also
 writes and syncs two real temporary host files and verifies their contents after
 closing and reopening them. The adapter uses a fixed identity mapping, not a
@@ -38,7 +42,8 @@ physical durability or actual concurrent device execution.
 
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
-identities, implement IRQ-safe exit notification and in-flight I/O fencing,
+identities, budget the larger copied response queues, implement IRQ-safe exit
+notification and in-flight I/O fencing,
 coordinate raw sqld ownership, validate real backend write/sync and media-change
 semantics, and add native and physical SD/power-failure qualification. File
 creation, rename, durable replacement, and same-file concurrent writers are

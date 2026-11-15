@@ -3,7 +3,8 @@ const std = @import("std");
 const multi = @import("fs/vfs_multi_writer.zig");
 const api = @import("fs/vfs.zig");
 extern fn nih_multi_fixture_init() c_int;
-extern fn nih_multi_fixture_open(c_uint) c_int;
+extern fn nih_multi_fixture_open(c_uint, c_uint) c_int;
+extern fn nih_multi_fixture_read(c_uint, c_ulonglong, [*]u8, c_uint, *c_uint, *c_uint) c_int;
 extern fn nih_multi_fixture_write(c_uint, c_ulonglong, [*]const u8, c_uint) c_int;
 extern fn nih_multi_fixture_sync(c_uint) c_int;
 extern fn nih_multi_fixture_close(c_uint) c_int;
@@ -15,15 +16,20 @@ const Backend = struct {
         if (std.mem.eql(u8, path, "b.txt")) return 2;
         return error.NotFound;
     }
-    pub fn open(_: *@This(), id: u64, _: api.Rights) api.Error!u64 {
-        if (nih_multi_fixture_open(@intCast(id - 1)) != 0) return error.IoError;
+    pub fn open(_: *@This(), id: u64, rights: api.Rights) api.Error!u64 {
+        const flags: u32 = @intFromBool(rights.read) | (@as(u32, @intFromBool(rights.write)) << 1);
+        if (nih_multi_fixture_open(@intCast(id - 1), flags) != 0) return error.IoError;
         return id;
     }
     pub fn close(_: *@This(), token: u64) api.Error!void {
         if (nih_multi_fixture_close(@intCast(token - 1)) != 0) return error.IoError;
     }
-    pub fn readAt(_: *@This(), _: u64, _: u64, _: []u8) api.Transfer {
-        unreachable;
+    pub fn readAt(_: *@This(), token: u64, offset: u64, data: []u8) api.Transfer {
+        var count: c_uint = 0;
+        var eof: c_uint = 0;
+        const status = nih_multi_fixture_read(@intCast(token - 1), offset, data.ptr, @intCast(data.len), &count, &eof);
+        if (status != 0) return .{ .failure = if (status == -2) .removed else .io_error };
+        return .{ .transferred = count, .eof = eof == 1 };
     }
     pub fn writeAt(_: *@This(), token: u64, offset: u64, data: []const u8) api.Transfer {
         const status = nih_multi_fixture_write(@intCast(token - 1), offset, data.ptr, @intCast(data.len));
@@ -45,7 +51,7 @@ test "serialized multi-client writes survive FatFs sync and remount on host fixt
     try service.start(&backend, 1, &issuer);
     var handles: [2]multi.Handle = undefined;
     for (0..2) |i| {
-        _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+        _ = try service.bind(i, @intCast(i + 1), &queues[i], .{ .read = true, .write = true });
         if (i == 1) {
             var conflict = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
             @memcpy(conflict.path[0..5], "a.txt");
@@ -98,7 +104,7 @@ test "FatFs write and sync failures quarantine both endpoints" {
         var handles: [2]multi.Handle = undefined;
         try service.start(&backend, 1, &issuer);
         for (0..2) |i| {
-            _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+            _ = try service.bind(i, @intCast(i + 1), &queues[i], .{ .read = true, .write = true });
             var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
             @memcpy(request.path[0..5], if (i == 0) "a.txt" else "b.txt");
             try std.testing.expect(service.submit(&queues[i], i, @intCast(i + 1), &request));
@@ -155,7 +161,7 @@ test "client exit releases only its FatFs handle and peer can finish" {
     var handles: [2]multi.Handle = undefined;
     try service.start(&backend, 1, &issuer);
     for (0..2) |i| {
-        _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+        _ = try service.bind(i, @intCast(i + 1), &queues[i], .{ .read = true, .write = true });
         var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
         @memcpy(request.path[0..5], if (i == 0) "a.txt" else "b.txt");
         try std.testing.expect(service.submit(&queues[i], i, @intCast(i + 1), &request));
@@ -191,7 +197,7 @@ test "simulated media removal during FatFs write halts peer and skips backend cl
         var handles: [2]multi.Handle = undefined;
         try service.start(&backend, 1, &issuer);
         for (0..2) |i| {
-            _ = try service.bind(i, @intCast(i + 1), &queues[i]);
+            _ = try service.bind(i, @intCast(i + 1), &queues[i], .{ .read = true, .write = true });
             var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
             @memcpy(request.path[0..5], if (i == 0) "a.txt" else "b.txt");
             try std.testing.expect(service.submit(&queues[i], i, @intCast(i + 1), &request));
@@ -220,4 +226,62 @@ test "simulated media removal during FatFs write halts peer and skips backend cl
         try std.testing.expectEqual(writes, nih_multi_fixture_writes());
         try std.testing.expectEqual(@as(usize, 0), queues[1].requests.countApprox());
     }
+}
+
+test "FatFs read-only handle reads existing data while peer writes another file" {
+    try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_init());
+    defer nih_multi_fixture_destroy();
+    var backend = Backend{};
+    var service = multi.Service(Backend){};
+    var issuer = multi.Issuer{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    try service.start(&backend, 1, &issuer);
+    _ = try service.bind(0, 1, &queues[0], .{ .read = true, .write = true });
+    _ = try service.bind(1, 2, &queues[1], .{ .read = true, .write = true });
+    var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5, .rights = .{ .read = true, .write = true } };
+    @memcpy(request.path[0..5], "a.txt");
+    try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+    try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+    var response = multi.Response{};
+    try std.testing.expect(queues[0].responses.tryPopInto(&response));
+    const a = response.result.handle;
+    request = .{ .session = 1, .epoch = 1, .sequence = 2, .operation = .write, .handle = a, .length = 4 };
+    @memcpy(request.data[0..4], "edit");
+    try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+    try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+    try std.testing.expect(queues[0].responses.tryPopInto(&response));
+    try std.testing.expectEqual(@as(usize, 4), response.result.transfer.transferred);
+    request = .{ .session = 1, .epoch = 1, .sequence = 3, .operation = .close, .handle = a };
+    try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+    try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+    try std.testing.expect(queues[0].responses.tryPopInto(&response));
+    try std.testing.expectEqual(multi.Result.ok, response.result);
+    request = .{ .session = 1, .epoch = 1, .sequence = 4, .operation = .open, .path_length = 5, .rights = .{ .read = true } };
+    @memcpy(request.path[0..5], "a.txt");
+    try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+    try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+    try std.testing.expect(queues[0].responses.tryPopInto(&response));
+    const reader = response.result.handle;
+    request = .{ .session = 1, .epoch = 1, .sequence = 5, .operation = .read, .handle = reader, .length = 8 };
+    try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
+    try std.testing.expectEqual(@as(usize, 0), service.step(&queues).?);
+    try std.testing.expect(queues[0].responses.tryPopInto(&response));
+    try std.testing.expectEqual(@as(usize, 4), response.result.transfer.transferred);
+    try std.testing.expect(response.result.transfer.eof);
+    try std.testing.expectEqualSlices(u8, "edit", response.data[0..4]);
+    for (response.data[4..]) |byte| try std.testing.expectEqual(@as(u8, 0), byte);
+    request = .{ .session = 1, .epoch = 1, .sequence = 1, .operation = .open, .path_length = 5 };
+    @memcpy(request.path[0..5], "b.txt");
+    try std.testing.expect(service.submit(&queues[1], 1, 2, &request));
+    try std.testing.expectEqual(@as(usize, 1), service.step(&queues).?);
+    try std.testing.expect(queues[1].responses.tryPopInto(&response));
+    const b = response.result.handle;
+    request = .{ .session = 1, .epoch = 1, .sequence = 2, .operation = .write, .handle = b, .length = 4 };
+    @memcpy(request.data[0..4], "peer");
+    try std.testing.expect(service.submit(&queues[1], 1, 2, &request));
+    try std.testing.expectEqual(@as(usize, 1), service.step(&queues).?);
+    try std.testing.expect(queues[1].responses.tryPopInto(&response));
+    try std.testing.expectEqual(@as(usize, 4), response.result.transfer.transferred);
+    try service.stop(&queues[0], 0, 1);
+    try service.stop(&queues[1], 1, 2);
 }
