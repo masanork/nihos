@@ -72,6 +72,7 @@ int host_backend_rebind(void) {
     return session ? nih_fatfs_backend_mount(session,epoch) : -1;
 }
 extern int nih_check_vfs(void);
+extern int nih_check_multi_read(int, uint32_t);
 
 static uint64_t lookup(const char *name) {
     uint64_t id = UINT64_MAX;
@@ -210,6 +211,9 @@ int main(int argc, char **argv) {
         CHECK(mounted == NIH_FB_OK);
         if (!strcmp(mode,"normal")) normal(argv[4]);
         else if (!strcmp(mode,"vfs") || !strcmp(mode,"selected-vfs")) CHECK(nih_check_vfs() == 0);
+        else if (!strcmp(mode,"multi-read") || !strcmp(mode,"multi-read-fail") || !strcmp(mode,"multi-read-remove"))
+            CHECK(nih_check_multi_read(!strcmp(mode,"multi-read-fail") ? 1 : !strcmp(mode,"multi-read-remove") ? 2 : 0,
+                (uint32_t)strtoul(argv[4],NULL,10)) == 0);
         else if (rpc_kind) CHECK(nih_check_rpc() == 0);
         else if (!strcmp(mode,"large")) {
             uint64_t token = opened("large.bin");
