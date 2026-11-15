@@ -543,3 +543,68 @@ test "read-only mount rejects write grants before backend access" {
     try eq(api.Error.PermissionDenied, response.result.failure);
     try eq(@as(u32, 0), backend.writes);
 }
+
+test "read-only shutdown waits for both lanes and permits a fresh mount" {
+    var backend = Fake{};
+    var issuer = multi.Issuer{};
+    var service = Service{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    try service.startReadOnly(&backend, 1, &issuer);
+    _ = try service.bind(0, 10, &queues[0], .{ .read = true });
+    _ = try service.bind(1, 20, &queues[1], .{ .read = true });
+    var request = opening(1, "a");
+    request.epoch = 1;
+    request.rights = .{ .read = true };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    var response = multi.Response{};
+    try expect(queues[0].responses.tryPopInto(&response));
+    const old_handle = response.result.handle;
+    try std.testing.expectError(error.Busy, service.shutdown());
+    try service.stop(&queues[0], 0, 10);
+    try std.testing.expectError(error.Busy, service.shutdown());
+    try service.stop(&queues[1], 1, 20);
+    try service.shutdown();
+    try service.startReadOnly(&backend, 2, &issuer);
+    const epoch = try service.bind(0, 10, &queues[0], .{ .read = true });
+    try eq(@as(u32, 2), epoch);
+    try expect(!service.submit(&queues[0], 0, 10, &request));
+    request.session = 2;
+    request.epoch = epoch;
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try expect(response.result.handle.token != old_handle.token);
+    try service.stop(&queues[0], 0, 10);
+    try service.shutdown();
+}
+
+test "shutdown detaches removed media but retains failed and unsynced mounts" {
+    var removed = Fixture{};
+    try removed.init();
+    _ = try removed.request(0, opening(1, "a"));
+    try removed.service.markRemoved();
+    try removed.service.stop(&removed.queues[0], 0, 10);
+    try removed.service.stop(&removed.queues[1], 1, 20);
+    try removed.service.shutdown();
+    try eq(@as(u32, 0), removed.backend.closes);
+    try removed.service.startReadOnly(&removed.backend, 2, &removed.issuer);
+
+    var dirty = Fixture{};
+    try dirty.init();
+    try dirty.service.stop(&dirty.queues[0], 0, 10);
+    try dirty.service.stop(&dirty.queues[1], 1, 20);
+    try std.testing.expectError(error.Unsupported, dirty.service.shutdown());
+    try std.testing.expectError(error.Busy, dirty.service.startReadOnly(&dirty.backend, 2, &dirty.issuer));
+
+    var failed = Fixture{};
+    try failed.init();
+    _ = try failed.request(0, opening(1, "a"));
+    failed.backend.fail_close = true;
+    try std.testing.expectError(error.IoError, failed.service.stop(&failed.queues[0], 0, 10));
+    try failed.service.stop(&failed.queues[1], 1, 20);
+    try std.testing.expectError(error.IoError, failed.service.shutdown());
+    try std.testing.expectError(error.Busy, failed.service.startReadOnly(&failed.backend, 2, &failed.issuer));
+    try failed.service.markRemoved();
+    try std.testing.expectError(error.IoError, failed.service.shutdown());
+}
