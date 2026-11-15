@@ -165,6 +165,8 @@ test "rebind changes epoch and rejects old copied requests and handles" {
 // deliberate: it does not model path lookup, aliases, or external writers.
 const HostFiles = struct {
     files: [2]std.Io.File,
+    writes: u32 = 0,
+    fail_after_write: ?u32 = null,
     pub fn lookupBeneath(_: *@This(), _: u64, path: []const u8) api.Error!u64 {
         if (std.mem.eql(u8, path, "a")) return 1;
         if (std.mem.eql(u8, path, "b")) return 2;
@@ -181,6 +183,8 @@ const HostFiles = struct {
     pub fn writeAt(self: *@This(), token: u64, offset: u64, bytes: []const u8) api.Transfer {
         // A host error after submission does not prove that no bytes changed.
         self.files[@intCast(token - 1)].writePositionalAll(std.testing.io, bytes, offset) catch return .{ .failure = .outcome_unknown };
+        self.writes += 1;
+        if (self.fail_after_write == self.writes) return .{ .failure = .timed_out };
         return .{ .transferred = bytes.len };
     }
     pub fn syncFile(self: *@This(), token: u64) api.Error!void {
@@ -385,4 +389,126 @@ test "read errors and backend contract violations scrub reply data" {
         for (response.data) |byte| try eq(@as(u8, 0), byte);
         try expect(f.service.faulted);
     }
+}
+
+test "two endpoints manually transfer four KiB in bounded round-robin chunks" {
+    var dir = std.testing.tmpDir(.{});
+    defer dir.cleanup();
+    const io = std.testing.io;
+    var backend = HostFiles{ .files = .{
+        try dir.dir.createFile(io, "a", .{ .read = true }),
+        try dir.dir.createFile(io, "b", .{ .read = true }),
+    } };
+    defer for (backend.files) |file| file.close(io);
+    var service = multi.Service(HostFiles){};
+    var issuer = multi.Issuer{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    var handles: [2]multi.Handle = undefined;
+    try service.start(&backend, 1, &issuer);
+    for (0..2) |i| {
+        const caller: u32 = if (i == 0) 10 else 20;
+        _ = try service.bind(i, caller, &queues[i], .{ .read = true, .write = true });
+        var req = opening(1, if (i == 0) "a" else "b");
+        req.epoch = 1;
+        req.rights = .{ .read = true, .write = true };
+        try expect(service.submit(&queues[i], i, caller, &req));
+        try eq(i, service.step(&queues).?);
+        var response = multi.Response{};
+        try expect(queues[i].responses.tryPopInto(&response));
+        handles[i] = response.result.handle;
+    }
+    for (0..8) |chunk| {
+        for (0..2) |i| {
+            var req = multi.Request{ .session = 1, .epoch = 1, .sequence = @intCast(2 + chunk), .operation = .write, .handle = handles[i], .offset = chunk * multi.transfer_bytes, .length = multi.transfer_bytes };
+            @memset(&req.data, @intCast(1 + chunk + 16 * i));
+            try expect(service.submit(&queues[i], i, if (i == 0) 10 else 20, &req));
+        }
+        for (0..2) |i| {
+            try eq(i, service.step(&queues).?);
+            var response = multi.Response{};
+            try expect(queues[i].responses.tryPopInto(&response));
+            try eq(@as(usize, multi.transfer_bytes), response.result.transfer.transferred);
+        }
+    }
+    for (0..8) |chunk| {
+        for (0..2) |i| {
+            var req = multi.Request{ .session = 1, .epoch = 1, .sequence = @intCast(10 + chunk), .operation = .read, .handle = handles[i], .offset = chunk * multi.transfer_bytes, .length = multi.transfer_bytes };
+            try expect(service.submit(&queues[i], i, if (i == 0) 10 else 20, &req));
+        }
+        for (0..2) |i| {
+            try eq(i, service.step(&queues).?);
+            var response = multi.Response{};
+            try expect(queues[i].responses.tryPopInto(&response));
+            try eq(@as(usize, multi.transfer_bytes), response.result.transfer.transferred);
+            for (response.data) |byte| try eq(@as(u8, @intCast(1 + chunk + 16 * i)), byte);
+        }
+    }
+    try service.stop(&queues[0], 0, 10);
+    try service.stop(&queues[1], 1, 20);
+}
+
+test "oversized transfer is rejected before backend write" {
+    var f = Fixture{};
+    try f.init();
+    const file = (try f.request(0, opening(1, "a"))).result.handle;
+    const response = try f.request(0, .{ .sequence = 2, .operation = .write, .handle = file, .length = multi.transfer_bytes + 1 });
+    try eq(api.Error.TooLarge, response.result.failure);
+    try eq(@as(u32, 0), f.backend.writes);
+}
+
+test "failure after a chunk leaves an unknown outcome and blocks the queued peer" {
+    var dir = std.testing.tmpDir(.{});
+    defer dir.cleanup();
+    const io = std.testing.io;
+    var backend = HostFiles{ .files = .{
+        try dir.dir.createFile(io, "a", .{ .read = true }),
+        try dir.dir.createFile(io, "b", .{ .read = true }),
+    }, .fail_after_write = 3 };
+    defer for (backend.files) |file| file.close(io);
+    var service = multi.Service(HostFiles){};
+    var issuer = multi.Issuer{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    var handles: [2]multi.Handle = undefined;
+    try service.start(&backend, 1, &issuer);
+    for (0..2) |i| {
+        const caller: u32 = if (i == 0) 10 else 20;
+        _ = try service.bind(i, caller, &queues[i], .{ .write = true });
+        var request = opening(1, if (i == 0) "a" else "b");
+        request.epoch = 1;
+        try expect(service.submit(&queues[i], i, caller, &request));
+        try eq(i, service.step(&queues).?);
+        var response = multi.Response{};
+        try expect(queues[i].responses.tryPopInto(&response));
+        handles[i] = response.result.handle;
+    }
+    for (0..2) |chunk| {
+        var request = multi.Request{ .session = 1, .epoch = 1, .sequence = @intCast(2 + chunk), .operation = .write, .handle = handles[0], .offset = chunk * multi.transfer_bytes, .length = multi.transfer_bytes };
+        @memset(&request.data, @intCast(chunk + 1));
+        try expect(service.submit(&queues[0], 0, 10, &request));
+        try eq(@as(usize, 0), service.step(&queues).?);
+        var response = multi.Response{};
+        try expect(queues[0].responses.tryPopInto(&response));
+        try eq(@as(usize, multi.transfer_bytes), response.result.transfer.transferred);
+    }
+    var peer = multi.Request{ .session = 1, .epoch = 1, .sequence = 2, .operation = .sync, .handle = handles[1] };
+    try expect(service.submit(&queues[1], 1, 20, &peer));
+    try eq(@as(usize, 1), service.step(&queues).?);
+    var response = multi.Response{};
+    try expect(queues[1].responses.tryPopInto(&response));
+    peer.sequence = 3;
+    try expect(service.submit(&queues[1], 1, 20, &peer));
+    var failed = multi.Request{ .session = 1, .epoch = 1, .sequence = 4, .operation = .write, .handle = handles[0], .offset = 2 * multi.transfer_bytes, .length = multi.transfer_bytes };
+    @memset(&failed.data, 3);
+    try expect(service.submit(&queues[0], 0, 10, &failed));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try eq(api.Failure.outcome_unknown, response.result.transfer.failure.?);
+    try expect(service.faulted and service.step(&queues) == null);
+    try eq(@as(usize, 1), queues[1].requests.countApprox());
+    try eq(@as(u32, 3), backend.writes);
+    // This injected error occurs after the third host write: failure does not
+    // imply that only the two acknowledged chunks changed the file.
+    var bytes: [3 * multi.transfer_bytes]u8 = undefined;
+    try eq(bytes.len, try backend.files[0].readPositionalAll(io, &bytes, 0));
+    for (bytes, 0..) |byte, i| try eq(@as(u8, @intCast(1 + i / multi.transfer_bytes)), byte);
 }

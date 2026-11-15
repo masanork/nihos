@@ -4,6 +4,8 @@
 const api = @import("vfs.zig");
 const ring = @import("../kernel/spsc_ring.zig");
 pub const Operation = enum { open, read, write, sync, close };
+/// One copied transfer, not a multi-chunk atomic operation.
+pub const transfer_bytes = 512;
 /// Host model only: one trusted owner retains the issuer across service rebuilds.
 /// Do not reset, copy, or use concurrently while an older token may exist.
 pub const Issuer = struct {
@@ -27,10 +29,10 @@ pub const Request = struct {
     length: u32 = 0,
     path_length: u32 = 0,
     path: [512]u8 = @splat(0),
-    data: [4096]u8 = @splat(0),
+    data: [transfer_bytes]u8 = @splat(0),
 };
 pub const Result = union(enum) { ok, handle: Handle, transfer: api.Transfer, failure: api.Error };
-pub const Response = struct { session: u64 = 0, epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok, data: [4096]u8 = @splat(0) };
+pub const Response = struct { session: u64 = 0, epoch: u32 = 0, sequence: u32 = 0, result: Result = .ok, data: [transfer_bytes]u8 = @splat(0) };
 pub const Queues = struct {
     requests: ring.SpscRing(Request, 2) = .init(),
     responses: ring.SpscRing(Response, 2) = .init(),

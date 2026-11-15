@@ -7,8 +7,10 @@ backend identities let the shared VFS reject a conflicting reader or writer,
 including aliases of the same file. Independent files can be opened and written
 by different principals. A full reply queue does not block the other lane. The
 trusted binder supplies each lane's maximum rights, and open requests cannot
-amplify them. Read replies carry at most 4096 copied bytes, zero their unused
-tail, and discard all bytes and transferred counts when a read fails.
+amplify them. Each copied read or write carries at most 512 bytes. A caller must split larger
+transfers into multiple requests; the service does not provide an atomic
+multi-chunk operation or automatic retry. Read replies zero their unused tail
+and discard all bytes and transferred counts when a read fails.
 
 The trusted caller supplies a nonzero, never-reused service session ID and a
 shared issuer retained across service rebuilds. Requests carry the session,
@@ -33,7 +35,8 @@ the owner's working frames after dispatch or cleanup.
 
 Run `zig test -O ReleaseSafe src/vfs_multi_writer_host_test.zig`. Tests cover
 independent reads and writes, rights attenuation, alias conflict, foreign handles,
-reply scrubbing on backend errors, reply backpressure, exit,
+reply scrubbing on backend errors, two manually chunked 4 KiB transfers,
+write-after-effect failure, reply backpressure, exit,
 rebind, sync, unknown write outcome, and failed cleanup. A test-only adapter also
 writes and syncs two real temporary host files and verifies their contents after
 closing and reopening them. The adapter uses a fixed identity mapping, not a

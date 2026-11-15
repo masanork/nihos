@@ -129,7 +129,7 @@ test "FatFs write and sync failures quarantine both endpoints" {
         }
         var pending = multi.Request{ .session = 1, .epoch = 1, .sequence = if (mode >= 3) 3 else 2, .operation = .sync, .handle = handles[1] };
         try std.testing.expect(service.submit(&queues[1], 1, 2, &pending));
-        var request = multi.Request{ .session = 1, .epoch = 1, .sequence = if (mode >= 3) 3 else 2, .operation = if (mode >= 3) .sync else .write, .handle = handles[0], .length = if (mode >= 3) 0 else 4096 };
+        var request = multi.Request{ .session = 1, .epoch = 1, .sequence = if (mode >= 3) 3 else 2, .operation = if (mode >= 3) .sync else .write, .handle = handles[0], .length = if (mode >= 3) 0 else multi.transfer_bytes };
         @memset(&request.data, 0x5a);
         nih_multi_fixture_arm(@intCast(mode));
         try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
@@ -208,7 +208,7 @@ test "simulated media removal during FatFs write halts peer and skips backend cl
         }
         var pending = multi.Request{ .session = 1, .epoch = 1, .sequence = 2, .operation = .sync, .handle = handles[1] };
         try std.testing.expect(service.submit(&queues[1], 1, 2, &pending));
-        var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 2, .operation = .write, .handle = handles[0], .length = 4096 };
+        var request = multi.Request{ .session = 1, .epoch = 1, .sequence = 2, .operation = .write, .handle = handles[0], .length = multi.transfer_bytes };
         @memset(&request.data, 0x61);
         nih_multi_fixture_arm(@intCast(mode));
         try std.testing.expect(service.submit(&queues[0], 0, 1, &request));
