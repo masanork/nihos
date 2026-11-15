@@ -60,9 +60,16 @@ pub fn Service(comptime Backend: type) type {
         request: Request = .{},
         response: Response = .{},
         pub fn start(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
+            return self.startMode(backend, session, issuer, true);
+        }
+        /// Read-only model for evaluating replacement of the normal FS owner.
+        pub fn startReadOnly(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
+            return self.startMode(backend, session, issuer, false);
+        }
+        fn startMode(self: *Self, backend: *Backend, session: u64, issuer: *Issuer, writable: bool) api.Error!void {
             if (self.mount != null) return error.Busy;
             if (session == 0) return error.InvalidArgument;
-            self.mount = try self.core.mount(backend, 1, .{ .write_at = true, .sync_file = true }, .{ .writable = true });
+            self.mount = try self.core.mount(backend, 1, .{ .write_at = writable, .sync_file = writable }, .{ .writable = writable });
             self.session = session;
             self.issuer = issuer;
         }
