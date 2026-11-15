@@ -205,7 +205,7 @@ static void check_display(void) {
     for(unsigned i=0;i<display.bytes;++i) CHECK(p[i]==0x5a);
 }
 
-static void raw_capability_test(void) {
+static void raw_capability_test(const char *mode) {
     uint8_t buffer[512]={0};
     CHECK(nih_normal_sqld_grant(0x10001,0x10002)==-13);
     CHECK(!nih_normal_sqld_grant(0x10000,0x10002));
@@ -220,7 +220,24 @@ static void raw_capability_test(void) {
     CHECK(nih_normal_sqld_io(5,cid,buffer)==-13);
     CHECK(nih_normal_sqld_io(2,2048,buffer)==-13 && !write_count);
     CHECK(nih_normal_sqld_io(4,cid,buffer)==-84);
-    raw_mbr=1;CHECK(!nih_normal_sqld_io(4,cid,buffer));
+    raw_mbr=1;
+    int pending_remount=!strcmp(mode,"raw-pending-remount");
+    int pending_read=!strcmp(mode,"raw-pending-read");
+    if(pending_remount || pending_read) {
+        actor=0x10000;
+        CHECK(nih_normal_fs_submit(0x10000,pending_read?"Memo.txt":"",pending_read?8:0));
+        actor=0x10002;
+    }
+    uint32_t resets_before=reset_count;
+    CHECK(!nih_normal_sqld_io(4,cid,buffer));
+    if(pending_remount || pending_read) {
+        CHECK(snapshot().status==7);
+        CHECK(reset_count==resets_before);
+        actor=0x10000;
+        CHECK(nih_normal_fs_poll(0x10000));
+        CHECK(snapshot().error_code==-16);
+        actor=0x10002;
+    }
     CHECK(nih_normal_sqld_io(2,0,buffer)==-13);
     CHECK(nih_normal_sqld_io(2,10240,buffer)==-13);
     CHECK(nih_normal_sqld_io(1,10240,buffer)==-13);
@@ -235,7 +252,7 @@ static void raw_capability_test(void) {
     CHECK(nih_normal_sqld_io(0,0,buffer)==-19);
     for(unsigned i=0;i<512;++i)CHECK(buffer[i]==0xa5);
     actor=0x10000;CHECK(!nih_normal_fs_submit(0x10000,"",0));check_display();
-    CHECK(!close(image));puts("{\"passed\":true,\"mode\":\"raw-capability\",\"copied_write\":true,\"bounds_and_authority\":true}");
+    CHECK(!close(image));printf("{\"passed\":true,\"mode\":\"%s\",\"copied_write\":true,\"bounds_and_authority\":true}\n",mode);
 }
 int main(int argc,char **argv) {
     CHECK(argc>=3);image=open(argv[1],O_RDONLY);CHECK(image>=0);
@@ -265,7 +282,9 @@ int main(int argc,char **argv) {
         CHECK(nih_normal_fs_poll(0x10000));r=snapshot();CHECK(r.status==2);
     }
     CHECK(r.parent_bytes==65536);
-    if(!strcmp(argv[2],"raw-capability")) { CHECK(r.status==2);raw_capability_test();return 0; }
+    if(!strcmp(argv[2],"raw-capability") || !strcmp(argv[2],"raw-pending-remount") || !strcmp(argv[2],"raw-pending-read")) {
+        CHECK(r.status==2);raw_capability_test(argv[2]);return 0;
+    }
     if(!present) {
         CHECK(r.status==3);network_turn();CHECK(c6_transactions && ui_progress);
         CHECK(nih_normal_fs_submit(0x10000,"Memo.txt",8)==0);

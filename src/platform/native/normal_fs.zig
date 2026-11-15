@@ -303,6 +303,8 @@ fn unmount(s: *State) bool {
     return true;
 }
 fn mount(s: *State) void {
+    // Once raw storage is admitted, this session cannot remount FAT.
+    if (s.raw_admitted) return;
     if (!unmount(s)) quarantine(s);
     s.report.error_code = 0;
     if (s.epoch == 0x7fffffff) {
@@ -441,7 +443,11 @@ fn stepOnce() callconv(.c) u32 {
         s.report.eof = 0;
         s.report.error_code = 0;
         @memset(&s.result, 0);
-        if (command.length == 0) mount(s) else readCommand(s, command);
+        // A request can have been queued before sqld took ownership above.
+        // Complete it as busy without touching FAT or changing owned_store.
+        if (s.raw_admitted) {
+            s.report.error_code = -16;
+        } else if (command.length == 0) mount(s) else readCommand(s, command);
         s.report.completed +|= 1;
         s.result_generation = s.host_generation;
         _ = s.result_revision.fetchAdd(1, .release);

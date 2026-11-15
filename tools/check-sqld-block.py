@@ -22,6 +22,7 @@ with tempfile.TemporaryDirectory(prefix='sqld-block-') as folder:
         check.execute([*shlex.split(os.environ.get('CC','cc')),'-std=c11','-O1','-DNIHOS_FIXTURE_WRITER=1','-I'+str(ROOT/'probes/fatfs-disk'),'-I'+str(source),ROOT/'probes/fatfs-disk/make_fixture.c',ROOT/'probes/fatfs-disk/host_disk.c',source/'ff.c',source/'ffunicode.c','-o',writer])
         fixture=work/'fat16.img';check.execute([writer,fixture,'fat16'])
     before=hashlib.sha256(fixture.read_bytes()).hexdigest()
-    result=json.loads(check.execute([executable,fixture,'raw-capability']).stdout)
+    results=[json.loads(check.execute([executable,fixture,mode]).stdout) for mode in ('raw-capability','raw-pending-remount','raw-pending-read')]
+    result={'passed': all(row['passed'] for row in results), 'cases': 3, 'results': results}
     if before!=hashlib.sha256(fixture.read_bytes()).hexdigest():raise ValueError('fixture mutated')
     print(json.dumps(result))
