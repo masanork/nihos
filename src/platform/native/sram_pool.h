@@ -25,10 +25,10 @@ static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_init(nih_sram_pool *p, cons
     p->regions[0] = regions[0]; p->regions[1] = regions[1]; p->ready = true;
     return true;
 }
-static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_take(nih_sram_pool *p, uint32_t owner, uint32_t minimum,
-                                     uint32_t maximum, nih_sram_lease *out) {
-    if (!p->ready || !owner || !minimum || minimum > maximum || (minimum & 63) || (maximum & 63) ||
-        p->generation == UINT32_MAX) return false;
+static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_take_aligned(nih_sram_pool *p, uint32_t owner, uint32_t minimum,
+                                             uint32_t maximum, uint32_t alignment, nih_sram_lease *out) {
+    if (!p->ready || !owner || !out || !minimum || minimum > maximum || (minimum & 63) || (maximum & 63) ||
+        alignment < 64 || (alignment & (alignment - 1)) || p->generation == UINT32_MAX) return false;
     uint32_t slot = 16, best = 0, start = 0;
     for (uint32_t i = 0; i < 16; ++i) if (!p->leases[i].owner) { slot = i; break; }
     if (slot == 16) return false;
@@ -43,9 +43,13 @@ static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_take(nih_sram_pool *p, uint
                 else if (l.start > at && l.start < next) next = l.start;
             }
             if (skip > at) { at = skip; continue; }
-            const uint32_t available = next - at;
+            /* at and next are pool granules. Compute padding in unsigned
+             * arithmetic and compare against the gap before adding it. */
+            const uint32_t padding = (0u - at) & (alignment - 1);
+            const uint32_t gap = next - at;
+            const uint32_t available = padding <= gap ? gap - padding : 0;
             const uint32_t bytes = available < maximum ? available : maximum;
-            if (bytes > best) { best = bytes; start = at; }
+            if (bytes > best) { best = bytes; start = at + padding; }
             if (best == maximum || next == end) break;
             at = next;
         }
@@ -55,6 +59,11 @@ static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_take(nih_sram_pool *p, uint
     const nih_sram_lease result = {start, best, ++p->generation, owner};
     p->leases[slot] = result; *out = result;
     return true;
+}
+/* Preserve the existing 64-byte allocation contract for other consumers. */
+static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_take(nih_sram_pool *p, uint32_t owner, uint32_t minimum,
+                                     uint32_t maximum, nih_sram_lease *out) {
+    return nih_sram_pool_take_aligned(p, owner, minimum, maximum, 64, out);
 }
 static inline NIH_SRAM_FOREGROUND bool nih_sram_pool_release(nih_sram_pool *p, const nih_sram_lease *lease) {
     if (!p->ready || !lease->owner) return false;

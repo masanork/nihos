@@ -218,9 +218,9 @@ GRAPH_STACK_LOW, GRAPH_STACK_HIGH = 0x4FF6E000, 0x4FF76000
 PHOTO_SECTIONS = {".flash.photo", ".flash.photo.rodata"}
 UI_SECTIONS = {".flash.uipad", ".flash.ui"}
 UI_POOLS = {".keypad.low": (0x4ff40000, 128 * 1024), ".keypad.high": (0x4ff70000, 188 * 1024)}
-SERVICE_SRAM_FUNCTIONS = {'nih_base_sram_take', 'nih_base_sram_release', 'base_sram_lock',
+SERVICE_SRAM_FUNCTIONS = {'nih_base_sram_take', 'nih_base_sram_take_aligned', 'nih_base_sram_release', 'base_sram_lock',
                           'base_sram_unlock', 'base_sram_cpu0', 'nih_sram_pool_init',
-                          'nih_sram_pool_take', 'nih_sram_pool_release', 'nih_display_keypad_fits', 'ui_place',
+                          'nih_sram_pool_take', 'nih_sram_pool_take_aligned', 'nih_sram_pool_release', 'nih_display_keypad_fits', 'ui_place',
                           'keypad_display.acquire', 'keypad_display.release'}
 CARD_BOOT_FUNCTIONS = {'card_boot.paint', 'card_boot.finish', 'card_boot.report', 'main.startDisplay', 'display_runtime.replace', 'display_runtime.wipePools', 'graphics.keypad_plan.buildStaticColor'}
 

@@ -55,8 +55,11 @@ separate build profiles. This separation does not claim that USB and SD are
 inherently incompatible peripherals.
 
 Normal boot creates one CPU0 service task in an existing 4 KiB worker stack.
-Its 64 KiB parent comes from owner 2 in the base SRAM lease pool; display
-clients use owner 1 in that same pool. No PSRAM heap is retired or probed. The
+Its 64 KiB parent comes from owner 2 in the base SRAM lease pool; the owner
+requests `@alignOf(State)` alignment, currently 128 bytes on RV32. The pool
+can skip a 64-byte prefix without consuming it. An incorrectly aligned lease
+is released and rejected; a failed release quarantines it. Display clients use
+owner 1 in that same pool and retain the existing 64-byte allocation API. No PSRAM heap is retired or probed. The
 one `ui.serviceBacking` reservation still belongs to networking. Failure to
 obtain FS memory leaves the shared host available to C6. The parent remains
 reserved for the service's lifetime, including an unrecoverable DMA fence.

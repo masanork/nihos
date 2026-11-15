@@ -40,6 +40,40 @@ int main(void) {
     assert(nih_sram_pool_release(&pool, &again));
     assert(nih_sram_pool_release(&pool, &high));
     assert(nih_sram_pool_release(&pool, &other));
+    /* A 64-byte prefix creates a legal hole whose first byte is not 128-aligned. */
+    nih_sram_pool fragmented = {0};
+    const nih_sram_region fragment_regions[2] = {{0x1000, 65664}, {0x20000, 64}};
+    nih_sram_lease prefix = {0}, aligned = {0}, tail = {0};
+    assert(nih_sram_pool_init(&fragmented, fragment_regions));
+    assert(nih_sram_pool_take(&fragmented, 3, 64, 64, &prefix));
+    assert(nih_sram_pool_take_aligned(&fragmented, 4, 65536, 65536, 128, &aligned));
+    assert(aligned.start == 0x1080 && !(aligned.start & 127));
+    assert(nih_sram_pool_take(&fragmented, 5, 64, 64, &tail));
+    assert(tail.start == 0x1040); /* alignment padding is not consumed */
+    invariant(&fragmented);
+    assert(nih_sram_pool_release(&fragmented, &aligned));
+    assert(nih_sram_pool_release(&fragmented, &tail));
+    assert(nih_sram_pool_release(&fragmented, &prefix));
+    const nih_sram_pool snapshot = fragmented;
+    nih_sram_lease sentinel = {11, 22, 33, 44};
+    assert(!nih_sram_pool_take_aligned(&fragmented, 3, 64, 64, 96, &sentinel));
+    assert(!nih_sram_pool_take_aligned(&fragmented, 3, 64, 64, 32, &sentinel));
+    assert(!nih_sram_pool_take_aligned(&fragmented, 3, 64, 64, 0x80000000u, &sentinel));
+    assert(!memcmp(&fragmented, &snapshot, sizeof(snapshot)) && sentinel.start == 11);
+    /* A too-small aligned first gap must not hide a later fitting region. */
+    nih_sram_pool second_region = {0};
+    const nih_sram_region two_regions[2] = {{0x1000,65536}, {0x20000,65536}};
+    assert(nih_sram_pool_init(&second_region, two_regions));
+    assert(nih_sram_pool_take(&second_region, 1, 64, 64, &prefix));
+    assert(nih_sram_pool_take_aligned(&second_region, 2, 65536, 65536, 128, &out));
+    assert(out.start == 0x20000 && out.bytes == 65536);
+    invariant(&second_region);
+    nih_sram_pool near_end = {0};
+    const nih_sram_region end_regions[2] = {{0x1000,64}, {0xfffffe40u,384}};
+    assert(nih_sram_pool_init(&near_end, end_regions));
+    assert(nih_sram_pool_take_aligned(&near_end, 7, 128, 128, 256, &out));
+    assert(out.start == 0xffffff00u);
+    invariant(&near_end);
     uint32_t random = 12345;
     for (unsigned round = 0; round < 10000; ++round) {
         random = random * 1664525u + 1013904223u;
@@ -49,7 +83,9 @@ int main(void) {
             assert(nih_sram_pool_release(&pool, &lease));
         } else {
             const uint32_t requested = 64 * (1 + (random >> 8) % 1024);
-            (void)nih_sram_pool_take(&pool, index + 1, requested, requested, &out);
+            const uint32_t alignment = 64u << ((random >> 26) % 5);
+            if (nih_sram_pool_take_aligned(&pool, index + 1, requested, requested, alignment, &out))
+                assert(!(out.start & (alignment - 1)));
         }
         invariant(&pool);
     }

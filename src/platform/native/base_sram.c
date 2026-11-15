@@ -20,7 +20,7 @@ static NIH_SRAM_FOREGROUND bool base_sram_cpu0(void) {
     __asm__ volatile("csrr %0,mhartid" : "=r"(hart));
     return hart == 0;
 }
-NIH_SRAM_FOREGROUND bool nih_base_sram_take(uint32_t owner, uint32_t minimum, uint32_t maximum, nih_sram_lease *out) {
+NIH_SRAM_FOREGROUND bool nih_base_sram_take_aligned(uint32_t owner, uint32_t minimum, uint32_t maximum, uint32_t alignment, nih_sram_lease *out) {
     if (!base_sram_cpu0() || !out) return false;
     const uint32_t status = base_sram_lock();
     if (!service_sram.ready) {
@@ -30,8 +30,11 @@ NIH_SRAM_FOREGROUND bool nih_base_sram_take(uint32_t owner, uint32_t minimum, ui
         };
         if (!nih_sram_pool_init(&service_sram, regions)) { base_sram_unlock(status); return false; }
     }
-    const bool ok = nih_sram_pool_take(&service_sram, owner, minimum, maximum, out);
+    const bool ok = nih_sram_pool_take_aligned(&service_sram, owner, minimum, maximum, alignment, out);
     base_sram_unlock(status); return ok;
+}
+NIH_SRAM_FOREGROUND bool nih_base_sram_take(uint32_t owner, uint32_t minimum, uint32_t maximum, nih_sram_lease *out) {
+    return nih_base_sram_take_aligned(owner, minimum, maximum, 64, out);
 }
 NIH_SRAM_FOREGROUND bool nih_base_sram_release(const nih_sram_lease *lease) {
     if (!base_sram_cpu0() || !lease) return false;
