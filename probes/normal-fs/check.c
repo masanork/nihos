@@ -41,7 +41,7 @@ static uint32_t empty_root,corrupt_boot,cache_fail_at,cache_calls,cache_trace,wr
 static uint8_t written[512];
 static struct { unsigned op,start,bytes; } cache_events[16];
 static int image;
-static unsigned raw_mbr,raw_wakes,mutate_client;
+static unsigned raw_mbr,raw_wakes,mutate_client,fail_sram_release;
 static uint8_t *raw_client;
 void nih_sqld_wake(unsigned bits) { raw_wakes |= bits; }
 static nih_sram_pool pool;
@@ -139,7 +139,7 @@ int nih_rom_cache_writeback(unsigned banks,unsigned start,unsigned bytes) { retu
 int nih_rom_cache_invalidate(unsigned banks,unsigned start,unsigned bytes) { return cache_op(2,banks,start,bytes); }
 unsigned nih_normal_c6_dma_release(void) { return !cache_failure; }
 bool nih_base_sram_take(unsigned owner,unsigned min,unsigned max,nih_sram_lease *out) { return nih_sram_pool_take(&pool,owner,min,max,out); }
-bool nih_base_sram_release(const nih_sram_lease *lease) { return nih_sram_pool_release(&pool,lease); }
+bool nih_base_sram_release(const nih_sram_lease *lease) { return !fail_sram_release && nih_sram_pool_release(&pool,lease); }
 void nih_normal_fs_wake(void) {}
 static void network_turn(void) {
     host_lease lease={0};
@@ -258,8 +258,8 @@ int main(int argc,char **argv) {
     CHECK(argc>=3);image=open(argv[1],O_RDONLY);CHECK(image>=0);
     struct stat info;CHECK(!fstat(image,&info));sectors=(uint64_t)info.st_size/512;
     CHECK(sectors>=1024 && sectors<=UINT32_MAX);
-    CHECK(!posix_memalign((void **)&banks[0],64,128*1024));
-    CHECK(!posix_memalign((void **)&banks[1],64,196*1024));
+    CHECK(!posix_memalign((void **)&banks[0],128,128*1024));
+    CHECK(!posix_memalign((void **)&banks[1],128,196*1024));
     nih_sram_region regions[2]={{0x4ff40000,128*1024},{0x4ff6e000,196*1024}};
     CHECK(nih_sram_pool_init(&pool,regions));
     CHECK(nih_sram_pool_take(&pool,1,128*1024,128*1024,&display));
@@ -267,6 +267,26 @@ int main(int argc,char **argv) {
     if(!strcmp(argv[2],"no-card")) present=0;
     if(argc==4) empty_root=(uint32_t)strtoul(argv[3],NULL,0);
     if(!strcmp(argv[2],"corrupt")) corrupt_boot=1;
+    if(!strcmp(argv[2],"misaligned-parent") || !strcmp(argv[2],"misaligned-parent-release-failed")) {
+        int fail_release=!strcmp(argv[2],"misaligned-parent-release-failed");
+        nih_sram_lease prefix={0}, reclaimed={0};
+        CHECK(nih_sram_pool_take(&pool,3,64,64,&prefix));
+        CHECK((prefix.start & 127)==0);
+        fail_sram_release=fail_release;
+        nih_normal_fs_begin(0x10000);
+        CHECK(snapshot().status==(fail_release?6u:5u));
+        CHECK(!nih_normal_fs_submit(0x10000,"Memo.txt",8));
+        if(fail_release) {
+            CHECK(!nih_sram_pool_take(&pool,4,200640,200640,&reclaimed));
+        } else {
+            CHECK(nih_sram_pool_take(&pool,4,65536,65536,&reclaimed));
+            CHECK((reclaimed.start & 127)==64);
+            CHECK(nih_sram_pool_release(&pool,&reclaimed));
+        }
+        network_turn();CHECK(c6_transactions && reset_count==1);
+        check_display();CHECK(!close(image));
+        printf("{\"passed\":true,\"mode\":\"%s\",\"lease_reclaimed\":%s}\n",argv[2],fail_release?"false":"true");return 0;
+    }
     if(!strcmp(argv[2],"no-memory")) {
         nih_sram_lease busy={0};CHECK(nih_sram_pool_take(&pool,3,196*1024,196*1024,&busy));
         nih_normal_fs_begin(0x10000);report r=snapshot();CHECK(r.status==5);

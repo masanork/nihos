@@ -528,6 +528,13 @@ export fn nih_normal_fs_begin(client: u32) callconv(.c) void {
         unavailable.status = .no_memory;
         return;
     }
+    // The pool promises 64-byte alignment, but SPSC rings make State require
+    // 128 bytes on RV32. Never form a misaligned State pointer. Release the
+    // lease rather than assuming the current allocation order preserves it.
+    if (lease.start & (@alignOf(State) - 1) != 0) {
+        unavailable.status = if (nih_base_sram_release(&lease)) .no_memory else .quarantined;
+        return;
+    }
     const allocated = if (test_hooks.enabled) test_hooks.nih_fs_test_pointer(lease.start) else lease.start;
     const bytes: [*]u8 = @ptrFromInt(allocated);
     @memset(bytes[0..lease.bytes], 0);
