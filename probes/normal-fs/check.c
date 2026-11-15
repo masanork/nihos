@@ -41,7 +41,7 @@ static uint32_t empty_root,corrupt_boot,cache_fail_at,cache_calls,cache_trace,wr
 static uint8_t written[512];
 static struct { unsigned op,start,bytes; } cache_events[16];
 static int image;
-static unsigned raw_mbr,raw_wakes,mutate_client,fail_sram_release;
+static unsigned raw_mbr,raw_wakes,mutate_client,fail_sram_release,force_bad_alignment;
 static uint8_t *raw_client;
 void nih_sqld_wake(unsigned bits) { raw_wakes |= bits; }
 static nih_sram_pool pool;
@@ -139,6 +139,10 @@ int nih_rom_cache_writeback(unsigned banks,unsigned start,unsigned bytes) { retu
 int nih_rom_cache_invalidate(unsigned banks,unsigned start,unsigned bytes) { return cache_op(2,banks,start,bytes); }
 unsigned nih_normal_c6_dma_release(void) { return !cache_failure; }
 bool nih_base_sram_take(unsigned owner,unsigned min,unsigned max,nih_sram_lease *out) { return nih_sram_pool_take(&pool,owner,min,max,out); }
+bool nih_base_sram_take_aligned(unsigned owner,unsigned min,unsigned max,unsigned alignment,nih_sram_lease *out) {
+    if(force_bad_alignment) return nih_sram_pool_take(&pool,owner,min,max,out);
+    return nih_sram_pool_take_aligned(&pool,owner,min,max,alignment,out);
+}
 bool nih_base_sram_release(const nih_sram_lease *lease) { return !fail_sram_release && nih_sram_pool_release(&pool,lease); }
 void nih_normal_fs_wake(void) {}
 static void network_turn(void) {
@@ -273,6 +277,7 @@ int main(int argc,char **argv) {
         CHECK(nih_sram_pool_take(&pool,3,64,64,&prefix));
         CHECK((prefix.start & 127)==0);
         fail_sram_release=fail_release;
+        force_bad_alignment=1; /* negative control: adapter breaks its promise */
         nih_normal_fs_begin(0x10000);
         CHECK(snapshot().status==(fail_release?6u:5u));
         CHECK(!nih_normal_fs_submit(0x10000,"Memo.txt",8));
@@ -286,6 +291,20 @@ int main(int argc,char **argv) {
         network_turn();CHECK(c6_transactions && reset_count==1);
         check_display();CHECK(!close(image));
         printf("{\"passed\":true,\"mode\":\"%s\",\"lease_reclaimed\":%s}\n",argv[2],fail_release?"false":"true");return 0;
+    }
+    if(!strcmp(argv[2],"aligned-fragmented")) {
+        nih_sram_lease prefix={0}, padding={0};
+        CHECK(nih_sram_pool_take(&pool,3,64,64,&prefix));
+        CHECK((prefix.start & 127)==0);
+        nih_normal_fs_begin(0x10000);step();report r=snapshot();
+        CHECK(r.status==2 && r.parent_bytes==65536 && !(r.parent_start & 127));
+        CHECK(r.parent_start==prefix.start+128);
+        CHECK(nih_sram_pool_take(&pool,4,64,64,&padding));
+        CHECK(padding.start==prefix.start+64); /* skipped space remains usable */
+        CHECK(nih_sram_pool_release(&pool,&padding));
+        network_turn();CHECK(c6_transactions && reset_count==1);
+        check_display();CHECK(!close(image));
+        puts("{\"passed\":true,\"mode\":\"aligned-fragmented\",\"fs_mounted\":true,\"padding_reused\":true}");return 0;
     }
     if(!strcmp(argv[2],"no-memory")) {
         nih_sram_lease busy={0};CHECK(nih_sram_pool_take(&pool,3,196*1024,196*1024,&busy));

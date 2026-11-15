@@ -24,7 +24,7 @@ extern fn nih_fatfs_card_backend(*Card, u32) callconv(.c) ?*fat.Session;
 extern fn nih_fatfs_card_remove(*Card, u32) callconv(.c) i32;
 extern fn nih_fatfs_card_destroy(*Card, u32) callconv(.c) i32;
 const PoolLease = extern struct { start: u32 = 0, bytes: u32 = 0, generation: u32 = 0, owner: u32 = 0 };
-extern fn nih_base_sram_take(u32, u32, u32, *PoolLease) callconv(.c) bool;
+extern fn nih_base_sram_take_aligned(u32, u32, u32, u32, *PoolLease) callconv(.c) bool;
 extern fn nih_base_sram_release(*const PoolLease) callconv(.c) bool;
 extern fn nih_normal_fs_wake() callconv(.c) void;
 extern fn nih_sdmmc_power_off() callconv(.c) void;
@@ -524,13 +524,12 @@ export fn nih_normal_fs_begin(client: u32) callconv(.c) void {
         return;
     }
     var lease = PoolLease{};
-    if (!nih_base_sram_take(2, 65536, 65536, &lease)) {
+    if (!nih_base_sram_take_aligned(2, 65536, 65536, @alignOf(State), &lease)) {
         unavailable.status = .no_memory;
         return;
     }
-    // The pool promises 64-byte alignment, but SPSC rings make State require
-    // 128 bytes on RV32. Never form a misaligned State pointer. Release the
-    // lease rather than assuming the current allocation order preserves it.
+    // Defend against an adapter that violates the requested alignment before
+    // forming a State pointer. On release failure, retain and quarantine.
     if (lease.start & (@alignOf(State) - 1) != 0) {
         unavailable.status = if (nih_base_sram_release(&lease)) .no_memory else .quarantined;
         return;

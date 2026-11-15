@@ -19,7 +19,7 @@ from normal_fs_build import build
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMATS = ('fat12', 'fat16', 'fat32', 'mbr-fat32', 'exfat')
-MODES = ('success', 'no-card', 'generation', 'io-error', 'quarantine', 'removed', 'corrupt', 'no-memory', 'misaligned-parent', 'misaligned-parent-release-failed', 'empty-root', 'write-dma')
+MODES = ('success', 'no-card', 'generation', 'io-error', 'quarantine', 'removed', 'corrupt', 'no-memory', 'misaligned-parent', 'misaligned-parent-release-failed', 'aligned-fragmented', 'empty-root', 'write-dma')
 
 
 def sha(path):
