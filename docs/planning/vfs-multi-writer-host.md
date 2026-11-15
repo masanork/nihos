@@ -57,6 +57,15 @@ media is later marked removed. The isolated host FatFs fixture performs
 `fsync`. This is not a physical durability or raw-storage handoff guarantee.
 The host interface does not stop a live producer or establish device quiescence.
 
+The separate chunked-reader model issues one 512-byte-or-smaller read at a time
+into the existing private result buffer. It reports completion only after close;
+read, close, correlation, sequence or transport failure scrubs the result and
+requires the caller to stop the lane. The caller owns the request and response
+frames, keeps the buffer private until completion, and preserves the lane's last
+sequence between operations. Host tests cover short transfers, EOF, failures,
+and peer progress between chunks. This model is not wired into normal FS and
+does not establish native scheduling or physical SD behavior.
+
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
 identities, budget the larger copied response queues, implement IRQ-safe exit

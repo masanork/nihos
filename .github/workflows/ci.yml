@@ -57,6 +57,11 @@ jobs:
       - name: Multi-client writable FatFs fixture (host only)
         run: sh tools/check-vfs-fatfs-multi-host.sh
 
+      - name: Multi-client chunked reader (host only)
+        run: |
+          .tools/zig-0.17.0/zig test src/vfs_multi_read_client_host_test.zig
+          .tools/zig-0.17.0/zig test -O ReleaseSafe src/vfs_multi_read_client_host_test.zig
+
       - name: Multi-client VFS RV32 layout and alignment comparison
         run: python3 tools/check-vfs-multi-budget.py
 
