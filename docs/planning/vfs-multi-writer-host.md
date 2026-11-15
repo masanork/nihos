@@ -43,6 +43,15 @@ closing and reopening them. The adapter uses a fixed identity mapping, not a
 general filesystem backend. These serialized host tests do not establish
 physical durability or actual concurrent device execution.
 
+After both producers have stopped and their lanes have been cleaned up, trusted
+owner code can shut down a read-only mount and start a new session. Surprise
+removal permits quiescent detach without further backend calls; the caller must
+destroy mount-local backend tokens before workspace reuse. Failed cleanup
+retains the mount even if media is subsequently marked removed. A writable
+mount currently lacks volume-sync capability and shutdown returns Unsupported;
+it must not be treated as a successful flush or a raw-storage handoff. This
+host interface does not stop a live producer or establish device quiescence.
+
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
 identities, budget the larger copied response queues, implement IRQ-safe exit

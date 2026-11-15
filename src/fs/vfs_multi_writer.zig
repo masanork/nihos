@@ -55,6 +55,7 @@ pub fn Service(comptime Backend: type) type {
         lanes: [2]Lane = .{ .{}, .{} },
         next: usize = 0,
         faulted: bool = false,
+        cleanup_failed: bool = false,
         session: u64 = 0,
         issuer: ?*Issuer = null,
         request: Request = .{},
@@ -207,8 +208,32 @@ pub fn Service(comptime Backend: type) type {
             self.response = .{};
             if (failed) {
                 self.faulted = true;
+                self.cleanup_failed = true;
                 return error.IoError;
             }
+        }
+        /// Trusted owner only, after both producers and all device work have
+        /// stopped. Removed media must also have its backend tokens destroyed
+        /// by the caller before the backing workspace is reused.
+        pub fn shutdown(self: *Self) api.Error!void {
+            const mount = self.mount orelse return error.Busy;
+            for (self.lanes) |lane| {
+                if (lane.alive or lane.root != null or lane.queues != null) return error.Busy;
+            }
+            if (self.cleanup_failed) return error.IoError;
+            const info = try self.core.queryMount(mount);
+            if (info.state == .removed) {
+                try self.core.detachQuiescent(mount);
+            } else {
+                // In particular, never report a clean unmount of a faulted
+                // mount or bypass the VFS volume-sync requirement.
+                if (self.faulted or info.state != .mounted) return error.IoError;
+                try self.core.unmount(mount);
+            }
+            self.mount = null;
+            self.issuer = null;
+            self.session = 0;
+            self.faulted = false;
         }
     };
 }
