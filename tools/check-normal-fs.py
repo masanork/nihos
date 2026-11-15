@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import tempfile
 from normal_fs_build import build
+from normal_fs_multi_candidate import generate as generate_multi_candidate
 
 ROOT = Path(__file__).resolve().parents[1]
 FORMATS = ('fat12', 'fat16', 'fat32', 'mbr-fat32', 'exfat')
@@ -58,22 +59,33 @@ def root_sector(image, fixture):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixtures-results', type=Path, help='reuse immutable fixture images from a recorded disk run')
+    parser.add_argument('--multi-candidate', action='store_true', help='host-only generated multi-client owner replacement')
     args = parser.parse_args()
     parent = ROOT / 'build/normal-fs'
     parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix='run-', dir=parent))
     inputs = [*sorted((ROOT / 'src').rglob('*.zig')), *sorted((ROOT / 'src/storage').glob('*.c')),
-        *sorted((ROOT / 'include').glob('*.h')), ROOT / 'tools/normal_fs_build.py', Path(__file__),
+        *sorted((ROOT / 'include').glob('*.h')), ROOT / 'tools/normal_fs_build.py', ROOT / 'tools/normal_fs_multi_candidate.py', Path(__file__),
         ROOT / 'probes/normal-fs/check.c', ROOT / 'src/platform/native/fatfs_card.c', ROOT / 'src/platform/native/fatfs_disk.c']
     source_hashes = {str(p.relative_to(ROOT)): sha(p) for p in inputs}
     report = {'schema': 1, 'passed': False, 'evidence': 'hosted real normal-service path with deterministic UI/SDIO turns',
         'hardware_executed': False, 'physical_timing_measured': False, 'whole_stack_qualified': False,
         'sources': source_hashes, 'host': platform.platform(), 'sanitizers': ['address', 'undefined'],
         'fixtures': [], 'negative_controls': []}
+    report['host_multi_candidate'] = args.multi_candidate
     def save():
         (work / 'results.json').write_text(json.dumps(report, indent=2) + '\n')
     save()
-    objects, source = build(work / 'host', native=False)
+    candidate_source = None
+    if args.multi_candidate:
+        candidate_dir = work / 'candidate-source'
+        candidate_dir.mkdir()
+        for item in ('normal_fs.zig', 'normal_fs_abi.zig', 'normal_fs_test_hooks.zig', 'shared_sdmmc.zig', 'shared_sdmmc_abi.zig'):
+            shutil.copyfile(ROOT / 'src/platform/native' / item, candidate_dir / item)
+        candidate_source = candidate_dir / 'normal_fs.zig'
+        candidate_source.write_text(generate_multi_candidate(candidate_source.read_text()))
+        report['candidate_source_sha256'] = sha(candidate_source)
+    objects, source = build(work / 'host', native=False, runtime_source=candidate_source)
     executable = link(work / 'host', objects)
     report['upstream'] = {p.name: sha(p) for p in source.iterdir() if p.is_file()}
     if args.fixtures_results:
@@ -121,7 +133,8 @@ def main():
         sources = mutant / 'source'
         sources.mkdir(parents=True)
         for item in ('normal_fs.zig', 'normal_fs_abi.zig', 'normal_fs_test_hooks.zig', 'shared_sdmmc.zig', 'shared_sdmmc_abi.zig'):
-            shutil.copyfile(ROOT / 'src/platform/native' / item, sources / item)
+            origin = candidate_source.parent if candidate_source else ROOT / 'src/platform/native'
+            shutil.copyfile(origin / item, sources / item)
         path = sources / file
         text = path.read_text()
         if text.count(old) != 1:
@@ -135,6 +148,7 @@ def main():
         report['negative_controls'].append({'name': name, 'mode': mode, 'rejected': True,
             'source_sha256': sha(path), 'exit_code': observed.returncode, 'reason': observed.stderr.splitlines()[0]})
         save()
+    # The RV32 build remains the unchanged production source, never the candidate.
     native_objects, _ = build(work / 'rv32', native=True)
     report['rv32_objects'] = {p.name: {'sha256': sha(p), 'bytes': p.stat().st_size} for p in native_objects}
     if any(sha(ROOT / name) != value for name, value in source_hashes.items()):

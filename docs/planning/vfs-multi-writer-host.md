@@ -74,6 +74,19 @@ logical backend removal after partial progress and checks that unpublished
 data is cleared and further owner work stops. This uses the existing host disk
 and does not run the normal FS task, SD controller, IRQ path or physical card.
 
+`tools/check-normal-fs.py --multi-candidate` generates a host-only variant of the
+normal FS task from exact source anchors. It substitutes the multi-client owner,
+two queues and bounded reader while retaining the task's actual card checks,
+guarded FatFs backend, result publication and simulated SDMMC path. The normal
+task currently binds only its existing UI client; the second lane is unbound.
+The test runs the same fixture modes and negative controls as the baseline,
+including failed-open retry and a 4 KiB file. The generated source refuses
+freestanding compilation and is not a product build. Client-exit and read
+cancellation notification, actual simultaneous native producers, raw sqld
+handoff, stack, physical device and close-failure teardown remain open. The
+independent raw-admission fence and aligned allocator changes are not in this
+candidate's source ancestry.
+
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
 identities, budget the larger copied response queues, implement IRQ-safe exit
