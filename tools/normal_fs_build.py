@@ -17,7 +17,7 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def build(work, native=True, runtime_source=None, sqld_host_test=False):
+def build(work, native=True, runtime_source=None, sqld_host_test=False, multi_probe_source=None):
     if native and sqld_host_test: raise ValueError("host capability fixture cannot enable a native image")
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=True)
@@ -44,7 +44,10 @@ def build(work, native=True, runtime_source=None, sqld_host_test=False):
     command += ['-fllvm', '-fno-strip', '-fno-stack-check', '-fno-stack-protector', '-fno-unwind-tables'] if native else ['-fcompiler-rt']
     profile = work / 'sqld_profile.zig'
     profile.write_text('pub const enabled = ' + ('true' if (native and os.environ.get('NIHOS_NATIVE_SQLD') == '1') or sqld_host_test else 'false') + ';\npub const provision_cid: u32 = ' + str(int(os.environ.get('NIHOS_NATIVE_SQLD_PROVISION_CID', '0'), 0)) + ';\n')
-    command += [*module, '--dep', 'sqld_profile', '--dep', 'storage_vfs', '--dep', 'task_calls', '--dep', 'task_control', '--dep', 'sdmmc', '--dep', 'timer_group', '--dep', 'sdmmc_host',
+    command += [*module, '--dep', 'sqld_profile', '--dep', 'storage_vfs', '--dep', 'task_calls', '--dep', 'task_control', '--dep', 'sdmmc', '--dep', 'timer_group', '--dep', 'sdmmc_host']
+    if multi_probe_source:
+        command += ['--dep', 'multi_probe']
+    command += [
                 '-Mroot=' + str(runtime_source or ROOT / 'src/platform/native/normal_fs.zig'),
                 *module, '-Msqld_profile=' + str(profile),
                 *module, '-Mstorage_vfs=' + str(ROOT / 'src/storage_vfs.zig'),
@@ -52,7 +55,10 @@ def build(work, native=True, runtime_source=None, sqld_host_test=False):
                 *module, '-Mtask_control=' + str(ROOT / 'src/kernel/task_control.zig'),
                 *module, '-Msdmmc=' + str(ROOT / 'src/soc/esp32p4/sdmmc.zig'),
                 *module, '-Mtimer_group=' + str(ROOT / 'src/soc/esp32p4/timer_group.zig'),
-                *module, '-Msdmmc_host=' + str(ROOT / 'src/io/sdmmc_host.zig'), '-femit-bin=' + str(runtime)]
+                *module, '-Msdmmc_host=' + str(ROOT / 'src/io/sdmmc_host.zig')]
+    if multi_probe_source:
+        command += [*module, '-Mmulti_probe=' + str(multi_probe_source)]
+    command += ['-femit-bin=' + str(runtime)]
     if native:
         command += ['-femit-llvm-bc=' + str(work / 'normal-fs.bc')]
     subprocess.run(command, cwd=ROOT, check=True)

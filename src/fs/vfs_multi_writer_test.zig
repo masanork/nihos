@@ -512,3 +512,34 @@ test "failure after a chunk leaves an unknown outcome and blocks the queued peer
     try eq(bytes.len, try backend.files[0].readPositionalAll(io, &bytes, 0));
     for (bytes, 0..) |byte, i| try eq(@as(u8, @intCast(1 + i / multi.transfer_bytes)), byte);
 }
+
+test "read-only mount rejects write grants before backend access" {
+    var backend = Fake{};
+    @memcpy(backend.data[0][0..4], "data");
+    var issuer = multi.Issuer{};
+    var service = Service{};
+    var queues: [2]multi.Queues = .{ .{}, .{} };
+    try service.startReadOnly(&backend, 1, &issuer);
+    try std.testing.expectError(error.ReadOnly, service.bind(0, 10, &queues[0], .{ .read = true, .write = true }));
+    try eq(@as(u32, 0), backend.lookups);
+    _ = try service.bind(0, 10, &queues[0], .{ .read = true });
+    var request = opening(1, "a");
+    request.epoch = 1;
+    request.rights = .{ .read = true };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    var response = multi.Response{};
+    try expect(queues[0].responses.tryPopInto(&response));
+    const file = response.result.handle;
+    request = .{ .session = 1, .epoch = 1, .sequence = 2, .operation = .read, .handle = file, .length = 4 };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try std.testing.expectEqualSlices(u8, "data", response.data[0..4]);
+    request = .{ .session = 1, .epoch = 1, .sequence = 3, .operation = .write, .handle = file, .length = 4 };
+    try expect(service.submit(&queues[0], 0, 10, &request));
+    try eq(@as(usize, 0), service.step(&queues).?);
+    try expect(queues[0].responses.tryPopInto(&response));
+    try eq(api.Error.PermissionDenied, response.result.failure);
+    try eq(@as(u32, 0), backend.writes);
+}

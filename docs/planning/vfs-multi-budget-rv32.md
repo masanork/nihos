@@ -46,7 +46,8 @@ The current host prototype uses 512-byte read and write frames with queue depth
 measure 13,568 bytes, versus 49,408 bytes for the preceding 4 KiB-frame
 prototype. Adding this entire object to the unchanged 63,744-byte normal FS
 state still needs 77,312 bytes, above the 65,536-byte parent. Replacing existing
-owner and queues is a separate design, not what this size probe establishes.
+owner and queues requires a separate design; the type projection below does not
+establish that replacement works.
 
 The host fixture manually splits 4 KiB transfers into eight 512-byte requests
 per client and checks interleaving. It does not implement an automatic transfer
@@ -54,3 +55,23 @@ coordinator, atomic multi-chunk writes or safe retries. A test deliberately
 returns timeout after writing a chunk and confirms that the outcome is unknown
 and another queued client is blocked. Stack use, real-device throughput, DMA,
 physical power failure and writable production FatFs remain unqualified.
+
+## Replacement type projection
+
+The probe also constructs an RV32 type from the actual normal FS `State`,
+replacing its owner, queues, client frames and notifications with the host
+service, two endpoint queues and one request/response frame. All other fields,
+including the 32 KiB C workspace, command ring, result and DMA fields, remain.
+This projected type is 55,424 bytes with 128-byte alignment, leaving 10,112 bytes
+in the existing 65,536-byte parent. The request and response together account
+for 1,640 bytes. The 8-byte issuer must live outside a reconstructed service;
+additional client frames and stacks are not included in the parent figure.
+
+This is a type-layout experiment, not a working runtime replacement. The
+service's host contracts do not yet replace native notifications, cancellation,
+producer lifetimes, client authentication, or device fences. Integration can
+change the final layout and may require additional storage. The separately
+proposed aligned allocator must be present; the older 64-byte pool contract
+cannot guarantee this type's 128-byte alignment. The host service now supports
+a read-only mount so the existing normal FS policy can be preserved during
+future integration. No physical-device behavior is established here.
