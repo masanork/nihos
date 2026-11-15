@@ -66,6 +66,14 @@ sequence between operations. Host tests cover short transfers, EOF, failures,
 and peer progress between chunks. This model is not wired into normal FS and
 does not establish native scheduling or physical SD behavior.
 
+The guarded read-only FatFs host harness also connects two such clients to the
+same production Zig FatFs adapter and C backend, over private FAT12, FAT16,
+FAT32, MBR FAT32 and exFAT images. It checks the full 4 KiB fragmented-file
+pattern and a peer's small file, then separately injects a disk read failure or
+logical backend removal after partial progress and checks that unpublished
+data is cleared and further owner work stops. This uses the existing host disk
+and does not run the normal FS task, SD controller, IRQ path or physical card.
+
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel
 identities, budget the larger copied response queues, implement IRQ-safe exit

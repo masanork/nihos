@@ -40,6 +40,7 @@ def main():
               ROOT / 'src/fs/fatfs_backend.zig', ROOT / 'src/fs/vfs.zig', ROOT / 'src/fs/vfs_test.zig',
               ROOT / 'src/fs/io_leases.zig', ROOT / 'src/root.zig', ROOT / 'tools/check-fatfs-backend.py',
               ROOT / 'src/storage_vfs.zig', ROOT / 'src/fs/vfs_rpc.zig', ROOT / 'src/fs/vfs_rpc_test.zig',
+              ROOT / 'src/fs/vfs_multi_writer.zig', ROOT / 'src/fs/vfs_multi_read_client.zig',
               ROOT / 'src/fs/vfs_memory.zig', ROOT / 'src/fs/io_stop.zig', ROOT / 'src/kernel/spsc_ring.zig',
               ROOT / 'src/fs/sdmmc_owner.zig', ROOT / 'src/fs/sdmmc_owner_test.zig',
               ROOT / 'src/soc/esp32p4/sdmmc.zig',
@@ -118,6 +119,8 @@ def main():
         probe(row, 'identity-and-admission', 'normal', fixture['alias'] or 'LONG FILENAME FOR ALIAS.TXT')
         for mode in ('vfs', 'selected-vfs', 'io', 'removed'):
             probe(row, mode, mode)
+        for mode in ('multi-read', 'multi-read-fail', 'multi-read-remove'):
+            probe(row, mode, mode, str(fixture['cluster_bytes']))
         for mode in ('rpc-cancel', 'rpc-exit', 'card-rpc-cancel', 'card-rpc-exit',
                      'card-rpc-transport-cancel', 'card-rpc-transport-remove', 'card-rpc-idle-remove',
                      'card-rpc-linked-cancel', 'card-rpc-linked-exit'):
