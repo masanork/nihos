@@ -8,7 +8,7 @@ also compiles and runs a synthetic address-only test of the actual SRAM pool.
 Selected source hashes, target values and the exact source checkout head appear
 in its JSON output. This is compile-only sizing, not a native linked candidate.
 
-On the checked revision, RV32 reports:
+For the earlier 4 KiB-frame baseline, RV32 reported:
 
 | Item | Bytes |
 | --- | ---: |
@@ -38,3 +38,19 @@ normal workload actually reaches that arrangement. A native design must ensure
 and test alignment, allocation, lifetime, device fences and competing-owner
 admission before enabling the prototype. No physical, runtime heap-availability,
 cache-off, stack-usage or SD write result follows from this probe.
+
+## 512-byte frame experiment
+
+The current host prototype uses 512-byte read and write frames with queue depth
+2 per endpoint. On RV32 the two endpoint queues, service owner and issuer now
+measure 13,568 bytes, versus 49,408 bytes for the preceding 4 KiB-frame
+prototype. Adding this entire object to the unchanged 63,744-byte normal FS
+state still needs 77,312 bytes, above the 65,536-byte parent. Replacing existing
+owner and queues is a separate design, not what this size probe establishes.
+
+The host fixture manually splits 4 KiB transfers into eight 512-byte requests
+per client and checks interleaving. It does not implement an automatic transfer
+coordinator, atomic multi-chunk writes or safe retries. A test deliberately
+returns timeout after writing a chunk and confirms that the outcome is unknown
+and another queued client is blocked. Stack use, real-device throughput, DMA,
+physical power failure and writable production FatFs remain unqualified.
