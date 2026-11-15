@@ -47,10 +47,15 @@ After both producers have stopped and their lanes have been cleaned up, trusted
 owner code can shut down a read-only mount and start a new session. Surprise
 removal permits quiescent detach without further backend calls; the caller must
 destroy mount-local backend tokens before workspace reuse. Failed cleanup
-retains the mount even if media is subsequently marked removed. A writable
-mount currently lacks volume-sync capability and shutdown returns Unsupported;
-it must not be treated as a successful flush or a raw-storage handoff. This
-host interface does not stop a live producer or establish device quiescence.
+retains the mount even if media is subsequently marked removed. Writable
+mounts created with `start` have no volume-sync capability, so shutdown returns
+Unsupported. A trusted backend may instead explicitly promise volume sync via
+`startWithVolumeSync`. After both lanes are stopped and all files close, shutdown
+then calls the backend's volume sync; failure retains the faulted mount even if
+media is later marked removed. The isolated host FatFs fixture performs
+`CTRL_SYNC` only after all files close and tests failures before and after host
+`fsync`. This is not a physical durability or raw-storage handoff guarantee.
+The host interface does not stop a live producer or establish device quiescence.
 
 This is not connected to normal_fs, production FatFs, sqld, a native scheduler or DMA.
 Before native use, define admission and memory budgets, authenticate kernel

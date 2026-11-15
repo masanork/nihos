@@ -15,6 +15,7 @@ static FATFS fs;
 static FIL files[2];
 static unsigned open_mask;
 static int active;
+static unsigned volume_syncs;
 void nih_multi_fixture_destroy(void);
 #ifdef NIHOS_MULTI_FAULTS
 extern void host_disk_multi_reset(void);
@@ -38,6 +39,7 @@ int nih_multi_fixture_init(void) {
     memcpy(image + n, "/volume.img", sizeof "/volume.img");
     if (host_disk_open(image, 16u * 1024u * 1024u)) { (void)rmdir(directory); return -1; }
     active = 1;
+    volume_syncs = 0;
     BYTE work[32768];
     const MKFS_PARM options = { .fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 512, .au_size = 512 };
     if (f_mkfs("", &options, work, sizeof work) != FR_OK || f_mount(&fs, "", 1) != FR_OK ||
@@ -80,6 +82,12 @@ int nih_multi_fixture_write(unsigned index, unsigned long long offset, const uns
 int nih_multi_fixture_sync(unsigned index) {
     return index < 2 && (open_mask & (1u << index)) && f_sync(&files[index]) == FR_OK ? 0 : -1;
 }
+int nih_multi_fixture_sync_volume(void) {
+    if (!active || open_mask) return -1;
+    ++volume_syncs;
+    return disk_ioctl(0, CTRL_SYNC, NULL) == RES_OK ? 0 : -1;
+}
+unsigned nih_multi_fixture_volume_syncs(void) { return volume_syncs; }
 int nih_multi_fixture_close(unsigned index) {
     if (index >= 2 || !(open_mask & (1u << index))) return -1;
     if (f_close(&files[index]) != FR_OK) return -1;
