@@ -303,6 +303,21 @@ int main(int argc,char **argv) {
                 CHECK(nih_normal_fs_submit(0x10000,"Memo.txt",8));step();
                 CHECK(nih_normal_fs_poll(0x10000));CHECK(snapshot().bytes==24);
             }
+            if(!strcmp(argv[2],"success")) {
+                CHECK(nih_normal_fs_submit(0x10000,"missing.txt",11));step();
+                CHECK(nih_normal_fs_poll(0x10000));r=snapshot();
+                CHECK(r.status==2 && r.error_code==-2 && r.bytes==0);
+                CHECK(nih_normal_fs_result(0,data,sizeof data)==0);
+                CHECK(nih_normal_fs_submit(0x10000,"fragment.bin",12));step();
+                CHECK(nih_normal_fs_poll(0x10000));r=snapshot();
+                CHECK(r.status==2 && r.error_code==0 && r.bytes==4096);
+                for(unsigned offset=0;offset<4096;offset+=sizeof data) {
+                    CHECK(nih_normal_fs_result(offset,data,sizeof data)==sizeof data);
+                    for(unsigned i=0;i<sizeof data;++i) CHECK(data[i]>=0x30 && data[i]<=0x37);
+                }
+                CHECK(nih_normal_fs_submit(0x10000,"Memo.txt",8));step();
+                CHECK(nih_normal_fs_poll(0x10000) && snapshot().bytes==24);
+            }
             CHECK(ui_progress && c6_transactions);
             CHECK(reset_count==(!strcmp(argv[2],"generation")?2u:1u));
         }

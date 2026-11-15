@@ -68,6 +68,9 @@ jobs:
       - name: Normal FS task with shared SDMMC, faults and negative controls (host only)
         run: python3 tools/check-normal-fs.py
 
+      - name: Normal FS multi-owner candidate (host only)
+        run: python3 tools/check-normal-fs.py --multi-candidate
+
       - name: Retain normal FS host evidence
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
