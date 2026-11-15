@@ -7,6 +7,8 @@ extern fn nih_multi_fixture_open(c_uint, c_uint) c_int;
 extern fn nih_multi_fixture_read(c_uint, c_ulonglong, [*]u8, c_uint, *c_uint, *c_uint) c_int;
 extern fn nih_multi_fixture_write(c_uint, c_ulonglong, [*]const u8, c_uint) c_int;
 extern fn nih_multi_fixture_sync(c_uint) c_int;
+extern fn nih_multi_fixture_sync_volume() c_int;
+extern fn nih_multi_fixture_volume_syncs() c_uint;
 extern fn nih_multi_fixture_close(c_uint) c_int;
 extern fn nih_multi_fixture_remount_check() c_int;
 extern fn nih_multi_fixture_destroy() void;
@@ -39,7 +41,9 @@ const Backend = struct {
     pub fn syncFile(_: *@This(), token: u64) api.Error!void {
         if (nih_multi_fixture_sync(@intCast(token - 1)) != 0) return error.IoError;
     }
-    pub fn syncVolume(_: *@This(), _: u64) api.Error!void {}
+    pub fn syncVolume(_: *@This(), _: u64) api.Error!void {
+        if (nih_multi_fixture_sync_volume() != 0) return error.IoError;
+    }
 };
 test "serialized multi-client writes survive FatFs sync and remount on host fixture" {
     try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_init());
@@ -48,7 +52,7 @@ test "serialized multi-client writes survive FatFs sync and remount on host fixt
     var service = multi.Service(Backend){};
     var issuer = multi.Issuer{};
     var queues: [2]multi.Queues = .{ .{}, .{} };
-    try service.start(&backend, 1, &issuer);
+    try service.startWithVolumeSync(&backend, 1, &issuer);
     var handles: [2]multi.Handle = undefined;
     for (0..2) |i| {
         _ = try service.bind(i, @intCast(i + 1), &queues[i], .{ .read = true, .write = true });
@@ -85,6 +89,8 @@ test "serialized multi-client writes survive FatFs sync and remount on host fixt
     }
     try service.stop(&queues[0], 0, 1);
     try service.stop(&queues[1], 1, 2);
+    try service.shutdown();
+    try std.testing.expectEqual(@as(c_uint, 1), nih_multi_fixture_volume_syncs());
     try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_remount_check());
 }
 
@@ -92,6 +98,30 @@ extern fn nih_multi_fixture_arm(c_uint) void;
 extern fn nih_multi_fixture_triggered() c_uint;
 extern fn nih_multi_fixture_writes() c_ulonglong;
 extern fn nih_multi_fixture_open_mask() c_uint;
+
+test "volume sync failure before or after fsync retains the mount" {
+    for (3..5) |mode| {
+        try std.testing.expectEqual(@as(c_int, 0), nih_multi_fixture_init());
+        defer nih_multi_fixture_destroy();
+        var backend = Backend{};
+        var service = multi.Service(Backend){};
+        var issuer = multi.Issuer{};
+        var queues: [2]multi.Queues = .{ .{}, .{} };
+        try service.startWithVolumeSync(&backend, 1, &issuer);
+        _ = try service.bind(0, 1, &queues[0], .{ .write = true });
+        try std.testing.expectError(error.Busy, service.shutdown());
+        try std.testing.expectEqual(@as(c_uint, 0), nih_multi_fixture_volume_syncs());
+        try service.stop(&queues[0], 0, 1);
+        nih_multi_fixture_arm(@intCast(mode));
+        try std.testing.expectError(error.IoError, service.shutdown());
+        try std.testing.expectEqual(@as(c_uint, @intCast(mode)), nih_multi_fixture_triggered());
+        try std.testing.expectEqual(@as(c_uint, 1), nih_multi_fixture_volume_syncs());
+        try std.testing.expectError(error.Busy, service.startWithVolumeSync(&backend, 2, &issuer));
+        try service.markRemoved();
+        try std.testing.expectError(error.IoError, service.shutdown());
+        try std.testing.expectEqual(@as(c_uint, 1), nih_multi_fixture_volume_syncs());
+    }
+}
 
 test "FatFs write and sync failures quarantine both endpoints" {
     for (1..5) |mode| {

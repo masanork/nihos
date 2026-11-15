@@ -61,16 +61,21 @@ pub fn Service(comptime Backend: type) type {
         request: Request = .{},
         response: Response = .{},
         pub fn start(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
-            return self.startMode(backend, session, issuer, true);
+            return self.startMode(backend, session, issuer, true, false);
+        }
+        /// The trusted backend promises syncVolume flushes all volume metadata
+        /// and data after its open files have been closed successfully.
+        pub fn startWithVolumeSync(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
+            return self.startMode(backend, session, issuer, true, true);
         }
         /// Read-only model for evaluating replacement of the normal FS owner.
         pub fn startReadOnly(self: *Self, backend: *Backend, session: u64, issuer: *Issuer) api.Error!void {
-            return self.startMode(backend, session, issuer, false);
+            return self.startMode(backend, session, issuer, false, false);
         }
-        fn startMode(self: *Self, backend: *Backend, session: u64, issuer: *Issuer, writable: bool) api.Error!void {
+        fn startMode(self: *Self, backend: *Backend, session: u64, issuer: *Issuer, writable: bool, volume_sync: bool) api.Error!void {
             if (self.mount != null) return error.Busy;
             if (session == 0) return error.InvalidArgument;
-            self.mount = try self.core.mount(backend, 1, .{ .write_at = writable, .sync_file = writable }, .{ .writable = writable });
+            self.mount = try self.core.mount(backend, 1, .{ .write_at = writable, .sync_file = writable, .sync_volume = volume_sync }, .{ .writable = writable });
             self.session = session;
             self.issuer = issuer;
         }
@@ -228,7 +233,13 @@ pub fn Service(comptime Backend: type) type {
                 // In particular, never report a clean unmount of a faulted
                 // mount or bypass the VFS volume-sync requirement.
                 if (self.faulted or info.state != .mounted) return error.IoError;
-                try self.core.unmount(mount);
+                self.core.unmount(mount) catch |err| {
+                    if (err != error.Unsupported and err != error.Busy) {
+                        self.faulted = true;
+                        self.cleanup_failed = true;
+                    }
+                    return err;
+                };
             }
             self.mount = null;
             self.issuer = null;
